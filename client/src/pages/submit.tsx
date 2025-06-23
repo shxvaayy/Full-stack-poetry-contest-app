@@ -141,7 +141,7 @@ export default function SubmitPage() {
         photoUrl: photoUrl,
         paymentScreenshotUrl,
         tier: selectedTier!.id,
-        price: selectedTier!.price,
+        amount: selectedTier!.price,
         userUid: user?.uid,
       });
     } catch (error) {
@@ -205,7 +205,7 @@ export default function SubmitPage() {
         photoUrl: photoUrl,
         paymentScreenshotUrl: null, // No payment for free tier
         tier: selectedTier.id,
-        price: selectedTier.price,
+        amount: selectedTier.price,
         userUid: user?.uid,
       });
     } catch (error) {
