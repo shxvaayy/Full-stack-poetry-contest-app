@@ -2,8 +2,13 @@ import { google } from 'googleapis';
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
+// Decode base64-encoded service account JSON
+const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64
+  ? JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64, "base64").toString("utf-8"))
+  : null;
+
 const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_CREDS_JSON as string),
+  credentials: credentials || undefined,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
@@ -33,12 +38,9 @@ interface PoemSubmissionData {
   timestamp: string;
 }
 
-// Simple authentication using API key (if available)
-
-
-
 async function getAuthClient() {
   try {
+    if (!credentials) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 in env");
     return await auth.getClient();
   } catch (error) {
     console.warn('Google Sheets authentication not configured. Data will be stored locally only.');
@@ -72,7 +74,6 @@ export async function addContactToSheet(data: ContactData): Promise<void> {
     console.log('Contact data added to Google Sheets');
   } catch (error) {
     console.error('Error adding contact to Google Sheets:', error);
-    // Continue operation even if sheets update fails
   }
 }
 
@@ -110,17 +111,14 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
     console.log('Poem submission data added to Google Sheets');
   } catch (error) {
     console.error('Error adding poem submission to Google Sheets:', error);
-    // Continue operation even if sheets update fails
   }
 }
 
-// Initialize sheet headers if they don't exist
 export async function initializeSheetHeaders(): Promise<void> {
   try {
     const authClient = await getAuthClient();
     if (!authClient) return;
 
-    // Initialize contacts sheet headers
     const contactsRequest = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Contacts!A1:E1',
@@ -131,7 +129,6 @@ export async function initializeSheetHeaders(): Promise<void> {
       }
     };
 
-    // Initialize poems sheet headers
     const poemsRequest = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Poetry!A1:M1',
