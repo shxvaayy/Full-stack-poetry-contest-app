@@ -1,12 +1,17 @@
 import { google } from 'googleapis';
-
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
 // Decode base64-encoded service account JSON
-const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64
-  ? JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64, "base64").toString("utf-8"))
+const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  ? JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON, "base64").toString("utf-8"))
   : null;
 
+if (!credentials) {
+  console.log("❌ GOOGLE_SERVICE_ACCOUNT_JSON not loaded properly");
+} else {
+  console.log("✅ Service account credentials loaded.");
+}
+  
 const auth = new google.auth.GoogleAuth({
   credentials: credentials || undefined,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -40,7 +45,7 @@ interface PoemSubmissionData {
 
 async function getAuthClient() {
   try {
-    if (!credentials) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 in env");
+    if (!credentials) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON in env");
     return await auth.getClient();
   } catch (error) {
     console.warn('Google Sheets authentication not configured. Data will be stored locally only.');
