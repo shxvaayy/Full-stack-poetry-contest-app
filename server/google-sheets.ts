@@ -84,6 +84,7 @@ export async function addContactToSheet(data: ContactData): Promise<void> {
 
 export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promise<void> {
   try {
+    console.log("Received poem submission data:", data);
     const authClient = await getAuthClient();
     if (!authClient) return;
 

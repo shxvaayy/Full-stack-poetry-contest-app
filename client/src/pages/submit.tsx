@@ -144,6 +144,11 @@ export default function SubmitPage() {
         amount: selectedTier!.price,
         userUid: user?.uid,
       });
+      console.log("Submitting data (payment next):", {
+        name: `${formData.firstName} ${formData.lastName}`,
+        amount: selectedTier!.price,
+        tier: selectedTier!.id,
+      });
     } catch (error) {
       console.error("Submission error after payment:", error);
       toast({
@@ -457,6 +462,5 @@ export default function SubmitPage() {
     </section>
   );
 }
-
 
 
