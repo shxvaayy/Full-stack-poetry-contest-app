@@ -2,30 +2,26 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logout } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const navigation = [
     { name: "HOME", href: "/" },
     { name: "SUBMIT POEM", href: "/submit" },
-    { name: "WINNING POEMS", href: "/winning-poems" },
+    { name: "RESULTS", href: "/winning-poems" },
     { name: "PAST WINNERS", href: "/past-winners" },
     { name: "ABOUT US", href: "/about" },
     { name: "CONTACT US", href: "/contact" },
   ];
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    console.log("Header logout clicked");
+    await logout();
   };
 
   return (
@@ -36,12 +32,12 @@ export default function Header() {
             <div className="w-12 h-12 mr-4">
               <img 
                 src={logoImage} 
-                alt="Writory Logo" 
+                alt="WRITORY Logo" 
                 className="w-full h-full object-contain"
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold">writory poetry contest</h1>
+              <h1 className="text-xl font-bold">WRITORY POETRY CONTEST</h1>
             </div>
           </Link>
 
@@ -58,19 +54,14 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <div className="flex items-center space-x-4">
-                <span className="text-white text-sm">
-                  Hi, {user.displayName || user.email?.split('@')[0] || 'User'}
-                </span>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white hover:bg-white hover:text-primary"
-                >
-                  Logout
-                </Button>
-              </div>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="text-white border-white hover:bg-white hover:text-primary"
+              >
+                Logout
+              </Button>
             )}
           </nav>
 
@@ -98,22 +89,17 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <div className="px-3 py-2 space-y-2">
-                <div className="text-white text-sm">
-                  Hi, {user.displayName || user.email?.split('@')[0] || 'User'}
-                </div>
-                <Button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-white border-white hover:bg-white hover:text-primary"
-                >
-                  Logout
-                </Button>
-              </div>
+              <Button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 text-white border-white hover:bg-white hover:text-primary"
+              >
+                Logout
+              </Button>
             )}
           </div>
         </div>
