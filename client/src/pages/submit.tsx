@@ -61,7 +61,7 @@ export default function SubmitPage() {
     onSuccess: (data) => {
       toast({
         title: "Success!",
-        description: "Your poem has been submitted successfully. You will receive a confirmation email shortly.",
+        description: "Your poem has been submitted successfully. You will receive a confirmation email shortly.Stay in the loop — follow us for updates, contests, and a daily dose of inspiration!",
       });
       
       // If this was a free submission, mark it as used
