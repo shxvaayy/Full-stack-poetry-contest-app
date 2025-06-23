@@ -38,6 +38,8 @@ Click the blue **"Enter Demo Mode (See Full Platform)"** button on the authentic
 - Real-time data sync when Google authentication is configured
 - Graceful fallback - works without Google credentials
 
+"FOLDER_ID=1kG8qdjMAmWKXiEKngr51jnUnyb2sEv4P"
+
 #### Sheet Structure:
 **Contacts Sheet**: Timestamp, Name, Email, Phone, Message
 **Poems Sheet**: Timestamp, Name, Email, Phone, Age, City, State, Poem Title, Tier, Amount, Payment Screenshot, Poem File, Photo
