@@ -110,7 +110,7 @@ export default function AuthPage() {
                   type="email"
                   required
                   className="border-2 border-accent focus:border-accent"
-                  placeholder="name@gmail.com"
+                  placeholder="shivaaymehra2@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
