@@ -135,6 +135,7 @@ export default function SubmitPage() {
 
       await submitMutation.mutateAsync({
         ...formData,
+        name: `${formData.firstName} ${formData.lastName}`,
         age: parseInt(formData.age),
         poemFileUrl: poemUrl,
         photoUrl: photoUrl,
@@ -198,6 +199,7 @@ export default function SubmitPage() {
 
       await submitMutation.mutateAsync({
         ...formData,
+        name: `${formData.firstName} ${formData.lastName}`,
         age: parseInt(formData.age),
         poemFileUrl: poemUrl,
         photoUrl: photoUrl,
@@ -282,7 +284,7 @@ export default function SubmitPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <Label>First Name *</Label>
+                    <Label>Name</Label>
                     <Input
                       required
                       value={formData.firstName}
