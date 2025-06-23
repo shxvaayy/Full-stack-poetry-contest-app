@@ -26,8 +26,17 @@ export const signUpWithEmail = (email: string, password: string) => {
   return createUserWithEmailAndPassword(auth, email, password);
 };
 
-export const logout = () => {
-  return signOut(auth);
+export const logout = async () => {
+  try {
+    console.log("Firebase logout starting...");
+    localStorage.removeItem('demo-session');
+    await signOut(auth);
+    console.log("Firebase logout successful");
+  } catch (error) {
+    console.error("Firebase logout error:", error);
+    localStorage.removeItem('demo-session'); // Clear anyway
+    throw error;
+  }
 };
 
 export const onAuthStateChange = (callback: (user: User | null) => void) => {

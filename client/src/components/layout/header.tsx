@@ -2,14 +2,13 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logout } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const navigation = [
     { name: "HOME", href: "/" },
@@ -21,11 +20,8 @@ export default function Header() {
   ];
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    console.log("Header logout clicked");
+    await logout();
   };
 
   return (
