@@ -193,14 +193,7 @@ export default function AuthPage() {
     }
   };
 
-  const handleDemoLogin = () => {
-    localStorage.setItem('demo-session', 'true');
-    toast({
-      title: "Demo Mode",
-      description: "Accessing platform in demo mode",
-    });
-    window.location.reload();
-  };
+  
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -340,13 +333,7 @@ export default function AuthPage() {
                   )}
                 </div>
 
-                <Button
-                  variant="ghost"
-                  className="w-full text-sm"
-                  onClick={handleDemoLogin}
-                >
-                  Try Demo Mode
-                </Button>
+                
               </div>
             </div>
 
