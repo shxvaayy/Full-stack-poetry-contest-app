@@ -157,17 +157,7 @@ export default function SubmitPage() {
   };
 
   const handlePaymentNext = async () => {
-    if (!files.paymentScreenshot) {
-      toast({
-        title: "Payment screenshot required",
-        description: "Please upload your payment screenshot to proceed.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      const paymentScreenshotUrl = await handleFileUpload(files.paymentScreenshot, "payment");
       const poemUrl = await handleFileUpload(files.poem!, "poem");
       const photoUrl = await handleFileUpload(files.photo!, "photo");
 
@@ -177,7 +167,7 @@ export default function SubmitPage() {
         age: parseInt(formData.age),
         poemFileUrl: poemUrl,
         photoUrl: photoUrl,
-        paymentScreenshotUrl,
+        paymentScreenshotUrl: null, // No payment screenshot required
         tier: selectedTier!.id,
         amount: selectedTier!.price,
         userUid: user?.uid,
@@ -483,7 +473,7 @@ export default function SubmitPage() {
                 
                 <div className="space-y-4">
                   <div>
-                    <p className="font-medium">UPI ID: <span className="text-primary">writoryofficial@paytm</span></p>
+                    <p className="font-medium">UPI ID: <span className="text-primary">9667102405@pthdfc</span></p>
                     <p className="text-sm text-gray-600">Amount: ₹{selectedTier.price}</p>
                   </div>
                   
@@ -498,31 +488,8 @@ export default function SubmitPage() {
                   <div className="text-sm text-gray-600">
                     <p>1. Scan the QR code or use the UPI ID above</p>
                     <p>2. Pay the exact amount: ₹{selectedTier.price}</p>
-                    <p>3. Take a screenshot of the payment confirmation</p>
-                    <p>4. Upload the screenshot below</p>
+                    <p>3. Your payment will be verified automatically</p>
                   </div>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <Label>Upload Payment Screenshot *</Label>
-                <div className="mt-2">
-                  <input
-                    ref={paymentFileRef}
-                    type="file"
-                    accept=".jpg,.jpeg,.png"
-                    onChange={(e) => setFiles({ ...files, paymentScreenshot: e.target.files?.[0] || null })}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => paymentFileRef.current?.click()}
-                    className="w-full"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {files.paymentScreenshot ? files.paymentScreenshot.name : "Choose payment screenshot"}
-                  </Button>
                 </div>
               </div>
 
@@ -537,7 +504,7 @@ export default function SubmitPage() {
                 </Button>
                 <Button
                   onClick={handlePaymentNext}
-                  disabled={submitMutation.isPending || !files.paymentScreenshot}
+                  disabled={submitMutation.isPending}
                   className="flex-1"
                 >
                   {submitMutation.isPending ? "Processing..." : "Complete Submission"}
