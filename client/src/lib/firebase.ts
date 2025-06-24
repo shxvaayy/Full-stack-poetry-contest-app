@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -26,6 +27,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export { app };
 
 // --- GOOGLE AUTH ---
 const googleProvider = new GoogleAuthProvider();
@@ -42,7 +44,7 @@ export const signInWithEmail = (email: string, password: string) => {
 };
 
 export const signUpWithEmail = (email: string, password: string) => {
-  return createUserWithEmailAndPassword(auth, password, password);
+  return createUserWithEmailAndPassword(auth, email, password);
 };
 
 // --- LOGOUT ---
@@ -71,19 +73,14 @@ export const handleRedirectResult = () => {
 
 // --- PHONE AUTH SETUP ---
 export const setUpRecaptcha = (containerId: string): RecaptchaVerifier => {
-  const verifier = new RecaptchaVerifier(containerId, {
-    size: "invisible", // change to 'normal' if you want the visible box
+  const verifier = new RecaptchaVerifier(auth, containerId, {
+    size: "invisible",
     callback: (response: any) => {
       console.log("reCAPTCHA solved", response);
     },
     'expired-callback': () => {
       console.warn("reCAPTCHA expired");
     }
-  }, auth);
-  verifier.render();
+  });
   return verifier;
-};
-
-export const signInWithPhone = (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
-  return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
 };
