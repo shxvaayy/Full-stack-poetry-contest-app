@@ -2,12 +2,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Trophy, Medal, Award, User } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
 
-// Dynamic imports for winner photos with error handling
+// Import winner photos with fallback handling
+let winner1Photo, winner2Photo, winner3Photo;
+
+try {
+  winner1Photo = require("../attached_assets/winner1.png");
+} catch {
+  winner1Photo = null;
+}
+
+try {
+  winner2Photo = require("../attached_assets/winner2.png");
+} catch {
+  winner2Photo = null;
+}
+
+try {
+  winner3Photo = require("../attached_assets/winner3.png");
+} catch {
+  winner3Photo = null;
+}
+
 const getWinnerPhoto = (position: number) => {
-  try {
-    return require(`@assets/winner${position}.png`);
-  } catch (error) {
-    return null;
+  switch (position) {
+    case 1: return winner1Photo;
+    case 2: return winner2Photo;
+    case 3: return winner3Photo;
+    default: return null;
   }
 };
 
