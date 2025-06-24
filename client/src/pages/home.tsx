@@ -11,7 +11,7 @@ export default function HomePage() {
       <section
         className="relative min-h-screen flex items-center justify-center"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080')",
+          backgroundImage: "url('https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -31,7 +31,7 @@ export default function HomePage() {
           {/* Moving Tagline */}
           <div className="overflow-hidden bg-black bg-opacity-50 rounded-full px-8 py-4 max-w-4xl mx-auto mb-8">
             <div className="whitespace-nowrap text-lg font-medium animate-scroll">
-              <span>Write Your Own Victory • Write Your Own Victory • Write Your Own Victory • Write Your Own Victory • Write Your Own Victory • </span>
+              <span>Write Your Own Victory • Participate Now • Write Your Own Victory • Participate Now • Write Your Own Victory • </span>
             </div>
           </div>
 
