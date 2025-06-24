@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "durable-woods-463222-g7",
+  "private_key_id": "bb77ef3b0c2362282e2f5f7deabb246895194e29",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC0izhOpL6U8z8u\nuSzY+4PnvcdbItguovEWjcJqBX58mIiBch5wmJpbKqOpS3zoVfEN5Us25wZqJFzG\nWWRyl5QwtqDLu5BhcCL/VdbsLIG+YOxaNab7QzYI3tMHvmiWT9skVBnBk7929KpP\noAd806nneiHxpGD/T7N7h+CkejwYI3o4EK9+jjPM2GSKMEmo3iHLJV68ut9ixPX4\n60mQxHxcaW3qd2GTxay4ngpShVLb775lYsIh8k6ZPum4vWgAb2M9IELDWSecVUoI\n+5n4jtr1BEzIc3ZPNuZvji0A3XO1G7PiykckN26r4EErEhP+ldsqzcTitUw2MTmB\naE+gY7I9AgMBAAECggEACPGOmAK8OCe2nQtqR9NpzNyPWBnpSKIkvD/IfjUId4ac\n2IC9Nkmw98wscFH/fYjoWI5fw/f8ztw/RkoeWjjdC+64F2+Sruj9qtVnQKrRwIsP\nmkZnH7JMJnNXU95gUvXgvrN11SuLBAsJtskQJeRcWc2oic5hSbR6iSeJfsxZVr6x\n1SDsb0qfpGYc38NEeMVzMSBrKVfD36/Hn+owgMbrX8PGrxJqvVvE/zy1sIUPqOXT\nZoxjn8w6cHsbFY7ZaG3VS+XstQFsOSO72faf3rw12JySH3pE/PtyfNwLtPg+ykpA\noTLtthVj0e4Kzt2Fd+bDQVdkztAMDBkHXJ662h++cQKBgQDjlsPc7Ui7PKYu8Zar\nUPYnYikn3CRibDTFLLIug5k2iksvbTG4Z2fxX++qn27MnP8OFNYVQNzDyFZr6Clq\n3oGvRhb+8QSKsjEaGL2zR/zqNR1KXgojmmGCd+zbcnlN1GdwNIg5FWK6PWXM7mPr\n/avb07ND+bKCP10DFN59bBoZxQKBgQDLFP+Uc+7a2mrOHB4dS6aIOSbF29KtG36K\ny17N70oXwWOjyhuHNHKt0oiv9HpM1+EDPV13rWgppre3DMnZT5DpzdtdD3i/4ar9\nODzPcFZH5cJIygfSloTsFbXa1w8faK9NipJqFGvqTZtldYwu6M5OqMjgs6NY1iNO\ndnd9XmNWGQKBgQDSRUs05S5bf49ys9am9ahXfsPThfs/zAV9XuxJOWDnGSKZ8OMN\nIszQH/kIxUDTXwHveqTJAiJ16LSgAeGyUV20GKfKZ9fwZO4k1FMAPzSXFve26+em\nOU56Al8d6UfV9raS3pY1V2Ld+zgA/Qfo03hjI9buqNaaq/w9ipx9eNEsmQKBgQCg\nd9owKp9dLWNhs5QUH/faAhbiFv3UrToDYAlsfh00wioCfSvdXRMUyJwbNPoCiD6T\necTGUS5SYxsduCwy240tQe2JDjWioSWkavCaFTEIJMOtEn615xvnFIya/H5FmkmS\n4uEokzRmcqZMuGJpmqmSPApmi2uSQbqqQC/Qz2l82QKBgQCATiwufxgPXQ36uDFF\nyHMZ8dU1h1AKZr5hmMJaMffJdDDkyWlBSW0iL2dwze4Bj9uw8rBREYLZJEJ+f1xW\nYwzyI1LPsHPV85AbARk3MW4G997pRAEhIAFFZHd4yQ00eS1mF/Niop6gx4hfoQpI\nkYX6bc7U91zTpetTeTYGvzDztw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "poem-submission-service@durable-woods-463222-g7.iam.gserviceaccount.com",
+  "client_id": "110177167740244077565",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/poem-submission-service%40durable-woods-463222-g7.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
