@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -85,7 +84,7 @@ export const linkPhoneToCurrentUser = async (phoneNumber: string, recaptchaVerif
   if (!user) {
     throw new Error('No user is currently signed in');
   }
-  
+
   return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
 };
 
@@ -104,13 +103,13 @@ export const logout = async () => {
   try {
     console.log("Firebase logout starting...");
     localStorage.removeItem('demo-session');
-    
+
     // Clear reCAPTCHA verifier on logout
     if (window.recaptchaVerifier) {
       window.recaptchaVerifier.clear();
       window.recaptchaVerifier = null;
     }
-    
+
     await signOut(auth);
     console.log("Firebase logout successful");
   } catch (error) {
