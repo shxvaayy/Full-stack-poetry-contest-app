@@ -54,15 +54,17 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <span className="text-white text-sm mr-2">{user.displayName || user.email}</span>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="text-white border-white hover:bg-white hover:text-primary"
-              >
-                Logout
-              </Button>
+              <>
+                <span className="text-white text-sm mr-2">{user.displayName || user.email}</span>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  size="sm"
+                  className="text-white border-white hover:bg-white hover:text-primary"
+                >
+                  Logout
+                </Button>
+              </>
             )}
           </nav>
 
@@ -90,18 +92,20 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <span className="block px-3 py-2 text-white text-sm">{user.displayName || user.email}</span>
-              <Button
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 text-white border-white hover:bg-white hover:text-primary"
-              >
-                Logout
-              </Button>
+              <>
+                <span className="block px-3 py-2 text-white text-sm">{user.displayName || user.email}</span>
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2 text-white border-white hover:bg-white hover:text-primary"
+                >
+                  Logout
+                </Button>
+              </>
             )}
           </div>
         </div>
