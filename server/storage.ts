@@ -1,4 +1,5 @@
 import { users, submissions, contacts, userSubmissionCounts, type User, type InsertUser, type Submission, type InsertSubmission, type Contact, type InsertContact, type UserSubmissionCount } from "@shared/schema";
+import { getPoetrySheetRowCount } from "./google-sheets";
 
 export interface IStorage {
   // User methods
@@ -12,6 +13,7 @@ export interface IStorage {
   getSubmissionsByUser(userId: number): Promise<Submission[]>;
   getWinningSubmissions(): Promise<Submission[]>;
   getAllSubmissions(): Promise<Submission[]>;
+  getTotalUniquePoets(): Promise<number>;
   
   // Contact methods
   createContact(contact: InsertContact): Promise<Contact>;
@@ -96,6 +98,25 @@ export class MemStorage implements IStorage {
 
   async getAllSubmissions(): Promise<Submission[]> {
     return Array.from(this.submissions.values());
+  }
+
+  async getTotalUniquePoets(): Promise<number> {
+    try {
+      // Get count from Google Sheets Poetry sheet
+      const sheetRowCount = await getPoetrySheetRowCount();
+      return sheetRowCount;
+    } catch (error) {
+      console.error("Error getting poetry sheet count:", error);
+      
+      // Fallback to in-memory count if Google Sheets fails
+      const uniqueEmails = new Set<string>();
+      Array.from(this.submissions.values()).forEach(submission => {
+        if (submission.email) {
+          uniqueEmails.add(submission.email.toLowerCase());
+        }
+      });
+      return uniqueEmails.size;
+    }
   }
 
   async createContact(insertContact: InsertContact): Promise<Contact> {

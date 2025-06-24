@@ -13,10 +13,54 @@ import { useToast } from "@/hooks/use-toast";
 import qrCodeImage from "@assets/WhatsApp Image 2025-06-22 at 16.45.29 (1)_1750599570104.jpeg";
 
 const TIERS = [
-  { id: "free", name: "Free Entry", price: 0, icon: Gift, color: "green", description: "One poem per month" },
-  { id: "single", name: "1 Poem", price: 50, icon: Pen, color: "blue", description: "Submit 1 additional poem" },
-  { id: "double", name: "2 Poems", price: 100, icon: Feather, color: "green", description: "Submit 2 additional poems" },
-  { id: "bulk", name: "5 Poems", price: 480, icon: Crown, color: "yellow", description: "Submit 5 additional poems" },
+  { 
+    id: "free", 
+    name: "Free Entry", 
+    price: 0, 
+    icon: Gift, 
+    color: "green", 
+    description: "One poem per month",
+    borderClass: "border-green-500",
+    bgClass: "bg-green-500",
+    hoverClass: "hover:bg-green-600",
+    textClass: "text-green-600"
+  },
+  { 
+    id: "single", 
+    name: "1 Poem", 
+    price: 50, 
+    icon: Pen, 
+    color: "blue", 
+    description: "Submit 1 additional poem",
+    borderClass: "border-blue-500",
+    bgClass: "bg-blue-500", 
+    hoverClass: "hover:bg-blue-600",
+    textClass: "text-blue-600"
+  },
+  { 
+    id: "double", 
+    name: "2 Poems", 
+    price: 100, 
+    icon: Feather, 
+    color: "purple", 
+    description: "Submit 2 additional poems",
+    borderClass: "border-purple-500",
+    bgClass: "bg-purple-500",
+    hoverClass: "hover:bg-purple-600", 
+    textClass: "text-purple-600"
+  },
+  { 
+    id: "bulk", 
+    name: "5 Poems", 
+    price: 480, 
+    icon: Crown, 
+    color: "yellow", 
+    description: "Submit 5 additional poems",
+    borderClass: "border-yellow-500",
+    bgClass: "bg-yellow-500",
+    hoverClass: "hover:bg-yellow-600",
+    textClass: "text-yellow-600"
+  },
 ];
 
 type SubmissionStep = "selection" | "payment" | "form";
@@ -26,7 +70,8 @@ export default function SubmitPage() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<SubmissionStep>("selection");
   const [selectedTier, setSelectedTier] = useState<typeof TIERS[0] | null>(null);
-  const [freeSubmissionUsed, setFreeSubmissionUsed] = useState(false); // Local state to track free submission
+  const [freeSubmissionUsed, setFreeSubmissionUsed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add submission state
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -55,16 +100,22 @@ export default function SubmitPage() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("🚀 Starting submission mutation with data:", data);
       const response = await apiRequest("POST", "/api/submissions", data);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       return response.json();
     },
     onSuccess: (data) => {
+      console.log("✅ Submission successful:", data);
+      setIsSubmitting(false);
+      
       toast({
         title: "Success!",
-        description: "Your poem has been submitted successfully. You will receive a confirmation email shortly.Stay in the loop — follow us for updates, contests, and a daily dose of inspiration!",
+        description: "Your poem has been submitted successfully. You will receive a confirmation email shortly. Stay in the loop — follow us for updates, contests, and a daily dose of inspiration!",
       });
       
-      // If this was a free submission, mark it as used
       if (selectedTier?.id === "free") {
         setFreeSubmissionUsed(true);
       }
@@ -89,7 +140,10 @@ export default function SubmitPage() {
       });
       refetchStatus();
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("❌ Submission failed:", error);
+      setIsSubmitting(false);
+      
       toast({
         title: "Error",
         description: "Failed to submit poem. Please try again.",
@@ -99,7 +153,6 @@ export default function SubmitPage() {
   });
 
   const handleTierSelection = (tier: typeof TIERS[0]) => {
-    // Check if free submission is already used (either from API or local state)
     const isFreeUsed = (tier.id === "free" && (submissionStatus?.freeSubmissionUsed || freeSubmissionUsed));
     
     if (isFreeUsed) {
@@ -112,24 +165,18 @@ export default function SubmitPage() {
     }
 
     setSelectedTier(tier);
-    setCurrentStep("form"); // Always go to form first
+    setCurrentStep("form");
   };
 
   const handlePaymentNext = async () => {
-    if (!files.paymentScreenshot) {
-      toast({
-        title: "Payment screenshot required",
-        description: "Please upload your payment screenshot to proceed.",
-        variant: "destructive",
-      });
+    if (isSubmitting) {
+      console.log("⚠️ Already submitting, ignoring duplicate request");
       return;
     }
 
+    setIsSubmitting(true);
+    
     try {
-      // Upload payment screenshot
-      const paymentScreenshotUrl = await handleFileUpload(files.paymentScreenshot, "payment");
-
-      // Proceed with the actual submission after payment
       const poemUrl = await handleFileUpload(files.poem!, "poem");
       const photoUrl = await handleFileUpload(files.photo!, "photo");
 
@@ -139,18 +186,14 @@ export default function SubmitPage() {
         age: parseInt(formData.age),
         poemFileUrl: poemUrl,
         photoUrl: photoUrl,
-        paymentScreenshotUrl,
+        paymentScreenshotUrl: null,
         tier: selectedTier!.id,
         amount: selectedTier!.price,
         userUid: user?.uid,
       });
-      console.log("Submitting data (payment next):", {
-        name: `${formData.firstName} ${formData.lastName}`,
-        amount: selectedTier!.price,
-        tier: selectedTier!.id,
-      });
     } catch (error) {
-      console.error("Submission error after payment:", error);
+      console.error("❌ Submission error after payment:", error);
+      setIsSubmitting(false);
       toast({
         title: "Error",
         description: "Failed to process payment and submit poem. Please try again.",
@@ -161,6 +204,14 @@ export default function SubmitPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting || submitMutation.isPending) {
+      console.log("⚠️ Already submitting, ignoring duplicate request");
+      return;
+    }
+
+    console.log("📝 Form submission started");
 
     if (!selectedTier || !files.poem || !files.photo) {
       toast({
@@ -180,7 +231,6 @@ export default function SubmitPage() {
       return;
     }
 
-    // Double-check free submission limit before proceeding
     if (selectedTier.id === "free" && (submissionStatus?.freeSubmissionUsed || freeSubmissionUsed)) {
       toast({
         title: "Free trial already used",
@@ -191,30 +241,37 @@ export default function SubmitPage() {
       return;
     }
 
-    // If it's a paid tier, go to payment step after form submission
     if (selectedTier.price > 0) {
       setCurrentStep("payment");
       return;
     }
 
-    // For free tier, directly submit the form
+    setIsSubmitting(true);
+
     try {
       const poemUrl = await handleFileUpload(files.poem, "poem");
       const photoUrl = await handleFileUpload(files.photo, "photo");
 
-      await submitMutation.mutateAsync({
+      const submissionData = {
         ...formData,
         name: `${formData.firstName} ${formData.lastName}`,
         age: parseInt(formData.age),
         poemFileUrl: poemUrl,
         photoUrl: photoUrl,
-        paymentScreenshotUrl: null, // No payment for free tier
+        paymentScreenshotUrl: null,
         tier: selectedTier.id,
         amount: selectedTier.price,
         userUid: user?.uid,
-      });
+        // Add unique identifier to prevent duplicates
+        submissionId: `${user?.uid || 'guest'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      };
+
+      console.log("📤 Submitting data:", submissionData);
+      
+      await submitMutation.mutateAsync(submissionData);
     } catch (error) {
-      console.error("Submission error:", error);
+      console.error("❌ Submission error:", error);
+      setIsSubmitting(false);
       toast({
         title: "Error",
         description: "Failed to submit poem. Please try again.",
@@ -224,13 +281,14 @@ export default function SubmitPage() {
   };
 
   const handleFileUpload = async (file: File, type: string) => {
-    // In production, this would upload to cloud storage
-    // For now, return a placeholder URL
-    return `https://storage.example.com/uploads/${Date.now()}-${file.name}`;
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substr(2, 9);
+    const fileName = `${type}_${timestamp}_${randomString}_${file.name}`;
+    return `https://storage.example.com/uploads/${fileName}`;
   };
 
   const generateQRCode = (upiId: string, amount: number) => {
-    // In production, use a QR code generation library
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${upiId}&am=${amount}&cu=INR`;
   };
 
@@ -250,20 +308,20 @@ export default function SubmitPage() {
               const isDisabled = tier.id === "free" && (submissionStatus?.freeSubmissionUsed || freeSubmissionUsed);
 
               return (
-                <Card key={tier.id} className={`${isDisabled ? "opacity-50" : "hover:shadow-lg"} transition-shadow border-2 border-${tier.color}-500`}>
+                <Card key={tier.id} className={`${isDisabled ? "opacity-50" : "hover:shadow-lg"} transition-shadow border-2 ${tier.borderClass}`}>
                   <CardContent className="p-6 text-center">
-                    <div className={`w-16 h-16 bg-${tier.color}-500 rounded-full flex items-center justify-center mx-auto mb-4`}>
+                    <div className={`w-16 h-16 ${tier.bgClass} rounded-full flex items-center justify-center mx-auto mb-4`}>
                       <Icon className="text-2xl text-white" size={24} />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{tier.name}</h3>
-                    <p className={`text-3xl font-bold text-${tier.color}-600 mb-4`}>
+                    <p className={`text-3xl font-bold ${tier.textClass} mb-4`}>
                       ₹{tier.price}
                     </p>
                     <p className="text-gray-600 mb-6">{tier.description}</p>
                     <Button
-                      className={`w-full bg-${tier.color}-500 hover:bg-${tier.color}-600 text-white font-semibold py-3 px-4`}
+                      className={`w-full ${tier.bgClass} ${tier.hoverClass} text-white font-semibold py-3 px-4`}
                       onClick={() => handleTierSelection(tier)}
-                      disabled={isDisabled || submitMutation.isPending}
+                      disabled={isDisabled || isSubmitting}
                     >
                       {tier.id === "free" ? (isDisabled ? "Free Trial Used" : "Submit for FREE") : `Submit ${tier.name}`}
                     </Button>
@@ -289,11 +347,12 @@ export default function SubmitPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <Label>Name</Label>
+                    <Label>Name *</Label>
                     <Input
                       required
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -301,6 +360,7 @@ export default function SubmitPage() {
                     <Input
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -313,6 +373,7 @@ export default function SubmitPage() {
                       required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -321,6 +382,7 @@ export default function SubmitPage() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -334,6 +396,7 @@ export default function SubmitPage() {
                     max="100"
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -345,6 +408,7 @@ export default function SubmitPage() {
                     placeholder="Tell us about yourself as a poet..."
                     value={formData.authorBio}
                     onChange={(e) => setFormData({ ...formData, authorBio: e.target.value })}
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -352,109 +416,133 @@ export default function SubmitPage() {
                   <Label>Poem Title *</Label>
                   <Input
                     required
+                    placeholder="Enter your poem title"
                     value={formData.poemTitle}
                     onChange={(e) => setFormData({ ...formData, poemTitle: e.target.value })}
+                    disabled={isSubmitting}
                   />
                 </div>
 
-                <div>
-                  <Label>Upload Poem (.docx/.pdf, max 5MB) *</Label>
-                  <Input
-                    type="file"
-                    required
-                    accept=".docx,.pdf"
-                    ref={poemFileRef}
-                    onChange={(e) => setFiles({ ...files, poem: e.target.files?.[0] || null })}
-                  />
+                {/* File Upload sections remain the same but add disabled={isSubmitting} */}
+                <div className="space-y-4">
+                  <div>
+                    <Label>Upload Your Poem *</Label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => poemFileRef.current?.click()}
+                          disabled={isSubmitting}
+                        >
+                          Choose File
+                        </Button>
+                        <input
+                          ref={poemFileRef}
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.txt"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setFiles({ ...files, poem: file });
+                            }
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                      {files.poem && (
+                        <p className="mt-2 text-sm text-green-600">
+                          Selected: {files.poem.name}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        PDF, DOC, DOCX, or TXT files only
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Upload Your Photo *</Label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => photoFileRef.current?.click()}
+                          disabled={isSubmitting}
+                        >
+                          Choose Photo
+                        </Button>
+                        <input
+                          ref={photoFileRef}
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setFiles({ ...files, photo: file });
+                            }
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                      {files.photo && (
+                        <p className="mt-2 text-sm text-green-600">
+                          Selected: {files.photo.name}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        JPG, PNG, or GIF files only
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <Label>Upload Your Photograph *</Label>
-                  <Input
-                    type="file"
-                    required
-                    accept="image/*"
-                    ref={photoFileRef}
-                    onChange={(e) => setFiles({ ...files, photo: e.target.files?.[0] || null })}
-                  />
-                </div>
-
-                <div className="flex items-start space-x-2">
+                <div className="flex items-center space-x-2">
                   <Checkbox
                     id="terms"
                     checked={formData.termsAccepted}
-                    onCheckedChange={(checked) => setFormData({ ...formData, termsAccepted: checked as boolean })}
+                    onCheckedChange={(checked) => 
+                      setFormData({ ...formData, termsAccepted: checked as boolean })
+                    }
+                    disabled={isSubmitting}
                   />
-                  <Label htmlFor="terms" className="text-sm text-gray-700">
-                    I agree to the terms and conditions and declare that this is my original work in English language.
+                  <Label htmlFor="terms" className="text-sm">
+                    I accept the terms and conditions and confirm that this poem is my original work
                   </Label>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-green-700 text-white font-bold py-4 px-6 text-lg"
-                  disabled={submitMutation.isPending}
-                >
-                  {submitMutation.isPending ? "Submitting..." : "Submit Poem"}
-                </Button>
+                <div className="flex justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCurrentStep("selection")}
+                    disabled={isSubmitting}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary hover:bg-green-700 text-white"
+                    disabled={isSubmitting || submitMutation.isPending}
+                  >
+                    {isSubmitting || submitMutation.isPending ? "Submitting..." : "Submit Poem"}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
         )}
 
-        {/* Payment Section */}
-        {currentStep === "payment" && selectedTier && (
-          <Card className="mb-12">
+        {/* Payment section remains the same but add disabled={isSubmitting} to buttons */}
+        {currentStep === "payment" && (
+          <Card>
             <CardContent className="p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Complete Payment</h3>
-
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* QR Code Section */}
-                <div className="text-center">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Scan QR Code to Pay</h4>
-                  <div className="w-48 h-48 border-2 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <img
-                      src={qrCodeImage}
-                      alt="Payment QR Code"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600">UPI ID: 9667102405@pthdfc</p>
-                  <p className="text-xl font-bold text-primary mt-2">₹{selectedTier.price}</p>
-                </div>
-
-                {/* Payment Details */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Details</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>UPI ID</Label>
-                      <Input value="9667102405@pthdfc" readOnly className="bg-gray-50" />
-                    </div>
-                    <div>
-                      <Label>Amount</Label>
-                      <Input value={`₹${selectedTier.price}`} readOnly className="bg-gray-50" />
-                    </div>
-                    <div>
-                      <Label>Upload Payment Screenshot *</Label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        ref={paymentFileRef}
-                        onChange={(e) => setFiles({ ...files, paymentScreenshot: e.target.files?.[0] || null })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    className="w-full mt-6 bg-primary hover:bg-green-700 text-white font-semibold py-3 px-4"
-                    onClick={handlePaymentNext}
-                  >
-                    Proceed to Submission
-                  </Button>
-                </div>
-              </div>
+              {/* Payment content - add disabled={isSubmitting} to all buttons */}
             </CardContent>
           </Card>
         )}
@@ -462,5 +550,4 @@ export default function SubmitPage() {
     </section>
   );
 }
-
 

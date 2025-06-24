@@ -1,10 +1,9 @@
-
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSubmissionSchema, insertContactSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { addContactToSheet, addPoemSubmissionToSheet, initializeSheetHeaders } from "./google-sheets";
+import { addContactToSheet, addPoemSubmissionToSheet, initializeSheetHeaders, getSubmissionCountFromSheet } from "./google-sheets";
 
 const getCurrentContestMonth = () => {
   const now = new Date();
@@ -14,6 +13,51 @@ const getCurrentContestMonth = () => {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize Google Sheets headers
   await initializeSheetHeaders();
+  
+  // Get submission statistics - READ FROM GOOGLE SHEETS with NO CACHE
+  app.get("/api/stats/submissions", async (req, res) => {
+    try {
+      console.log("📊 Stats endpoint called - checking Google Sheets");
+      
+      // Set headers to prevent caching
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      // Try to get count from Google Sheets first
+      let totalPoets = 0;
+      let source = 'memory';
+      
+      try {
+        totalPoets = await getSubmissionCountFromSheet();
+        source = 'google_sheets';
+        console.log(`📈 Total submissions from Google Sheets: ${totalPoets}`);
+      } catch (sheetError) {
+        console.warn("⚠️ Could not read from Google Sheets, falling back to memory:", sheetError);
+        // Fallback to memory storage
+        const allSubmissions = await storage.getAllSubmissions();
+        totalPoets = allSubmissions.length;
+        source = 'memory';
+        console.log(`📈 Total submissions from memory: ${totalPoets}`);
+      }
+      
+      const response = {
+        totalPoets,
+        totalSubmissions: totalPoets,
+        lastUpdated: new Date().toISOString(),
+        source,
+        timestamp: Date.now() // Add timestamp to ensure unique responses
+      };
+      
+      res.json(response);
+      console.log("✅ Stats response sent:", response);
+    } catch (error) {
+      console.error("❌ Error getting stats:", error);
+      res.status(500).json({ error: "Failed to get stats", totalPoets: 0 });
+    }
+  });
   
   // Create or get user by Firebase UID
   app.post("/api/users", async (req, res) => {
@@ -25,10 +69,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         user = await storage.createUser(userData);
+        console.log("👤 New user created:", user.email);
       }
       
       res.json(user);
     } catch (error) {
+      console.error("❌ Error creating/getting user:", error);
       res.status(400).json({ error: "Failed to create/get user" });
     }
   });
@@ -70,9 +116,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Submit poem
   app.post("/api/submissions", async (req, res) => {
     try {
+      console.log("📝 New poem submission received");
+      
       const submissionData = insertSubmissionSchema.parse({
         ...req.body,
         contestMonth: getCurrentContestMonth()
+      });
+
+      console.log("📋 Submission data:", {
+        name: submissionData.name,
+        email: submissionData.email,
+        tier: submissionData.tier
       });
 
       // Get user by email or create if needed
@@ -80,30 +134,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user && req.body.userUid) {
         user = await storage.getUserByUid(req.body.userUid);
       }
+      
+      // If no user found, create one
+      if (!user) {
+        user = await storage.createUser({
+          uid: req.body.userUid || `user_${Date.now()}`,
+          email: submissionData.email,
+          name: submissionData.name
+        });
+        console.log("👤 Created new user for submission:", user.email);
+      }
 
+      // Create submission in memory storage
       const submission = await storage.createSubmission({
         ...submissionData,
         userId: user?.id
       });
 
-      // Add to Google Sheets
-      await addPoemSubmissionToSheet({
-        name: submissionData.name,
-        email: submissionData.email,
-        phone: submissionData.phone,
-        age: submissionData.age?.toString() || '',
-        city: submissionData.city,
-        state: submissionData.state,
-        poemTitle: submissionData.poemTitle,
-        tier: submissionData.tier,
-        amount: submissionData.amount?.toString() || '0',
-        paymentScreenshot: submissionData.paymentScreenshot || '',
-        poemFile: submissionData.poemFile,
-        photo: submissionData.photo,
-        timestamp: new Date().toISOString()
-      });
+      console.log("✅ Submission created with ID:", submission.id);
 
-      // Update submission count
+      // Add to Google Sheets (this is the main source of truth)
+      try {
+        await addPoemSubmissionToSheet({
+          name: submissionData.name,
+          email: submissionData.email,
+          phone: submissionData.phone || '',
+          age: submissionData.age?.toString() || '',
+          city: submissionData.city || '',
+          state: submissionData.state || '',
+          poemTitle: submissionData.poemTitle,
+          tier: submissionData.tier,
+          amount: submissionData.amount?.toString() || '0',
+          paymentScreenshot: submissionData.paymentScreenshot || '',
+          poemFile: submissionData.poemFile || '',
+          photo: submissionData.photo || '',
+          timestamp: new Date().toISOString()
+        });
+        console.log("📊 Added to Google Sheets successfully");
+        
+        // Get updated count from sheets
+        const newCount = await getSubmissionCountFromSheet();
+        console.log("🎯 New total count from sheets:", newCount);
+        
+      } catch (sheetError) {
+        console.error("❌ Google Sheets error:", sheetError);
+        // Don't fail the submission if Google Sheets fails, just log it
+        console.log("⚠️ Continuing with local storage only");
+      }
+
+      // Update submission count in memory
       if (user) {
         const contestMonth = getCurrentContestMonth();
         const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
@@ -111,10 +190,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newTotal = (currentCount?.totalSubmissions || 0) + 1;
         
         await storage.updateUserSubmissionCount(user.id, contestMonth, newFreeUsed, newTotal);
+        console.log("📈 Updated user submission count:", newTotal);
       }
 
       res.json(submission);
     } catch (error) {
+      console.error("❌ Error submitting poem:", error);
       res.status(400).json({ error: "Failed to create submission" });
     }
   });
