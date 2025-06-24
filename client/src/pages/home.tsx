@@ -54,11 +54,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mb-8">
-            <p className="text-lg md:text-xl text-gray-200 mb-4 max-w-2xl mx-auto">
-              Where every word matters, every voice counts, and every poet finds their stage
-            </p>
-          </div>
+          
 
           <Link href="/submit">
             <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
