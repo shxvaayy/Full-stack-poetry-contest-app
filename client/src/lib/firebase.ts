@@ -13,9 +13,8 @@ import {
   signInWithPhoneNumber,
   RecaptchaVerifier,
   ConfirmationResult,
-  linkWithCredential,
   PhoneAuthProvider,
-  signInWithRedirect
+  linkWithCredential
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -28,7 +27,7 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "demo-measurement-id"
 };
 
-export const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // --- GOOGLE AUTH ---
@@ -40,10 +39,6 @@ export const signInWithGoogle = () => {
   return signInWithPopup(auth, googleProvider);
 };
 
-export const signInWithGoogleRedirect = () => {
-  return signInWithRedirect(auth, googleProvider);
-};
-
 // --- EMAIL AUTH ---
 export const signInWithEmail = (email: string, password: string) => {
   return signInWithEmailAndPassword(auth, email, password);
@@ -53,60 +48,84 @@ export const signUpWithEmail = (email: string, password: string) => {
   return createUserWithEmailAndPassword(auth, email, password);
 };
 
-// --- PHONE AUTH SETUP ---
+// --- PHONE AUTH ---
 export const setUpRecaptcha = (containerId: string): RecaptchaVerifier => {
-  // Clear any existing verifier
+  // Clear existing verifier if it exists
   if (window.recaptchaVerifier) {
     window.recaptchaVerifier.clear();
+    window.recaptchaVerifier = null;
   }
-  
-  const verifier = new RecaptchaVerifier(auth, containerId, {
-    size: "invisible",
-    callback: (response: any) => {
-      console.log("✅ reCAPTCHA solved", response);
+
+  // Clear the container
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = '';
+  }
+
+  // Create new verifier
+  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+    size: 'invisible',
+    callback: () => {
+      console.log('reCAPTCHA solved');
     },
     'expired-callback': () => {
-      console.warn("⚠️ reCAPTCHA expired");
+      console.log('reCAPTCHA expired');
     }
   });
-  
-  window.recaptchaVerifier = verifier;
-  return verifier;
+
+  return window.recaptchaVerifier;
 };
 
-export const signInWithPhone = (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
-  return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+export const signInWithPhone = (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+  return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
 };
 
-export const linkPhoneToCurrentUser = async (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
-  if (!auth.currentUser) {
-    throw new Error("No user is currently signed in");
-  }
-  return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-};
-
-export const verifyPhoneAndLink = async (confirmationResult: ConfirmationResult, otp: string) => {
-  if (!auth.currentUser) {
-    throw new Error("No user is currently signed in");
+export const linkPhoneToCurrentUser = async (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('No user is currently signed in');
   }
   
-  const credential = PhoneAuthProvider.credential(
-    confirmationResult.verificationId,
-    otp
-  );
-  
-  return linkWithCredential(auth.currentUser, credential);
+  return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
 };
 
-// --- AUTH STATE MANAGEMENT ---
+export const verifyPhoneAndLink = async (confirmationResult: ConfirmationResult, verificationCode: string) => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('No user is currently signed in');
+  }
+
+  const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, verificationCode);
+  return linkWithCredential(user, credential);
+};
+
+// --- LOGOUT ---
+export const logout = async () => {
+  try {
+    console.log("Firebase logout starting...");
+    localStorage.removeItem('demo-session');
+    
+    // Clear reCAPTCHA verifier on logout
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
+    }
+    
+    await signOut(auth);
+    console.log("Firebase logout successful");
+  } catch (error) {
+    console.error("Firebase logout error:", error);
+    localStorage.removeItem('demo-session');
+    throw error;
+  }
+};
+
+// --- AUTH STATE LISTENER ---
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-export const logout = () => {
-  return signOut(auth);
-};
-
+// --- REDIRECT HANDLER ---
 export const handleRedirectResult = () => {
   return getRedirectResult(auth);
 };
@@ -114,6 +133,6 @@ export const handleRedirectResult = () => {
 // Declare global recaptcha verifier
 declare global {
   interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
+    recaptchaVerifier: RecaptchaVerifier | null;
   }
 }

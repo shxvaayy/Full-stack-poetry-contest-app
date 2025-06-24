@@ -34,9 +34,24 @@ export default function AuthPage() {
     return () => {
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
       }
     };
   }, []);
+
+  const resetPhoneForm = () => {
+    setPhone("");
+    setOtp("");
+    setShowOtpInput(false);
+    setConfirmationResult(null);
+    setIsLinkingPhone(false);
+    
+    // Clear reCAPTCHA
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
+    }
+  };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +111,11 @@ export default function AuthPage() {
 
     setLoading(true);
     try {
+      // Reset states
+      setShowOtpInput(false);
+      setOtp("");
+      setConfirmationResult(null);
+      
       // Set up recaptcha
       const recaptchaVerifier = setUpRecaptcha("recaptcha-container");
       
@@ -113,9 +133,21 @@ export default function AuthPage() {
       });
     } catch (error: any) {
       console.error("Phone auth error:", error);
+      
+      // Reset form on error
+      setShowOtpInput(false);
+      setOtp("");
+      setConfirmationResult(null);
+      
+      // Clear reCAPTCHA on error
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
+      
       toast({
         title: "Phone Auth Failed",
-        description: error.message,
+        description: error.message || "Failed to send OTP. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -261,32 +293,48 @@ export default function AuthPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     type="tel"
+                    disabled={loading}
                   />
                   
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handlePhoneAuth}
-                    disabled={loading}
-                  >
-                    <Phone className="mr-3 h-4 w-4 text-gray-400" />
-                    {isLinkingPhone ? "Link Phone" : "Sign in with Phone"}
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handlePhoneAuth}
+                      disabled={loading || !phone}
+                    >
+                      <Phone className="mr-2 h-4 w-4 text-gray-400" />
+                      Send OTP
+                    </Button>
+                    
+                    {(showOtpInput || confirmationResult) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={resetPhoneForm}
+                        disabled={loading}
+                      >
+                        Reset
+                      </Button>
+                    )}
+                  </div>
 
                   {showOtpInput && (
                     <div className="space-y-3">
                       <Input
-                        placeholder="Enter OTP"
+                        placeholder="Enter 6-digit OTP"
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         type="text"
+                        maxLength={6}
+                        disabled={loading}
                       />
                       <Button 
                         onClick={handleVerifyOtp} 
-                        disabled={loading} 
+                        disabled={loading || !otp || otp.length !== 6} 
                         className="w-full"
                       >
-                        {isLinkingPhone ? "Verify & Link" : "Verify & Sign In"}
+                        {loading ? "Verifying..." : "Verify & Sign In"}
                       </Button>
                     </div>
                   )}
