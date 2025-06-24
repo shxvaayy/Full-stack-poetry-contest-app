@@ -31,7 +31,7 @@ export default function HomePage() {
           {/* Moving Tagline */}
           <div className="overflow-hidden bg-black bg-opacity-50 rounded-full px-8 py-4 max-w-4xl mx-auto mb-8">
             <div className="whitespace-nowrap text-lg font-medium animate-scroll">
-              <span>Write Your Own Victory • Write Your Own Victory • Write Your Own Victory • Write Your Own Victory • Write Your Own Victory • </span>
+              <span>Write Your Own Victory • Participate Now • Write Your Own Victory • Participate Now • Write Your Own Victory • </span>
             </div>
           </div>
 

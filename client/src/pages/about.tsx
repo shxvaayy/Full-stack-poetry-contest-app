@@ -18,7 +18,7 @@ export default function AboutPage() {
               <h2 className="text-2xl font-bold text-gray-900">Our Mission</h2>
             </div>
             <p className="text-gray-700 leading-relaxed">
-              WRITORY POETRY CONTEST is dedicated to celebrating literary excellence and nurturing emerging voices. Join our community of poets and share your unique stories with the world. We believe in the power of poetry to inspire, heal, and connect people across boundaries.
+              WRITORY is dedicated to celebrating literary excellence and nurturing emerging voices. Join our community of poets and share your unique stories with the world. We believe in the power of poetry to inspire, heal, and connect people across boundaries.
             </p>
           </CardContent>
         </Card>
@@ -72,7 +72,7 @@ export default function AboutPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Submission Guidelines</h3>
                 <ul className="text-gray-700 space-y-2">
                   <li>• Original poems in English only</li>
-                  <li>• Maximum 500 words per poem</li>
+                  <li>• Any Length of Words per Poem</li>
                   <li>• Submit in .docx or .pdf format</li>
                   <li>• Include author photo</li>
                   <li>• One free submission available</li>
