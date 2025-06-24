@@ -17,7 +17,7 @@ export default function HomePage() {
       }
       return { totalPoets: 0 };
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 3000, // Refetch every 3 seconds
   });
 
   const poetsCount = statsData?.totalPoets || 0;
