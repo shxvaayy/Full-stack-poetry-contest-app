@@ -8,42 +8,19 @@ import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_175059956524
 
 export default function HomePage() {
   // Fetch total submission count for live poets count
-  const { data: statsData, isLoading, error, refetch } = useQuery({
+  const { data: statsData } = useQuery({
     queryKey: ['/api/stats/submissions'],
     queryFn: async () => {
-      try {
-        // Add timestamp to prevent caching
-        const timestamp = Date.now();
-        const response = await apiRequest("GET", `/api/stats/submissions?t=${timestamp}`);
-        if (response.ok) {
-          const data = await response.json();
-          console.log("📊 Stats data received:", data);
-          return data;
-        }
-        console.warn("⚠️ Stats API returned non-OK response");
-        return { totalPoets: 0 };
-      } catch (error) {
-        console.error("❌ Error fetching stats:", error);
-        return { totalPoets: 0 };
+      const response = await apiRequest("GET", "/api/stats/submissions");
+      if (response.ok) {
+        return response.json();
       }
+      return { totalPoets: 0 };
     },
-    refetchInterval: 3000, // Refetch every 3 seconds
-    retry: 3,
-    retryDelay: 1000,
-    staleTime: 0, // Always consider data stale
-    cacheTime: 0, // Don't cache the data
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const poetsCount = statsData?.totalPoets || 0;
-  
-  // Debug logging
-  console.log("🏠 Home page render - Poets count:", poetsCount, "Loading:", isLoading, "Error:", error);
-
-  // Manual refresh function
-  const handleRefresh = () => {
-    console.log("🔄 Manually refreshing stats...");
-    refetch();
-  };
 
   return (
     <div>
@@ -91,17 +68,8 @@ export default function HomePage() {
 
           <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
             <div className="text-center">
-              <div 
-                className="text-2xl font-bold cursor-pointer hover:text-yellow-100 transition-colors"
-                onClick={handleRefresh}
-                title="Click to refresh count"
-              >
-                {isLoading ? "..." : `${poetsCount}+`}
-              </div>
+              <div className="text-2xl font-bold">{poetsCount}+</div>
               <div className="text-sm">Poets Joined</div>
-              {statsData?.source && (
-                <div className="text-xs opacity-70">({statsData.source})</div>
-              )}
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">FREE</div>
@@ -237,7 +205,15 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Participants may submit additional poems for a nominal fee to increase their chances of winning.</p>
+                  <p className="text-gray-700">We encourage participants to submit more poems, as it increases the likelihood of winning. Each poem is considered as an individual entry.</p>
+                </div>
+                <div className="flex items-start">
+                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
+                  <p className="text-gray-700">Beginners are encouraged to participate.</p>
+                </div>
+                <div className="flex items-start">
+                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
+                  <p className="text-gray-700">This is an online writing competition. Performance is not required anywhere. Submission has to be made online through our website.</p>
                 </div>
               </div>
             </CardContent>
