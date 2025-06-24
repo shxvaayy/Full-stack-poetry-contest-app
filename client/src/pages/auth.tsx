@@ -1,13 +1,20 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone, Chrome } from "lucide-react";
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from "@/lib/firebase";
+import { 
+  signInWithGoogle, 
+  signInWithEmail, 
+  signUpWithEmail,
+  setUpRecaptcha,
+  signInWithPhone,
+  linkPhoneToCurrentUser,
+  verifyPhoneAndLink
+} from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
-import { auth } from "@/lib/firebase";
-import firebase from "firebase/compat/app";
 
 export default function AuthPage() {
   const [isSignIn, setIsSignIn] = useState(false);
@@ -20,6 +27,16 @@ export default function AuthPage() {
   const [otp, setOtp] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [isLinkingPhone, setIsLinkingPhone] = useState(false);
+
+  // Clean up recaptcha on unmount
+  useEffect(() => {
+    return () => {
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
+    };
+  }, []);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,14 +96,23 @@ export default function AuthPage() {
 
     setLoading(true);
     try {
-      const recaptcha = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
-        size: "invisible",
-      });
-
-      const result = await auth.signInWithPhoneNumber(phone, recaptcha);
-      setConfirmationResult(result);
+      // Set up recaptcha
+      const recaptchaVerifier = setUpRecaptcha("recaptcha-container");
+      
+      // Check if user is already signed in (for linking)
+      const confirmation = isLinkingPhone 
+        ? await linkPhoneToCurrentUser(phone, recaptchaVerifier)
+        : await signInWithPhone(phone, recaptchaVerifier);
+      
+      setConfirmationResult(confirmation);
       setShowOtpInput(true);
+      
+      toast({
+        title: "OTP Sent",
+        description: "Check your phone for verification code",
+      });
     } catch (error: any) {
+      console.error("Phone auth error:", error);
       toast({
         title: "Phone Auth Failed",
         description: error.message,
@@ -102,16 +128,29 @@ export default function AuthPage() {
 
     setLoading(true);
     try {
-      const credential = firebase.auth.PhoneAuthProvider.credential(
-        confirmationResult.verificationId,
-        otp
-      );
-      await auth.currentUser?.linkWithCredential(credential);
-      toast({
-        title: "Phone Linked",
-        description: "Phone number linked successfully!",
-      });
+      if (isLinkingPhone) {
+        // Link phone to existing account
+        await verifyPhoneAndLink(confirmationResult, otp);
+        toast({
+          title: "Phone Linked",
+          description: "Phone number linked successfully!",
+        });
+      } else {
+        // Sign in with phone
+        await confirmationResult.confirm(otp);
+        toast({
+          title: "Phone Sign-in Success",
+          description: "Successfully signed in with phone!",
+        });
+      }
+      
+      // Reset form
+      setOtp("");
+      setPhone("");
+      setShowOtpInput(false);
+      setConfirmationResult(null);
     } catch (error: any) {
+      console.error("OTP verification error:", error);
       toast({
         title: "OTP Verification Failed",
         description: error.message,
@@ -187,10 +226,10 @@ export default function AuthPage() {
               <div>
                 <Button
                   type="submit"
-                  className="w-full bg-black hover:bg-gray-800 text-white font-medium py-3"
+                  className="w-full"
                   disabled={loading}
                 >
-                  {loading ? "Loading..." : "Continue"}
+                  {loading ? "Loading..." : (isSignIn ? "Sign in" : "Create account")}
                 </Button>
               </div>
             </form>
@@ -198,46 +237,14 @@ export default function AuthPage() {
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className="w-full border-t border-gray-300" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">OR</span>
+                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
                 </div>
               </div>
 
               <div className="mt-6 space-y-3">
-                <Input
-                  placeholder="+91XXXXXXXXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                  className="mb-3"
-                />
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handlePhoneAuth}
-                  disabled={loading}
-                >
-                  <Phone className="mr-3 h-4 w-4 text-gray-400" />
-                  Send OTP
-                </Button>
-
-                {showOtpInput && (
-                  <>
-                    <Input
-                      placeholder="Enter OTP"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      type="text"
-                      className="mb-3"
-                    />
-                    <Button onClick={handleVerifyOtp} disabled={loading} className="w-full">
-                      Verify & Link Phone
-                    </Button>
-                  </>
-                )}
-
                 <Button
                   variant="outline"
                   className="w-full"
@@ -246,6 +253,51 @@ export default function AuthPage() {
                 >
                   <Chrome className="mr-3 h-4 w-4 text-red-500" />
                   Continue with Google
+                </Button>
+
+                <div className="space-y-3">
+                  <Input
+                    placeholder="+91XXXXXXXXXX"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    type="tel"
+                  />
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handlePhoneAuth}
+                    disabled={loading}
+                  >
+                    <Phone className="mr-3 h-4 w-4 text-gray-400" />
+                    {isLinkingPhone ? "Link Phone" : "Sign in with Phone"}
+                  </Button>
+
+                  {showOtpInput && (
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Enter OTP"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        type="text"
+                      />
+                      <Button 
+                        onClick={handleVerifyOtp} 
+                        disabled={loading} 
+                        className="w-full"
+                      >
+                        {isLinkingPhone ? "Verify & Link" : "Verify & Sign In"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  variant="ghost"
+                  className="w-full text-sm"
+                  onClick={handleDemoLogin}
+                >
+                  Try Demo Mode
                 </Button>
               </div>
             </div>

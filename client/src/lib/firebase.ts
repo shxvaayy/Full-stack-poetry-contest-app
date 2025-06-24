@@ -12,7 +12,10 @@ import {
   getRedirectResult,
   signInWithPhoneNumber,
   RecaptchaVerifier,
-  ConfirmationResult
+  ConfirmationResult,
+  linkWithCredential,
+  PhoneAuthProvider,
+  signInWithRedirect
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -25,9 +28,8 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "demo-measurement-id"
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export { app };
 
 // --- GOOGLE AUTH ---
 const googleProvider = new GoogleAuthProvider();
@@ -36,6 +38,10 @@ googleProvider.addScope('profile');
 
 export const signInWithGoogle = () => {
   return signInWithPopup(auth, googleProvider);
+};
+
+export const signInWithGoogleRedirect = () => {
+  return signInWithRedirect(auth, googleProvider);
 };
 
 // --- EMAIL AUTH ---
@@ -47,40 +53,67 @@ export const signUpWithEmail = (email: string, password: string) => {
   return createUserWithEmailAndPassword(auth, email, password);
 };
 
-// --- LOGOUT ---
-export const logout = async () => {
-  try {
-    console.log("Firebase logout starting...");
-    localStorage.removeItem('demo-session');
-    await signOut(auth);
-    console.log("Firebase logout successful");
-  } catch (error) {
-    console.error("Firebase logout error:", error);
-    localStorage.removeItem('demo-session');
-    throw error;
+// --- PHONE AUTH SETUP ---
+export const setUpRecaptcha = (containerId: string): RecaptchaVerifier => {
+  // Clear any existing verifier
+  if (window.recaptchaVerifier) {
+    window.recaptchaVerifier.clear();
   }
+  
+  const verifier = new RecaptchaVerifier(auth, containerId, {
+    size: "invisible",
+    callback: (response: any) => {
+      console.log("✅ reCAPTCHA solved", response);
+    },
+    'expired-callback': () => {
+      console.warn("⚠️ reCAPTCHA expired");
+    }
+  });
+  
+  window.recaptchaVerifier = verifier;
+  return verifier;
 };
 
-// --- AUTH STATE LISTENER ---
+export const signInWithPhone = (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+  return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+};
+
+export const linkPhoneToCurrentUser = async (phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+  if (!auth.currentUser) {
+    throw new Error("No user is currently signed in");
+  }
+  return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+};
+
+export const verifyPhoneAndLink = async (confirmationResult: ConfirmationResult, otp: string) => {
+  if (!auth.currentUser) {
+    throw new Error("No user is currently signed in");
+  }
+  
+  const credential = PhoneAuthProvider.credential(
+    confirmationResult.verificationId,
+    otp
+  );
+  
+  return linkWithCredential(auth.currentUser, credential);
+};
+
+// --- AUTH STATE MANAGEMENT ---
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-// --- REDIRECT HANDLER ---
+export const logout = () => {
+  return signOut(auth);
+};
+
 export const handleRedirectResult = () => {
   return getRedirectResult(auth);
 };
 
-// --- PHONE AUTH SETUP ---
-export const setUpRecaptcha = (containerId: string): RecaptchaVerifier => {
-  const verifier = new RecaptchaVerifier(auth, containerId, {
-    size: "invisible",
-    callback: (response: any) => {
-      console.log("reCAPTCHA solved", response);
-    },
-    'expired-callback': () => {
-      console.warn("reCAPTCHA expired");
-    }
-  });
-  return verifier;
-};
+// Declare global recaptcha verifier
+declare global {
+  interface Window {
+    recaptchaVerifier: RecaptchaVerifier;
+  }
+}
