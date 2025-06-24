@@ -2,9 +2,26 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Pen, IdCard, Users, Globe, Star, DollarSign, CheckCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
 export default function HomePage() {
+  // Fetch total submission count for live poets count
+  const { data: statsData } = useQuery({
+    queryKey: ['/api/stats/submissions'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/stats/submissions");
+      if (response.ok) {
+        return response.json();
+      }
+      return { totalPoets: 0 };
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  const poetsCount = statsData?.totalPoets || 0;
+
   return (
     <div>
       {/* Hero Section with Poetry-themed Background */}
@@ -33,7 +50,7 @@ export default function HomePage() {
           {/* Moving Tagline */}
           <div className="overflow-hidden bg-black/40 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/20">
             <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
-              <span>🏆 Join the Poetry Revolution • ✍️ Share Your Voice • 🌟 Win Amazing Prizes • 📚 Celebrate Literature • 🏆 Join the Poetry Revolution • </span>
+              <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
             </div>
           </div>
 
@@ -51,12 +68,8 @@ export default function HomePage() {
 
           <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
             <div className="text-center">
-              <div className="text-2xl font-bold">1000+</div>
+              <div className="text-2xl font-bold">{poetsCount}+</div>
               <div className="text-sm">Poets Joined</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">₹50K+</div>
-              <div className="text-sm">Prizes Awarded</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">FREE</div>
