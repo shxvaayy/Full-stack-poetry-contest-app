@@ -54,6 +54,7 @@ export default function Header() {
               </Link>
             ))}
             {user && (
+              <span className="text-white text-sm mr-2">{user.displayName || user.email}</span>
               <Button
                 onClick={handleLogout}
                 variant="outline"
@@ -89,6 +90,7 @@ export default function Header() {
               </Link>
             ))}
             {user && (
+              <span className="block px-3 py-2 text-white text-sm">{user.displayName || user.email}</span>
               <Button
                 onClick={() => {
                   handleLogout();
