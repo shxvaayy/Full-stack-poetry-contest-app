@@ -174,14 +174,6 @@ export default function AuthPage() {
                 </Button>
 
                 {/* Demo Login Button */}
-                <Button
-                  variant="secondary"
-                  className="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-300"
-                  onClick={handleDemoLogin}
-                  disabled={loading}
-                >
-                  🎯 Enter Demo Mode (See Full Platform)
-                </Button>
               </div>
             </div>
 
