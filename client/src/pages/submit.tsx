@@ -40,11 +40,12 @@ export default function SubmitPage() {
   const [files, setFiles] = useState({
     poem: null as File | null,
     photo: null as File | null,
+    paymentScreenshot: null as File | null,
   });
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
-  //const paymentFileRef = useRef<HTMLInputElement>(null);
+  const paymentFileRef = useRef<HTMLInputElement>(null);
 
   // Check user submission status
   const { data: submissionStatus, refetch: refetchStatus } = useQuery({
@@ -84,6 +85,7 @@ export default function SubmitPage() {
       setFiles({
         poem: null,
         photo: null,
+        paymentScreenshot: null,
       });
       refetchStatus();
     },
@@ -113,7 +115,20 @@ export default function SubmitPage() {
     setCurrentStep("form"); // Always go to form first
   };
 
- 
+  const handlePaymentNext = async () => {
+    if (!files.paymentScreenshot) {
+      toast({
+        title: "Payment screenshot required",
+        description: "Please upload your payment screenshot to proceed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Upload payment screenshot
+      const paymentScreenshotUrl = await handleFileUpload(files.paymentScreenshot, "payment");
+
       // Proceed with the actual submission after payment
       const poemUrl = await handleFileUpload(files.poem!, "poem");
       const photoUrl = await handleFileUpload(files.photo!, "photo");
@@ -124,6 +139,7 @@ export default function SubmitPage() {
         age: parseInt(formData.age),
         poemFileUrl: poemUrl,
         photoUrl: photoUrl,
+        paymentScreenshotUrl,
         tier: selectedTier!.id,
         amount: selectedTier!.price,
         userUid: user?.uid,
@@ -418,6 +434,16 @@ export default function SubmitPage() {
                     <div>
                       <Label>Amount</Label>
                       <Input value={`₹${selectedTier.price}`} readOnly className="bg-gray-50" />
+                    </div>
+                    <div>
+                      <Label>Upload Payment Screenshot *</Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        ref={paymentFileRef}
+                        onChange={(e) => setFiles({ ...files, paymentScreenshot: e.target.files?.[0] || null })}
+                        required
+                      />
                     </div>
                   </div>
 
