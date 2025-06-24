@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User } from "firebase/auth";
-import { onAuthStateChange, logout as firebaseLogout } from "@/lib/firebase";
+import { onAuthStateChange, logout as firebaseLogout, handleRedirectResult } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 
 interface AuthContextType {
@@ -98,6 +98,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     console.log("Firebase mode, setting up auth listener...");
     
+    // Handle redirect result first (in case user was redirected back)
+    handleRedirectResult()
+      .then((result) => {
+        if (result) {
+          console.log("Redirect result found:", result.user);
+          // The auth state change listener will handle the user
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect result error:", error);
+      });
+    
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       console.log("Firebase auth state changed:", firebaseUser);
       setUser(firebaseUser);
@@ -111,10 +123,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: firebaseUser.displayName,
             phone: firebaseUser.phoneNumber,
           });
-          const userData = await response.json();
-          setDbUser(userData);
+          
+          if (response.ok) {
+            const userData = await response.json();
+            setDbUser(userData);
+          } else {
+            // If API fails, create a local user object
+            setDbUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              phone: firebaseUser.phoneNumber,
+            });
+          }
         } catch (error) {
           console.error("Failed to sync user:", error);
+          // If API fails, create a local user object
+          setDbUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            phone: firebaseUser.phoneNumber,
+          });
         }
       } else {
         setDbUser(null);
@@ -132,3 +162,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+

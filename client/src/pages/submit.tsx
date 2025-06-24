@@ -15,7 +15,7 @@ import qrCodeImage from "@assets/WhatsApp Image 2025-06-22 at 16.45.29 (1)_17505
 const TIERS = [
   { id: "free", name: "Free Entry", price: 0, icon: Gift, color: "green", description: "One poem per month" },
   { id: "single", name: "1 Poem", price: 50, icon: Pen, color: "blue", description: "Submit 1 additional poem" },
-  { id: "double", name: "2 Poems", price: 100, icon: Feather, color: "green", description: "Submit 2 additional poems" },
+  { id: "double", name: "2 Poems", price: 100, icon: Feather, color: "purple", description: "Submit 2 additional poems" },
   { id: "bulk", name: "5 Poems", price: 480, icon: Crown, color: "yellow", description: "Submit 5 additional poems" },
 ];
 
@@ -423,44 +423,68 @@ export default function SubmitPage() {
                   <p className="text-xl font-bold text-primary mt-2">₹{selectedTier.price}</p>
                 </div>
 
-                {/* Payment Details */}
+                {/* Payment Upload Section */}
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Details</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Upload Payment Screenshot</h4>
                   <div className="space-y-4">
                     <div>
-                      <Label>UPI ID</Label>
-                      <Input value="9667102405@pthdfc" readOnly className="bg-gray-50" />
-                    </div>
-                    <div>
-                      <Label>Amount</Label>
-                      <Input value={`₹${selectedTier.price}`} readOnly className="bg-gray-50" />
-                    </div>
-                    <div>
-                      <Label>Upload Payment Screenshot *</Label>
+                      <Label>Payment Screenshot *</Label>
                       <Input
                         type="file"
+                        required
                         accept="image/*"
                         ref={paymentFileRef}
                         onChange={(e) => setFiles({ ...files, paymentScreenshot: e.target.files?.[0] || null })}
-                        required
                       />
+                      <p className="text-sm text-gray-600 mt-2">
+                        Please upload a clear screenshot of your payment confirmation
+                      </p>
                     </div>
-                  </div>
 
-                  <Button
-                    className="w-full mt-6 bg-primary hover:bg-green-700 text-white font-semibold py-3 px-4"
-                    onClick={handlePaymentNext}
-                  >
-                    Proceed to Submission
-                  </Button>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h5 className="font-semibold text-yellow-800 mb-2">Payment Instructions:</h5>
+                      <ul className="text-sm text-yellow-700 space-y-1">
+                        <li>1. Scan the QR code with any UPI app</li>
+                        <li>2. Pay the exact amount: ₹{selectedTier.price}</li>
+                        <li>3. Take a screenshot of the payment confirmation</li>
+                        <li>4. Upload the screenshot below</li>
+                      </ul>
+                    </div>
+
+                    <Button
+                      onClick={handlePaymentNext}
+                      className="w-full bg-primary hover:bg-green-700 text-white font-bold py-3 px-4"
+                      disabled={!files.paymentScreenshot || submitMutation.isPending}
+                    >
+                      {submitMutation.isPending ? "Processing..." : "Complete Submission"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Back Button */}
+        {currentStep !== "selection" && (
+          <div className="text-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (currentStep === "payment") {
+                  setCurrentStep("form");
+                } else {
+                  setCurrentStep("selection");
+                }
+              }}
+              className="mr-4"
+            >
+              Back
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   );
 }
-
 

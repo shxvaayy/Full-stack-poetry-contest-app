@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
@@ -24,6 +24,18 @@ export default function Header() {
     await logout();
   };
 
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (user?.displayName) {
+      return user.displayName;
+    }
+    if (user?.email) {
+      // Extract name from email (before @)
+      return user.email.split('@')[0];
+    }
+    return 'User';
+  };
+
   return (
     <header className="bg-primary text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,7 +53,7 @@ export default function Header() {
             </div>
           </Link>
 
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex space-x-8 items-center">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -54,14 +66,20 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="text-white border-white hover:bg-white hover:text-primary"
-              >
-                Logout
-              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 text-white">
+                  <User size={18} />
+                  <span className="text-sm font-medium">{getUserDisplayName()}</span>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  size="sm"
+                  className="text-white border-white hover:bg-white hover:text-primary"
+                >
+                  Logout
+                </Button>
+              </div>
             )}
           </nav>
 
@@ -89,17 +107,23 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <Button
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 text-white border-white hover:bg-white hover:text-primary"
-              >
-                Logout
-              </Button>
+              <div className="px-3 py-2 space-y-2">
+                <div className="flex items-center space-x-2 text-white">
+                  <User size={18} />
+                  <span className="text-sm font-medium">{getUserDisplayName()}</span>
+                </div>
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-white border-white hover:bg-white hover:text-primary"
+                >
+                  Logout
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -107,3 +131,4 @@ export default function Header() {
     </header>
   );
 }
+
