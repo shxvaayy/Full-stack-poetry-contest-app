@@ -235,7 +235,7 @@ export default function AuthPage() {
               className="w-full h-full object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Writory</h1>
+          <h1 className="text-3xl font-bold text-gray-900">WRITORY</h1>
           <p className="text-gray-600 text-sm mt-1">Write Your Own Victory</p>
           <p className="text-gray-500 text-sm mt-2">Poetry Contest Platform</p>
         </div>
@@ -245,7 +245,7 @@ export default function AuthPage() {
         <Card>
           <CardContent className="py-8 px-4 sm:px-10">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-              {isSignIn ? "Welcome back" : "Create account"}
+              {isSignIn ? "Welcome back" : "Create Account"}
             </h2>
 
             <form onSubmit={handleEmailAuth} className="space-y-6">
@@ -281,7 +281,7 @@ export default function AuthPage() {
                   className="w-full"
                   disabled={loading}
                 >
-                  {loading ? "Loading..." : (isSignIn ? "Sign in" : "Create account")}
+                  {loading ? "Loading..." : (isSignIn ? "Sign in" : "Create Account")}
                 </Button>
               </div>
             </form>
