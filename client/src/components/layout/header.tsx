@@ -53,24 +53,23 @@ export default function Header() {
             </div>
           </Link>
 
-          <nav className="hidden md:flex space-x-8 items-center">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`hover:text-gray-200 transition-colors ${
-                  location === item.href ? "border-b-2 border-white" : ""
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+          <div className="hidden md:flex items-center">
+            <nav className="flex space-x-8 items-center">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`hover:text-gray-200 transition-colors ${
+                    location === item.href ? "border-b-2 border-white" : ""
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+            
             {user && (
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 text-white">
-                  <User size={18} />
-                  <span className="text-sm font-medium">{getUserDisplayName()}</span>
-                </div>
+              <div className="flex items-center ml-8">
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -79,9 +78,13 @@ export default function Header() {
                 >
                   Logout
                 </Button>
+                <div className="flex items-center space-x-2 text-white ml-4">
+                  <User size={18} />
+                  <span className="text-sm font-medium whitespace-nowrap">{getUserDisplayName()}</span>
+                </div>
               </div>
             )}
-          </nav>
+          </div>
 
           <button
             className="md:hidden text-white"
@@ -108,10 +111,6 @@ export default function Header() {
             ))}
             {user && (
               <div className="px-3 py-2 space-y-2">
-                <div className="flex items-center space-x-2 text-white">
-                  <User size={18} />
-                  <span className="text-sm font-medium">{getUserDisplayName()}</span>
-                </div>
                 <Button
                   onClick={() => {
                     handleLogout();
@@ -123,6 +122,10 @@ export default function Header() {
                 >
                   Logout
                 </Button>
+                <div className="flex items-center space-x-2 text-white justify-center">
+                  <User size={18} />
+                  <span className="text-sm font-medium">{getUserDisplayName()}</span>
+                </div>
               </div>
             )}
           </div>
@@ -131,4 +134,5 @@ export default function Header() {
     </header>
   );
 }
+
 
