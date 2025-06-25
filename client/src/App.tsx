@@ -13,6 +13,7 @@ import WinningPoemsPage from "@/pages/winning-poems";
 import PastWinnersPage from "@/pages/past-winners";
 import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
+import UserProfilePage from "@/pages/user-profile";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -28,6 +29,7 @@ function AppContent() {
             <Route path="/past-winners" component={PastWinnersPage} />
             <Route path="/about" component={AboutPage} />
             <Route path="/contact" component={ContactPage} />
+            <Route path="/profile" component={UserProfilePage} />
             <Route component={NotFound} />
           </Switch>
         </main>
