@@ -1,3 +1,4 @@
+
 import { google } from 'googleapis';
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
@@ -109,6 +110,8 @@ export async function addContactToSheet(data: ContactData): Promise<void> {
 export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promise<void> {
   try {
     console.log("📝 Adding poem submission to sheet:", data.name, data.tier);
+    console.log("📁 File links - Poem:", data.poemFile, "Photo:", data.photo);
+    
     const authClient = await getAuthClient();
     if (!authClient) {
       throw new Error("No auth client available");
@@ -123,30 +126,34 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
     };
     const amount = tierAmounts[data.tier as keyof typeof tierAmounts] || 0;
 
+    // FIXED: Ensure correct column mapping
+    // A=Timestamp, B=Name, C=Email, D=Phone, E=Age, F=Poem Title, G=Tier, H=Amount, I=Poem File, J=Photo
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:K', // Updated range (removed city, state, payment screenshot)
+      range: 'Poetry!A:J', // Updated range to match actual columns
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
       requestBody: {
         values: [[
-          data.timestamp,
-          data.name, // This should now be firstName + lastName
-          data.email,
-          data.phone || '',
-          data.age || '',
-          data.poemTitle,
-          data.tier,
-          amount.toString(), // Use calculated amount
-          data.poemFile || '', // Google Drive link for poem
-          data.photo || '' // Google Drive link for photo
+          data.timestamp,                    // A - Timestamp
+          data.name,                        // B - Name (firstName + lastName)
+          data.email,                       // C - Email
+          data.phone || '',                 // D - Phone
+          data.age || '',                   // E - Age
+          data.poemTitle,                   // F - Poem Title
+          data.tier,                        // G - Tier
+          amount.toString(),                // H - Amount
+          data.poemFile || '',              // I - Poem File (Google Drive link)
+          data.photo || ''                  // J - Photo (Google Drive link)
         ]]
       }
     };
 
     await sheets.spreadsheets.values.append(request);
-    console.log('✅ Poem submission added to Google Sheets');
+    console.log('✅ Poem submission added to Google Sheets with correct column mapping');
+    console.log('✅ Poem file link placed in column I (Poem File)');
+    console.log('✅ Photo link placed in column J (Photo)');
     
     const newCount = await getSubmissionCountFromSheet();
     console.log(`🎯 Updated count after submission: ${newCount}`);
@@ -171,7 +178,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const existingPoetry = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:K1', // Updated range
+        range: 'Poetry!A1:J1', // Updated range to match actual columns
         auth: authClient,
       });
 
@@ -192,7 +199,7 @@ export async function initializeSheetHeaders(): Promise<void> {
       if (!existingPoetry.data.values || existingPoetry.data.values.length === 0) {
         const poemsRequest = {
           spreadsheetId: SPREADSHEET_ID,
-          range: 'Poetry!A1:K1', // Updated range and headers
+          range: 'Poetry!A1:J1', // Updated range and headers to match actual columns
           valueInputOption: 'USER_ENTERED',
           auth: authClient,
           requestBody: {
@@ -200,7 +207,7 @@ export async function initializeSheetHeaders(): Promise<void> {
           }
         };
         await sheets.spreadsheets.values.update(poemsRequest);
-        console.log('✅ Poetry sheet headers initialized');
+        console.log('✅ Poetry sheet headers initialized with correct column mapping');
       }
     } catch (error) {
       console.log('📋 Creating new sheets with headers...');
@@ -216,7 +223,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const poemsRequest = {
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:K1',
+        range: 'Poetry!A1:J1', // Updated range to match actual columns
         valueInputOption: 'USER_ENTERED',
         auth: authClient,
         requestBody: {
@@ -226,7 +233,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       await sheets.spreadsheets.values.update(contactsRequest);
       await sheets.spreadsheets.values.update(poemsRequest);
-      console.log('✅ Sheet headers created');
+      console.log('✅ Sheet headers created with correct column mapping');
     }
   } catch (error) {
     console.error('❌ Error initializing sheet headers:', error);
