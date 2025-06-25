@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Trophy, Medal, Award, User } from "lucide-react";
+import { Clock, Trophy, Medal, Award, Image } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
 import { useState, useEffect } from "react";
 
@@ -44,7 +44,7 @@ export default function WinningPoemsPage() {
           <img 
             src={photo} 
             alt={`Winner ${position}`}
-            className="w-24 h-24 object-cover rounded-full mx-auto border-2 border-gray-200"
+            className="w-32 h-24 object-cover rounded-lg mx-auto border border-gray-200 shadow-sm"
           />
         </div>
       );
@@ -52,10 +52,10 @@ export default function WinningPoemsPage() {
     
     return (
       <div className="mt-4">
-        <div className="w-24 h-24 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex items-center justify-center">
-          <User className="text-gray-400" size={20} />
+        <div className="w-32 h-24 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg mx-auto flex flex-col items-center justify-center">
+          <Image className="text-gray-400 mb-1" size={16} />
+          <p className="text-xs text-gray-500 text-center px-2">Photos of winners will be shown here</p>
         </div>
-        <p className="text-xs text-gray-500 mt-2">Photos of winners will be shown here</p>
       </div>
     );
   };

@@ -72,7 +72,7 @@ export default function AboutPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Submission Guidelines</h3>
                 <ul className="text-gray-700 space-y-2">
                   <li>• Original poems in English only</li>
-                  <li>• Maximum 500 words per poem</li>
+                  <li>• Poems of any length are welcome</li>
                   <li>• Submit in .docx or .pdf format</li>
                   <li>• Include author photo</li>
                   <li>• One free submission available</li>
