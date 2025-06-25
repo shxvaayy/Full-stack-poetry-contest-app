@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
@@ -54,7 +54,15 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <User className="text-green-600" size={16} />
+                  </div>
+                  <span className="text-white text-sm font-medium">
+                    {user.displayName || user.email?.split('@')[0] || 'User'}
+                  </span>
+                </div>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -63,8 +71,7 @@ export default function Header() {
                 >
                   Logout
                 </Button>
-                <span className="text-white text-sm ml-2">{user.displayName || user.email}</span>
-              </>
+              </div>
             )}
           </nav>
 
@@ -92,7 +99,15 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <div className="flex items-center justify-between px-3 py-2">
+              <div className="px-3 py-2 space-y-2">
+                <div className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <User className="text-green-600" size={16} />
+                  </div>
+                  <span className="text-white text-sm font-medium">
+                    {user.displayName || user.email?.split('@')[0] || 'User'}
+                  </span>
+                </div>
                 <Button
                   onClick={() => {
                     handleLogout();
@@ -100,11 +115,10 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white hover:bg-white hover:text-primary"
+                  className="w-full text-white border-white hover:bg-white hover:text-primary"
                 >
                   Logout
                 </Button>
-                <span className="text-white text-sm">{user.displayName || user.email}</span>
               </div>
             )}
           </div>

@@ -103,12 +103,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contestMonth = getCurrentContestMonth();
       const submissionCount = await storage.getUserSubmissionCount(user.id, contestMonth);
       
+      console.log(`📊 Submission status for user ${user.email}: freeUsed=${submissionCount?.freeSubmissionUsed || false}`);
+      
       res.json({
         freeSubmissionUsed: submissionCount?.freeSubmissionUsed || false,
         totalSubmissions: submissionCount?.totalSubmissions || 0,
         contestMonth
       });
     } catch (error) {
+      console.error("❌ Error getting submission status:", error);
       res.status(500).json({ error: "Failed to get submission status" });
     }
   });
@@ -143,6 +146,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: submissionData.name
         });
         console.log("👤 Created new user for submission:", user.email);
+      }
+
+      // Check if free tier is already used before allowing submission
+      if (submissionData.tier === 'free') {
+        const contestMonth = getCurrentContestMonth();
+        const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
+        
+        if (currentCount?.freeSubmissionUsed === true) {
+          console.log("❌ Free submission already used by user:", user.email);
+          return res.status(400).json({ 
+            error: "Free submission already used",
+            message: "You have already used your free trial for this month." 
+          });
+        }
       }
 
       // Create submission in memory storage
@@ -186,11 +203,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         const contestMonth = getCurrentContestMonth();
         const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
-        const newFreeUsed = currentCount?.freeSubmissionUsed || submissionData.tier === 'free';
+        
+        // If user already used free OR this submission is free tier, mark as used
+        const newFreeUsed = (currentCount?.freeSubmissionUsed === true) || (submissionData.tier === 'free');
         const newTotal = (currentCount?.totalSubmissions || 0) + 1;
         
         await storage.updateUserSubmissionCount(user.id, contestMonth, newFreeUsed, newTotal);
-        console.log("📈 Updated user submission count:", newTotal);
+        console.log(`📈 Updated user submission count: total=${newTotal}, freeUsed=${newFreeUsed}, tier=${submissionData.tier}`);
       }
 
       res.json(submission);
