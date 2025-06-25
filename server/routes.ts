@@ -474,17 +474,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Submit contact form
   app.post("/api/contact", async (req, res) => {
     try {
-      const contactData = insertContactSchema.parse(req.body);
-      const contact = await storage.createContact(contactData);
+      console.log("📞 Contact form submission received:");
+      console.log("📋 Raw request body:", req.body);
+      console.log("📞 Phone field specifically:", {
+        phone: req.body.phone,
+        phoneType: typeof req.body.phone,
+        phoneLength: req.body.phone?.length || 0,
+        phoneEmpty: !req.body.phone
+      });
       
-      // Add to Google Sheets with phone number
-      await addContactToSheet({
+      const contactData = insertContactSchema.parse(req.body);
+      console.log("📋 Parsed contact data:", {
         name: contactData.name,
         email: contactData.email,
-        phone: contactData.phone || '', // Phone field will now be included
+        phone: contactData.phone,
+        phoneType: typeof contactData.phone,
+        message: contactData.message?.substring(0, 50) + '...'
+      });
+      
+      const contact = await storage.createContact(contactData);
+      
+      // Prepare data for Google Sheets with explicit phone handling
+      const sheetData = {
+        name: contactData.name,
+        email: contactData.email,
+        phone: contactData.phone || '', // Ensure phone is never undefined
         message: contactData.message,
         timestamp: new Date().toISOString()
+      };
+      
+      console.log("📊 Data being sent to Google Sheets:", {
+        ...sheetData,
+        phoneValue: sheetData.phone,
+        phoneLength: sheetData.phone.length
       });
+      
+      // Add to Google Sheets with phone number
+      await addContactToSheet(sheetData);
       
       res.json(contact);
     } catch (error) {

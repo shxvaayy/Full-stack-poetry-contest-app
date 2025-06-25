@@ -20,6 +20,14 @@ export default function ContactPage() {
 
   const contactMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      console.log('📤 Sending contact data:', {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        phoneLength: data.phone?.length,
+        phoneType: typeof data.phone,
+        message: data.message?.substring(0, 50) + '...'
+      });
       const response = await apiRequest("POST", "/api/contact", data);
       return response.json();
     },
@@ -84,10 +92,9 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <Label>Phone Number *</Label>
+                  <Label>Phone Number</Label>
                   <Input
                     type="tel"
-                    required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="Your phone number"

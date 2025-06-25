@@ -1,4 +1,3 @@
-
 import { google } from 'googleapis';
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
@@ -12,7 +11,7 @@ if (!credentials) {
 } else {
   console.log("✅ Service account credentials loaded.");
 }
-  
+
 const auth = new google.auth.GoogleAuth({
   credentials: credentials || undefined,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -67,10 +66,10 @@ export async function getSubmissionCountFromSheet(): Promise<number> {
 
     const response = await sheets.spreadsheets.values.get(request);
     const rows = response.data.values || [];
-    
+
     const count = Math.max(0, rows.length - 1);
     console.log(`📊 Read ${count} submissions from Google Sheets (${rows.length} total rows including header)`);
-    
+
     return count;
   } catch (error) {
     console.error('❌ Error reading submission count from Google Sheets:', error);
@@ -80,34 +79,16 @@ export async function getSubmissionCountFromSheet(): Promise<number> {
 
 export async function addContactToSheet(data: ContactData): Promise<void> {
   try {
-    console.log('📞 Contact data being added to sheet:', {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      phoneType: typeof data.phone,
-      phoneLength: data.phone?.length,
-      message: data.message?.substring(0, 50) + '...'
-    });
-    
     const authClient = await getAuthClient();
-    if (!authClient) {
-      console.error('❌ No auth client available');
-      return;
-    }
-
-    // Ensure phone field is never undefined or null
-    const phoneValue = data.phone || '';
-    console.log('📊 Phone value being inserted:', phoneValue, 'Length:', phoneValue.length);
+    if (!authClient) return;
 
     const rowData = [
       data.timestamp,
       data.name,
       data.email,
-      phoneValue, // Explicitly use the cleaned phone value
+      data.phone,
       data.message
     ];
-    
-    console.log('📊 Complete row data to be inserted:', rowData);
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,
@@ -120,8 +101,15 @@ export async function addContactToSheet(data: ContactData): Promise<void> {
       }
     };
 
+    console.log('📋 Final Google Sheets request:', {
+      range: request.range,
+      values: request.requestBody.values,
+      phonePosition: 'Column D (index 3)',
+      phoneValue: rowData[3]
+    });
+
     await sheets.spreadsheets.values.append(request);
-    console.log('✅ Contact data added to Google Sheets with phone:', phoneValue);
+    console.log('✅ Contact data added to Google Sheets');
   } catch (error) {
     console.error('❌ Error adding contact to Google Sheets:', error);
   }
@@ -131,7 +119,7 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
   try {
     console.log("📝 Adding poem submission to sheet:", data.name, data.tier);
     console.log("📁 File links - Poem:", data.poemFile, "Photo:", data.photo);
-    
+
     const authClient = await getAuthClient();
     if (!authClient) {
       throw new Error("No auth client available");
@@ -174,10 +162,10 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
     console.log('✅ Poem submission added to Google Sheets with correct column mapping');
     console.log('✅ Poem file link placed in column I (Poem File)');
     console.log('✅ Photo link placed in column J (Photo)');
-    
+
     const newCount = await getSubmissionCountFromSheet();
     console.log(`🎯 Updated count after submission: ${newCount}`);
-    
+
   } catch (error) {
     console.error('❌ Error adding poem submission to Google Sheets:', error);
     throw error;
@@ -259,4 +247,3 @@ export async function initializeSheetHeaders(): Promise<void> {
     console.error('❌ Error initializing sheet headers:', error);
   }
 }
-
