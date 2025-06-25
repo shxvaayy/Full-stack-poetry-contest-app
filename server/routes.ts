@@ -13,6 +13,26 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
+  fileFilter: (req, file, cb) => {
+    console.log("📁 File received:", file.fieldname, file.originalname, file.mimetype);
+    
+    if (file.fieldname === 'poemFile') {
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid poem file type. Only PDF, DOC, DOCX allowed.'));
+      }
+    } else if (file.fieldname === 'photoFile') {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid photo file type. Only images allowed.'));
+      }
+    } else {
+      cb(new Error('Unexpected field'));
+    }
+  }
 });
 
 const getCurrentContestMonth = () => {
@@ -133,94 +153,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ]), async (req, res) => {
     try {
       console.log("📝 New poem submission with files received");
+      console.log("📋 Request body:", req.body);
+      console.log("📁 Files received:", Object.keys(req.files || {}));
       
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       const poemFile = files.poemFile?.[0];
       const photoFile = files.photoFile?.[0];
       
-      if (!poemFile || !photoFile) {
-        return res.status(400).json({ error: "Both poem and photo files are required" });
+      if (!poemFile) {
+        console.error("❌ Missing poem file");
+        return res.status(400).json({ error: "Poem file is required" });
+      }
+      
+      if (!photoFile) {
+        console.error("❌ Missing photo file");
+        return res.status(400).json({ error: "Photo file is required" });
       }
 
       const formData = {
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
+        firstName: req.body.firstName || '',
+        lastName: req.body.lastName || '',
         email: req.body.email,
-        phone: req.body.phone,
-        age: parseInt(req.body.age),
+        phone: req.body.phone || '',
+        age: req.body.age ? parseInt(req.body.age) : 0,
         poemTitle: req.body.poemTitle || 'Untitled',
         tier: req.body.tier,
-        amount: parseInt(req.body.amount),
+        amount: req.body.amount ? parseInt(req.body.amount) : 0,
         userUid: req.body.userUid,
-        name: `${req.body.firstName} ${req.body.lastName}`.trim(),
+        name: `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(),
         contestMonth: getCurrentContestMonth()
       };
 
-      console.log("📋 Submission data:", {
-        name: formData.name,
-        email: formData.email,
-        tier: formData.tier
-      });
+      console.log("📋 Processed form data:", formData);
 
-      // Upload files to Google Drive
-      console.log("📤 Uploading files to Google Drive...");
-      const poemUrl = await uploadPoemFile(poemFile.buffer, formData.email, poemFile.originalname);
-      const photoUrl = await uploadPhotoFile(photoFile.buffer, formData.email, photoFile.originalname);
-      
-      console.log("✅ Files uploaded successfully:");
-      console.log("- Poem:", poemUrl);
-      console.log("- Photo:", photoUrl);
+      // Validate required fields
+      if (!formData.email || !formData.tier) {
+        console.error("❌ Missing required fields");
+        return res.status(400).json({ error: "Email and tier are required" });
+      }
 
       // Get user by email or create if needed
-      let user = await storage.getUserByEmail(formData.email);
-      if (!user && formData.userUid) {
-        user = await storage.getUserByUid(formData.userUid);
-      }
-      
-      // If no user found, create one
-      if (!user) {
-        user = await storage.createUser({
-          uid: formData.userUid || `user_${Date.now()}`,
-          email: formData.email,
-          name: formData.name
-        });
-        console.log("👤 Created new user for submission:", user.email);
+      let user = null;
+      try {
+        user = await storage.getUserByEmail(formData.email);
+        if (!user && formData.userUid) {
+          user = await storage.getUserByUid(formData.userUid);
+        }
+        
+        // If no user found, create one
+        if (!user) {
+          user = await storage.createUser({
+            uid: formData.userUid || `user_${Date.now()}`,
+            email: formData.email,
+            name: formData.name || formData.email
+          });
+          console.log("👤 Created new user for submission:", user.email);
+        }
+      } catch (userError) {
+        console.error("❌ Error handling user:", userError);
+        return res.status(500).json({ error: "Failed to process user data" });
       }
 
       // Check if free tier is already used before allowing submission
       if (formData.tier === 'free') {
-        const contestMonth = getCurrentContestMonth();
-        const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
-        
-        if (currentCount?.freeSubmissionUsed === true) {
-          console.log("❌ Free submission already used by user:", user.email);
-          return res.status(400).json({ 
-            error: "Free submission already used",
-            message: "You have already used your free trial for this month." 
-          });
+        try {
+          const contestMonth = getCurrentContestMonth();
+          const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
+          
+          if (currentCount?.freeSubmissionUsed === true) {
+            console.log("❌ Free submission already used by user:", user.email);
+            return res.status(400).json({ 
+              error: "Free submission already used",
+              message: "You have already used your free trial for this month." 
+            });
+          }
+        } catch (countError) {
+          console.error("❌ Error checking submission count:", countError);
+          // Continue anyway for now
         }
       }
 
-      // Create submission in memory storage
-      const submission = await storage.createSubmission({
-        ...formData,
-        userId: user?.id,
-        poemFile: poemUrl,
-        photo: photoUrl
-      });
+      // Upload files to Google Drive
+      let poemUrl = '';
+      let photoUrl = '';
+      
+      try {
+        console.log("📤 Uploading files to Google Drive...");
+        console.log("- Poem file:", poemFile.originalname, poemFile.size, "bytes");
+        console.log("- Photo file:", photoFile.originalname, photoFile.size, "bytes");
+        
+        poemUrl = await uploadPoemFile(poemFile.buffer, formData.email, poemFile.originalname);
+        photoUrl = await uploadPhotoFile(photoFile.buffer, formData.email, photoFile.originalname);
+        
+        console.log("✅ Files uploaded successfully:");
+        console.log("- Poem:", poemUrl);
+        console.log("- Photo:", photoUrl);
+      } catch (driveError) {
+        console.error("❌ Google Drive upload error:", driveError);
+        return res.status(500).json({ error: "Failed to upload files to Google Drive" });
+      }
 
-      console.log("✅ Submission created with ID:", submission.id);
+      // Create submission in memory storage
+      let submission = null;
+      try {
+        submission = await storage.createSubmission({
+          ...formData,
+          userId: user?.id,
+          poemFile: poemUrl,
+          photo: photoUrl,
+          poemFileUrl: poemUrl,
+          photoUrl: photoUrl
+        });
+        console.log("✅ Submission created with ID:", submission.id);
+      } catch (submissionError) {
+        console.error("❌ Error creating submission in storage:", submissionError);
+        return res.status(500).json({ error: "Failed to create submission record" });
+      }
 
       // Add to Google Sheets with Drive links
       try {
         await addPoemSubmissionToSheet({
           name: formData.name,
           email: formData.email,
-          phone: formData.phone || '',
-          age: formData.age?.toString() || '',
+          phone: formData.phone,
+          age: formData.age.toString(),
           poemTitle: formData.poemTitle,
           tier: formData.tier,
-          amount: formData.amount?.toString() || '0',
+          amount: formData.amount.toString(),
           poemFile: poemUrl, // Google Drive link
           photo: photoUrl, // Google Drive link
           timestamp: new Date().toISOString()
@@ -239,33 +298,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update submission count in memory
       if (user) {
-        const contestMonth = getCurrentContestMonth();
-        const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
-        
-        // If user already used free OR this submission is free tier, mark as used
-        const newFreeUsed = (currentCount?.freeSubmissionUsed === true) || (formData.tier === 'free');
-        const newTotal = (currentCount?.totalSubmissions || 0) + 1;
-        
-        await storage.updateUserSubmissionCount(user.id, contestMonth, newFreeUsed, newTotal);
-        console.log(`📈 Updated user submission count: total=${newTotal}, freeUsed=${newFreeUsed}, tier=${formData.tier}`);
+        try {
+          const contestMonth = getCurrentContestMonth();
+          const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
+          
+          // If user already used free OR this submission is free tier, mark as used
+          const newFreeUsed = (currentCount?.freeSubmissionUsed === true) || (formData.tier === 'free');
+          const newTotal = (currentCount?.totalSubmissions || 0) + 1;
+          
+          await storage.updateUserSubmissionCount(user.id, contestMonth, newFreeUsed, newTotal);
+          console.log(`📈 Updated user submission count: total=${newTotal}, freeUsed=${newFreeUsed}, tier=${formData.tier}`);
+        } catch (countError) {
+          console.error("❌ Error updating submission count:", countError);
+          // Continue anyway
+        }
       }
 
       res.json({
         success: true,
         submission: submission,
         poemUrl,
-        photoUrl
+        photoUrl,
+        message: "Submission created successfully"
       });
     } catch (error) {
       console.error("❌ Error submitting poem with files:", error);
-      res.status(500).json({ error: "Failed to create submission with files" });
+      res.status(500).json({ 
+        error: "Failed to create submission with files",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
   // Submit poem (original endpoint for backwards compatibility)
   app.post("/api/submissions", async (req, res) => {
     try {
-      console.log("📝 New poem submission received");
+      console.log("📝 New poem submission received (legacy endpoint)");
       
       const submissionData = insertSubmissionSchema.parse({
         ...req.body,
@@ -396,53 +464,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get winning submissions
   app.get("/api/submissions/winners", async (req, res) => {
     try {
-      const winners = await storage.getWinningSubmissions();
-      res.json(winners);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get winners" });
-    }
-  });
-
-  // Submit contact form
-  app.post("/api/contact", async (req, res) => {
-    try {
-      const contactData = insertContactSchema.parse(req.body);
-      const contact = await storage.createContact(contactData);
-      
-      // Add to Google Sheets with phone number
-      await addContactToSheet({
-        name: contactData.name,
-        email: contactData.email,
-        phone: contactData.phone || '', // Phone field will now be included
-        message: contactData.message,
-        timestamp: new Date().toISOString()
-      });
-      
-      res.json(contact);
-    } catch (error) {
-      console.error("❌ Error submitting contact form:", error);
-      res.status(400).json({ error: "Failed to submit contact form" });
-    }
-  });
-
-  // File upload endpoint (placeholder - would integrate with cloud storage)
-  app.post("/api/upload", async (req, res) => {
-    try {
-      // In production, this would upload to cloud storage and return URL
-      // For now, return a placeholder URL
-      const fileName = req.body.fileName || "uploaded-file";
-      const fileType = req.body.fileType || "application/pdf";
-      
-      res.json({
-        url: `https://storage.example.com/uploads/${Date.now()}-${fileName}`,
-        fileName,
-        fileType
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to upload file" });
-    }
-  });
-
-  const httpServer = createServer(app);
-  return httpServer;
-}

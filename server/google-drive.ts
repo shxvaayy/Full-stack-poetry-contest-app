@@ -30,7 +30,7 @@ async function getAuthClient() {
     return await auth.getClient();
   } catch (error) {
     console.warn('Google Drive authentication not configured.');
-    return null;
+    throw error;
   }
 }
 
@@ -38,7 +38,6 @@ async function getAuthClient() {
 async function createOrGetFolder(folderName: string, parentFolderId: string): Promise<string> {
   try {
     const authClient = await getAuthClient();
-    if (!authClient) throw new Error("No auth client available");
 
     // Check if folder already exists
     const existingFolders = await drive.files.list({
@@ -82,7 +81,6 @@ export async function uploadFileToDrive(
 ): Promise<string> {
   try {
     const authClient = await getAuthClient();
-    if (!authClient) throw new Error("No auth client available");
 
     // Get or create the specific folder (Photos or Poems)
     const folderName = folderType === 'Photos' ? 'Photos (Participants)' : 'Poems';
