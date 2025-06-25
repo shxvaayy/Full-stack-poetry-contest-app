@@ -464,3 +464,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get winning submissions
   app.get("/api/submissions/winners", async (req, res) => {
     try {
+      const winners = await storage.getWinningSubmissions();
+      res.json(winners);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get winners" });
+    }
+  });
+
+  // Submit contact form
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const contactData = insertContactSchema.parse(req.body);
+      const contact = await storage.createContact(contactData);
+      
+      // Add to Google Sheets with phone number
+      await addContactToSheet({
+        name: contactData.name,
+        email: contactData.email,
+        phone: contactData.phone || '', // Phone field will now be included
+        message: contactData.message,
+        timestamp: new Date().toISOString()
+      });
+      
+      res.json(contact);
+    } catch (error) {
+      console.error("❌ Error submitting contact form:", error);
+      res.status(400).json({ error: "Failed to submit contact form" });
+    }
+  });
+
+  // File upload endpoint (placeholder - would integrate with cloud storage)
+  app.post("/api/upload", async (req, res) => {
+    try {
+      // In production, this would upload to cloud storage and return URL
+      // For now, return a placeholder URL
+      const fileName = req.body.fileName || "uploaded-file";
+      const fileType = req.body.fileType || "application/pdf";
+      
+      res.json({
+        url: `https://storage.example.com/uploads/${Date.now()}-${fileName}`,
+        fileName,
+        fileType
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
