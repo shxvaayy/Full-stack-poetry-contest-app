@@ -1,4 +1,6 @@
+
 import { google } from 'googleapis';
+import { Readable } from 'stream';
 
 // Google Drive folder ID from the provided link
 const DRIVE_FOLDER_ID = '1kG8qdjMAmWKXiEKngr51jnUnyb2sEv4P';
@@ -91,9 +93,14 @@ export async function uploadFileToDrive(
       parents: [folderId],
     };
 
+    // Convert Buffer to readable stream
+    const stream = new Readable();
+    stream.push(file);
+    stream.push(null); // End the stream
+
     const media = {
       mimeType: mimeType,
-      body: file,
+      body: stream,
     };
 
     const uploadedFile = await drive.files.create({
