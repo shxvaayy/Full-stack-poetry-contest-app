@@ -228,8 +228,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const submissions = await storage.getSubmissionsByUser(user.id);
-      res.json(submissions);
+      console.log(`📋 Found ${submissions.length} submissions for user ${user.email}`);
+      
+      // Transform submissions to match the frontend interface
+      const transformedSubmissions = submissions.map(submission => ({
+        id: submission.id,
+        name: submission.name,
+        poemTitle: submission.poemTitle,
+        tier: submission.tier,
+        amount: submission.amount || submission.price || 0,
+        submittedAt: submission.submittedAt?.toISOString ? submission.submittedAt.toISOString() : new Date().toISOString(),
+        isWinner: submission.isWinner || false,
+        winnerPosition: submission.winnerPosition || null
+      }));
+      
+      console.log(`📋 Transformed submissions:`, transformedSubmissions);
+      res.json(transformedSubmissions);
     } catch (error) {
+      console.error("❌ Error getting user submissions:", error);
       res.status(500).json({ error: "Failed to get submissions" });
     }
   });

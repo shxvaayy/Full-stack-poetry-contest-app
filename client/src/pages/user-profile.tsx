@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Calendar, FileText, Trophy, Clock, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 
 interface Submission {
@@ -28,16 +27,40 @@ interface SubmissionStatus {
 export default function UserProfilePage() {
   const { user } = useAuth();
 
-  // Get user submissions
-  const { data: submissions = [], isLoading: submissionsLoading } = useQuery({
+  // Get user submissions with better error handling
+  const { 
+    data: submissions = [], 
+    isLoading: submissionsLoading, 
+    error: submissionsError,
+    refetch: refetchSubmissions 
+  } = useQuery({
     queryKey: [`/api/users/${user?.uid}/submissions`],
     enabled: !!user?.uid,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Get user submission status
-  const { data: submissionStatus, isLoading: statusLoading } = useQuery<SubmissionStatus>({
+  const { 
+    data: submissionStatus, 
+    isLoading: statusLoading,
+    refetch: refetchStatus 
+  } = useQuery<SubmissionStatus>({
     queryKey: [`/api/users/${user?.uid}/submission-status`],
     enabled: !!user?.uid,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always fetch fresh data
+  });
+
+  // Debug logging
+  console.log("🔍 Profile Debug:", {
+    userUid: user?.uid,
+    submissionsLoading,
+    submissionsError: submissionsError?.message,
+    submissionsCount: submissions?.length,
+    submissions,
+    submissionStatus
   });
 
   const getTierColor = (tier: string) => {
@@ -61,13 +84,21 @@ export default function UserProfilePage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
+
+  const refreshData = async () => {
+    await Promise.all([refetchSubmissions(), refetchStatus()]);
   };
 
   if (!user) {
@@ -92,8 +123,15 @@ export default function UserProfilePage() {
               Back to Home
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600">Manage your account and view submission history</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+              <p className="text-gray-600">Manage your account and view submission history</p>
+            </div>
+            <Button onClick={refreshData} variant="outline" size="sm">
+              Refresh Data
+            </Button>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -164,6 +202,11 @@ export default function UserProfilePage() {
                       <span className="text-sm text-gray-600">Contest Month</span>
                       <span className="text-sm font-medium">{submissionStatus?.contestMonth}</span>
                     </div>
+
+                    <div className="text-xs text-gray-400 pt-2 border-t">
+                      <p>User ID: {user.uid}</p>
+                      <p>Last Updated: {new Date().toLocaleTimeString()}</p>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -190,14 +233,43 @@ export default function UserProfilePage() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
                     <p className="text-gray-500 mt-2">Loading submissions...</p>
                   </div>
-                ) : submissions.length === 0 ? (
+                ) : submissionsError ? (
+                  <div className="text-center py-8">
+                    <FileText className="mx-auto h-12 w-12 text-red-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Submissions</h3>
+                    <p className="text-red-500 mb-4">{submissionsError.message}</p>
+                    <Button onClick={refetchSubmissions} variant="outline">
+                      Try Again
+                    </Button>
+                  </div>
+                ) : (!submissions || submissions.length === 0) ? (
                   <div className="text-center py-8">
                     <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No submissions yet</h3>
-                    <p className="text-gray-500 mb-4">Start your poetry journey by submitting your first poem!</p>
-                    <Link href="/submit">
-                      <Button>Submit Your First Poem</Button>
-                    </Link>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {submissionStatus?.totalSubmissions > 0 ? "Submissions Not Showing" : "No submissions yet"}
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {submissionStatus?.totalSubmissions > 0 
+                        ? "Your submissions are not displaying properly. Please refresh or contact support." 
+                        : "Start your poetry journey by submitting your first poem!"
+                      }
+                    </p>
+                    <div className="space-y-2 mb-4">
+                      <p className="text-xs text-gray-400">Debug Info:</p>
+                      <p className="text-xs text-gray-400">Total from status: {submissionStatus?.totalSubmissions || 0}</p>
+                      <p className="text-xs text-gray-400">Submissions array length: {submissions?.length || 0}</p>
+                      <p className="text-xs text-gray-400">Error: {submissionsError?.message || 'None'}</p>
+                    </div>
+                    <div className="space-x-2">
+                      <Link href="/submit">
+                        <Button>
+                          {submissionStatus?.totalSubmissions > 0 ? "Submit Another Poem" : "Submit Your First Poem"}
+                        </Button>
+                      </Link>
+                      <Button onClick={refreshData} variant="outline">
+                        Refresh Data
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -233,6 +305,12 @@ export default function UserProfilePage() {
                         </div>
                       </div>
                     ))}
+                    
+                    <div className="text-center pt-4">
+                      <Link href="/submit">
+                        <Button variant="outline">Submit Another Poem</Button>
+                      </Link>
+                    </div>
                   </div>
                 )}
               </CardContent>

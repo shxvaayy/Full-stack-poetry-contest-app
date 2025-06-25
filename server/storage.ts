@@ -83,11 +83,20 @@ export class MemStorage implements IStorage {
       winnerPosition: null
     };
     this.submissions.set(id, submission);
+    console.log(`💾 Stored submission ID ${id} for user ${submission.userId}`);
     return submission;
   }
 
   async getSubmissionsByUser(userId: number): Promise<Submission[]> {
-    return Array.from(this.submissions.values()).filter(s => s.userId === userId);
+    console.log(`📋 Getting submissions for user ID: ${userId}`);
+    
+    const userSubmissions = Array.from(this.submissions.values()).filter(submission => submission.userId === userId);
+    console.log(`📋 Found ${userSubmissions.length} submissions for user ${userId}`);
+    
+    return userSubmissions.map(submission => ({
+      ...submission,
+      submittedAt: submission.submittedAt || new Date()
+    }));
   }
 
   async getWinningSubmissions(): Promise<Submission[]> {
@@ -112,7 +121,9 @@ export class MemStorage implements IStorage {
 
   async getUserSubmissionCount(userId: number, contestMonth: string): Promise<UserSubmissionCount | undefined> {
     const key = `${userId}-${contestMonth}`;
-    return this.userSubmissionCounts.get(key);
+    const result = this.userSubmissionCounts.get(key);
+    console.log(`📊 Getting submission count for ${key}:`, result);
+    return result;
   }
 
   async updateUserSubmissionCount(userId: number, contestMonth: string, freeUsed: boolean, totalCount: number): Promise<void> {
@@ -135,6 +146,7 @@ export class MemStorage implements IStorage {
         totalSubmissions: totalCount
       });
     }
+    console.log(`📊 Updated submission count for ${key}: free=${freeUsed}, total=${totalCount}`);
   }
 }
 
