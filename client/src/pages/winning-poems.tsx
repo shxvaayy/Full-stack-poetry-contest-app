@@ -1,8 +1,65 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Trophy, Medal, Award } from "lucide-react";
+import { Clock, Trophy, Medal, Award, User } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
+import { useState, useEffect } from "react";
+
+// Dynamic imports for winner photos with error handling
+const getWinnerPhoto = async (position: number) => {
+  try {
+    const module = await import(`@assets/winner${position}.png`);
+    return module.default;
+  } catch (error) {
+    return null;
+  }
+};
 
 export default function WinningPoemsPage() {
+  const [winnerPhotos, setWinnerPhotos] = useState<{[key: number]: string | null}>({
+    1: null,
+    2: null,
+    3: null
+  });
+
+  useEffect(() => {
+    // Load winner photos on component mount
+    const loadWinnerPhotos = async () => {
+      const photos: {[key: number]: string | null} = {};
+      
+      for (let i = 1; i <= 3; i++) {
+        photos[i] = await getWinnerPhoto(i);
+      }
+      
+      setWinnerPhotos(photos);
+    };
+
+    loadWinnerPhotos();
+  }, []);
+
+  const WinnerPhotoSection = ({ position }: { position: number }) => {
+    const photo = winnerPhotos[position];
+    
+    if (photo) {
+      return (
+        <div className="mt-4">
+          <img 
+            src={photo} 
+            alt={`Winner ${position}`}
+            className="w-24 h-24 object-cover rounded-full mx-auto border-2 border-gray-200"
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="mt-4">
+        <div className="w-24 h-24 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex items-center justify-center">
+          <User className="text-gray-400" size={20} />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">Photos of winners will be shown here</p>
+      </div>
+    );
+  };
+
   return (
     <section className="py-16 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 text-center">
@@ -42,6 +99,7 @@ export default function WinningPoemsPage() {
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">First Place Winner</h4>
                 <p className="text-gray-600 text-sm">Featured poem and author profile</p>
+                <WinnerPhotoSection position={1} />
               </div>
               <div>
                 <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -49,6 +107,7 @@ export default function WinningPoemsPage() {
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">Second Place Winner</h4>
                 <p className="text-gray-600 text-sm">Featured poem and author profile</p>
+                <WinnerPhotoSection position={2} />
               </div>
               <div>
                 <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -56,6 +115,7 @@ export default function WinningPoemsPage() {
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">Third Place Winner</h4>
                 <p className="text-gray-600 text-sm">Featured poem and author profile</p>
+                <WinnerPhotoSection position={3} />
               </div>
             </div>
           </CardContent>
