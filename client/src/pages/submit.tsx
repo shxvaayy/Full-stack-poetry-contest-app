@@ -63,7 +63,7 @@ const TIERS = [
   },
 ];
 
-type SubmissionStep = "selection" | "payment" | "form";
+type SubmissionStep = "selection" | "form" | "payment";
 
 export default function SubmitPage() {
   const { user, dbUser } = useAuth();
@@ -71,7 +71,7 @@ export default function SubmitPage() {
   const [currentStep, setCurrentStep] = useState<SubmissionStep>("selection");
   const [selectedTier, setSelectedTier] = useState<typeof TIERS[0] | null>(null);
   const [freeSubmissionUsed, setFreeSubmissionUsed] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -168,7 +168,7 @@ export default function SubmitPage() {
     setCurrentStep("form");
   };
 
-  const handlePaymentNext = async () => {
+  const handleCompleteSubmission = async () => {
     if (isSubmitting) {
       console.log("⚠️ Already submitting, ignoring duplicate request");
       return;
@@ -241,11 +241,13 @@ export default function SubmitPage() {
       return;
     }
 
+    // For paid tiers, go to payment page
     if (selectedTier.price > 0) {
       setCurrentStep("payment");
       return;
     }
 
+    // For free tier, submit directly
     setIsSubmitting(true);
 
     try {
@@ -262,7 +264,6 @@ export default function SubmitPage() {
         tier: selectedTier.id,
         amount: selectedTier.price,
         userUid: user?.uid,
-        // Add unique identifier to prevent duplicates
         submissionId: `${user?.uid || 'guest'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
 
@@ -281,15 +282,26 @@ export default function SubmitPage() {
   };
 
   const handleFileUpload = async (file: File, type: string) => {
-    // Generate a unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substr(2, 9);
     const fileName = `${type}_${timestamp}_${randomString}_${file.name}`;
     return `https://storage.example.com/uploads/${fileName}`;
   };
 
-  const generateQRCode = (upiId: string, amount: number) => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${upiId}&am=${amount}&cu=INR`;
+  const handleFileChange = (type: keyof typeof files) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFiles({ ...files, [type]: file });
+    }
+  };
+
+  const handleBackToSelection = () => {
+    setCurrentStep("selection");
+    setSelectedTier(null);
+  };
+
+  const handleBackToForm = () => {
+    setCurrentStep("form");
   };
 
   return (
@@ -302,40 +314,39 @@ export default function SubmitPage() {
 
         {/* Tier Selection */}
         {currentStep === "selection" && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {TIERS.map((tier) => {
-              const Icon = tier.icon;
-              const isDisabled = tier.id === "free" && (submissionStatus?.freeSubmissionUsed || freeSubmissionUsed);
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              {TIERS.map((tier) => {
+                const Icon = tier.icon;
+                const isDisabled = tier.id === "free" && (submissionStatus?.freeSubmissionUsed || freeSubmissionUsed);
 
-              return (
-                <Card key={tier.id} className={`${isDisabled ? "opacity-50" : "hover:shadow-lg"} transition-shadow border-2 ${tier.borderClass}`}>
-                  <CardContent className="p-6 text-center">
-                    <div className={`w-16 h-16 ${tier.bgClass} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                      <Icon className="text-2xl text-white" size={24} />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{tier.name}</h3>
-                    <p className={`text-3xl font-bold ${tier.textClass} mb-4`}>
-                      ₹{tier.price}
-                    </p>
-                    <p className="text-gray-600 mb-6">{tier.description}</p>
-                    <Button
-                      className={`w-full ${tier.bgClass} ${tier.hoverClass} text-white font-semibold py-3 px-4`}
-                      onClick={() => handleTierSelection(tier)}
-                      disabled={isDisabled || isSubmitting}
-                    >
-                      {tier.id === "free" ? (isDisabled ? "Free Trial Used" : "Submit for FREE") : `Submit ${tier.name}`}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {currentStep === "selection" && (
-          <p className="text-center text-lg text-gray-700 mt-4">
-            Remember! The more poems you submit, the greater your chances of winning!
-          </p>
+                return (
+                  <Card key={tier.id} className={`${isDisabled ? "opacity-50" : "hover:shadow-lg"} transition-shadow border-2 ${tier.borderClass}`}>
+                    <CardContent className="p-6 text-center">
+                      <div className={`w-16 h-16 ${tier.bgClass} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                        <Icon className="text-2xl text-white" size={24} />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">{tier.name}</h3>
+                      <p className={`text-3xl font-bold ${tier.textClass} mb-4`}>
+                        ₹{tier.price}
+                      </p>
+                      <p className="text-gray-600 mb-6">{tier.description}</p>
+                      <Button
+                        className={`w-full ${tier.bgClass} ${tier.hoverClass} text-white font-semibold py-3 px-4`}
+                        onClick={() => handleTierSelection(tier)}
+                        disabled={isDisabled || isSubmitting}
+                      >
+                        {tier.id === "free" ? (isDisabled ? "Free Trial Used" : "Submit for FREE") : `Submit ${tier.name}`}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            <p className="text-center text-lg text-gray-700 mt-4">
+              Remember! The more poems you submit, the greater your chances of winning!
+            </p>
+          </>
         )}
 
         {/* Submission Form */}
@@ -392,8 +403,6 @@ export default function SubmitPage() {
                   <Input
                     type="number"
                     required
-                    min="13"
-                    max="100"
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                     disabled={isSubmitting}
@@ -404,11 +413,11 @@ export default function SubmitPage() {
                   <Label>Author Bio *</Label>
                   <Textarea
                     required
-                    rows={4}
                     placeholder="Tell us about yourself as a poet..."
                     value={formData.authorBio}
                     onChange={(e) => setFormData({ ...formData, authorBio: e.target.value })}
                     disabled={isSubmitting}
+                    rows={4}
                   />
                 </div>
 
@@ -423,82 +432,57 @@ export default function SubmitPage() {
                   />
                 </div>
 
-                {/* File Upload sections remain the same but add disabled={isSubmitting} */}
-                <div className="space-y-4">
-                  <div>
-                    <Label>Upload Your Poem *</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                      <div className="mt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => poemFileRef.current?.click()}
-                          disabled={isSubmitting}
-                        >
-                          Choose File
-                        </Button>
-                        <input
-                          ref={poemFileRef}
-                          type="file"
-                          className="hidden"
-                          accept=".pdf,.doc,.docx,.txt"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setFiles({ ...files, poem: file });
-                            }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </div>
-                      {files.poem && (
-                        <p className="mt-2 text-sm text-green-600">
-                          Selected: {files.poem.name}
-                        </p>
-                      )}
-                      <p className="mt-2 text-xs text-gray-500">
-                        PDF, DOC, DOCX, or TXT files only
-                      </p>
-                    </div>
+                <div>
+                  <Label>Upload Your Poem *</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <input
+                      type="file"
+                      ref={poemFileRef}
+                      onChange={handleFileChange("poem")}
+                      accept=".pdf,.doc,.docx,.txt"
+                      className="hidden"
+                      disabled={isSubmitting}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => poemFileRef.current?.click()}
+                      disabled={isSubmitting}
+                    >
+                      Choose File
+                    </Button>
+                    <p className="text-sm text-gray-500 mt-2">PDF, DOC, DOCX, or TXT files only</p>
+                    {files.poem && (
+                      <p className="text-sm text-green-600 mt-2">✓ {files.poem.name}</p>
+                    )}
                   </div>
+                </div>
 
-                  <div>
-                    <Label>Upload Your Photo *</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                      <div className="mt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => photoFileRef.current?.click()}
-                          disabled={isSubmitting}
-                        >
-                          Choose Photo
-                        </Button>
-                        <input
-                          ref={photoFileRef}
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setFiles({ ...files, photo: file });
-                            }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </div>
-                      {files.photo && (
-                        <p className="mt-2 text-sm text-green-600">
-                          Selected: {files.photo.name}
-                        </p>
-                      )}
-                      <p className="mt-2 text-xs text-gray-500">
-                        JPG, PNG, or GIF files only
-                      </p>
-                    </div>
+                <div>
+                  <Label>Upload Your Photo *</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <input
+                      type="file"
+                      ref={photoFileRef}
+                      onChange={handleFileChange("photo")}
+                      accept=".jpg,.jpeg,.png,.gif"
+                      className="hidden"
+                      disabled={isSubmitting}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => photoFileRef.current?.click()}
+                      disabled={isSubmitting}
+                    >
+                      Choose Photo
+                    </Button>
+                    <p className="text-sm text-gray-500 mt-2">JPG, PNG, or GIF files only</p>
+                    {files.photo && (
+                      <p className="text-sm text-green-600 mt-2">✓ {files.photo.name}</p>
+                    )}
                   </div>
                 </div>
 
@@ -506,9 +490,7 @@ export default function SubmitPage() {
                   <Checkbox
                     id="terms"
                     checked={formData.termsAccepted}
-                    onCheckedChange={(checked) => 
-                      setFormData({ ...formData, termsAccepted: checked as boolean })
-                    }
+                    onCheckedChange={(checked) => setFormData({ ...formData, termsAccepted: checked as boolean })}
                     disabled={isSubmitting}
                   />
                   <Label htmlFor="terms" className="text-sm">
@@ -517,20 +499,20 @@ export default function SubmitPage() {
                 </div>
 
                 <div className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep("selection")}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleBackToSelection}
                     disabled={isSubmitting}
                   >
-                    Back
+                    Back to Other tiers
                   </Button>
-                  <Button
-                    type="submit"
-                    className="bg-primary hover:bg-green-700 text-white"
-                    disabled={isSubmitting || submitMutation.isPending}
+                  <Button 
+                    type="submit" 
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={isSubmitting}
                   >
-                    {isSubmitting || submitMutation.isPending ? "Submitting..." : "Submit Poem"}
+                    {selectedTier?.price === 0 ? "Submit Poem" : "Proceed for payment"}
                   </Button>
                 </div>
               </form>
@@ -538,11 +520,59 @@ export default function SubmitPage() {
           </Card>
         )}
 
-        {/* Payment section remains the same but add disabled={isSubmitting} to buttons */}
-        {currentStep === "payment" && (
+        {/* Payment Page */}
+        {currentStep === "payment" && selectedTier && (
           <Card>
             <CardContent className="p-8">
-              {/* Payment content - add disabled={isSubmitting} to all buttons */}
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Payment</h3>
+                <p className="text-lg mb-2">Selected Tier: <span className="font-semibold">{selectedTier.name}</span></p>
+                <p className="text-2xl font-bold text-green-600">Amount: ₹{selectedTier.price}</p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+                <div className="flex items-center mb-4">
+                  <QrCode className="h-6 w-6 text-yellow-600 mr-2" />
+                  <h4 className="text-lg font-semibold text-yellow-800">Payment Instructions</h4>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-sm text-yellow-700 mb-1"><strong>UPI ID:</strong> 9667102405@pthdfc</p>
+                  <p className="text-sm text-yellow-700">Amount: ₹{selectedTier.price}</p>
+                </div>
+
+                <div className="flex justify-center mb-4">
+                  <img 
+                    src={qrCodeImage} 
+                    alt="QR Code for Payment" 
+                    className="w-48 h-48 border border-gray-300 rounded"
+                  />
+                </div>
+
+                <div className="text-sm text-yellow-700">
+                  <p>1. Scan the QR code or use the UPI ID above</p>
+                  <p>2. Pay the exact amount: ₹{selectedTier.price}</p>
+                  <p>3. Your payment will be verified automatically</p>
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleBackToForm}
+                  disabled={isSubmitting}
+                >
+                  Back to Form
+                </Button>
+                <Button 
+                  onClick={handleCompleteSubmission}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Processing..." : "Complete Submission"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
