@@ -90,6 +90,16 @@ export default function ContactPage() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
+                
+                <div>
+                  <Label>Phone Number *</Label>
+                  <Input
+                    type="phone"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
 
                 <div>
                   <Label>Phone Number</Label>
