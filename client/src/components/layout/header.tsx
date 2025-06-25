@@ -41,7 +41,7 @@ export default function Header() {
             </div>
           </Link>
 
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex items-center space-x-8">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -55,7 +55,6 @@ export default function Header() {
             ))}
             {user && (
               <>
-                <span className="text-white text-sm mr-2">{user.displayName || user.email}</span>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -64,6 +63,7 @@ export default function Header() {
                 >
                   Logout
                 </Button>
+                <span className="text-white text-sm ml-2">{user.displayName || user.email}</span>
               </>
             )}
           </nav>
@@ -92,8 +92,7 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <>
-                <span className="block px-3 py-2 text-white text-sm">{user.displayName || user.email}</span>
+              <div className="flex items-center justify-between px-3 py-2">
                 <Button
                   onClick={() => {
                     handleLogout();
@@ -101,11 +100,12 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="w-full mt-2 text-white border-white hover:bg-white hover:text-primary"
+                  className="text-white border-white hover:bg-white hover:text-primary"
                 >
                   Logout
                 </Button>
-              </>
+                <span className="text-white text-sm">{user.displayName || user.email}</span>
+              </div>
             )}
           </div>
         </div>
