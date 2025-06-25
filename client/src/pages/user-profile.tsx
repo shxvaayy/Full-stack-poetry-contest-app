@@ -1,9 +1,10 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Calendar, FileText, Trophy, Clock, ArrowLeft } from "lucide-react";
+import { User, Mail, Calendar, FileText, Trophy, Clock, ArrowLeft, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 
@@ -24,31 +25,109 @@ interface SubmissionStatus {
   contestMonth: string;
 }
 
+interface UserData {
+  id: number;
+  uid: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  createdAt: string;
+}
+
 export default function UserProfilePage() {
   const { user } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Get user submissions with better error handling
+  // First, ensure user exists in backend storage
+  const { 
+    data: backendUser, 
+    isLoading: userLoading,
+    refetch: refetchUser 
+  } = useQuery<UserData>({
+    queryKey: [`/api/users/${user?.uid}`],
+    queryFn: async () => {
+      if (!user?.uid) throw new Error("No user UID");
+      
+      // First try to get existing user
+      const response = await fetch(`/api/users/${user.uid}`);
+      
+      if (response.ok) {
+        return response.json();
+      }
+      
+      if (response.status === 404) {
+        // User doesn't exist, create them
+        console.log("🔄 Creating user in backend storage...");
+        const createResponse = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || user.email?.split('@')[0] || 'User',
+            phone: user.phoneNumber || null
+          })
+        });
+        
+        if (!createResponse.ok) {
+          throw new Error('Failed to create user in backend');
+        }
+        
+        return createResponse.json();
+      }
+      
+      throw new Error(`Failed to get user: ${response.status}`);
+    },
+    enabled: !!user?.uid,
+    retry: 2,
+    refetchOnWindowFocus: false,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+
+  // Get user submissions - only after user is confirmed to exist
   const { 
     data: submissions = [], 
     isLoading: submissionsLoading, 
     error: submissionsError,
     refetch: refetchSubmissions 
   } = useQuery({
-    queryKey: [`/api/users/${user?.uid}/submissions`],
-    enabled: !!user?.uid,
-    retry: 1,
+    queryKey: [`/api/users/${user?.uid}/submissions`, backendUser?.id],
+    queryFn: async () => {
+      if (!user?.uid) throw new Error("No user UID");
+      
+      const response = await fetch(`/api/users/${user.uid}/submissions`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch submissions: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("📋 Fetched submissions:", data);
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!user?.uid && !!backendUser?.id,
+    retry: 2,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always fetch fresh data
   });
 
-  // Get user submission status
+  // Get user submission status - only after user exists
   const { 
     data: submissionStatus, 
     isLoading: statusLoading,
     refetch: refetchStatus 
   } = useQuery<SubmissionStatus>({
-    queryKey: [`/api/users/${user?.uid}/submission-status`],
-    enabled: !!user?.uid,
+    queryKey: [`/api/users/${user?.uid}/submission-status`, backendUser?.id],
+    queryFn: async () => {
+      if (!user?.uid) throw new Error("No user UID");
+      
+      const response = await fetch(`/api/users/${user.uid}/submission-status`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch submission status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    enabled: !!user?.uid && !!backendUser?.id,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always fetch fresh data
   });
@@ -56,6 +135,9 @@ export default function UserProfilePage() {
   // Debug logging
   console.log("🔍 Profile Debug:", {
     userUid: user?.uid,
+    userEmail: user?.email,
+    backendUser: backendUser,
+    userLoading,
     submissionsLoading,
     submissionsError: submissionsError?.message,
     submissionsCount: submissions?.length,
@@ -98,8 +180,25 @@ export default function UserProfilePage() {
   };
 
   const refreshData = async () => {
-    await Promise.all([refetchSubmissions(), refetchStatus()]);
+    setIsRefreshing(true);
+    try {
+      // First ensure user exists, then fetch their data
+      await refetchUser();
+      await Promise.all([refetchSubmissions(), refetchStatus()]);
+    } catch (error) {
+      console.error("❌ Error refreshing data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
+
+  // Auto-refresh when user changes or logs in
+  useEffect(() => {
+    if (user?.uid && !backendUser) {
+      console.log("🔄 User changed, refetching backend user...");
+      refetchUser();
+    }
+  }, [user?.uid, backendUser, refetchUser]);
 
   if (!user) {
     return (
@@ -107,6 +206,18 @@ export default function UserProfilePage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Login</h2>
           <p className="text-gray-600">You need to be logged in to view your profile.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (userLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Setting up your profile...</h2>
+          <p className="text-gray-600">Please wait while we prepare your account.</p>
         </div>
       </div>
     );
@@ -128,8 +239,9 @@ export default function UserProfilePage() {
               <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
               <p className="text-gray-600">Manage your account and view submission history</p>
             </div>
-            <Button onClick={refreshData} variant="outline" size="sm">
-              Refresh Data
+            <Button onClick={refreshData} variant="outline" size="sm" disabled={isRefreshing}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
             </Button>
           </div>
         </div>
@@ -151,7 +263,7 @@ export default function UserProfilePage() {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                      {backendUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </p>
                     <p className="text-sm text-gray-500">Poet</p>
                   </div>
@@ -159,14 +271,21 @@ export default function UserProfilePage() {
                 
                 <div className="flex items-center space-x-2 text-gray-600">
                   <Mail size={16} />
-                  <span className="text-sm">{user.email}</span>
+                  <span className="text-sm">{backendUser?.email || user.email}</span>
                 </div>
                 
                 <div className="flex items-center space-x-2 text-gray-600">
                   <Calendar size={16} />
                   <span className="text-sm">
-                    Joined {new Date(user.metadata?.creationTime || Date.now()).toLocaleDateString()}
+                    Joined {new Date(backendUser?.createdAt || user.metadata?.creationTime || Date.now()).toLocaleDateString()}
                   </span>
+                </div>
+
+                {/* User sync status */}
+                <div className="pt-2 border-t text-xs text-gray-400">
+                  <p>Account Status: {backendUser ? '✅ Synced' : '⚠️ Pending'}</p>
+                  <p>Backend ID: {backendUser?.id || 'Not assigned'}</p>
+                  <p>Firebase UID: {user.uid}</p>
                 </div>
               </CardContent>
             </Card>
@@ -204,8 +323,8 @@ export default function UserProfilePage() {
                     </div>
 
                     <div className="text-xs text-gray-400 pt-2 border-t">
-                      <p>User ID: {user.uid}</p>
                       <p>Last Updated: {new Date().toLocaleTimeString()}</p>
+                      <p>Data Source: {submissions.length > 0 ? 'Backend' : 'Empty'}</p>
                     </div>
                   </div>
                 )}
@@ -238,7 +357,13 @@ export default function UserProfilePage() {
                     <FileText className="mx-auto h-12 w-12 text-red-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Submissions</h3>
                     <p className="text-red-500 mb-4">{submissionsError.message}</p>
-                    <Button onClick={refetchSubmissions} variant="outline">
+                    <div className="space-y-2 mb-4 p-3 bg-red-50 rounded-lg">
+                      <p className="text-xs text-red-600">Debug Info:</p>
+                      <p className="text-xs text-red-600">User exists: {backendUser ? 'Yes' : 'No'}</p>
+                      <p className="text-xs text-red-600">Backend User ID: {backendUser?.id || 'None'}</p>
+                      <p className="text-xs text-red-600">Firebase UID: {user.uid}</p>
+                    </div>
+                    <Button onClick={refreshData} variant="outline">
                       Try Again
                     </Button>
                   </div>
@@ -246,19 +371,20 @@ export default function UserProfilePage() {
                   <div className="text-center py-8">
                     <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {submissionStatus?.totalSubmissions > 0 ? "Submissions Not Showing" : "No submissions yet"}
+                      {submissionStatus?.totalSubmissions > 0 ? "Submissions Not Displaying" : "No submissions yet"}
                     </h3>
                     <p className="text-gray-500 mb-4">
                       {submissionStatus?.totalSubmissions > 0 
-                        ? "Your submissions are not displaying properly. Please refresh or contact support." 
+                        ? "Your submissions exist but are not displaying properly. This might be a sync issue." 
                         : "Start your poetry journey by submitting your first poem!"
                       }
                     </p>
-                    <div className="space-y-2 mb-4">
-                      <p className="text-xs text-gray-400">Debug Info:</p>
-                      <p className="text-xs text-gray-400">Total from status: {submissionStatus?.totalSubmissions || 0}</p>
-                      <p className="text-xs text-gray-400">Submissions array length: {submissions?.length || 0}</p>
-                      <p className="text-xs text-gray-400">Error: {submissionsError?.message || 'None'}</p>
+                    <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-xs text-gray-500">Sync Status:</p>
+                      <p className="text-xs text-gray-500">Backend User: {backendUser ? '✅ Connected' : '❌ Missing'}</p>
+                      <p className="text-xs text-gray-500">Total from Status API: {submissionStatus?.totalSubmissions || 0}</p>
+                      <p className="text-xs text-gray-500">Submissions API: {submissions?.length || 0} items</p>
+                      <p className="text-xs text-gray-500">Error: {submissionsError?.message || 'None'}</p>
                     </div>
                     <div className="space-x-2">
                       <Link href="/submit">
