@@ -84,9 +84,10 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <Label>Phone Number</Label>
+                  <Label>Phone Number *</Label>
                   <Input
                     type="tel"
+                    required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="Your phone number"

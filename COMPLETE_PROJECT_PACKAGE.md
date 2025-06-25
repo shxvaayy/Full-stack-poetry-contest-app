@@ -4,6 +4,12 @@
 **Click the blue "Enter Demo Mode" button on the authentication page to see the complete platform without Firebase setup.**
 
 ## What You'll See After Login
+//
+https://drive.google.com/drive/u/1/folders/1KKh4ixlEyp8GTDNPneGW-Dn4EGVNd-vO
+drive
+https://docs.google.com/spreadsheets/d/1XCVQsAs4nxBA1QmzTtV4Mlh3L-Ds7YuwLbMAw923OoE/edit?pli=1&gid=873342294#gid=873342294
+sheet
+//
 
 ### 1. Homepage Features
 - ✅ Library background hero section with Writory logo
