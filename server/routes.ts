@@ -1,9 +1,19 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
 import { storage } from "./storage";
 import { insertSubmissionSchema, insertContactSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { addContactToSheet, addPoemSubmissionToSheet, initializeSheetHeaders, getSubmissionCountFromSheet } from "./google-sheets";
+import { uploadPoemFile, uploadPhotoFile } from "./google-drive";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
 
 const getCurrentContestMonth = () => {
   const now = new Date();
@@ -116,7 +126,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Submit poem
+  // NEW: Submit poem with files (Google Drive integration)
+  app.post("/api/submissions-with-files", upload.fields([
+    { name: 'poemFile', maxCount: 1 },
+    { name: 'photoFile', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      console.log("📝 New poem submission with files received");
+      
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const poemFile = files.poemFile?.[0];
+      const photoFile = files.photoFile?.[0];
+      
+      if (!poemFile || !photoFile) {
+        return res.status(400).json({ error: "Both poem and photo files are required" });
+      }
+
+      const formData = {
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        phone: req.body.phone,
+        age: parseInt(req.body.age),
+        poemTitle: req.body.poemTitle || 'Untitled',
+        tier: req.body.tier,
+        amount: parseInt(req.body.amount),
+        userUid: req.body.userUid,
+        name: `${req.body.firstName} ${req.body.lastName}`.trim(),
+        contestMonth: getCurrentContestMonth()
+      };
+
+      console.log("📋 Submission data:", {
+        name: formData.name,
+        email: formData.email,
+        tier: formData.tier
+      });
+
+      // Upload files to Google Drive
+      console.log("📤 Uploading files to Google Drive...");
+      const poemUrl = await uploadPoemFile(poemFile.buffer, formData.email, poemFile.originalname);
+      const photoUrl = await uploadPhotoFile(photoFile.buffer, formData.email, photoFile.originalname);
+      
+      console.log("✅ Files uploaded successfully:");
+      console.log("- Poem:", poemUrl);
+      console.log("- Photo:", photoUrl);
+
+      // Get user by email or create if needed
+      let user = await storage.getUserByEmail(formData.email);
+      if (!user && formData.userUid) {
+        user = await storage.getUserByUid(formData.userUid);
+      }
+      
+      // If no user found, create one
+      if (!user) {
+        user = await storage.createUser({
+          uid: formData.userUid || `user_${Date.now()}`,
+          email: formData.email,
+          name: formData.name
+        });
+        console.log("👤 Created new user for submission:", user.email);
+      }
+
+      // Check if free tier is already used before allowing submission
+      if (formData.tier === 'free') {
+        const contestMonth = getCurrentContestMonth();
+        const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
+        
+        if (currentCount?.freeSubmissionUsed === true) {
+          console.log("❌ Free submission already used by user:", user.email);
+          return res.status(400).json({ 
+            error: "Free submission already used",
+            message: "You have already used your free trial for this month." 
+          });
+        }
+      }
+
+      // Create submission in memory storage
+      const submission = await storage.createSubmission({
+        ...formData,
+        userId: user?.id,
+        poemFile: poemUrl,
+        photo: photoUrl
+      });
+
+      console.log("✅ Submission created with ID:", submission.id);
+
+      // Add to Google Sheets with Drive links
+      try {
+        await addPoemSubmissionToSheet({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || '',
+          age: formData.age?.toString() || '',
+          poemTitle: formData.poemTitle,
+          tier: formData.tier,
+          amount: formData.amount?.toString() || '0',
+          poemFile: poemUrl, // Google Drive link
+          photo: photoUrl, // Google Drive link
+          timestamp: new Date().toISOString()
+        });
+        console.log("📊 Added to Google Sheets successfully with Drive links");
+        
+        // Get updated count from sheets
+        const newCount = await getSubmissionCountFromSheet();
+        console.log("🎯 New total count from sheets:", newCount);
+        
+      } catch (sheetError) {
+        console.error("❌ Google Sheets error:", sheetError);
+        // Don't fail the submission if Google Sheets fails, just log it
+        console.log("⚠️ Continuing with local storage only");
+      }
+
+      // Update submission count in memory
+      if (user) {
+        const contestMonth = getCurrentContestMonth();
+        const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
+        
+        // If user already used free OR this submission is free tier, mark as used
+        const newFreeUsed = (currentCount?.freeSubmissionUsed === true) || (formData.tier === 'free');
+        const newTotal = (currentCount?.totalSubmissions || 0) + 1;
+        
+        await storage.updateUserSubmissionCount(user.id, contestMonth, newFreeUsed, newTotal);
+        console.log(`📈 Updated user submission count: total=${newTotal}, freeUsed=${newFreeUsed}, tier=${formData.tier}`);
+      }
+
+      res.json({
+        success: true,
+        submission: submission,
+        poemUrl,
+        photoUrl
+      });
+    } catch (error) {
+      console.error("❌ Error submitting poem with files:", error);
+      res.status(500).json({ error: "Failed to create submission with files" });
+    }
+  });
+
+  // Submit poem (original endpoint for backwards compatibility)
   app.post("/api/submissions", async (req, res) => {
     try {
       console.log("📝 New poem submission received");
@@ -177,12 +323,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: submissionData.email,
           phone: submissionData.phone || '',
           age: submissionData.age?.toString() || '',
-          city: submissionData.city || '',
-          state: submissionData.state || '',
           poemTitle: submissionData.poemTitle,
           tier: submissionData.tier,
           amount: submissionData.amount?.toString() || '0',
-          paymentScreenshot: submissionData.paymentScreenshot || '',
           poemFile: submissionData.poemFile || '',
           photo: submissionData.photo || '',
           timestamp: new Date().toISOString()
@@ -266,17 +409,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contactData = insertContactSchema.parse(req.body);
       const contact = await storage.createContact(contactData);
       
-      // Add to Google Sheets
+      // Add to Google Sheets with phone number
       await addContactToSheet({
         name: contactData.name,
         email: contactData.email,
-        phone: contactData.phone || '',
+        phone: contactData.phone || '', // Phone field will now be included
         message: contactData.message,
         timestamp: new Date().toISOString()
       });
       
       res.json(contact);
     } catch (error) {
+      console.error("❌ Error submitting contact form:", error);
       res.status(400).json({ error: "Failed to submit contact form" });
     }
   });

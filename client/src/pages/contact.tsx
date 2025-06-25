@@ -14,7 +14,7 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    subject: "",
+    phone: "", // Added phone field
     message: "",
   });
 
@@ -31,7 +31,7 @@ export default function ContactPage() {
       setFormData({
         name: "",
         email: "",
-        subject: "",
+        phone: "", // Reset phone field
         message: "",
       });
     },
@@ -65,7 +65,7 @@ export default function ContactPage() {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label>Name</Label>
+                  <Label>Name *</Label>
                   <Input
                     required
                     value={formData.name}
@@ -84,10 +84,12 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <Label>Subject</Label>
+                  <Label>Phone Number</Label>
                   <Input
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Your phone number"
                   />
                 </div>
 

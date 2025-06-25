@@ -32,12 +32,9 @@ interface PoemSubmissionData {
   email: string;
   phone: string;
   age: string;
-  city: string;
-  state: string;
   poemTitle: string;
   tier: string;
   amount: string;
-  paymentScreenshot: string;
   poemFile: string;
   photo: string;
   timestamp: string;
@@ -53,7 +50,7 @@ async function getAuthClient() {
   }
 }
 
-// NEW FUNCTION - Get submission count from Google Sheets
+// Get submission count from Google Sheets
 export async function getSubmissionCountFromSheet(): Promise<number> {
   try {
     const authClient = await getAuthClient();
@@ -63,14 +60,13 @@ export async function getSubmissionCountFromSheet(): Promise<number> {
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:A', // Get all rows in column A (timestamps)
+      range: 'Poetry!A:A',
       auth: authClient,
     };
 
     const response = await sheets.spreadsheets.values.get(request);
     const rows = response.data.values || [];
     
-    // Subtract 1 for the header row, ensure minimum 0
     const count = Math.max(0, rows.length - 1);
     console.log(`📊 Read ${count} submissions from Google Sheets (${rows.length} total rows including header)`);
     
@@ -118,27 +114,33 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
       throw new Error("No auth client available");
     }
 
+    // Calculate amount based on tier
+    const tierAmounts = {
+      'free': 0,
+      'single': 50,
+      'double': 100,
+      'bulk': 480
+    };
+    const amount = tierAmounts[data.tier as keyof typeof tierAmounts] || 0;
+
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:M',
+      range: 'Poetry!A:K', // Updated range (removed city, state, payment screenshot)
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
       requestBody: {
         values: [[
           data.timestamp,
-          data.name,
+          data.name, // This should now be firstName + lastName
           data.email,
           data.phone || '',
           data.age || '',
-          data.city || '',
-          data.state || '',
           data.poemTitle,
           data.tier,
-          data.amount,
-          data.paymentScreenshot || '',
-          data.poemFile || '',
-          data.photo || ''
+          amount.toString(), // Use calculated amount
+          data.poemFile || '', // Google Drive link for poem
+          data.photo || '' // Google Drive link for photo
         ]]
       }
     };
@@ -146,13 +148,12 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
     await sheets.spreadsheets.values.append(request);
     console.log('✅ Poem submission added to Google Sheets');
     
-    // Get updated count after adding
     const newCount = await getSubmissionCountFromSheet();
     console.log(`🎯 Updated count after submission: ${newCount}`);
     
   } catch (error) {
     console.error('❌ Error adding poem submission to Google Sheets:', error);
-    throw error; // Re-throw so the calling function knows it failed
+    throw error;
   }
 }
 
@@ -161,7 +162,6 @@ export async function initializeSheetHeaders(): Promise<void> {
     const authClient = await getAuthClient();
     if (!authClient) return;
 
-    // Check if headers already exist before creating them
     try {
       const existingContacts = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
@@ -171,11 +171,10 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const existingPoetry = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:M1',
+        range: 'Poetry!A1:K1', // Updated range
         auth: authClient,
       });
 
-      // Only update if headers don't exist
       if (!existingContacts.data.values || existingContacts.data.values.length === 0) {
         const contactsRequest = {
           spreadsheetId: SPREADSHEET_ID,
@@ -193,18 +192,17 @@ export async function initializeSheetHeaders(): Promise<void> {
       if (!existingPoetry.data.values || existingPoetry.data.values.length === 0) {
         const poemsRequest = {
           spreadsheetId: SPREADSHEET_ID,
-          range: 'Poetry!A1:M1',
+          range: 'Poetry!A1:K1', // Updated range and headers
           valueInputOption: 'USER_ENTERED',
           auth: authClient,
           requestBody: {
-            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'City', 'State', 'Poem Title', 'Tier', 'Amount', 'Payment Screenshot', 'Poem File', 'Photo']]
+            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Poem File', 'Photo']]
           }
         };
         await sheets.spreadsheets.values.update(poemsRequest);
         console.log('✅ Poetry sheet headers initialized');
       }
     } catch (error) {
-      // If sheets don't exist, create them with headers
       console.log('📋 Creating new sheets with headers...');
       const contactsRequest = {
         spreadsheetId: SPREADSHEET_ID,
@@ -218,11 +216,11 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const poemsRequest = {
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:M1',
+        range: 'Poetry!A1:K1',
         valueInputOption: 'USER_ENTERED',
         auth: authClient,
         requestBody: {
-          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'City', 'State', 'Poem Title', 'Tier', 'Amount', 'Payment Screenshot', 'Poem File', 'Photo']]
+          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Poem File', 'Photo']]
         }
       };
 
