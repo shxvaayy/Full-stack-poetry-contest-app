@@ -55,14 +55,16 @@ export default function Header() {
             ))}
             {user && (
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2">
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <User className="text-green-600" size={16} />
-                  </div>
-                  <span className="text-white text-sm font-medium">
-                    {user.displayName || user.email?.split('@')[0] || 'User'}
-                  </span>
-                </div>
+                <Link href="/profile">
+                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <User className="text-green-600" size={16} />
+                    </div>
+                    <span className="text-white text-sm font-medium">
+                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                    </span>
+                  </button>
+                </Link>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -100,14 +102,19 @@ export default function Header() {
             ))}
             {user && (
               <div className="px-3 py-2 space-y-2">
-                <div className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2">
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <User className="text-green-600" size={16} />
-                  </div>
-                  <span className="text-white text-sm font-medium">
-                    {user.displayName || user.email?.split('@')[0] || 'User'}
-                  </span>
-                </div>
+                <Link href="/profile">
+                  <button 
+                    className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <User className="text-green-600" size={16} />
+                    </div>
+                    <span className="text-white text-sm font-medium">
+                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                    </span>
+                  </button>
+                </Link>
                 <Button
                   onClick={() => {
                     handleLogout();
