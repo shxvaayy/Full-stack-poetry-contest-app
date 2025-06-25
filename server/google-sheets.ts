@@ -80,8 +80,34 @@ export async function getSubmissionCountFromSheet(): Promise<number> {
 
 export async function addContactToSheet(data: ContactData): Promise<void> {
   try {
+    console.log('📞 Contact data being added to sheet:', {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      phoneType: typeof data.phone,
+      phoneLength: data.phone?.length,
+      message: data.message?.substring(0, 50) + '...'
+    });
+    
     const authClient = await getAuthClient();
-    if (!authClient) return;
+    if (!authClient) {
+      console.error('❌ No auth client available');
+      return;
+    }
+
+    // Ensure phone field is never undefined or null
+    const phoneValue = data.phone || '';
+    console.log('📊 Phone value being inserted:', phoneValue, 'Length:', phoneValue.length);
+
+    const rowData = [
+      data.timestamp,
+      data.name,
+      data.email,
+      phoneValue, // Explicitly use the cleaned phone value
+      data.message
+    ];
+    
+    console.log('📊 Complete row data to be inserted:', rowData);
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,
@@ -90,18 +116,12 @@ export async function addContactToSheet(data: ContactData): Promise<void> {
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
       requestBody: {
-        values: [[
-          data.timestamp,
-          data.name,
-          data.email,
-          data.phone,
-          data.message
-        ]]
+        values: [rowData]
       }
     };
 
     await sheets.spreadsheets.values.append(request);
-    console.log('✅ Contact data added to Google Sheets');
+    console.log('✅ Contact data added to Google Sheets with phone:', phoneValue);
   } catch (error) {
     console.error('❌ Error adding contact to Google Sheets:', error);
   }
@@ -239,3 +259,4 @@ export async function initializeSheetHeaders(): Promise<void> {
     console.error('❌ Error initializing sheet headers:', error);
   }
 }
+
