@@ -44,7 +44,7 @@ export default function WinningPoemsPage() {
           <img 
             src={photo} 
             alt={`Winner ${position}`}
-            className="w-32 h-24 object-cover rounded-lg mx-auto border border-gray-200 shadow-sm"
+            className="w-48 h-36 object-cover rounded-lg mx-auto border border-gray-200 shadow-sm"
           />
         </div>
       );
@@ -52,9 +52,9 @@ export default function WinningPoemsPage() {
     
     return (
       <div className="mt-4">
-        <div className="w-32 h-24 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg mx-auto flex flex-col items-center justify-center">
-          <Image className="text-gray-400 mb-1" size={16} />
-          <p className="text-xs text-gray-500 text-center px-2">Photos of winners will be shown here</p>
+        <div className="w-48 h-36 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg mx-auto flex flex-col items-center justify-center">
+          <Image className="text-gray-400 mb-2" size={24} />
+          <p className="text-xs text-gray-500 text-center px-4">Photos of winners will be shown here</p>
         </div>
       </div>
     );
