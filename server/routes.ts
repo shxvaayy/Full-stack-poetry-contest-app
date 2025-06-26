@@ -1,44 +1,39 @@
-import { Router } from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import crypto from "crypto";
-import { uploadPoemFile, uploadPhotoFile } from "./google-drive.js";
-import { addPoemSubmissionToSheet } from "./google-sheets.js";
+import { Router } from 'express';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
+import { uploadPoemFile, uploadPhotoFile } from './google-drive.js';
+import { addPoemSubmissionToSheet } from './google-sheets.js';
+import { paypalRouter } from './paypal.js';
 
 const router = Router();
 
 // Configure multer for file uploads
-const upload = multer({
-  dest: 'uploads/',
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.fieldname === 'poem') {
-      const allowedTypes = ['.pdf', '.doc', '.docx'];
-      const ext = path.extname(file.originalname).toLowerCase();
-      if (allowedTypes.includes(ext)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only PDF, DOC, and DOCX files are allowed for poems'));
-      }
-    } else if (file.fieldname === 'photo') {
-      const allowedTypes = ['.jpg', '.jpeg', '.png'];
-      const ext = path.extname(file.originalname).toLowerCase();
-      if (allowedTypes.includes(ext)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only JPG, JPEG, and PNG files are allowed for photos'));
-      }
-    } else {
-      cb(new Error('Unexpected field'));
-    }
-  }
-});
+const upload = multer({ dest: 'uploads/' });
 
 // In-memory storage for submissions
 const submissions: any[] = [];
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
+
+// Add PayPal routes
+router.use('/', paypalRouter);
+
+// Test endpoint
+router.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'API is working!',
+    timestamp: new Date().toISOString(),
+    paypal_configured: !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
+    razorpay_configured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
+  });
+});
 
 // PayPal configuration test endpoint
 router.get('/api/test-paypal', async (req, res) => {
@@ -114,6 +109,72 @@ router.get('/api/test-paypal', async (req, res) => {
   }
 });
 
+// Create Razorpay order
+router.post('/api/create-razorpay-order', async (req, res) => {
+  try {
+    const { amount, tier, metadata } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Valid amount is required' });
+    }
+
+    const options = {
+      amount: amount * 100, // Razorpay expects amount in paisa
+      currency: 'INR',
+      receipt: `receipt_${Date.now()}`,
+      notes: {
+        tier: tier,
+        ...metadata
+      }
+    };
+
+    console.log('Creating Razorpay order with options:', options);
+
+    const order = await razorpay.orders.create(options);
+    
+    console.log('Razorpay order created:', order);
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error: any) {
+    console.error('Error creating Razorpay order:', error);
+    res.status(500).json({ error: 'Failed to create payment order' });
+  }
+});
+
+// Verify Razorpay payment
+router.post('/api/verify-razorpay-payment', async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature === razorpay_signature) {
+      console.log('✅ Razorpay payment verified successfully');
+      res.json({ 
+        success: true, 
+        message: 'Payment verified successfully',
+        amount: 50,
+        currency: 'INR'
+      });
+    } else {
+      console.error('❌ Razorpay signature verification failed');
+      res.status(400).json({ success: false, error: 'Payment verification failed' });
+    }
+  } catch (error: any) {
+    console.error('Error verifying Razorpay payment:', error);
+    res.status(500).json({ success: false, error: 'Payment verification failed' });
+  }
+});
+
 // Submit poem with improved error handling
 router.post('/api/submit-poem', upload.fields([
   { name: 'poem', maxCount: 1 },
@@ -165,7 +226,7 @@ router.post('/api/submit-poem', upload.fields([
         try {
           const body = razorpay_order_id + '|' + paymentId;
           const expectedSignature = crypto
-            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
             .update(body.toString())
             .digest('hex');
 
@@ -273,78 +334,54 @@ router.post('/api/submit-poem', upload.fields([
   }
 });
 
-// Razorpay order creation
-router.post('/api/create-razorpay-order', async (req, res) => {
+// Get user submission status
+router.get('/api/users/:uid/submission-status', async (req, res) => {
   try {
-    console.log('💳 Creating Razorpay order...');
+    const { uid } = req.params;
     
-    const { amount, tier, metadata } = req.body;
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: 'Valid amount is required' });
-    }
-
-    const Razorpay = (await import('razorpay')).default;
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID!,
-      key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    });
-
-    const options = {
-      amount: amount * 100, // amount in paise
-      currency: 'INR',
-      receipt: `receipt_${Date.now()}`,
-      notes: {
-        tier,
-        ...metadata
-      }
-    };
-
-    const order = await razorpay.orders.create(options);
-    console.log('✅ Razorpay order created:', order.id);
-
+    // Check if user has used free submission this month
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const userSubmissions = submissions.filter(sub => 
+      sub.userUid === uid &&
+      new Date(sub.timestamp).getMonth() === currentMonth &&
+      new Date(sub.timestamp).getFullYear() === currentYear
+    );
+    
+    const freeSubmissionUsed = userSubmissions.some(sub => sub.tier === 'free');
+    
     res.json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID
+      freeSubmissionUsed,
+      totalSubmissions: userSubmissions.length,
+      submissions: userSubmissions
     });
-
   } catch (error: any) {
-    console.error('❌ Error creating Razorpay order:', error);
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
+    console.error('Error getting submission status:', error);
+    res.status(500).json({ error: 'Failed to get submission status' });
   }
 });
 
-// Get all submissions (admin endpoint)
-router.get('/api/submissions', (req, res) => {
-  res.json({
-    submissions: submissions,
-    total: submissions.length
-  });
+// Get all submissions (admin)
+router.get('/api/submissions', async (req, res) => {
+  try {
+    res.json({
+      submissions: submissions.map(sub => ({
+        ...sub,
+        // Don't expose sensitive payment data
+        paymentId: sub.paymentId ? '***' : null
+      }))
+    });
+  } catch (error: any) {
+    console.error('Error getting submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions' });
+  }
 });
 
-// Get user submission status
-router.get('/api/users/:uid/submission-status', (req, res) => {
-  const { uid } = req.params;
-  
-  const userSubmissions = submissions.filter(sub => sub.userUid === uid);
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  
-  const thisMonthSubmissions = userSubmissions.filter(sub => {
-    const subDate = new Date(sub.timestamp);
-    return subDate.getMonth() === currentMonth && subDate.getFullYear() === currentYear;
-  });
-  
-  const freeSubmissionUsed = thisMonthSubmissions.some(sub => sub.tier === 'free');
-  
-  res.json({
-    totalSubmissions: userSubmissions.length,
-    thisMonthSubmissions: thisMonthSubmissions.length,
-    freeSubmissionUsed,
-    submissions: thisMonthSubmissions
-  });
-});
+// Export the router as registerRoutes function
+export function registerRoutes(app: any) {
+  app.use('/', router);
+}
 
-export { router };
+// Also export as default for compatibility
+export default router;
