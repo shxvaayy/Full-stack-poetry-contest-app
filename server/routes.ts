@@ -360,3 +360,7 @@ router.get('/api/health', (req, res) => {
 });
 
 export default router;
+
+export const registerRoutes = (app: any) => {
+  app.use(router);
+};
