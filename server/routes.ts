@@ -7,6 +7,12 @@ import fs from 'fs';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 import Razorpay from 'razorpay';
+import { paypalRouter } from './paypal';
+
+export function registerRoutes(app: any) {
+  app.use(router);
+  app.use(paypalRouter);
+}
 
 const router = Router();
 
@@ -27,6 +33,18 @@ try {
   console.log('✅ Razorpay initialized successfully');
 } catch (error) {
   console.error('❌ Failed to initialize Razorpay:', error);
+}
+
+// Initialize PayPal
+let paypalService: PayPalService;
+try {
+  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
+    throw new Error('PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are required');
+  }
+  paypalService = new PayPalService();
+  console.log('✅ PayPal initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize PayPal:', error);
 }
 
 // Configure multer for file uploads
@@ -396,6 +414,170 @@ router.post('/api/create-qr-payment', async (req, res) => {
   }
 });
 
+// PAYPAL PAYMENT ROUTES
+
+// Create PayPal Order
+router.post('/api/create-paypal-order', async (req, res) => {
+  try {
+    console.log('💳 PayPal order request received');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    // Validate PayPal initialization
+    if (!paypalService) {
+      console.error('❌ PayPal not initialized');
+      return res.status(500).json({ 
+        error: 'PayPal payment system not configured properly',
+        details: 'PayPal not initialized'
+      });
+    }
+
+    const { amount, tier, metadata } = req.body;
+
+    // Validate input
+    if (!amount || amount <= 0) {
+      console.error('❌ Invalid amount:', amount);
+      return res.status(400).json({ error: 'Valid amount is required' });
+    }
+
+    if (!tier) {
+      console.error('❌ Missing tier');
+      return res.status(400).json({ error: 'Tier is required' });
+    }
+
+    const baseUrl = req.protocol + '://' + req.get('host');
+    const returnUrl = `${baseUrl}/api/paypal-success?tier=${encodeURIComponent(tier)}&amount=${amount}`;
+    const cancelUrl = `${baseUrl}/api/paypal-cancel`;
+
+    console.log('📋 Creating PayPal order with data:', { amount, tier, returnUrl, cancelUrl });
+
+    const order = await paypalService.createOrder(amount, tier, returnUrl, cancelUrl);
+
+    console.log('✅ PayPal order created successfully');
+    console.log('Order ID:', order.id);
+
+    // Find approval URL
+    const approvalUrl = order.links?.find((link: any) => link.rel === 'approve')?.href;
+
+    if (!approvalUrl) {
+      throw new Error('No approval URL found in PayPal response');
+    }
+
+    res.json({
+      success: true,
+      orderId: order.id,
+      approvalUrl: approvalUrl,
+      amount: amount,
+      tier: tier
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error creating PayPal order:', error);
+    console.error('Error stack:', error.stack);
+    
+    res.status(500).json({ 
+      error: 'Failed to create PayPal order',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'PayPal payment system error',
+      type: error.type || 'unknown'
+    });
+  }
+});
+
+// PayPal Success Callback
+router.get('/api/paypal-success', async (req, res) => {
+  try {
+    const { token, PayerID, tier, amount } = req.query;
+
+    console.log('✅ PayPal payment success callback:', { token, PayerID, tier, amount });
+
+    if (!token || !PayerID) {
+      return res.status(400).json({ error: 'Missing payment parameters' });
+    }
+
+    if (!paypalService) {
+      return res.status(500).json({ error: 'PayPal service not configured' });
+    }
+
+    // Capture the payment
+    const captureResult = await paypalService.captureOrder(token as string);
+    
+    console.log('💰 PayPal payment captured:', captureResult);
+
+    // Redirect back to the frontend with success parameters
+    const redirectUrl = `/?payment_success=true&paypal_order_id=${token}&tier=${tier}&amount=${amount}`;
+    res.redirect(redirectUrl);
+
+  } catch (error: any) {
+    console.error('❌ Error handling PayPal success:', error);
+    
+    // Redirect back with error
+    const redirectUrl = `/?payment_error=true&message=${encodeURIComponent(error.message)}`;
+    res.redirect(redirectUrl);
+  }
+});
+
+// PayPal Cancel Callback
+router.get('/api/paypal-cancel', async (req, res) => {
+  try {
+    console.log('❌ PayPal payment cancelled');
+    
+    // Redirect back to the frontend with cancel parameters
+    const redirectUrl = `/?payment_cancelled=true`;
+    res.redirect(redirectUrl);
+
+  } catch (error: any) {
+    console.error('❌ Error handling PayPal cancel:', error);
+    res.redirect('/');
+  }
+});
+
+// Verify PayPal Payment
+router.post('/api/verify-paypal-payment', async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    if (!paypalService) {
+      return res.status(500).json({ error: 'PayPal service not configured' });
+    }
+
+    console.log('🔍 Verifying PayPal order:', orderId);
+
+    // Verify the order
+    const orderDetails = await paypalService.verifyOrder(orderId);
+
+    console.log('📊 PayPal order details:', {
+      id: orderDetails.id,
+      status: orderDetails.status,
+      intent: orderDetails.intent
+    });
+
+    if (orderDetails.status === 'COMPLETED') {
+      res.json({
+        success: true,
+        orderId: orderDetails.id,
+        status: orderDetails.status,
+        amount: orderDetails.purchase_units?.[0]?.amount?.value,
+        currency: orderDetails.purchase_units?.[0]?.amount?.currency_code
+      });
+    } else {
+      res.status(400).json({
+        error: 'Payment not completed',
+        status: orderDetails.status
+      });
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error verifying PayPal payment:', error);
+    res.status(500).json({ 
+      error: 'Failed to verify PayPal payment',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // POEM SUBMISSION ROUTES
 
 // Submit poem with enhanced error handling
@@ -437,7 +619,7 @@ router.post('/api/submit-poem', upload.fields([
 
     // For paid tiers, verify payment
     if (submissionData.tier !== 'free' && submissionData.payment_status !== 'free') {
-      if (!submissionData.razorpay_payment_id && !submissionData.payment_intent_id) {
+      if (!submissionData.razorpay_order_id && !submissionData.payment_intent_id) {
         return res.status(400).json({ 
           error: 'Payment verification required for paid submissions' 
         });

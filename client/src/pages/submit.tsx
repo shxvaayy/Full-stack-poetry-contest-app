@@ -75,6 +75,7 @@ export default function SubmitPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
   const [qrPaymentData, setQrPaymentData] = useState<any>(null);
+  const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -92,14 +93,123 @@ export default function SubmitPage() {
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
 
-  // Handle payment completion and auto-submission
+  // Check URL parameters for payment status
   useEffect(() => {
-    if (paymentCompleted && sessionId && sessionId !== 'free_submission' && !sessionId.startsWith('qr_')) {
-      console.log('💳 Payment completed, automatically proceeding to completion...');
-      // Move to completed step after payment
-      setCurrentStep("completed");
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const paymentSuccess = urlParams.get('payment_success');
+    const paymentCancelled = urlParams.get('payment_cancelled');
+    const paypalOrderId = urlParams.get('paypal_order_id');
+    const paymentError = urlParams.get('payment_error');
+
+    if (sessionId && paymentSuccess === 'true') {
+      console.log('🎉 Stripe payment successful, verifying session:', sessionId);
+      verifyPayment(sessionId);
+    } else if (paypalOrderId && paymentSuccess === 'true') {
+      console.log('🎉 PayPal payment successful, verifying order:', paypalOrderId);
+      verifyPayPalPayment(paypalOrderId);
+    } else if (paymentCancelled === 'true') {
+      toast({
+        title: "Payment Cancelled",
+        description: "Payment was cancelled. You can try again.",
+        variant: "destructive",
+      });
+      setCurrentStep("form");
+    } else if (paymentError === 'true') {
+      const errorMessage = urlParams.get('message') || 'Payment failed';
+      toast({
+        title: "Payment Error",
+        description: decodeURIComponent(errorMessage),
+        variant: "destructive",
+      });
+      setCurrentStep("form");
     }
-  }, [paymentCompleted, sessionId]);
+
+    // Clean up URL parameters
+    if (sessionId || paymentSuccess || paymentCancelled || paypalOrderId || paymentError) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const verifyPayment = async (sessionId: string) => {
+    try {
+      console.log('🔍 Verifying payment session:', sessionId);
+      
+      const response = await fetch('/api/verify-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+        credentials: 'same-origin',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Payment verified successfully:', data);
+        
+        setSessionId(sessionId);
+        setPaymentCompleted(true);
+        setCurrentStep("form");
+        
+        toast({
+          title: "Payment Successful!",
+          description: "Payment completed successfully. You can now submit your poem.",
+        });
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Payment verification failed:', errorData);
+        throw new Error(errorData.error || 'Payment verification failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Payment verification error:', error);
+      toast({
+        title: "Payment Verification Failed",
+        description: error.message || "There was an issue verifying your payment. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const verifyPayPalPayment = async (orderId: string) => {
+    try {
+      console.log('🔍 Verifying PayPal order:', orderId);
+      
+      const response = await fetch('/api/verify-paypal-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+        credentials: 'same-origin',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ PayPal payment verified successfully:', data);
+        
+        setSessionId(orderId);
+        setPaymentCompleted(true);
+        setCurrentStep("form");
+        
+        toast({
+          title: "PayPal Payment Successful!",
+          description: "Payment completed successfully. You can now submit your poem.",
+        });
+      } else {
+        const errorData = await response.json();
+        console.error('❌ PayPal payment verification failed:', errorData);
+        throw new Error(errorData.error || 'PayPal payment verification failed');
+      }
+    } catch (error: any) {
+      console.error('❌ PayPal payment verification error:', error);
+      toast({
+        title: "PayPal Payment Verification Failed",
+        description: error.message || "There was an issue verifying your PayPal payment. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Check user submission status
   const { data: submissionStatus, refetch: refetchStatus } = useQuery({
@@ -158,22 +268,22 @@ export default function SubmitPage() {
     }
   };
 
-  const handleRazorpayPayment = async () => {
+  const handleStripeCheckout = async () => {
     if (!selectedTier) return;
 
     setIsProcessingPayment(true);
     
     try {
-      console.log('💳 Initiating Razorpay Payment for:', {
+      console.log('💳 Initiating Stripe Checkout for:', {
         amount: selectedTier.price,
         tier: selectedTier.name,
         tier_id: selectedTier.id
       });
       
       const baseUrl = window.location.origin;
+      console.log('🔗 Base URL:', baseUrl);
       
-      // Create Razorpay order
-      const response = await fetch(`${baseUrl}/api/create-razorpay-order`, {
+      const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -190,115 +300,41 @@ export default function SubmitPage() {
         credentials: 'same-origin',
       });
 
+      console.log('📡 Checkout response status:', response.status);
+      const responseText = await response.text();
+      console.log('📡 Raw response:', responseText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create payment order');
+        let errorMessage = 'Failed to create checkout session';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+          console.error('❌ Checkout session creation failed:', errorData);
+        } catch {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const orderData = await response.json();
-      console.log('✅ Razorpay order created:', orderData);
-
-      // Initialize Razorpay payment
-      const options = {
-        key: orderData.key,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'Writory Contest',
-        description: `Payment for ${selectedTier.name}`,
-        order_id: orderData.orderId,
-        handler: async function (response: any) {
-          console.log('✅ Payment successful:', response);
-          
-          try {
-            // Verify payment
-            const verifyResponse = await fetch(`${baseUrl}/api/verify-razorpay-payment`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              }),
-              credentials: 'same-origin',
-            });
-
-            if (verifyResponse.ok) {
-              const verifyData = await verifyResponse.json();
-              console.log('✅ Payment verified:', verifyData);
-              
-              // Set payment as completed
-              setSessionId(response.razorpay_payment_id);
-              setPaymentCompleted(true);
-              
-              toast({
-                title: "Payment Successful!",
-                description: "Payment completed successfully. Submitting your poem...",
-              });
-
-              // Automatically submit the form after successful payment
-              setTimeout(() => {
-                handleCompleteSubmission();
-              }, 1000);
-
-            } else {
-              throw new Error('Payment verification failed');
-            }
-          } catch (verifyError: any) {
-            console.error('❌ Payment verification error:', verifyError);
-            toast({
-              title: "Payment Verification Failed",
-              description: "Payment was successful but verification failed. Please contact support.",
-              variant: "destructive",
-            });
-          }
-        },
-        prefill: {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          contact: formData.phone
-        },
-        theme: {
-          color: '#22c55e'
-        },
-        modal: {
-          ondismiss: function() {
-            console.log('Payment cancelled by user');
-            setIsProcessingPayment(false);
-            toast({
-              title: "Payment Cancelled",
-              description: "Payment was cancelled. You can try again.",
-              variant: "destructive",
-            });
-          }
-        }
-      };
-
-      // Load Razorpay script if not already loaded
-      if (!(window as any).Razorpay) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
-          const rzp = new (window as any).Razorpay(options);
-          rzp.open();
-        };
-        script.onerror = () => {
-          throw new Error('Failed to load Razorpay SDK');
-        };
-        document.body.appendChild(script);
+      const data = JSON.parse(responseText);
+      console.log('✅ Checkout session created:', data);
+      
+      if (data.url) {
+        console.log('🔄 Redirecting to Stripe Checkout:', data.url);
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else {
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
+        throw new Error('No checkout URL received');
       }
 
     } catch (error: any) {
-      console.error('❌ Razorpay error:', error);
+      console.error('❌ Checkout error:', error);
       toast({
         title: "Payment Error",
         description: error.message || "Failed to initiate payment. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsProcessingPayment(false);
     }
   };
@@ -338,6 +374,77 @@ export default function SubmitPage() {
         description: "Failed to generate QR payment. Please try card payment.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handlePayPalCheckout = async () => {
+    if (!selectedTier) return;
+
+    setIsProcessingPayPal(true);
+    
+    try {
+      console.log('💳 Initiating PayPal Checkout for:', {
+        amount: selectedTier.price,
+        tier: selectedTier.name,
+        tier_id: selectedTier.id
+      });
+      
+      const baseUrl = window.location.origin;
+      console.log('🔗 Base URL:', baseUrl);
+      
+      const response = await fetch(`${baseUrl}/api/create-paypal-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: selectedTier.price,
+          tier: selectedTier.name,
+          metadata: {
+            tier_id: selectedTier.id,
+            user_email: formData.email,
+            poem_title: formData.poemTitle
+          }
+        }),
+        credentials: 'same-origin',
+      });
+
+      console.log('📡 PayPal response status:', response.status);
+      const responseText = await response.text();
+      console.log('📡 Raw response:', responseText);
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to create PayPal order';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+          console.error('❌ PayPal order creation failed:', errorData);
+        } catch {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = JSON.parse(responseText);
+      console.log('✅ PayPal order created:', data);
+      
+      if (data.approvalUrl) {
+        console.log('🔄 Redirecting to PayPal:', data.approvalUrl);
+        // Redirect to PayPal
+        window.location.href = data.approvalUrl;
+      } else {
+        throw new Error('No approval URL received from PayPal');
+      }
+
+    } catch (error: any) {
+      console.error('❌ PayPal checkout error:', error);
+      toast({
+        title: "PayPal Payment Error",
+        description: error.message || "Failed to initiate PayPal payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPayPal(false);
     }
   };
 
@@ -384,14 +491,14 @@ export default function SubmitPage() {
       formDataToSubmit.append('tier', selectedTier?.id || 'free');
       formDataToSubmit.append('payment_status', paymentCompleted ? 'completed' : 'free');
       
-      // Add payment details
+      // Add session ID or payment intent ID
       if (sessionId) {
         if (sessionId.startsWith('qr_')) {
           formDataToSubmit.append('payment_intent_id', sessionId);
-        } else if (sessionId === 'free_submission') {
-          formDataToSubmit.append('razorpay_payment_id', 'free_submission');
+        } else if (sessionId.startsWith('PAYID-') || sessionId.length > 15) {
+          formDataToSubmit.append('paypal_order_id', sessionId);
         } else {
-          formDataToSubmit.append('razorpay_payment_id', sessionId);
+          formDataToSubmit.append('session_id', sessionId);
         }
       }
       
@@ -695,23 +802,33 @@ export default function SubmitPage() {
       </div>
 
       {!showQRPayment ? (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           <Button
-            onClick={handleRazorpayPayment}
+            onClick={handleStripeCheckout}
             disabled={isProcessingPayment}
-            className="h-24 bg-[#528FF0] hover:bg-[#4678CC] text-white flex items-center justify-center space-x-3 font-semibold border-0 shadow-lg"
+            className="h-24 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-3"
           >
             {isProcessingPayment ? (
               <Loader2 className="animate-spin" size={24} />
             ) : (
-              <div className="flex items-center space-x-3">
-                <div className="bg-white rounded px-2 py-1">
-                  <span className="text-[#528FF0] font-bold text-sm">Razorpay</span>
-                </div>
-                <CreditCard size={20} />
-              </div>
+              <CreditCard size={24} />
             )}
-            <span className="text-lg">Pay with Razorpay</span>
+            <span className="text-lg">Card Payment</span>
+          </Button>
+
+          <Button
+            onClick={handlePayPalCheckout}
+            disabled={isProcessingPayPal}
+            className="h-24 bg-yellow-500 hover:bg-yellow-600 text-white flex items-center justify-center space-x-3"
+          >
+            {isProcessingPayPal ? (
+              <Loader2 className="animate-spin" size={24} />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm1.262-8.13a.954.954 0 0 1 .929-.75h2.426c2.962 0 5.269-1.2 6.12-4.688.064-.26.115-.52.153-.781.039-.26.061-.522.068-.786.498-3.068-.814-4.204-3.749-4.204H9.178c-.218 0-.4.15-.45.36L7.338 13.207z"/>
+              </svg>
+            )}
+            <span className="text-lg">PayPal</span>
           </Button>
 
           <Button
@@ -772,7 +889,7 @@ export default function SubmitPage() {
       </div>
 
       <div className="text-center text-sm text-gray-500">
-        <p>Secure payment powered by Razorpay</p>
+        <p>Secure payments powered by Stripe & PayPal</p>
         <p>Your payment information is encrypted and secure</p>
       </div>
     </div>
@@ -834,8 +951,7 @@ export default function SubmitPage() {
                       ? "bg-primary text-white"
                       : currentStep === "completed" || 
                         (currentStep === "payment" && index < 2) ||
-                        (currentStep === "form" && index < 1) ||
-                        (paymentCompleted && index < 3)
+                        (currentStep === "form" && index < 1)
                       ? "bg-green-500 text-white"
                       : "bg-gray-300 text-gray-600"
                   }`}
