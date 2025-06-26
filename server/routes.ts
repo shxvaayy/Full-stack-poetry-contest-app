@@ -9,19 +9,11 @@ import Stripe from 'stripe';
 
 const router = Router();
 
-// Environment validation
-const requiredEnvVars = [
-  'STRIPE_SECRET_KEY',
-  'GOOGLE_SERVICE_ACCOUNT_JSON'
-];
+// In-memory storage for users and submissions (replace with database in production)
+let users: any[] = [];
+let submissions: any[] = [];
 
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.error(`❌ Missing required environment variable: ${envVar}`);
-  }
-}
-
-// Initialize Stripe with better error handling
+// Initialize Stripe
 let stripe: Stripe;
 try {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -66,30 +58,164 @@ const upload = multer({
   }
 });
 
-// Initialize Google Auth
-const getGoogleAuth = () => {
+// USER MANAGEMENT ROUTES
+
+// Create or get user
+router.post('/api/users', async (req, res) => {
   try {
-    const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    if (!serviceAccountJson) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not set');
+    const { uid, email, name, phone } = req.body;
+    
+    console.log('👤 Creating/getting user:', { uid, email, name });
+    
+    // Check if user already exists
+    let user = users.find(u => u.uid === uid);
+    
+    if (user) {
+      console.log('✅ User already exists:', user);
+      return res.json(user);
     }
-
-    const credentials = JSON.parse(
-      Buffer.from(serviceAccountJson, 'base64').toString('utf-8')
-    );
-
-    return new GoogleAuth({
-      credentials,
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive.file'
-      ]
-    });
-  } catch (error) {
-    console.error('Error initializing Google Auth:', error);
-    throw error;
+    
+    // Create new user
+    const newUser = {
+      id: users.length + 1,
+      uid,
+      email,
+      name: name || email?.split('@')[0] || 'User',
+      phone: phone || null,
+      createdAt: new Date().toISOString()
+    };
+    
+    users.push(newUser);
+    
+    console.log('✅ New user created:', newUser);
+    res.json(newUser);
+    
+  } catch (error: any) {
+    console.error('❌ Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
-};
+});
+
+// Get user by UID
+router.get('/api/users/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    
+    console.log('🔍 Looking for user with UID:', uid);
+    
+    const user = users.find(u => u.uid === uid);
+    
+    if (!user) {
+      console.log('❌ User not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('✅ User found:', user);
+    res.json(user);
+    
+  } catch (error: any) {
+    console.error('❌ Error getting user:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// Get user submissions
+router.get('/api/users/:uid/submissions', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    
+    console.log('📋 Getting submissions for user:', uid);
+    
+    // Find user first
+    const user = users.find(u => u.uid === uid);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get user's submissions
+    const userSubmissions = submissions.filter(s => s.userUid === uid);
+    
+    console.log('✅ Found submissions:', userSubmissions.length);
+    
+    res.json(userSubmissions.map(s => ({
+      id: s.id,
+      name: s.name,
+      poemTitle: s.poemTitle,
+      tier: s.tier,
+      amount: parseInt(s.amount),
+      submittedAt: s.timestamp,
+      isWinner: false,
+      winnerPosition: null
+    })));
+    
+  } catch (error: any) {
+    console.error('❌ Error getting user submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions' });
+  }
+});
+
+// Get user submission status
+router.get('/api/users/:uid/submission-status', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    
+    console.log('📊 Getting submission status for user:', uid);
+    
+    // Find user first
+    const user = users.find(u => u.uid === uid);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get user's submissions
+    const userSubmissions = submissions.filter(s => s.userUid === uid);
+    const freeSubmissions = userSubmissions.filter(s => s.tier === 'free');
+    
+    const status = {
+      freeSubmissionUsed: freeSubmissions.length > 0,
+      totalSubmissions: userSubmissions.length,
+      contestMonth: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    };
+    
+    console.log('✅ Submission status:', status);
+    
+    res.json(status);
+    
+  } catch (error: any) {
+    console.error('❌ Error getting submission status:', error);
+    res.status(500).json({ error: 'Failed to get submission status' });
+  }
+});
+
+// STATS ROUTES
+
+// Get submission statistics
+router.get('/api/stats/submissions', async (req, res) => {
+  try {
+    console.log('📈 Getting submission stats');
+    
+    const totalPoets = new Set(submissions.map(s => s.userUid)).size;
+    const totalSubmissions = submissions.length;
+    
+    const stats = {
+      totalPoets,
+      totalSubmissions,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('✅ Stats:', stats);
+    
+    res.json(stats);
+    
+  } catch (error: any) {
+    console.error('❌ Error getting stats:', error);
+    res.status(500).json({ 
+      totalPoets: 0, 
+      totalSubmissions: 0,
+      error: error.message 
+    });
+  }
+});
 
 // TEST ROUTES
 router.get('/api/test', (req, res) => {
@@ -100,18 +226,19 @@ router.get('/api/test', (req, res) => {
     cors: 'enabled',
     origin: req.headers.origin,
     stripe_configured: !!process.env.STRIPE_SECRET_KEY,
-    google_configured: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    google_configured: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    users_count: users.length,
+    submissions_count: submissions.length
   });
 });
 
-// STRIPE CHECKOUT ROUTES - FIXED IMPLEMENTATION
+// STRIPE CHECKOUT ROUTES
 
 // Create Stripe Checkout Session
 router.post('/api/create-checkout-session', async (req, res) => {
   try {
     console.log('📥 Checkout session request received');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('Request headers:', req.headers);
     
     // Validate Stripe initialization
     if (!stripe) {
@@ -192,28 +319,10 @@ router.post('/api/create-checkout-session', async (req, res) => {
     console.error('❌ Error creating checkout session:', error);
     console.error('Error stack:', error.stack);
     
-    // More specific error handling
-    let errorMessage = 'Failed to create checkout session';
-    let statusCode = 500;
-    
-    if (error.type === 'StripeCardError') {
-      errorMessage = 'Card error: ' + error.message;
-      statusCode = 400;
-    } else if (error.type === 'StripeInvalidRequestError') {
-      errorMessage = 'Invalid request: ' + error.message;
-      statusCode = 400;
-    } else if (error.type === 'StripeAPIError') {
-      errorMessage = 'Stripe API error: ' + error.message;
-    } else if (error.type === 'StripeConnectionError') {
-      errorMessage = 'Network error connecting to Stripe';
-    } else if (error.type === 'StripeAuthenticationError') {
-      errorMessage = 'Stripe authentication failed';
-    }
-    
-    res.status(statusCode).json({ 
-      error: errorMessage,
-      type: error.type || 'unknown',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    res.status(500).json({ 
+      error: 'Failed to create checkout session',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error',
+      type: error.type || 'unknown'
     });
   }
 });
@@ -277,8 +386,6 @@ router.post('/api/create-qr-payment', async (req, res) => {
     // Generate a unique QR payment ID
     const qrPaymentId = `qr_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
     
-    // In a real implementation, you would integrate with a UPI payment gateway
-    // For now, we'll return mock QR data
     const qrData = {
       paymentId: qrPaymentId,
       amount: amount,
@@ -377,6 +484,27 @@ router.post('/api/submit-poem', upload.fields([
       }
     }
 
+    // Create user if doesn't exist
+    const userEmail = submissionData.email;
+    let user = users.find(u => u.email === userEmail);
+    
+    if (!user) {
+      // Create user from submission data
+      const newUser = {
+        id: users.length + 1,
+        uid: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, // Generate UID
+        email: userEmail,
+        name: `${submissionData.firstName} ${submissionData.lastName}`,
+        phone: submissionData.phone || null,
+        createdAt: new Date().toISOString()
+      };
+      
+      users.push(newUser);
+      user = newUser;
+      
+      console.log('👤 Created new user from submission:', user);
+    }
+
     // Process file uploads to Google Drive
     try {
       const { uploadPoemFile, uploadPhotoFile } = await import('./google-drive');
@@ -412,6 +540,28 @@ router.post('/api/submit-poem', upload.fields([
         timestamp: new Date().toISOString()
       });
 
+      // Store submission in memory
+      const newSubmission = {
+        id: submissions.length + 1,
+        userUid: user.uid,
+        name: `${submissionData.firstName} ${submissionData.lastName}`,
+        email: submissionData.email,
+        phone: submissionData.phone || '',
+        age: submissionData.age,
+        poemTitle: submissionData.poemTitle,
+        tier: submissionData.tier,
+        amount: getTierAmount(submissionData.tier).toString(),
+        poemFile: poemFileUrl,
+        photo: photoFileUrl,
+        timestamp: new Date().toISOString(),
+        sessionId: submissionData.session_id || null,
+        paymentIntentId: submissionData.payment_intent_id || null
+      };
+      
+      submissions.push(newSubmission);
+      
+      console.log('✅ Submission stored in memory:', newSubmission);
+
       console.log('✅ Files uploaded and data saved successfully');
 
       // Clean up uploaded files
@@ -431,6 +581,7 @@ router.post('/api/submit-poem', upload.fields([
       res.json({
         success: true,
         message: 'Poem submitted successfully',
+        submissionId: newSubmission.id,
         poemFileUrl,
         photoFileUrl,
         timestamp: new Date().toISOString()
