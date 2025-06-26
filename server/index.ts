@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import fs from "fs";
+import path from "path";
 
 const jsonString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
@@ -9,9 +10,9 @@ if (!jsonString) {
   throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON in env");
 }
 
-// Save the JSON to a file so google.auth can read it
-fs.writeFileSync("poem-submission-service.json", jsonString);
-
+// Decode base64 and save the JSON to a file so google.auth can read it
+const decodedJson = Buffer.from(jsonString, 'base64').toString('utf-8');
+fs.writeFileSync("poem-submission-service.json", decodedJson);
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -52,7 +53,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Register routes - this should not return a server, just register the routes
+  registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -62,27 +64,29 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
+  // Setup Vite in development or serve static files in production
+  if (process.env.NODE_ENV === "development") {
+    const server = await setupVite(app, undefined); // Pass undefined since we create server later
   } else {
     serveStatic(app);
     app.get("*", (_req, res) => {
-      res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+      res.sendFile(path.join(process.cwd(), "client/dist/index.html"));
     });
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5005;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  // Use PORT from environment (Render sets this) or fallback to 5005
+  const port = process.env.PORT || 5005;
+  
+  // Create and start the server
+  const server = app.listen(port, () => {
+    log(`Server running on port ${port}`);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Process terminated');
+    });
   });
 })();
