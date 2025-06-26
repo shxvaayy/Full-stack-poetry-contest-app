@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PaymentFormProps {
@@ -21,6 +21,9 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Convert INR to USD (approximate rate)
+  const usdAmount = (amount * 0.012).toFixed(2);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -196,6 +199,14 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
             </Alert>
           )}
 
+          {/* Currency conversion info for PayPal */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>PayPal Note:</strong> PayPal charges in USD. ₹{amount} = ~${usdAmount} USD (exchange rates may vary)
+            </AlertDescription>
+          </Alert>
+
           {/* Razorpay Payment */}
           <Button
             onClick={handleRazorpayPayment}
@@ -205,11 +216,14 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
             {isProcessing ? (
               <Loader2 className="w-6 h-6 animate-spin mr-2" />
             ) : (
-              <div className="flex items-center">
-                <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-xs">RZP</span>
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
+                    <span className="text-blue-600 font-bold text-xs">RZP</span>
+                  </div>
+                  <span>Razorpay</span>
                 </div>
-                <span>Razorpay</span>
+                <span className="text-sm opacity-90">₹{amount}</span>
               </div>
             )}
           </Button>
@@ -223,11 +237,14 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
             {isProcessingPayPal ? (
               <Loader2 className="w-6 h-6 animate-spin mr-2" />
             ) : (
-              <div className="flex items-center">
-                <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-xs">PP</span>
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
+                    <span className="text-blue-600 font-bold text-xs">PP</span>
+                  </div>
+                  <span>PayPal</span>
                 </div>
-                <span>PayPal</span>
+                <span className="text-sm opacity-90">${usdAmount} USD</span>
               </div>
             )}
           </Button>
@@ -245,6 +262,9 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       <div className="text-center text-sm text-gray-500">
         <p>Secure payments powered by Razorpay & PayPal</p>
         <p>Your payment information is encrypted and secure</p>
+        <p className="mt-2">
+          <strong>Razorpay:</strong> Pay in INR (₹{amount}) • <strong>PayPal:</strong> Pay in USD (~${usdAmount})
+        </p>
       </div>
     </div>
   );

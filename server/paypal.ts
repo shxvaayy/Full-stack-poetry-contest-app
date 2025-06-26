@@ -36,7 +36,6 @@ async function getPayPalAccessToken() {
 
     const responseText = await response.text();
     console.log('PayPal token response status:', response.status);
-    console.log('PayPal token response body:', responseText);
 
     if (!response.ok) {
       throw new Error(`PayPal token request failed: ${response.status} - ${responseText}`);
@@ -97,10 +96,24 @@ router.post('/api/create-paypal-order', async (req, res) => {
       });
     }
 
-    // Convert INR to USD (rough conversion - you should use real exchange rates)
-    const usdAmount = currency === 'USD' ? amount.toString() : (amount * 0.012).toFixed(2);
+    // Better INR to USD conversion with multiple tiers
+    let usdAmount;
+    if (currency === 'USD') {
+      usdAmount = amount.toString();
+    } else {
+      // Convert INR to USD based on amount tiers
+      if (amount <= 50) {
+        usdAmount = '0.60'; // ₹50 = $0.60
+      } else if (amount <= 100) {
+        usdAmount = '1.20'; // ₹100 = $1.20
+      } else if (amount <= 500) {
+        usdAmount = (amount * 0.012).toFixed(2); // General conversion
+      } else {
+        usdAmount = (amount * 0.012).toFixed(2);
+      }
+    }
     
-    console.log(`💰 Converting ₹${amount} to $${usdAmount}`);
+    console.log(`💰 Converting ₹${amount} to $${usdAmount} USD`);
 
     const orderData = {
       intent: 'CAPTURE',
@@ -109,7 +122,7 @@ router.post('/api/create-paypal-order', async (req, res) => {
           currency_code: 'USD',
           value: usdAmount
         },
-        description: `Writory Contest - ${tier} tier submission`
+        description: `Writory Poetry Contest - ${tier} tier (₹${amount})`
       }],
       application_context: {
         return_url: `${req.protocol}://${req.get('host')}/payment-success`,
@@ -161,7 +174,11 @@ router.post('/api/create-paypal-order', async (req, res) => {
       res.json({
         success: true,
         orderId: order.id,
-        approvalUrl: approvalUrl
+        approvalUrl: approvalUrl,
+        amount: {
+          inr: amount,
+          usd: usdAmount
+        }
       });
     } else {
       console.error('❌ PayPal order creation failed:', order);
@@ -177,6 +194,78 @@ router.post('/api/create-paypal-order', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Failed to create PayPal order',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
+    });
+  }
+});
+
+// Verify PayPal payment (new endpoint)
+router.post('/api/verify-paypal-payment', async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Order ID is required' 
+      });
+    }
+
+    const accessToken = await getPayPalAccessToken();
+
+    console.log('🔍 Verifying PayPal order:', orderId);
+
+    // Get order details
+    const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    const orderData = await response.json();
+
+    if (response.ok && orderData.status === 'APPROVED') {
+      console.log('✅ PayPal order verified and approved:', orderId);
+      
+      // Capture the payment
+      const captureResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const captureData = await captureResponse.json();
+
+      if (captureResponse.ok && captureData.status === 'COMPLETED') {
+        console.log('✅ PayPal payment captured successfully');
+        res.json({
+          success: true,
+          orderId: orderId,
+          captureId: captureData.purchase_units[0].payments.captures[0].id,
+          amount: captureData.purchase_units[0].payments.captures[0].amount,
+          status: captureData.status
+        });
+      } else {
+        throw new Error('Failed to capture PayPal payment');
+      }
+    } else {
+      console.error('❌ PayPal order verification failed:', orderData);
+      res.status(400).json({ 
+        success: false,
+        error: 'PayPal order verification failed', 
+        details: orderData 
+      });
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error verifying PayPal payment:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to verify PayPal payment',
       details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
     });
   }
