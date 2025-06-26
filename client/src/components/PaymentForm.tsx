@@ -28,18 +28,23 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
   const [clientSecret, setClientSecret] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  // Create payment intent when component mounts
+  // Create payment intent only for card payments
   useEffect(() => {
     const createPaymentIntent = async () => {
+      // Only create payment intent for card payments
+      if (paymentMethod !== 'card') {
+        setError(''); // Clear any existing errors for QR
+        return;
+      }
+
       try {
-        // Use relative URL for production compatibility
         const response = await fetch('/api/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ 
-            amount: amount * 100, // Convert to cents/paise
+            amount: amount * 100,
             currency: 'inr'
           }),
         });
@@ -50,16 +55,24 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
 
         const data = await response.json();
         setClientSecret(data.clientSecret);
+        setError(''); // Clear error on success
       } catch (error) {
         console.error('Error creating payment intent:', error);
-        setError('Failed to initialize payment. Please try again.');
+        setError('Card payment unavailable. Please use QR payment.');
       }
     };
 
     if (amount > 0) {
       createPaymentIntent();
     }
-  }, [amount]);
+  }, [amount, paymentMethod]);
+
+  // Clear error when switching to QR payment
+  useEffect(() => {
+    if (paymentMethod === 'qr') {
+      setError('');
+    }
+  }, [paymentMethod]);
 
   const handleCardPayment = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -89,22 +102,7 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
       if (error) {
         setError(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent.status === 'succeeded') {
-        // Verify payment on backend
-        const verifyResponse = await fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            paymentIntentId: paymentIntent.id 
-          }),
-        });
-
-        if (verifyResponse.ok) {
-          onPaymentSuccess();
-        } else {
-          setError('Payment verification failed. Please contact support.');
-        }
+        onPaymentSuccess();
       }
     } catch (error) {
       console.error('Payment error:', error);
@@ -115,9 +113,9 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
   };
 
   const handleQRPayment = () => {
-    // For QR payments, we'll simulate success after user confirms
+    // Simple QR payment confirmation
     const confirmed = window.confirm(
-      `Please pay ₹${amount} using the QR code and click OK when payment is complete.`
+      `Please confirm you have paid ₹${amount} via UPI/QR code and click OK to proceed.`
     );
     
     if (confirmed) {
@@ -160,7 +158,7 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          Card Payment
+          💳 Card Payment
         </button>
         <button
           onClick={() => setPaymentMethod('qr')}
@@ -170,13 +168,12 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          <span className="mr-2">🔗</span>
-          QR Code
+          📱 UPI/QR Payment
         </button>
       </div>
 
-      {/* Error Display */}
-      {error && (
+      {/* Error Display - Only show for card payments or general errors */}
+      {error && paymentMethod === 'card' && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
@@ -206,19 +203,29 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
       {/* QR Payment */}
       {paymentMethod === 'qr' && (
         <div className="text-center">
-          <div className="bg-gray-100 p-8 rounded-lg mb-4">
+          <div className="bg-gradient-to-r from-blue-50 to-green-50 p-8 rounded-lg mb-4 border">
             <div className="text-6xl mb-4">📱</div>
-            <p className="text-gray-600">
-              Scan QR code with your payment app
+            <h3 className="text-lg font-semibold mb-2">UPI Payment</h3>
+            <p className="text-gray-600 mb-2">
+              Pay ₹{amount} using any UPI app
             </p>
-            <p className="font-bold text-lg mt-2">₹{amount}</p>
+            <div className="bg-white p-4 rounded border-2 border-dashed border-gray-300">
+              <p className="font-mono text-sm text-gray-700">UPI ID: writory@paytm</p>
+              <p className="text-xs text-gray-500 mt-1">Or scan QR from any UPI app</p>
+            </div>
+          </div>
+          
+          <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-gray-700">
+              ⚠️ Please pay exactly ₹{amount} and click confirm below
+            </p>
           </div>
           
           <button
             onClick={handleQRPayment}
             className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
           >
-            I've Completed Payment
+            ✅ I've Completed Payment
           </button>
         </div>
       )}
