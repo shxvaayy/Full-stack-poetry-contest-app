@@ -24,12 +24,13 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'qr'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'qr'>('qr'); // Default to QR
   const [clientSecret, setClientSecret] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
+  const [paymentIntentId, setPaymentIntentId] = useState<string>('');
 
-  // Create payment intent with retry logic
+  // Create payment intent with better error handling
   useEffect(() => {
     const createPaymentIntent = async () => {
       if (paymentMethod !== 'card') {
@@ -53,49 +54,46 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
           }),
         });
 
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          throw new Error(`Server error: ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = JSON.parse(responseText);
         console.log('✅ Payment intent created:', data.paymentIntentId);
         
         setClientSecret(data.clientSecret);
-        setRetryCount(0); // Reset retry count on success
+        setPaymentIntentId(data.paymentIntentId);
+        setRetryCount(0);
         
       } catch (error: any) {
         console.error('❌ Error creating payment intent:', error);
         
         // Retry logic for network errors
-        if (retryCount < 2 && (error.message.includes('fetch') || error.message.includes('Network'))) {
+        if (retryCount < 2) {
           console.log('🔄 Retrying payment intent creation...');
           setRetryCount(prev => prev + 1);
-          setTimeout(() => createPaymentIntent(), 1000 * (retryCount + 1));
+          setTimeout(() => createPaymentIntent(), 2000);
           return;
         }
         
-        setError('Card payment unavailable. Please use QR payment.');
+        setError('Card payment temporarily unavailable. Please use UPI/QR payment.');
+        setPaymentMethod('qr'); // Auto-switch to QR
       }
     };
 
-    if (amount > 0 && stripe) {
+    if (amount > 0 && stripe && paymentMethod === 'card') {
       createPaymentIntent();
     }
   }, [amount, paymentMethod, stripe, retryCount]);
-
-  // Clear error when switching to QR payment
-  useEffect(() => {
-    if (paymentMethod === 'qr') {
-      setError('');
-    }
-  }, [paymentMethod]);
 
   const handleCardPayment = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!stripe || !elements || !clientSecret) {
-      setError('Payment system not ready. Please try again.');
+      setError('Payment system not ready. Please try UPI/QR payment.');
       return;
     }
 
@@ -120,48 +118,26 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
 
       if (error) {
         console.error('❌ Payment error:', error);
-        setError(error.message || 'Payment failed. Please try again.');
+        setError(error.message || 'Payment failed. Please try UPI/QR payment.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('✅ Payment succeeded:', paymentIntent.id);
         onPaymentSuccess(paymentIntent.id);
       } else {
-        setError('Payment was not completed. Please try again.');
+        setError('Payment was not completed. Please try UPI/QR payment.');
       }
     } catch (error: any) {
       console.error('❌ Payment processing error:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError('Payment failed. Please try UPI/QR payment.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleQRPayment = () => {
-    // Simple QR payment confirmation with better UX
-    const qrPaymentHtml = `
-      <div style="text-align: center; padding: 20px;">
-        <h3>UPI Payment Details</h3>
-        <p><strong>Amount: ₹${amount}</strong></p>
-        <p>Pay using any UPI app by scanning QR code or using UPI ID</p>
-        <p style="margin: 20px 0;">
-          <strong>UPI ID:</strong> your-upi-id@paytm<br>
-          <strong>Name:</strong> Your Business Name
-        </p>
-        <p style="font-size: 12px; color: #666;">
-          After completing payment, click "I have paid" below
-        </p>
-      </div>
-    `;
-
-    // You can replace this with actual QR code display
-    const confirmed = window.confirm(
-      `Please pay ₹${amount} via UPI/QR code and click OK after completing the payment.`
-    );
-    
-    if (confirmed) {
-      // Generate a mock payment ID for QR payments
-      const mockPaymentId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      onPaymentSuccess(mockPaymentId);
-    }
+    // Generate a unique QR payment ID
+    const qrPaymentId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('✅ QR Payment confirmed:', qrPaymentId);
+    onPaymentSuccess(qrPaymentId);
   };
 
   const cardElementOptions = {
@@ -230,28 +206,78 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
         </div>
       )}
 
-      {/* Loading State */}
-      {paymentMethod === 'card' && !clientSecret && !error && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-          <div className="flex items-center">
-            <span className="animate-spin mr-2">🔄</span>
-            Loading payment form...
-          </div>
+      {/* Card Payment Form */}
+      {paymentMethod === 'card' && (
+        <div>
+          {!clientSecret && !error && (
+            <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+              <div className="flex items-center">
+                <span className="animate-spin mr-2">🔄</span>
+                Loading payment form...
+              </div>
+            </div>
+          )}
+
+          {clientSecret && (
+            <form onSubmit={handleCardPayment}>
+              <div className="mb-6 p-4 border-2 border-gray-200 rounded-lg focus-within:border-green-500 transition-colors">
+                <CardElement options={cardElementOptions} />
+              </div>
+              
+              <button
+                type="submit"
+                disabled={!stripe || isProcessing || !clientSecret}
+                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                  isProcessing || !stripe || !clientSecret
+                    ? 'bg-gray-400 cursor-not-allowed text-gray-600'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                {isProcessing ? (
+                  <span className="flex items-center justify-center">
+                    <span className="animate-spin mr-2">🔄</span>
+                    Processing...
+                  </span>
+                ) : (
+                  `Pay ₹${amount}`
+                )}
+              </button>
+            </form>
+          )}
         </div>
       )}
 
-      {/* Card Payment Form */}
-      {paymentMethod === 'card' && (
-        <form onSubmit={handleCardPayment}>
-          <div className="mb-6 p-4 border-2 border-gray-200 rounded-lg focus-within:border-green-500 transition-colors">
-            <CardElement options={cardElementOptions} />
+      {/* QR Payment - Enhanced */}
+      {paymentMethod === 'qr' && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            <div className="text-6xl mb-4">📱</div>
+            <h3 className="text-lg font-semibold mb-2">Scan QR code with any UPI app</h3>
+            
+            {/* Mock QR Code */}
+            <div className="bg-white p-4 rounded-lg border-2 border-dashed border-blue-300 mb-4 mx-auto w-48 h-48 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl mb-2">📊</div>
+                <p className="font-mono text-xl font-bold">₹{amount}</p>
+                <p className="text-xs text-gray-600 mt-1">Amount to pay</p>
+              </div>
+            </div>
+            
+            <div className="text-sm text-blue-800 space-y-1">
+              <p><strong>UPI ID:</strong> writorycontest@paytm</p>
+              <p><strong>Name:</strong> Writory Contest</p>
+            </div>
+            
+            <p className="text-xs text-blue-600 mt-3">
+              Pay using PhonePe, Google Pay, Paytm, or any UPI app
+            </p>
           </div>
-          
+
           <button
-            type="submit"
-            disabled={!stripe || isProcessing || !clientSecret || !!error}
+            onClick={handleQRPayment}
+            disabled={isProcessing}
             className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
-              isProcessing || !stripe || !clientSecret || !!error
+              isProcessing
                 ? 'bg-gray-400 cursor-not-allowed text-gray-600'
                 : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
@@ -262,34 +288,8 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
                 Processing...
               </span>
             ) : (
-              `Pay ₹${amount}`
+              'I have completed the payment'
             )}
-          </button>
-        </form>
-      )}
-
-      {/* QR Payment */}
-      {paymentMethod === 'qr' && (
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-            <div className="text-4xl mb-2">📱</div>
-            <p className="text-sm text-blue-800 mb-2">
-              Scan QR code with any UPI app or use UPI ID
-            </p>
-            <div className="bg-white p-3 rounded border-2 border-dashed border-blue-300 mb-3">
-              <p className="font-mono text-lg">₹{amount}</p>
-              <p className="text-xs text-gray-600">Amount to pay</p>
-            </div>
-            <p className="text-xs text-blue-600">
-              Pay using PhonePe, Google Pay, Paytm, or any UPI app
-            </p>
-          </div>
-          
-          <button
-            onClick={handleQRPayment}
-            className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-          >
-            I have completed the payment
           </button>
         </div>
       )}
@@ -298,13 +298,13 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
       <button
         onClick={onCancel}
         disabled={isProcessing}
-        className="w-full mt-4 py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+        className="w-full mt-4 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
       >
         Cancel Payment
       </button>
 
-      {/* Help Text */}
-      <div className="mt-4 text-center text-xs text-gray-500">
+      {/* Stripe Badge */}
+      <div className="text-center mt-4 text-xs text-gray-500">
         <p>Secure payment powered by Stripe</p>
         <p>Your payment information is encrypted and secure</p>
       </div>
@@ -312,7 +312,7 @@ const PaymentFormContent: React.FC<PaymentFormProps> = ({
   );
 };
 
-// Main PaymentForm component with Stripe Elements wrapper
+// Main component with Elements provider
 const PaymentForm: React.FC<PaymentFormProps> = (props) => {
   return (
     <Elements stripe={stripePromise}>

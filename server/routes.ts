@@ -94,7 +94,44 @@ const PoemSubmissionSchema = z.object({
   payment_intent_id: z.string().optional()
 });
 
-// STRIPE PAYMENT ROUTES - FIXED
+// TEST ROUTES
+router.get('/api/test', (req, res) => {
+  res.json({
+    message: 'API is working',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    cors: 'enabled',
+    origin: req.headers.origin
+  });
+});
+
+// Test Stripe connection
+router.get('/api/stripe-test', async (req, res) => {
+  try {
+    // Test Stripe connection by creating a minimal payment intent
+    const testIntent = await stripe.paymentIntents.create({
+      amount: 100, // ₹1.00 in paise
+      currency: 'inr',
+      metadata: { test: 'connection' }
+    });
+
+    res.json({
+      success: true,
+      message: 'Stripe connection working',
+      testIntentId: testIntent.id,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('❌ Stripe test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      type: error.type
+    });
+  }
+});
+
+// STRIPE PAYMENT ROUTES - ENHANCED
 
 // Create payment intent - ENHANCED
 router.post('/api/create-payment-intent', async (req, res) => {
@@ -201,33 +238,7 @@ router.post('/api/verify-payment', async (req, res) => {
   }
 });
 
-// Test Stripe connection
-router.get('/api/stripe-test', async (req, res) => {
-  try {
-    // Test Stripe connection by creating a minimal payment intent
-    const testIntent = await stripe.paymentIntents.create({
-      amount: 100, // ₹1.00 in paise
-      currency: 'inr',
-      metadata: { test: 'connection' }
-    });
-
-    res.json({
-      success: true,
-      message: 'Stripe connection working',
-      testIntentId: testIntent.id,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error('❌ Stripe test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      type: error.type
-    });
-  }
-});
-
-// POEM SUBMISSION ROUTES - Keep existing implementation but add better error handling
+// POEM SUBMISSION ROUTES - Enhanced with better error handling
 
 // Submit poem with enhanced error handling
 router.post('/api/submit-poem', upload.fields([
@@ -258,7 +269,7 @@ router.post('/api/submit-poem', upload.fields([
     };
 
     console.log('📋 Parsed submission data:', {
-      name: submissionData.name,
+      name: submissionData.firstName + ' ' + submissionData.lastName,
       email: submissionData.email,
       tier: submissionData.tier,
       payment_status: submissionData.payment_status
@@ -272,37 +283,44 @@ router.post('/api/submit-poem', upload.fields([
         });
       }
 
-      // Verify payment with Stripe
-      try {
-        const paymentIntent = await stripe.paymentIntents.retrieve(submissionData.payment_intent_id);
-        
-        if (paymentIntent.status !== 'succeeded') {
+      // Verify payment with Stripe (skip for QR payments)
+      if (!submissionData.payment_intent_id.startsWith('qr_')) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(submissionData.payment_intent_id);
+          
+          if (paymentIntent.status !== 'succeeded') {
+            return res.status(400).json({ 
+              error: 'Payment not completed',
+              status: paymentIntent.status 
+            });
+          }
+          
+          console.log('✅ Payment verified for submission');
+        } catch (paymentError) {
+          console.error('❌ Payment verification failed:', paymentError);
           return res.status(400).json({ 
-            error: 'Payment not completed',
-            status: paymentIntent.status 
+            error: 'Invalid payment verification' 
           });
         }
-        
-        console.log('✅ Payment verified for submission');
-      } catch (paymentError) {
-        console.error('❌ Payment verification failed:', paymentError);
-        return res.status(400).json({ 
-          error: 'Invalid payment verification' 
-        });
+      } else {
+        console.log('✅ QR Payment ID received:', submissionData.payment_intent_id);
       }
     }
 
     // Process file uploads to Google Drive
     const { uploadPoemFile, uploadPhotoFile } = await import('./google-drive');
     
+    const poemFileBuffer = files.poem_file[0].buffer || fs.readFileSync(files.poem_file[0].path);
+    const photoFileBuffer = files.photo[0].buffer || fs.readFileSync(files.photo[0].path);
+    
     const poemFileUrl = await uploadPoemFile(
-      files.poem_file[0].buffer || fs.readFileSync(files.poem_file[0].path),
+      poemFileBuffer,
       submissionData.email,
       files.poem_file[0].originalname
     );
     
     const photoFileUrl = await uploadPhotoFile(
-      files.photo[0].buffer || fs.readFileSync(files.photo[0].path),
+      photoFileBuffer,
       submissionData.email,
       files.photo[0].originalname
     );
@@ -324,8 +342,16 @@ router.post('/api/submit-poem', upload.fields([
     });
 
     // Clean up uploaded files
-    if (files.poem_file[0].path) fs.unlinkSync(files.poem_file[0].path);
-    if (files.photo[0].path) fs.unlinkSync(files.photo[0].path);
+    try {
+      if (files.poem_file[0].path && fs.existsSync(files.poem_file[0].path)) {
+        fs.unlinkSync(files.poem_file[0].path);
+      }
+      if (files.photo[0].path && fs.existsSync(files.photo[0].path)) {
+        fs.unlinkSync(files.photo[0].path);
+      }
+    } catch (cleanupError) {
+      console.warn('⚠️ File cleanup warning:', cleanupError);
+    }
 
     console.log('✅ Poem submission completed successfully');
 
@@ -333,7 +359,8 @@ router.post('/api/submit-poem', upload.fields([
       success: true,
       message: 'Poem submitted successfully',
       poemFileUrl,
-      photoFileUrl
+      photoFileUrl,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error: any) {
@@ -355,7 +382,8 @@ router.post('/api/submit-poem', upload.fields([
 
     res.status(500).json({ 
       error: 'Failed to submit poem',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Submission failed'
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Submission failed',
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -394,14 +422,16 @@ router.post('/api/contact', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Contact form submitted successfully'
+      message: 'Contact form submitted successfully',
+      timestamp: new Date().toISOString()
     });
 
   } catch (error: any) {
     console.error('❌ Error submitting contact form:', error);
     res.status(500).json({ 
       error: 'Failed to submit contact form',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Submission failed'
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Submission failed',
+      timestamp: new Date().toISOString()
     });
   }
 });
