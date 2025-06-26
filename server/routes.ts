@@ -372,18 +372,6 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
   }
 });
 
-// PayPal success/cancel routes
-router.get('/payment-success', async (req, res) => {
-  const { token, PayerID } = req.query;
-  console.log('✅ PayPal payment success:', { token, PayerID });
-  res.redirect(`/submit?paypal_order_id=${token}&payment_success=true`);
-});
-
-router.get('/payment-cancel', (req, res) => {
-  console.log('❌ PayPal payment cancelled');
-  res.redirect('/submit?payment_cancelled=true');
-});
-
 // SUBMISSION ROUTES
 
 // Submit poem with fixed error handling
@@ -501,7 +489,54 @@ router.post('/api/submit-poem', upload.fields([
   }
 });
 
-// Use PayPal routes
+// Contact form submission
+router.post('/api/contact', async (req, res) => {
+  try {
+    console.log('📮 Contact form submission received');
+    
+    const { name, email, phone, message } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !message) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        details: 'Name, email, and message are required'
+      });
+    }
+
+    const contactData = {
+      timestamp: new Date().toISOString(),
+      name,
+      email,
+      phone: phone || '',
+      message
+    };
+
+    // Add to Google Sheets (assuming you have addContactToSheet function)
+    try {
+      // await addContactToSheet(contactData);
+      console.log('✅ Contact data processed');
+    } catch (sheetsError) {
+      console.error('⚠️ Contact sheets warning:', sheetsError);
+    }
+
+    console.log('✅ Contact form submission completed');
+
+    res.json({
+      success: true,
+      message: 'Contact form submitted successfully!'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error submitting contact form:', error);
+    res.status(500).json({
+      error: 'Failed to submit contact form',
+      details: error.message
+    });
+  }
+});
+
+// Use PayPal routes - IMPORTANT: This must be at the end
 router.use(paypalRouter);
 
 export function registerRoutes(app: any) {

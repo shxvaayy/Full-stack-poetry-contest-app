@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 
 const router = Router();
@@ -13,7 +12,13 @@ const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production'
 // Get PayPal access token
 async function getPayPalAccessToken() {
   try {
+    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
+      throw new Error('PayPal credentials not configured');
+    }
+
     const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
+    
+    console.log('🔑 Getting PayPal access token...');
     
     const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
       method: 'POST',
@@ -24,7 +29,14 @@ async function getPayPalAccessToken() {
       body: 'grant_type=client_credentials'
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('PayPal token error:', errorText);
+      throw new Error('Failed to get PayPal access token');
+    }
+
     const data = await response.json();
+    console.log('✅ PayPal access token obtained');
     return data.access_token;
   } catch (error) {
     console.error('❌ Error getting PayPal access token:', error);
@@ -35,6 +47,8 @@ async function getPayPalAccessToken() {
 // Create PayPal order
 router.post('/api/create-paypal-order', async (req, res) => {
   try {
+    console.log('📥 PayPal order creation request:', req.body);
+
     const { amount, tier, currency = 'USD' } = req.body;
 
     if (!amount || amount <= 0) {
@@ -47,12 +61,15 @@ router.post('/api/create-paypal-order', async (req, res) => {
 
     const accessToken = await getPayPalAccessToken();
 
+    // Convert INR amount to USD (rough conversion, you should use a proper exchange rate)
+    const usdAmount = currency === 'USD' ? amount : (amount * 0.012).toFixed(2);
+
     const orderData = {
       intent: 'CAPTURE',
       purchase_units: [{
         amount: {
-          currency_code: currency,
-          value: amount.toString()
+          currency_code: 'USD',
+          value: usdAmount
         },
         description: `Writory Contest - ${tier} tier submission`
       }],
@@ -64,6 +81,8 @@ router.post('/api/create-paypal-order', async (req, res) => {
       }
     };
 
+    console.log('🔄 Creating PayPal order:', orderData);
+
     const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
@@ -74,17 +93,23 @@ router.post('/api/create-paypal-order', async (req, res) => {
     });
 
     const order = await response.json();
+    console.log('PayPal order response:', order);
 
-    if (response.ok) {
+    if (response.ok && order.id) {
       console.log('✅ PayPal order created:', order.id);
+      const approvalUrl = order.links.find((link: any) => link.rel === 'approve')?.href;
+      
       res.json({
         success: true,
         orderId: order.id,
-        approvalUrl: order.links.find((link: any) => link.rel === 'approve')?.href
+        approvalUrl: approvalUrl
       });
     } else {
       console.error('❌ PayPal order creation failed:', order);
-      res.status(400).json({ error: 'Failed to create PayPal order', details: order });
+      res.status(400).json({ 
+        error: 'Failed to create PayPal order', 
+        details: order.details || order.message || 'Unknown error' 
+      });
     }
 
   } catch (error: any) {
@@ -106,6 +131,8 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
     }
 
     const accessToken = await getPayPalAccessToken();
+
+    console.log('🔄 Capturing PayPal payment:', orderId);
 
     const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
       method: 'POST',
@@ -138,6 +165,41 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
     });
   }
+});
+
+// PayPal success/cancel routes
+router.get('/payment-success', async (req, res) => {
+  try {
+    const { token, PayerID } = req.query;
+    console.log('✅ PayPal payment success callback:', { token, PayerID });
+
+    if (token) {
+      // Capture the payment
+      const captureResponse = await fetch(`${req.protocol}://${req.get('host')}/api/capture-paypal-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId: token })
+      });
+
+      if (captureResponse.ok) {
+        res.redirect(`/submit?paypal_order_id=${token}&payment_success=true`);
+      } else {
+        res.redirect(`/submit?payment_error=true&message=${encodeURIComponent('Payment capture failed')}`);
+      }
+    } else {
+      res.redirect(`/submit?payment_error=true&message=${encodeURIComponent('Invalid payment token')}`);
+    }
+  } catch (error: any) {
+    console.error('❌ PayPal success callback error:', error);
+    res.redirect(`/submit?payment_error=true&message=${encodeURIComponent('Payment processing error')}`);
+  }
+});
+
+router.get('/payment-cancel', (req, res) => {
+  console.log('❌ PayPal payment cancelled');
+  res.redirect('/submit?payment_cancelled=true');
 });
 
 // Verify PayPal webhook (optional - for production)

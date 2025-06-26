@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreditCard, Smartphone, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PaymentFormProps {
@@ -39,7 +39,7 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
     });
   };
 
-  const handleCardPayment = async () => {
+  const handleRazorpayPayment = async () => {
     try {
       setIsProcessing(true);
       setError(null);
@@ -142,7 +142,7 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       razorpay.open();
 
     } catch (error: any) {
-      console.error('❌ Card payment error:', error);
+      console.error('❌ Razorpay payment error:', error);
       setError(error.message);
       onPaymentError(error.message);
     } finally {
@@ -167,9 +167,17 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
           tier: selectedTier,
           currency: 'USD'
         }),
+        credentials: 'include'
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PayPal order creation failed:', errorText);
+        throw new Error('Failed to create PayPal order');
+      }
+
       const orderData = await response.json();
+      console.log('PayPal order response:', orderData);
 
       if (orderData.success && orderData.approvalUrl) {
         console.log('✅ Redirecting to PayPal:', orderData.approvalUrl);
@@ -223,35 +231,41 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
             </Alert>
           )}
 
-          {/* Card Payment - Razorpay */}
+          {/* Razorpay Payment */}
           <Button
-            onClick={handleCardPayment}
+            onClick={handleRazorpayPayment}
             disabled={isProcessing || isProcessingPayPal}
-            className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold"
+            className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center"
           >
             {isProcessing ? (
               <Loader2 className="w-6 h-6 animate-spin mr-2" />
             ) : (
-              <CreditCard className="w-6 h-6 mr-2" />
+              <div className="flex items-center">
+                <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-xs">RZP</span>
+                </div>
+                <span>Razorpay</span>
+              </div>
             )}
-            Card Payment
           </Button>
 
           {/* PayPal Payment */}
           <Button
             onClick={handlePayPalPayment}
             disabled={isProcessing || isProcessingPayPal}
-            className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold"
+            className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
           >
             {isProcessingPayPal ? (
               <Loader2 className="w-6 h-6 animate-spin mr-2" />
             ) : (
-              <span className="w-6 h-6 mr-2 font-bold text-xl">P</span>
+              <div className="flex items-center">
+                <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-xs">PP</span>
+                </div>
+                <span>PayPal</span>
+              </div>
             )}
-            PayPal
           </Button>
-
-          {/* REMOVED: UPI/QR Payment button */}
 
           <Button
             onClick={() => window.history.back()}
