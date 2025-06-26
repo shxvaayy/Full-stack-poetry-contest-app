@@ -80,20 +80,6 @@ const getGoogleAuth = () => {
   }
 };
 
-// Validation schemas
-const PoemSubmissionSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Valid email is required'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  age: z.number().min(5).max(100),
-  category: z.enum(['5-12', '13-17', '18-25', '26-35', '36-50', '50+']),
-  tier: z.enum(['free', 'single', 'double', 'bulk']),
-  poem_title: z.string().min(1, 'Poem title is required'),
-  poem_content: z.string().min(1, 'Poem content is required'),
-  payment_status: z.enum(['pending', 'completed', 'free']).default('pending'),
-  payment_intent_id: z.string().optional()
-});
-
 // TEST ROUTES
 router.get('/api/test', (req, res) => {
   res.json({
@@ -105,140 +91,112 @@ router.get('/api/test', (req, res) => {
   });
 });
 
-// Test Stripe connection
-router.get('/api/stripe-test', async (req, res) => {
+// STRIPE CHECKOUT ROUTES - NEW IMPLEMENTATION
+
+// Create Stripe Checkout Session
+router.post('/api/create-checkout-session', async (req, res) => {
   try {
-    // Test Stripe connection by creating a minimal payment intent
-    const testIntent = await stripe.paymentIntents.create({
-      amount: 100, // ₹1.00 in paise
-      currency: 'inr',
-      metadata: { test: 'connection' }
-    });
-
-    res.json({
-      success: true,
-      message: 'Stripe connection working',
-      testIntentId: testIntent.id,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error('❌ Stripe test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      type: error.type
-    });
-  }
-});
-
-// STRIPE PAYMENT ROUTES - ENHANCED
-
-// Create payment intent - ENHANCED
-router.post('/api/create-payment-intent', async (req, res) => {
-  try {
-    console.log('📥 Payment intent request received:', req.body);
+    console.log('📥 Checkout session request received:', req.body);
     
-    const { amount, currency = 'inr' } = req.body;
+    const { amount, tier, metadata } = req.body;
 
-    // Validate input
     if (!amount || amount <= 0) {
-      console.error('❌ Invalid amount:', amount);
       return res.status(400).json({ error: 'Valid amount is required' });
     }
 
-    // Convert to smallest currency unit (paise for INR)
-    const amountInPaise = Math.round(amount * 100);
-    
-    console.log('💰 Creating payment intent:', {
-      amount: amountInPaise,
-      currency,
-      originalAmount: amount
-    });
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? `${req.protocol}://${req.get('host')}`
+      : 'http://localhost:5173';
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInPaise,
-      currency: currency.toLowerCase(),
-      automatic_payment_methods: {
-        enabled: true,
-      },
+    console.log('🔗 Base URL for redirects:', baseUrl);
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'inr',
+            product_data: {
+              name: `Poetry Contest - ${tier}`,
+              description: `Submit ${tier === 'single' ? '1' : tier === 'double' ? '2' : '5'} poem(s)`,
+            },
+            unit_amount: amount * 100, // Convert to paise
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${baseUrl}/submit?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
+      cancel_url: `${baseUrl}/submit?payment_cancelled=true`,
       metadata: {
-        integration_check: 'accept_a_payment',
-        original_amount: amount.toString(),
+        tier: tier,
+        amount: amount.toString(),
+        ...metadata
       },
     });
 
-    console.log('✅ Payment intent created:', paymentIntent.id);
+    console.log('✅ Checkout session created:', session.id);
 
     res.json({
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-      amount: amountInPaise,
-      currency: currency
+      sessionId: session.id,
+      url: session.url
     });
 
   } catch (error: any) {
-    console.error('❌ Stripe error creating payment intent:', error);
-    
-    // Enhanced error response
-    const errorMessage = error.type === 'StripeCardError' 
-      ? error.message 
-      : 'Failed to create payment intent';
-      
+    console.error('❌ Error creating checkout session:', error);
     res.status(500).json({ 
-      error: errorMessage,
-      type: error.type || 'unknown_error',
-      code: error.code || 'unknown_code',
+      error: 'Failed to create checkout session',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// Verify payment - ENHANCED
-router.post('/api/verify-payment', async (req, res) => {
+// Verify Stripe Checkout Session
+router.post('/api/verify-checkout-session', async (req, res) => {
   try {
-    const { paymentIntentId } = req.body;
+    const { sessionId } = req.body;
 
-    if (!paymentIntentId) {
-      return res.status(400).json({ error: 'Payment intent ID is required' });
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
     }
 
-    console.log('🔍 Verifying payment for intent:', paymentIntentId);
+    console.log('🔍 Verifying checkout session:', sessionId);
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    console.log('📊 Payment status:', {
-      id: paymentIntent.id,
-      status: paymentIntent.status,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency
+    console.log('📊 Session status:', {
+      id: session.id,
+      payment_status: session.payment_status,
+      amount_total: session.amount_total,
+      currency: session.currency
     });
 
-    if (paymentIntent.status === 'succeeded') {
-      console.log('✅ Payment verified successfully');
-      res.json({ 
-        success: true, 
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        status: paymentIntent.status
+    if (session.payment_status === 'paid') {
+      res.json({
+        success: true,
+        paymentIntentId: session.payment_intent,
+        amount: session.amount_total,
+        currency: session.currency,
+        metadata: session.metadata
       });
     } else {
-      console.log('⚠️ Payment not completed, status:', paymentIntent.status);
-      res.status(400).json({ 
+      res.status(400).json({
         error: 'Payment not completed',
-        status: paymentIntent.status,
-        requires_action: paymentIntent.status === 'requires_action'
+        payment_status: session.payment_status
       });
     }
+
   } catch (error: any) {
-    console.error('❌ Error verifying payment:', error);
+    console.error('❌ Error verifying checkout session:', error);
     res.status(500).json({ 
       error: 'Failed to verify payment',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment verification failed'
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// POEM SUBMISSION ROUTES - Enhanced with better error handling
+// POEM SUBMISSION ROUTES - Updated to work with Checkout
 
 // Submit poem with enhanced error handling
 router.post('/api/submit-poem', upload.fields([
@@ -272,19 +230,39 @@ router.post('/api/submit-poem', upload.fields([
       name: submissionData.firstName + ' ' + submissionData.lastName,
       email: submissionData.email,
       tier: submissionData.tier,
-      payment_status: submissionData.payment_status
+      payment_status: submissionData.payment_status,
+      session_id: submissionData.session_id
     });
 
     // For paid tiers, verify payment
     if (submissionData.tier !== 'free' && submissionData.payment_status !== 'free') {
-      if (!submissionData.payment_intent_id) {
+      if (!submissionData.session_id && !submissionData.payment_intent_id) {
         return res.status(400).json({ 
           error: 'Payment verification required for paid submissions' 
         });
       }
 
-      // Verify payment with Stripe (skip for QR payments)
-      if (!submissionData.payment_intent_id.startsWith('qr_')) {
+      // Verify payment with Stripe Checkout or Payment Intent
+      if (submissionData.session_id) {
+        try {
+          const session = await stripe.checkout.sessions.retrieve(submissionData.session_id);
+          
+          if (session.payment_status !== 'paid') {
+            return res.status(400).json({ 
+              error: 'Payment not completed',
+              payment_status: session.payment_status 
+            });
+          }
+          
+          console.log('✅ Checkout payment verified for submission');
+        } catch (paymentError) {
+          console.error('❌ Checkout verification failed:', paymentError);
+          return res.status(400).json({ 
+            error: 'Invalid payment verification' 
+          });
+        }
+      } else if (submissionData.payment_intent_id && !submissionData.payment_intent_id.startsWith('qr_')) {
+        // Handle old payment intent verification
         try {
           const paymentIntent = await stripe.paymentIntents.retrieve(submissionData.payment_intent_id);
           
@@ -295,14 +273,14 @@ router.post('/api/submit-poem', upload.fields([
             });
           }
           
-          console.log('✅ Payment verified for submission');
+          console.log('✅ Payment intent verified for submission');
         } catch (paymentError) {
-          console.error('❌ Payment verification failed:', paymentError);
+          console.error('❌ Payment intent verification failed:', paymentError);
           return res.status(400).json({ 
             error: 'Invalid payment verification' 
           });
         }
-      } else {
+      } else if (submissionData.payment_intent_id?.startsWith('qr_')) {
         console.log('✅ QR Payment ID received:', submissionData.payment_intent_id);
       }
     }

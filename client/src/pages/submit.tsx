@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle }
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import PaymentForm from "@/components/PaymentForm";
 
 const TIERS = [
   { 
@@ -71,8 +70,9 @@ export default function SubmitPage() {
   const [currentStep, setCurrentStep] = useState<SubmissionStep>("selection");
   const [selectedTier, setSelectedTier] = useState<typeof TIERS[0] | null>(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -89,6 +89,63 @@ export default function SubmitPage() {
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+
+  // Check URL parameters for payment status
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const paymentSuccess = urlParams.get('payment_success');
+    const paymentCancelled = urlParams.get('payment_cancelled');
+
+    if (sessionId && paymentSuccess === 'true') {
+      // Verify the payment and set as completed
+      verifyPayment(sessionId);
+    } else if (paymentCancelled === 'true') {
+      toast({
+        title: "Payment Cancelled",
+        description: "Payment was cancelled. You can try again.",
+        variant: "destructive",
+      });
+      setCurrentStep("form");
+    }
+
+    // Clean up URL parameters
+    if (sessionId || paymentSuccess || paymentCancelled) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const verifyPayment = async (sessionId: string) => {
+    try {
+      const response = await fetch('/api/verify-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSessionId(sessionId);
+        setPaymentCompleted(true);
+        setCurrentStep("form");
+        toast({
+          title: "Payment Successful!",
+          description: "Payment completed successfully. You can now submit your poem.",
+        });
+      } else {
+        throw new Error('Payment verification failed');
+      }
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      toast({
+        title: "Payment Verification Failed",
+        description: "There was an issue verifying your payment. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Check user submission status
   const { data: submissionStatus, refetch: refetchStatus } = useQuery({
@@ -110,7 +167,7 @@ export default function SubmitPage() {
 
     setSelectedTier(tier);
     setPaymentCompleted(false);
-    setPaymentIntentId(null);
+    setSessionId(null);
     setCurrentStep("form");
   };
 
@@ -138,21 +195,54 @@ export default function SubmitPage() {
     // For free tier, skip payment
     if (selectedTier.price === 0) {
       setPaymentCompleted(true);
-      setPaymentIntentId('free_submission');
-    } else {
-      // For paid tiers, go to payment
-      setCurrentStep("payment");
+      setSessionId('free_submission');
+    } else if (!paymentCompleted) {
+      // For paid tiers, initiate Stripe Checkout
+      handleStripeCheckout();
     }
   };
 
-  const handlePaymentSuccess = (paymentId: string) => {
-    setPaymentIntentId(paymentId);
-    setPaymentCompleted(true);
-    toast({
-      title: "Payment Successful!",
-      description: "Payment completed successfully. You can now submit your poem.",
-    });
-    setCurrentStep("form");
+  const handleStripeCheckout = async () => {
+    if (!selectedTier) return;
+
+    setIsProcessingPayment(true);
+    
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: selectedTier.price,
+          tier: selectedTier.name,
+          metadata: {
+            tier_id: selectedTier.id,
+            user_email: formData.email,
+            poem_title: formData.poemTitle
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { url } = await response.json();
+      
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast({
+        title: "Payment Error",
+        description: "Failed to initiate payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   const handleCompleteSubmission = async () => {
@@ -186,9 +276,9 @@ export default function SubmitPage() {
       formDataToSubmit.append('tier', selectedTier?.id || 'free');
       formDataToSubmit.append('payment_status', paymentCompleted ? 'completed' : 'free');
       
-      // Add payment intent ID if available
-      if (paymentIntentId) {
-        formDataToSubmit.append('payment_intent_id', paymentIntentId);
+      // Add session ID if available
+      if (sessionId) {
+        formDataToSubmit.append('session_id', sessionId);
       }
       
       // Add files
@@ -201,21 +291,15 @@ export default function SubmitPage() {
 
       console.log("📋 Form data prepared, making API request...");
 
-      // Make the API request with absolute URL and better error handling
+      // Make the API request
       const baseUrl = window.location.origin;
       const apiUrl = `${baseUrl}/api/submit-poem`;
       
-      console.log("🔗 Making request to:", apiUrl);
-
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formDataToSubmit,
         credentials: 'same-origin',
-        // Don't set Content-Type header, let browser set it for FormData
       });
-
-      console.log("📡 API Response status:", response.status);
-      console.log("📡 API Response headers:", Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -249,18 +333,9 @@ export default function SubmitPage() {
     } catch (error: any) {
       console.error("❌ Submission error:", error);
       
-      // More specific error handling
-      let errorMessage = "Failed to submit poem. Please try again.";
-      
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: "Submission Failed",
-        description: errorMessage,
+        description: error.message || "Failed to submit poem. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -268,7 +343,7 @@ export default function SubmitPage() {
     }
   };
 
-  // Rest of your component remains the same...
+  // Rest of your render functions remain the same...
   const renderTierSelection = () => (
     <div className="space-y-6">
       <div className="text-center">
@@ -464,13 +539,25 @@ export default function SubmitPage() {
             variant="outline"
             onClick={() => setCurrentStep("selection")}
             className="flex-1"
+            disabled={isProcessingPayment}
           >
             Back
           </Button>
           
           {selectedTier && selectedTier.price > 0 && !paymentCompleted ? (
-            <Button type="submit" className="flex-1 bg-primary hover:bg-green-700">
-              Proceed to Payment
+            <Button 
+              type="submit" 
+              className="flex-1 bg-primary hover:bg-green-700"
+              disabled={isProcessingPayment}
+            >
+              {isProcessingPayment ? (
+                <span className="flex items-center">
+                  <span className="animate-spin mr-2">🔄</span>
+                  Processing...
+                </span>
+              ) : (
+                "Proceed to Payment"
+              )}
             </Button>
           ) : (
             <Button
@@ -494,14 +581,6 @@ export default function SubmitPage() {
     </div>
   );
 
-  const renderPayment = () => (
-    <PaymentForm
-      amount={selectedTier?.price || 0}
-      onPaymentSuccess={handlePaymentSuccess}
-      onCancel={() => setCurrentStep("form")}
-    />
-  );
-
   const renderCompleted = () => (
     <div className="text-center space-y-6">
       <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto">
@@ -518,7 +597,7 @@ export default function SubmitPage() {
           setCurrentStep("selection");
           setSelectedTier(null);
           setPaymentCompleted(false);
-          setPaymentIntentId(null);
+          setSessionId(null);
           setFormData({
             firstName: "",
             lastName: "",
@@ -577,7 +656,6 @@ export default function SubmitPage() {
         {/* Content based on current step */}
         {currentStep === "selection" && renderTierSelection()}
         {currentStep === "form" && renderForm()}
-        {currentStep === "payment" && renderPayment()}
         {currentStep === "completed" && renderCompleted()}
       </div>
     </section>
