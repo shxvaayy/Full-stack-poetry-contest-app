@@ -132,7 +132,19 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       setIsProcessingPayPal(true);
       setError(null);
 
-      console.log('💰 Creating PayPal order...');
+      console.log('💰 Testing PayPal configuration first...');
+
+      // Test PayPal config before creating order
+      const testResponse = await fetch('/api/test-paypal');
+      const testData = await testResponse.json();
+      
+      console.log('PayPal config test result:', testData);
+
+      if (!testData.success || !testData.configured) {
+        throw new Error(`PayPal Configuration Issue: ${testData.error || 'PayPal not properly configured'}`);
+      }
+
+      console.log('✅ PayPal configured properly, creating order...');
 
       const response = await fetch('/api/create-paypal-order', {
         method: 'POST',
@@ -146,20 +158,30 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
         }),
       });
 
-      const responseData = await response.json();
-      console.log('PayPal response:', responseData);
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        const responseText = await response.text();
+        console.error('Failed to parse PayPal response:', responseText);
+        throw new Error(`PayPal server error: ${responseText}`);
+      }
+
+      console.log('PayPal order response:', responseData);
 
       if (response.ok && responseData.success && responseData.approvalUrl) {
         console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
         window.location.href = responseData.approvalUrl;
       } else {
-        throw new Error(responseData.error || 'Failed to create PayPal order');
+        const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
+        throw new Error(errorMsg);
       }
 
     } catch (error: any) {
       console.error('❌ PayPal payment error:', error);
       setError(`PayPal Error: ${error.message}`);
       onPaymentError(`PayPal Error: ${error.message}`);
+    } finally {
       setIsProcessingPayPal(false);
     }
   };

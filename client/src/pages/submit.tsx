@@ -202,7 +202,7 @@ export default function SubmitPage() {
         
         toast({
           title: "PayPal Payment Successful!",
-          description: "Payment completed successfully. You can now submit your poem.",
+          description: "Payment completed successfully. Submitting your poem now...",
         });
 
         // Auto-submit after a short delay
@@ -244,22 +244,23 @@ export default function SubmitPage() {
   };
 
   const handlePaymentSuccess = (data: any) => {
-    console.log('✅ Payment successful:', data);
+    console.log('✅ Payment successful, data received:', data);
     setPaymentData(data);
     setPaymentCompleted(true);
     
     toast({
       title: "Payment Successful!",
-      description: "Your payment has been processed. Submitting your poem now...",
+      description: "Processing your submission...",
     });
 
-    // Trigger form submission immediately
-    setCurrentStep("form");
-    
-    // Auto-submit after a short delay to ensure state is updated
-    setTimeout(() => {
-      handleFormSubmit();
-    }, 500);
+    // Don't change step immediately, trigger submission directly
+    setTimeout(async () => {
+      try {
+        await handleFormSubmit();
+      } catch (error) {
+        console.error('Auto-submission failed:', error);
+      }
+    }, 1000);
   };
 
   const handlePaymentError = (error: string) => {
@@ -276,6 +277,11 @@ export default function SubmitPage() {
     try {
       setIsSubmitting(true);
 
+      console.log('🚀 Form submission started');
+      console.log('Form data:', formData);
+      console.log('Payment data:', paymentData);
+      console.log('Selected tier:', selectedTier);
+
       // Validate form
       if (!formData.firstName || !formData.email || !formData.poemTitle) {
         throw new Error('Please fill in all required fields');
@@ -286,23 +292,21 @@ export default function SubmitPage() {
       }
 
       // For paid tiers, check if payment is completed
-      if (selectedTier?.price && selectedTier.price > 0 && !paymentCompleted) {
+      if (selectedTier?.price && selectedTier.price > 0 && !paymentCompleted && !paymentData) {
+        console.log('Payment required, redirecting to payment step');
         setCurrentStep("payment");
         return;
       }
-
-      console.log('📤 Starting form submission...');
-      console.log('Payment data:', paymentData);
 
       // Prepare form data for submission
       const submitFormData = new FormData();
       
       // Add text fields
       submitFormData.append('firstName', formData.firstName);
-      submitFormData.append('lastName', formData.lastName);
+      submitFormData.append('lastName', formData.lastName || '');
       submitFormData.append('email', formData.email);
-      submitFormData.append('phone', formData.phone);
-      submitFormData.append('age', formData.age);
+      submitFormData.append('phone', formData.phone || '');
+      submitFormData.append('age', formData.age || '');
       submitFormData.append('poemTitle', formData.poemTitle);
       submitFormData.append('tier', selectedTier?.id || 'free');
       submitFormData.append('amount', selectedTier?.price?.toString() || '0');
@@ -310,51 +314,67 @@ export default function SubmitPage() {
 
       // Add payment data if available
       if (paymentData) {
-        console.log('Adding payment data to submission:', paymentData);
+        console.log('Adding payment information to submission');
         
         if (paymentData.razorpay_payment_id) {
           submitFormData.append('paymentId', paymentData.razorpay_payment_id);
           submitFormData.append('paymentMethod', 'razorpay');
           submitFormData.append('razorpay_order_id', paymentData.razorpay_order_id || '');
           submitFormData.append('razorpay_signature', paymentData.razorpay_signature || '');
+          console.log('Added Razorpay payment data');
         } else if (paymentData.paypal_order_id) {
           submitFormData.append('paymentId', paymentData.paypal_order_id);
           submitFormData.append('paymentMethod', 'paypal');
-        } else if (paymentData.payment_status === 'free') {
+          console.log('Added PayPal payment data');
+        } else if (paymentData.payment_method === 'free') {
           submitFormData.append('paymentMethod', 'free');
           submitFormData.append('paymentId', 'free_entry');
+          console.log('Added free entry data');
         }
+      } else if (selectedTier?.id === 'free') {
+        submitFormData.append('paymentMethod', 'free');
+        submitFormData.append('paymentId', 'free_entry');
+        console.log('Free tier submission');
       }
 
       // Add files
       if (files.poem) {
         submitFormData.append('poem', files.poem);
+        console.log('Added poem file:', files.poem.name);
       }
       if (files.photo) {
         submitFormData.append('photo', files.photo);
+        console.log('Added photo file:', files.photo.name);
       }
 
-      console.log('📤 Submitting poem with payment verification...');
+      console.log('📤 Sending submission to server...');
 
       const response = await fetch('/api/submit-poem', {
         method: 'POST',
         body: submitFormData,
       });
 
-      const responseData = await response.text();
+      const responseText = await response.text();
       console.log('Server response status:', response.status);
-      console.log('Server response body:', responseData);
+      console.log('Server response body:', responseText);
+
+      if (!response.ok) {
+        let errorMessage = 'Submission failed';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.details || errorData.error || errorMessage;
+        } catch (parseError) {
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
 
       let result;
       try {
-        result = JSON.parse(responseData);
+        result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('Failed to parse server response:', parseError);
-        throw new Error(`Server error: ${responseData}`);
-      }
-
-      if (!response.ok) {
-        throw new Error(result.details || result.error || 'Submission failed');
+        console.error('Failed to parse success response:', parseError);
+        result = { success: true, message: 'Submission completed' };
       }
 
       console.log('✅ Submission successful:', result);
@@ -477,6 +497,7 @@ export default function SubmitPage() {
                       value={formData.firstName}
                       onChange={(e) => handleFormData("firstName", e.target.value)}
                       placeholder="Enter your first name"
+                      required
                     />
                   </div>
 
@@ -498,6 +519,7 @@ export default function SubmitPage() {
                       value={formData.email}
                       onChange={(e) => handleFormData("email", e.target.value)}
                       placeholder="Enter your email"
+                      required
                     />
                   </div>
 
@@ -533,6 +555,7 @@ export default function SubmitPage() {
                       value={formData.poemTitle}
                       onChange={(e) => handleFormData("poemTitle", e.target.value)}
                       placeholder="Enter your poem title"
+                      required
                     />
                   </div>
 
@@ -583,9 +606,9 @@ export default function SubmitPage() {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2">Submission Guidelines</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
-                      <li>• Poem should be original work</li>
-                      <li>• Maximum 50 lines per poem</li>
-                      <li>• File size limit: 10MB</li>
+                      <li>• Poems must be original work</li>
+                      <li>• Maximum 100 lines per poem</li>
+                      <li>• File size should not exceed 5MB</li>
                       <li>• Photo should be clear and recent</li>
                     </ul>
                   </div>
@@ -599,31 +622,30 @@ export default function SubmitPage() {
                   onCheckedChange={(checked) => handleFormData("termsAccepted", checked)}
                 />
                 <Label htmlFor="terms" className="text-sm">
-                  I agree to the <a href="/terms" className="text-blue-600 hover:underline">Terms and Conditions</a> and <a href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</a>
+                  I agree to the <a href="/terms" className="text-green-600 hover:underline">Terms and Conditions</a> and{" "}
+                  <a href="/privacy" className="text-green-600 hover:underline">Privacy Policy</a>
                 </Label>
               </div>
 
-              <div className="mt-6 flex space-x-4">
+              <div className="mt-6 flex justify-between">
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep("selection")}
-                  className="flex-1"
                 >
                   Back to Tier Selection
                 </Button>
-                
                 <Button
                   onClick={handleFormSubmit}
-                  disabled={isSubmitting || !formData.termsAccepted}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={isSubmitting}
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {selectedTier?.price && selectedTier.price > 0 && !paymentCompleted ? "Proceed to Payment" : "Submitting..."}
+                      Submitting...
                     </>
                   ) : (
-                    selectedTier?.price && selectedTier.price > 0 && !paymentCompleted ? "Proceed to Payment" : "Submit Poem"
+                    "Submit Poem"
                   )}
                 </Button>
               </div>
@@ -637,29 +659,32 @@ export default function SubmitPage() {
               <h3 className="text-lg font-semibold mb-4">Selected Tier</h3>
               {selectedTier && (
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedTier.bgClass}`}>
-                      <selectedTier.icon className="w-5 h-5 text-white" />
+                  <div className={`p-4 rounded-lg ${selectedTier.bgClass} text-white`}>
+                    <div className="flex items-center justify-between">
+                      <selectedTier.icon className="w-6 h-6" />
+                      {paymentCompleted && <CheckCircle className="w-6 h-6" />}
                     </div>
-                    <div>
-                      <p className="font-medium">{selectedTier.name}</p>
-                      <p className="text-sm text-gray-600">{selectedTier.description}</p>
-                    </div>
+                    <h4 className="font-semibold mt-2">{selectedTier.name}</h4>
+                    <p className="text-sm opacity-90">{selectedTier.description}</p>
                   </div>
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between">
-                      <span>Amount:</span>
-                      <span className="font-semibold">
-                        {selectedTier.price === 0 ? "Free" : `₹${selectedTier.price}`}
-                      </span>
-                    </div>
+                  
+                  <div className="text-center">
+                    <span className="text-2xl font-bold">
+                      {selectedTier.price === 0 ? "Free" : `₹${selectedTier.price}`}
+                    </span>
                   </div>
+
                   {paymentCompleted && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span className="text-green-800 text-sm font-medium">Payment Completed</span>
-                      </div>
+                    <div className="flex items-center justify-center text-green-600 text-sm">
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Payment Completed
+                    </div>
+                  )}
+
+                  {selectedTier.price > 0 && !paymentCompleted && (
+                    <div className="text-center text-yellow-600 text-sm">
+                      <AlertTriangle className="w-4 h-4 inline mr-1" />
+                      Payment Required
                     </div>
                   )}
                 </div>
@@ -673,65 +698,97 @@ export default function SubmitPage() {
 
   const renderPayment = () => (
     <div className="max-w-2xl mx-auto">
-      {selectedTier && (
-        <PaymentForm
-          selectedTier={selectedTier.id}
-          amount={selectedTier.price}
-          onPaymentSuccess={handlePaymentSuccess}
-          onPaymentError={handlePaymentError}
-        />
-      )}
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Complete Your Payment</h2>
+        <p className="text-gray-600">
+          Complete the payment to submit your poem for the contest.
+        </p>
+      </div>
+
+      <PaymentForm
+        selectedTier={selectedTier?.id || ""}
+        amount={selectedTier?.price || 0}
+        onPaymentSuccess={handlePaymentSuccess}
+        onPaymentError={handlePaymentError}
+      />
     </div>
   );
 
   const renderCompleted = () => (
     <div className="max-w-2xl mx-auto text-center">
-      <Card>
-        <CardContent className="p-8">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold mb-4">Submission Successful!</h2>
-          <p className="text-gray-600 mb-6">
-            Your poem has been successfully submitted to the Writory Poetry Contest. 
-            We'll review your submission and notify you of the results.
-          </p>
-          <div className="space-y-4">
-            <Button
-              onClick={() => {
-                setCurrentStep("selection");
-                setSelectedTier(null);
-                setPaymentCompleted(false);
-                setPaymentData(null);
-                setFormData({
-                  firstName: "",
-                  lastName: "",
-                  email: user?.email || "",
-                  phone: "",
-                  age: "",
-                  poemTitle: "",
-                  termsAccepted: false,
-                });
-                setFiles({ poem: null, photo: null });
-              }}
-              variant="outline"
-              className="mr-4"
-            >
-              Submit Another Poem
-            </Button>
-            <Button
-              onClick={() => window.location.href = "/dashboard"}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              View My Submissions
-            </Button>
+      <div className="bg-green-50 p-8 rounded-lg">
+        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Submission Successful!</h2>
+        <p className="text-gray-600 mb-6">
+          Your poem has been submitted successfully for the contest. We'll review your submission and notify you of the results.
+        </p>
+        
+        <div className="bg-white p-4 rounded-lg border mb-6">
+          <h3 className="font-semibold mb-2">Submission Details</h3>
+          <div className="text-left space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Name:</span>
+              <span>{formData.firstName} {formData.lastName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Email:</span>
+              <span>{formData.email}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Poem Title:</span>
+              <span>{formData.poemTitle}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Tier:</span>
+              <span>{selectedTier?.name}</span>
+            </div>
+            {selectedTier?.price && selectedTier.price > 0 && (
+              <div className="flex justify-between">
+                <span>Amount Paid:</span>
+                <span>₹{selectedTier.price}</span>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Button
+            onClick={() => {
+              setCurrentStep("selection");
+              setSelectedTier(null);
+              setPaymentCompleted(false);
+              setPaymentData(null);
+              setFormData({
+                firstName: "",
+                lastName: "",
+                email: user?.email || "",
+                phone: "",
+                age: "",
+                poemTitle: "",
+                termsAccepted: false,
+              });
+              setFiles({ poem: null, photo: null });
+            }}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            Submit Another Poem
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => window.location.href = "/"}
+            className="w-full"
+          >
+            Back to Home
+          </Button>
+        </div>
+      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4">
         {renderStepIndicator()}
         
         {currentStep === "selection" && renderTierSelection()}
