@@ -5,26 +5,27 @@ import path from 'path';
 import fs from 'fs';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
-import Stripe from 'stripe';
+import Razorpay from 'razorpay';
 
 const router = Router();
 
-// In-memory storage for users and submissions (replace with database in production)
+// In-memory storage for users and submissions
 let users: any[] = [];
 let submissions: any[] = [];
 
-// Initialize Stripe
-let stripe: Stripe;
+// Initialize Razorpay
+let razorpay: Razorpay;
 try {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY is not configured');
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required');
   }
-  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16',
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
   });
-  console.log('✅ Stripe initialized successfully');
+  console.log('✅ Razorpay initialized successfully');
 } catch (error) {
-  console.error('❌ Failed to initialize Stripe:', error);
+  console.error('❌ Failed to initialize Razorpay:', error);
 }
 
 // Configure multer for file uploads
@@ -174,7 +175,7 @@ router.get('/api/users/:uid/submission-status', async (req, res) => {
     const status = {
       freeSubmissionUsed: freeSubmissions.length > 0,
       totalSubmissions: userSubmissions.length,
-      contestMonth: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      contestMonth: new Date().toLocaleLe('en-US', { month: 'long', year: 'numeric' })
     };
     
     console.log('✅ Submission status:', status);
@@ -225,27 +226,27 @@ router.get('/api/test', (req, res) => {
     env: process.env.NODE_ENV,
     cors: 'enabled',
     origin: req.headers.origin,
-    stripe_configured: !!process.env.STRIPE_SECRET_KEY,
+    razorpay_configured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
     google_configured: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
     users_count: users.length,
     submissions_count: submissions.length
   });
 });
 
-// STRIPE CHECKOUT ROUTES
+// RAZORPAY PAYMENT ROUTES
 
-// Create Stripe Checkout Session
-router.post('/api/create-checkout-session', async (req, res) => {
+// Create Razorpay Order
+router.post('/api/create-razorpay-order', async (req, res) => {
   try {
-    console.log('📥 Checkout session request received');
+    console.log('📥 Razorpay order request received');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     
-    // Validate Stripe initialization
-    if (!stripe) {
-      console.error('❌ Stripe not initialized');
+    // Validate Razorpay initialization
+    if (!razorpay) {
+      console.error('❌ Razorpay not initialized');
       return res.status(500).json({ 
         error: 'Payment system not configured properly',
-        details: 'Stripe not initialized'
+        details: 'Razorpay not initialized'
       });
     }
 
@@ -262,113 +263,97 @@ router.post('/api/create-checkout-session', async (req, res) => {
       return res.status(400).json({ error: 'Tier is required' });
     }
 
-    // Determine base URL for redirects
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    const baseUrl = `${protocol}://${host}`;
-
-    console.log('🔗 Redirect URLs will use base:', baseUrl);
-
-    const successUrl = `${baseUrl}/submit?session_id={CHECKOUT_SESSION_ID}&payment_success=true`;
-    const cancelUrl = `${baseUrl}/submit?payment_cancelled=true`;
-
-    console.log('✅ Success URL:', successUrl);
-    console.log('❌ Cancel URL:', cancelUrl);
-
-    // Create checkout session
-    const sessionData = {
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'inr',
-            product_data: {
-              name: `Poetry Contest - ${tier}`,
-              description: `Submit ${tier === '1 Poem' ? '1' : tier === '2 Poems' ? '2' : '5'} poem(s)`,
-            },
-            unit_amount: Math.round(amount * 100), // Convert to paise
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment' as const,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
+    // Create Razorpay order
+    const orderData = {
+      amount: Math.round(amount * 100), // Convert to paise
+      currency: 'INR',
+      notes: {
         tier: tier,
-        amount: amount.toString(),
         ...(metadata || {})
-      },
+      }
     };
 
-    console.log('📋 Creating Stripe session with data:', JSON.stringify(sessionData, null, 2));
+    console.log('📋 Creating Razorpay order with data:', JSON.stringify(orderData, null, 2));
 
-    const session = await stripe.checkout.sessions.create(sessionData);
+    const order = await razorpay.orders.create(orderData);
 
-    console.log('✅ Checkout session created successfully');
-    console.log('Session ID:', session.id);
-    console.log('Session URL:', session.url);
+    console.log('✅ Razorpay order created successfully');
+    console.log('Order ID:', order.id);
 
     res.json({
       success: true,
-      sessionId: session.id,
-      url: session.url
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID
     });
 
   } catch (error: any) {
-    console.error('❌ Error creating checkout session:', error);
+    console.error('❌ Error creating Razorpay order:', error);
     console.error('Error stack:', error.stack);
     
     res.status(500).json({ 
-      error: 'Failed to create checkout session',
+      error: 'Failed to create payment order',
       details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error',
       type: error.type || 'unknown'
     });
   }
 });
 
-// Verify Stripe Checkout Session
-router.post('/api/verify-checkout-session', async (req, res) => {
+// Verify Razorpay Payment
+router.post('/api/verify-razorpay-payment', async (req, res) => {
   try {
-    const { sessionId } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    if (!sessionId) {
-      return res.status(400).json({ error: 'Session ID is required' });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Payment details are required' });
     }
 
-    if (!stripe) {
+    if (!razorpay) {
       return res.status(500).json({ error: 'Payment system not configured' });
     }
 
-    console.log('🔍 Verifying checkout session:', sessionId);
+    console.log('🔍 Verifying Razorpay payment:', { razorpay_order_id, razorpay_payment_id });
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Verify signature
+    const crypto = require('crypto');
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
 
-    console.log('📊 Session details:', {
-      id: session.id,
-      payment_status: session.payment_status,
-      amount_total: session.amount_total,
-      currency: session.currency,
-      metadata: session.metadata
+    if (expectedSignature !== razorpay_signature) {
+      console.error('❌ Invalid payment signature');
+      return res.status(400).json({ error: 'Invalid payment signature' });
+    }
+
+    // Fetch payment details
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+
+    console.log('📊 Payment details:', {
+      id: payment.id,
+      status: payment.status,
+      amount: payment.amount,
+      currency: payment.currency
     });
 
-    if (session.payment_status === 'paid') {
+    if (payment.status === 'captured') {
       res.json({
         success: true,
-        paymentIntentId: session.payment_intent,
-        amount: session.amount_total,
-        currency: session.currency,
-        metadata: session.metadata
+        paymentId: payment.id,
+        orderId: razorpay_order_id,
+        amount: payment.amount,
+        currency: payment.currency
       });
     } else {
       res.status(400).json({
-        error: 'Payment not completed',
-        payment_status: session.payment_status
+        error: 'Payment not captured',
+        status: payment.status
       });
     }
 
   } catch (error: any) {
-    console.error('❌ Error verifying checkout session:', error);
+    console.error('❌ Error verifying Razorpay payment:', error);
     res.status(500).json({ 
       error: 'Failed to verify payment',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -376,12 +361,12 @@ router.post('/api/verify-checkout-session', async (req, res) => {
   }
 });
 
-// QR Payment Creation (Fallback)
+// QR Payment Creation (UPI Direct)
 router.post('/api/create-qr-payment', async (req, res) => {
   try {
     const { amount, tier } = req.body;
     
-    console.log('🏦 Creating QR payment for:', { amount, tier });
+    console.log('🏦 Creating UPI QR payment for:', { amount, tier });
     
     // Generate a unique QR payment ID
     const qrPaymentId = `qr_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -391,7 +376,7 @@ router.post('/api/create-qr-payment', async (req, res) => {
       amount: amount,
       upiId: 'writorycontest@paytm',
       merchantName: 'Writory Contest',
-      qrCodeUrl: '/api/generate-qr/' + qrPaymentId
+      qrCodeUrl: `/api/generate-qr/${qrPaymentId}`
     };
     
     console.log('✅ QR payment created:', qrData);
@@ -445,36 +430,37 @@ router.post('/api/submit-poem', upload.fields([
       email: submissionData.email,
       tier: submissionData.tier,
       payment_status: submissionData.payment_status,
-      session_id: submissionData.session_id
+      razorpay_order_id: submissionData.razorpay_order_id,
+      razorpay_payment_id: submissionData.razorpay_payment_id
     });
 
     // For paid tiers, verify payment
     if (submissionData.tier !== 'free' && submissionData.payment_status !== 'free') {
-      if (!submissionData.session_id && !submissionData.payment_intent_id) {
+      if (!submissionData.razorpay_order_id && !submissionData.payment_intent_id) {
         return res.status(400).json({ 
           error: 'Payment verification required for paid submissions' 
         });
       }
 
-      // Verify payment with Stripe Checkout
-      if (submissionData.session_id && submissionData.session_id !== 'free_submission') {
+      // Verify payment with Razorpay
+      if (submissionData.razorpay_payment_id && submissionData.razorpay_payment_id !== 'free_submission') {
         try {
-          if (!stripe) {
-            throw new Error('Stripe not initialized');
+          if (!razorpay) {
+            throw new Error('Razorpay not initialized');
           }
 
-          const session = await stripe.checkout.sessions.retrieve(submissionData.session_id);
+          const payment = await razorpay.payments.fetch(submissionData.razorpay_payment_id);
           
-          if (session.payment_status !== 'paid') {
+          if (payment.status !== 'captured') {
             return res.status(400).json({ 
-              error: 'Payment not completed',
-              payment_status: session.payment_status 
+              error: 'Payment not captured',
+              payment_status: payment.status 
             });
           }
           
-          console.log('✅ Checkout payment verified for submission');
+          console.log('✅ Razorpay payment verified for submission');
         } catch (paymentError) {
-          console.error('❌ Checkout verification failed:', paymentError);
+          console.error('❌ Razorpay verification failed:', paymentError);
           return res.status(400).json({ 
             error: 'Invalid payment verification' 
           });
@@ -554,7 +540,8 @@ router.post('/api/submit-poem', upload.fields([
         poemFile: poemFileUrl,
         photo: photoFileUrl,
         timestamp: new Date().toISOString(),
-        sessionId: submissionData.session_id || null,
+        razorpayOrderId: submissionData.razorpay_order_id || null,
+        razorpayPaymentId: submissionData.razorpay_payment_id || null,
         paymentIntentId: submissionData.payment_intent_id || null
       };
       
