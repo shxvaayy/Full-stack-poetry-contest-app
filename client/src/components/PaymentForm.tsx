@@ -20,8 +20,7 @@ declare global {
 
 export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'qr' | null>(null);
-  const [qrData, setQrData] = useState<any>(null);
+  const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load Razorpay script
@@ -151,52 +150,41 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
     }
   };
 
-  const handleQRPayment = async () => {
+  const handlePayPalPayment = async () => {
     try {
-      setIsProcessing(true);
+      setIsProcessingPayPal(true);
       setError(null);
 
-      console.log('📱 Creating QR payment...');
+      console.log('💰 Creating PayPal order...');
 
-      const response = await fetch('/api/create-qr-payment', {
+      const response = await fetch('/api/create-paypal-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           amount: amount,
-          tier: selectedTier
+          tier: selectedTier,
+          currency: 'USD'
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create QR payment');
+      const orderData = await response.json();
+
+      if (orderData.success && orderData.approvalUrl) {
+        console.log('✅ Redirecting to PayPal:', orderData.approvalUrl);
+        // Redirect to PayPal
+        window.location.href = orderData.approvalUrl;
+      } else {
+        throw new Error(orderData.error || 'Failed to create PayPal order');
       }
 
-      const qrPaymentData = await response.json();
-      console.log('✅ QR payment created:', qrPaymentData);
-
-      setQrData(qrPaymentData);
-      setPaymentMethod('qr');
-
     } catch (error: any) {
-      console.error('❌ QR payment error:', error);
+      console.error('❌ PayPal payment error:', error);
       setError(error.message);
       onPaymentError(error.message);
     } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleQRPaymentComplete = () => {
-    if (qrData) {
-      onPaymentSuccess({
-        payment_intent_id: qrData.paymentId,
-        amount: amount * 100, // Convert to paise for consistency
-        currency: 'INR',
-        payment_status: 'captured'
-      });
+      setIsProcessingPayPal(false);
     }
   };
 
@@ -220,97 +208,65 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
     );
   }
 
-  if (paymentMethod === 'qr' && qrData) {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center">UPI QR Payment</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <div className="text-lg font-semibold">₹{amount}</div>
-          
-          <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300">
-            <div className="text-sm text-gray-600 mb-2">Scan QR Code or Pay to UPI ID:</div>
-            <div className="font-mono text-sm bg-gray-100 p-2 rounded">
-              {qrData.upiId}
-            </div>
-          </div>
-
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              After completing payment via UPI, click "Payment Complete" below
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-2">
-            <Button onClick={handleQRPaymentComplete} className="w-full bg-green-600 hover:bg-green-700">
-              ✅ Payment Complete
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setPaymentMethod(null);
-                setQrData(null);
-              }}
-              className="w-full"
-            >
-              ← Back to Payment Options
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-center">Complete Payment - ₹{amount}</CardTitle>
-        <p className="text-center text-gray-600">Choose your payment method</p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+    <div className="w-full max-w-2xl mx-auto space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">Complete Payment - ₹{amount}</CardTitle>
+          <p className="text-center text-gray-600">Choose your payment method</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        <div className="grid grid-cols-1 gap-3">
+          {/* Card Payment - Razorpay */}
           <Button
             onClick={handleCardPayment}
-            disabled={isProcessing}
-            className="flex items-center justify-center space-x-2 h-12 bg-blue-600 hover:bg-blue-700"
+            disabled={isProcessing || isProcessingPayPal}
+            className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold"
           >
-            {isProcessing && paymentMethod === 'card' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+            {isProcessing ? (
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
             ) : (
-              <CreditCard className="w-4 h-4" />
+              <CreditCard className="w-6 h-6 mr-2" />
             )}
-            <span>Card Payment</span>
+            Card Payment
           </Button>
+
+          {/* PayPal Payment */}
+          <Button
+            onClick={handlePayPalPayment}
+            disabled={isProcessing || isProcessingPayPal}
+            className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold"
+          >
+            {isProcessingPayPal ? (
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            ) : (
+              <span className="w-6 h-6 mr-2 font-bold text-xl">P</span>
+            )}
+            PayPal
+          </Button>
+
+          {/* REMOVED: UPI/QR Payment button */}
 
           <Button
-            onClick={handleQRPayment}
-            disabled={isProcessing}
+            onClick={() => window.history.back()}
             variant="outline"
-            className="flex items-center justify-center space-x-2 h-12 border-green-600 text-green-600 hover:bg-green-50"
+            className="w-full"
           >
-            {isProcessing && paymentMethod === 'qr' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Smartphone className="w-4 h-4" />
-            )}
-            <span>UPI/QR Payment</span>
+            Back to Form
           </Button>
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="text-xs text-gray-500 text-center">
-          <p>🔒 Secure payment powered by Razorpay</p>
-          <p>Supports all major cards and UPI</p>
-        </div>
-      </CardContent>
-    </Card>
+      <div className="text-center text-sm text-gray-500">
+        <p>Secure payments powered by Razorpay & PayPal</p>
+        <p>Your payment information is encrypted and secure</p>
+      </div>
+    </div>
   );
 }
