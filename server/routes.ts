@@ -9,10 +9,7 @@ import { GoogleAuth } from 'google-auth-library';
 import Razorpay from 'razorpay';
 import { paypalRouter } from './paypal';
 
-export function registerRoutes(app: any) {
-  app.use(router);
-  app.use(paypalRouter);
-}
+
 
 const router = Router();
 
