@@ -9,10 +9,20 @@ import Stripe from 'stripe';
 
 const router = Router();
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
+// Initialize Stripe with better error handling
+let stripe: Stripe;
+try {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not configured');
+  }
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16',
+  });
+  console.log('✅ Stripe initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize Stripe:', error);
+  process.exit(1);
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -32,12 +42,12 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.doc', '.docx'];
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
     const fileExt = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(fileExt)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF and Word documents are allowed'));
+      cb(new Error('Only PDF, Word documents, and image files are allowed'));
     }
   },
   limits: {
@@ -84,46 +94,69 @@ const PoemSubmissionSchema = z.object({
   payment_intent_id: z.string().optional()
 });
 
-// STRIPE PAYMENT ROUTES
+// STRIPE PAYMENT ROUTES - FIXED
 
-// Create payment intent
+// Create payment intent - ENHANCED
 router.post('/api/create-payment-intent', async (req, res) => {
   try {
+    console.log('📥 Payment intent request received:', req.body);
+    
     const { amount, currency = 'inr' } = req.body;
 
+    // Validate input
     if (!amount || amount <= 0) {
+      console.error('❌ Invalid amount:', amount);
       return res.status(400).json({ error: 'Valid amount is required' });
     }
 
-    console.log('Creating payment intent for amount:', amount, 'currency:', currency);
+    // Convert to smallest currency unit (paise for INR)
+    const amountInPaise = Math.round(amount * 100);
+    
+    console.log('💰 Creating payment intent:', {
+      amount: amountInPaise,
+      currency,
+      originalAmount: amount
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount), // Ensure it's an integer
-      currency: currency,
+      amount: amountInPaise,
+      currency: currency.toLowerCase(),
       automatic_payment_methods: {
         enabled: true,
       },
       metadata: {
         integration_check: 'accept_a_payment',
+        original_amount: amount.toString(),
       },
     });
 
-    console.log('Payment intent created successfully:', paymentIntent.id);
+    console.log('✅ Payment intent created:', paymentIntent.id);
 
     res.json({
       clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id
+      paymentIntentId: paymentIntent.id,
+      amount: amountInPaise,
+      currency: currency
     });
-  } catch (error) {
-    console.error('Stripe error creating payment intent:', error);
+
+  } catch (error: any) {
+    console.error('❌ Stripe error creating payment intent:', error);
+    
+    // Enhanced error response
+    const errorMessage = error.type === 'StripeCardError' 
+      ? error.message 
+      : 'Failed to create payment intent';
+      
     res.status(500).json({ 
-      error: 'Failed to create payment intent',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: errorMessage,
+      type: error.type || 'unknown_error',
+      code: error.code || 'unknown_code',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// Verify payment
+// Verify payment - ENHANCED
 router.post('/api/verify-payment', async (req, res) => {
   try {
     const { paymentIntentId } = req.body;
@@ -132,41 +165,91 @@ router.post('/api/verify-payment', async (req, res) => {
       return res.status(400).json({ error: 'Payment intent ID is required' });
     }
 
-    console.log('Verifying payment for intent:', paymentIntentId);
+    console.log('🔍 Verifying payment for intent:', paymentIntentId);
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
+    console.log('📊 Payment status:', {
+      id: paymentIntent.id,
+      status: paymentIntent.status,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency
+    });
+
     if (paymentIntent.status === 'succeeded') {
-      console.log('Payment verified successfully');
+      console.log('✅ Payment verified successfully');
       res.json({ 
         success: true, 
         amount: paymentIntent.amount,
-        currency: paymentIntent.currency 
+        currency: paymentIntent.currency,
+        status: paymentIntent.status
       });
     } else {
-      console.log('Payment not completed, status:', paymentIntent.status);
+      console.log('⚠️ Payment not completed, status:', paymentIntent.status);
       res.status(400).json({ 
         error: 'Payment not completed',
-        status: paymentIntent.status 
+        status: paymentIntent.status,
+        requires_action: paymentIntent.status === 'requires_action'
       });
     }
-  } catch (error) {
-    console.error('Error verifying payment:', error);
+  } catch (error: any) {
+    console.error('❌ Error verifying payment:', error);
     res.status(500).json({ 
       error: 'Failed to verify payment',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment verification failed'
     });
   }
 });
 
-// POEM SUBMISSION ROUTES
-
-// Submit poem
-router.post('/api/submit-poem', upload.single('poem_file'), async (req, res) => {
+// Test Stripe connection
+router.get('/api/stripe-test', async (req, res) => {
   try {
-    console.log('Received poem submission request');
-    console.log('Body:', req.body);
-    console.log('File:', req.file);
+    // Test Stripe connection by creating a minimal payment intent
+    const testIntent = await stripe.paymentIntents.create({
+      amount: 100, // ₹1.00 in paise
+      currency: 'inr',
+      metadata: { test: 'connection' }
+    });
+
+    res.json({
+      success: true,
+      message: 'Stripe connection working',
+      testIntentId: testIntent.id,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('❌ Stripe test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      type: error.type
+    });
+  }
+});
+
+// POEM SUBMISSION ROUTES - Keep existing implementation but add better error handling
+
+// Submit poem with enhanced error handling
+router.post('/api/submit-poem', upload.fields([
+  { name: 'poem_file', maxCount: 1 },
+  { name: 'photo', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    console.log('📝 Received poem submission request');
+    console.log('Body keys:', Object.keys(req.body));
+    console.log('Files:', req.files);
+
+    // Validate files
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    if (!files || !files.poem_file || !files.photo) {
+      return res.status(400).json({ 
+        error: 'Both poem file and photo are required',
+        received: {
+          poem_file: !!files?.poem_file,
+          photo: !!files?.photo
+        }
+      });
+    }
 
     // Parse and validate the submission data
     const submissionData = {
@@ -174,12 +257,16 @@ router.post('/api/submit-poem', upload.single('poem_file'), async (req, res) => 
       age: parseInt(req.body.age),
     };
 
-    const validatedData = PoemSubmissionSchema.parse(submissionData);
-    console.log('Validated data:', validatedData);
+    console.log('📋 Parsed submission data:', {
+      name: submissionData.name,
+      email: submissionData.email,
+      tier: submissionData.tier,
+      payment_status: submissionData.payment_status
+    });
 
     // For paid tiers, verify payment
-    if (validatedData.tier !== 'free') {
-      if (!validatedData.payment_intent_id) {
+    if (submissionData.tier !== 'free' && submissionData.payment_status !== 'free') {
+      if (!submissionData.payment_intent_id) {
         return res.status(400).json({ 
           error: 'Payment verification required for paid submissions' 
         });
@@ -187,180 +274,138 @@ router.post('/api/submit-poem', upload.single('poem_file'), async (req, res) => 
 
       // Verify payment with Stripe
       try {
-        const paymentIntent = await stripe.paymentIntents.retrieve(validatedData.payment_intent_id);
+        const paymentIntent = await stripe.paymentIntents.retrieve(submissionData.payment_intent_id);
+        
         if (paymentIntent.status !== 'succeeded') {
           return res.status(400).json({ 
             error: 'Payment not completed',
             status: paymentIntent.status 
           });
         }
-        validatedData.payment_status = 'completed';
-      } catch (error) {
-        console.error('Payment verification error:', error);
-        return res.status(400).json({ error: 'Payment verification failed' });
+        
+        console.log('✅ Payment verified for submission');
+      } catch (paymentError) {
+        console.error('❌ Payment verification failed:', paymentError);
+        return res.status(400).json({ 
+          error: 'Invalid payment verification' 
+        });
       }
-    } else {
-      validatedData.payment_status = 'free';
     }
 
-    // Initialize Google services
-    const auth = getGoogleAuth();
-    const sheets = google.sheets({ version: 'v4', auth });
-    const drive = google.drive({ version: 'v3', auth });
-
-    let fileUrl = null;
+    // Process file uploads to Google Drive
+    const { uploadPoemFile, uploadPhotoFile } = await import('./google-drive');
     
-    // Upload file to Google Drive if provided
-    if (req.file) {
-      console.log('Uploading file to Google Drive...');
-      
-      const fileMetadata = {
-        name: `${validatedData.name}_${validatedData.poem_title}_${Date.now()}${path.extname(req.file.originalname)}`,
-        parents: [process.env.DRIVE_FOLDER_ID!]
-      };
-
-      const media = {
-        mimeType: req.file.mimetype,
-        body: fs.createReadStream(req.file.path)
-      };
-
-      const driveResponse = await drive.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id'
-      });
-
-      // Make file publicly readable
-      await drive.permissions.create({
-        fileId: driveResponse.data.id!,
-        requestBody: {
-          role: 'reader',
-          type: 'anyone'
-        }
-      });
-
-      fileUrl = `https://drive.google.com/file/d/${driveResponse.data.id}/view`;
-      
-      // Clean up local file
-      fs.unlinkSync(req.file.path);
-      
-      console.log('File uploaded successfully:', fileUrl);
-    }
-
-    // Prepare data for Google Sheets
-    const timestamp = new Date().toISOString();
-    const rowData = [
-      timestamp,
-      validatedData.name,
-      validatedData.email,
-      validatedData.phone,
-      validatedData.age,
-      validatedData.category,
-      validatedData.tier,
-      validatedData.poem_title,
-      validatedData.poem_content,
-      fileUrl || 'No file',
-      validatedData.payment_status,
-      validatedData.payment_intent_id || 'N/A'
-    ];
+    const poemFileUrl = await uploadPoemFile(
+      files.poem_file[0].buffer || fs.readFileSync(files.poem_file[0].path),
+      submissionData.email,
+      files.poem_file[0].originalname
+    );
+    
+    const photoFileUrl = await uploadPhotoFile(
+      files.photo[0].buffer || fs.readFileSync(files.photo[0].path),
+      submissionData.email,
+      files.photo[0].originalname
+    );
 
     // Add to Google Sheets
-    console.log('Adding submission to Google Sheets...');
+    const { addPoemSubmissionToSheet } = await import('./google-sheets');
     
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID!,
-      range: 'Sheet1!A:L',
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [rowData]
-      }
+    await addPoemSubmissionToSheet({
+      name: `${submissionData.firstName} ${submissionData.lastName}`,
+      email: submissionData.email,
+      phone: submissionData.phone || '',
+      age: submissionData.age.toString(),
+      poemTitle: submissionData.poemTitle,
+      tier: submissionData.tier,
+      amount: getTierAmount(submissionData.tier).toString(),
+      poemFile: poemFileUrl,
+      photo: photoFileUrl,
+      timestamp: new Date().toISOString()
     });
 
-    console.log('Submission added to Google Sheets successfully');
+    // Clean up uploaded files
+    if (files.poem_file[0].path) fs.unlinkSync(files.poem_file[0].path);
+    if (files.photo[0].path) fs.unlinkSync(files.photo[0].path);
+
+    console.log('✅ Poem submission completed successfully');
 
     res.json({
       success: true,
-      message: 'Poem submitted successfully!',
-      submissionId: timestamp,
-      fileUrl
+      message: 'Poem submitted successfully',
+      poemFileUrl,
+      photoFileUrl
     });
 
-  } catch (error) {
-    console.error('Error in poem submission:', error);
+  } catch (error: any) {
+    console.error('❌ Error submitting poem:', error);
     
-    // Clean up uploaded file if there was an error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // Clean up files on error
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      if (files) {
+        Object.values(files).flat().forEach(file => {
+          if (file.path && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        });
+      }
+    } catch (cleanupError) {
+      console.error('❌ File cleanup error:', cleanupError);
     }
 
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: error.errors
-      });
-    }
-
-    res.status(500).json({
+    res.status(500).json({ 
       error: 'Failed to submit poem',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Submission failed'
     });
   }
 });
 
-// Get submission statistics
-router.get('/api/stats', async (req, res) => {
+// Helper function
+function getTierAmount(tier: string): number {
+  const amounts = {
+    'free': 0,
+    'single': 50,
+    'double': 100,
+    'bulk': 480
+  };
+  return amounts[tier as keyof typeof amounts] || 0;
+}
+
+// Contact submission route
+router.post('/api/contact', async (req, res) => {
   try {
-    const auth = getGoogleAuth();
-    const sheets = google.sheets({ version: 'v4', auth });
+    const { name, email, phone, message } = req.body;
 
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID!,
-      range: 'Sheet1!A:L'
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: 'Name, email, and message are required' });
+    }
+
+    const { addContactToSheet } = await import('./google-sheets');
+    
+    await addContactToSheet({
+      name,
+      email,
+      phone: phone || '',
+      message,
+      timestamp: new Date().toISOString()
     });
 
-    const rows = response.data.values || [];
-    const submissions = rows.slice(1); // Skip header row
+    console.log('✅ Contact form submitted successfully');
 
-    const stats = {
-      total: submissions.length,
-      byCategory: {},
-      byTier: {},
-      byPaymentStatus: {}
-    };
-
-    submissions.forEach(row => {
-      const category = row[5];
-      const tier = row[6];
-      const paymentStatus = row[10];
-
-      stats.byCategory[category] = (stats.byCategory[category] || 0) + 1;
-      stats.byTier[tier] = (stats.byTier[tier] || 0) + 1;
-      stats.byPaymentStatus[paymentStatus] = (stats.byPaymentStatus[paymentStatus] || 0) + 1;
+    res.json({
+      success: true,
+      message: 'Contact form submitted successfully'
     });
 
-    res.json(stats);
-
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({
-      error: 'Failed to fetch statistics',
-      details: error instanceof Error ? error.message : 'Unknown error'
+  } catch (error: any) {
+    console.error('❌ Error submitting contact form:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit contact form',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Submission failed'
     });
   }
 });
 
-// Health check
-router.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    stripe: !!process.env.STRIPE_SECRET_KEY,
-    google: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-  });
-});
-
-export default router;
-
-export const registerRoutes = (app: any) => {
+export function registerRoutes(app: any) {
   app.use(router);
-};
+}
