@@ -374,15 +374,14 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
 
 // SUBMISSION ROUTES
 
-// Submit poem with fixed error handling
+// Submit poem with improved error handling
 router.post('/api/submit-poem', upload.fields([
   { name: 'poem', maxCount: 1 },
   { name: 'photo', maxCount: 1 }
 ]), async (req, res) => {
   try {
     console.log('📝 Poem submission request received');
-    console.log('Request body:', req.body);
-    console.log('Files:', req.files);
+    console.log('Form data:', req.body);
 
     const {
       firstName,
@@ -394,15 +393,60 @@ router.post('/api/submit-poem', upload.fields([
       tier,
       amount,
       paymentId,
-      userUid
+      paymentMethod,
+      userUid,
+      razorpay_order_id,
+      razorpay_signature
     } = req.body;
 
     // Validate required fields
     if (!firstName || !email || !poemTitle || !tier) {
+      console.error('❌ Missing required fields');
       return res.status(400).json({
         error: 'Missing required fields',
         details: 'First name, email, poem title, and tier are required'
       });
+    }
+
+    // Verify payment for paid tiers
+    if (tier !== 'free' && amount && parseFloat(amount) > 0) {
+      console.log('💰 Verifying payment for paid tier...');
+      
+      if (!paymentId || !paymentMethod) {
+        console.error('❌ Missing payment information for paid tier');
+        return res.status(400).json({
+          error: 'Payment verification required',
+          details: 'Payment information is missing for paid tier'
+        });
+      }
+
+      // Verify Razorpay payment if needed
+      if (paymentMethod === 'razorpay' && razorpay_order_id && razorpay_signature) {
+        try {
+          const crypto = require('crypto');
+          const body = razorpay_order_id + '|' + paymentId;
+          const expectedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(body.toString())
+            .digest('hex');
+
+          if (expectedSignature !== razorpay_signature) {
+            console.error('❌ Razorpay signature verification failed');
+            return res.status(400).json({
+              error: 'Payment verification failed',
+              details: 'Invalid payment signature'
+            });
+          }
+          
+          console.log('✅ Razorpay payment verified');
+        } catch (verifyError) {
+          console.error('❌ Payment verification error:', verifyError);
+          return res.status(400).json({
+            error: 'Payment verification failed',
+            details: 'Unable to verify payment'
+          });
+        }
+      }
     }
 
     // Handle file uploads
@@ -419,7 +463,7 @@ router.post('/api/submit-poem', upload.fields([
         console.log('✅ Poem file uploaded:', poemFileUrl);
         
         // Clean up temp file
-        fs.unlinkSync(poemFile.path);
+        try { fs.unlinkSync(poemFile.path); } catch {}
       }
 
       // Upload photo file if provided
@@ -430,7 +474,7 @@ router.post('/api/submit-poem', upload.fields([
         console.log('✅ Photo file uploaded:', photoFileUrl);
         
         // Clean up temp file
-        fs.unlinkSync(photoFile.path);
+        try { fs.unlinkSync(photoFile.path); } catch {}
       }
     } catch (uploadError) {
       console.error('⚠️ File upload warning:', uploadError);
@@ -465,7 +509,8 @@ router.post('/api/submit-poem', upload.fields([
       id: submissions.length + 1,
       userUid,
       ...submissionData,
-      paymentId: paymentId || null
+      paymentId: paymentId || null,
+      paymentMethod: paymentMethod || null
     };
     
     submissions.push(submission);

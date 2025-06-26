@@ -11,7 +11,6 @@ interface PaymentFormProps {
   onPaymentError: (error: string) => void;
 }
 
-// Declare Razorpay on window object
 declare global {
   interface Window {
     Razorpay: any;
@@ -23,7 +22,6 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load Razorpay script
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       if (window.Razorpay) {
@@ -44,7 +42,6 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       setIsProcessing(true);
       setError(null);
 
-      // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay script');
@@ -52,7 +49,6 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
 
       console.log('💳 Creating Razorpay order...');
 
-      // Create order
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: {
@@ -74,9 +70,8 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       }
 
       const orderData = await orderResponse.json();
-      console.log('✅ Order created:', orderData);
+      console.log('✅ Razorpay order created:', orderData);
 
-      // Configure Razorpay options
       const options = {
         key: orderData.key,
         amount: orderData.amount,
@@ -85,38 +80,19 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
         description: `Poetry Contest - ${selectedTier}`,
         order_id: orderData.orderId,
         handler: async function (response: any) {
-          console.log('💰 Payment successful:', response);
+          console.log('💰 Razorpay payment successful:', response);
+          setIsProcessing(false);
           
-          try {
-            // Verify payment
-            const verifyResponse = await fetch('/api/verify-razorpay-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
-            });
-
-            if (verifyResponse.ok) {
-              const verifyData = await verifyResponse.json();
-              onPaymentSuccess({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                amount: verifyData.amount,
-                currency: verifyData.currency,
-                payment_status: 'captured'
-              });
-            } else {
-              throw new Error('Payment verification failed');
-            }
-          } catch (verifyError) {
-            console.error('❌ Payment verification error:', verifyError);
-            onPaymentError('Payment verification failed');
-          }
+          // Immediately call success with Razorpay data
+          onPaymentSuccess({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            amount: amount,
+            currency: 'INR',
+            payment_status: 'captured',
+            payment_method: 'razorpay'
+          });
         },
         prefill: {
           name: '',
@@ -131,9 +107,8 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
         },
         modal: {
           ondismiss: function() {
-            console.log('💳 Payment cancelled by user');
+            console.log('💳 Razorpay payment cancelled by user');
             setIsProcessing(false);
-            onPaymentError('Payment cancelled');
           }
         }
       };
@@ -145,7 +120,6 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       console.error('❌ Razorpay payment error:', error);
       setError(error.message);
       onPaymentError(error.message);
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -167,31 +141,22 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
           tier: selectedTier,
           currency: 'USD'
         }),
-        credentials: 'include'
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('PayPal order creation failed:', errorText);
-        throw new Error('Failed to create PayPal order');
-      }
+      const responseData = await response.json();
+      console.log('PayPal response:', responseData);
 
-      const orderData = await response.json();
-      console.log('PayPal order response:', orderData);
-
-      if (orderData.success && orderData.approvalUrl) {
-        console.log('✅ Redirecting to PayPal:', orderData.approvalUrl);
-        // Redirect to PayPal
-        window.location.href = orderData.approvalUrl;
+      if (response.ok && responseData.success && responseData.approvalUrl) {
+        console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
+        window.location.href = responseData.approvalUrl;
       } else {
-        throw new Error(orderData.error || 'Failed to create PayPal order');
+        throw new Error(responseData.error || 'Failed to create PayPal order');
       }
 
     } catch (error: any) {
       console.error('❌ PayPal payment error:', error);
-      setError(error.message);
-      onPaymentError(error.message);
-    } finally {
+      setError(`PayPal Error: ${error.message}`);
+      onPaymentError(`PayPal Error: ${error.message}`);
       setIsProcessingPayPal(false);
     }
   };
@@ -206,7 +171,7 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <p className="text-gray-600 mb-4">Your free entry is ready to submit!</p>
           <Button 
-            onClick={() => onPaymentSuccess({ payment_status: 'free' })}
+            onClick={() => onPaymentSuccess({ payment_status: 'free', payment_method: 'free' })}
             className="w-full bg-green-600 hover:bg-green-700"
           >
             Continue with Free Entry
