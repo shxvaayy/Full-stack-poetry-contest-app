@@ -13,6 +13,7 @@ console.log('🔧 PayPal Configuration Check:');
 console.log('- Client ID exists:', !!PAYPAL_CLIENT_ID);
 console.log('- Client Secret exists:', !!PAYPAL_CLIENT_SECRET);
 console.log('- Base URL:', PAYPAL_BASE_URL);
+console.log('- Environment:', process.env.NODE_ENV);
 
 // Get PayPal access token
 async function getPayPalAccessToken() {
@@ -30,6 +31,8 @@ async function getPayPalAccessToken() {
       headers: {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'Accept-Language': 'en_US',
       },
       body: 'grant_type=client_credentials'
     });
@@ -38,11 +41,12 @@ async function getPayPalAccessToken() {
     console.log('PayPal token response status:', response.status);
 
     if (!response.ok) {
+      console.error('PayPal token error response:', responseText);
       throw new Error(`PayPal token request failed: ${response.status} - ${responseText}`);
     }
 
     const data = JSON.parse(responseText);
-    console.log('✅ PayPal access token obtained');
+    console.log('✅ PayPal access token obtained successfully');
     return data.access_token;
   } catch (error) {
     console.error('❌ Error getting PayPal access token:', error);
@@ -55,6 +59,8 @@ router.post('/api/create-paypal-order', async (req, res) => {
   try {
     console.log('📥 PayPal order creation request received');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request headers host:', req.get('host'));
+    console.log('Request protocol:', req.protocol);
 
     const { amount, tier, currency = 'USD' } = req.body;
 
@@ -115,6 +121,13 @@ router.post('/api/create-paypal-order', async (req, res) => {
     
     console.log(`💰 Converting ₹${amount} to $${usdAmount} USD`);
 
+    // Determine the correct base URL for callbacks
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://writory.onrender.com'
+      : `${req.protocol}://${req.get('host')}`;
+
+    console.log('🌐 Using base URL for callbacks:', baseUrl);
+
     const orderData = {
       intent: 'CAPTURE',
       purchase_units: [{
@@ -122,13 +135,18 @@ router.post('/api/create-paypal-order', async (req, res) => {
           currency_code: 'USD',
           value: usdAmount
         },
-        description: `Writory Poetry Contest - ${tier} tier (₹${amount})`
+        description: `Writory Poetry Contest - ${tier} tier (₹${amount})`,
+        custom_id: `${tier}_${Date.now()}`, // Add custom ID for tracking
+        invoice_id: `writory_${Date.now()}` // Add invoice ID
       }],
       application_context: {
-        return_url: `${req.protocol}://${req.get('host')}/payment-success`,
-        cancel_url: `${req.protocol}://${req.get('host')}/payment-cancel`,
+        return_url: `${baseUrl}/payment-success`,
+        cancel_url: `${baseUrl}/payment-cancel`,
         shipping_preference: 'NO_SHIPPING',
-        user_action: 'PAY_NOW'
+        user_action: 'PAY_NOW',
+        brand_name: 'Writory Poetry Contest',
+        locale: 'en-US',
+        landing_page: 'BILLING'
       }
     };
 
@@ -139,12 +157,16 @@ router.post('/api/create-paypal-order', async (req, res) => {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'PayPal-Request-Id': `writory-${Date.now()}`, // Add request ID for idempotency
+        'Prefer': 'return=representation'
       },
       body: JSON.stringify(orderData)
     });
 
     const responseText = await response.text();
     console.log('PayPal order response status:', response.status);
+    console.log('PayPal order response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
     console.log('PayPal order response body:', responseText);
 
     let order;
@@ -155,21 +177,27 @@ router.post('/api/create-paypal-order', async (req, res) => {
       return res.status(500).json({ 
         success: false, 
         error: 'Invalid response from PayPal',
-        details: responseText
+        details: responseText,
+        responseStatus: response.status
       });
     }
 
     if (response.ok && order.id) {
       console.log('✅ PayPal order created successfully:', order.id);
+      
       const approvalUrl = order.links?.find((link: any) => link.rel === 'approve')?.href;
       
       if (!approvalUrl) {
         console.error('❌ No approval URL found in PayPal response');
+        console.log('Available links:', order.links);
         return res.status(500).json({ 
           success: false, 
-          error: 'PayPal did not provide approval URL' 
+          error: 'PayPal did not provide approval URL',
+          orderDetails: order
         });
       }
+
+      console.log('✅ PayPal approval URL:', approvalUrl);
 
       res.json({
         success: true,
@@ -178,14 +206,27 @@ router.post('/api/create-paypal-order', async (req, res) => {
         amount: {
           inr: amount,
           usd: usdAmount
-        }
+        },
+        status: order.status
       });
     } else {
       console.error('❌ PayPal order creation failed:', order);
-      res.status(400).json({ 
+      
+      let errorMessage = 'Failed to create PayPal order';
+      let errorDetails = order;
+
+      if (order.details && Array.isArray(order.details)) {
+        errorMessage = order.details.map((detail: any) => detail.description).join(', ');
+        errorDetails = order.details;
+      } else if (order.message) {
+        errorMessage = order.message;
+      }
+
+      res.status(response.status || 400).json({ 
         success: false,
-        error: 'Failed to create PayPal order', 
-        details: order.details || order.message || order
+        error: errorMessage, 
+        details: errorDetails,
+        responseStatus: response.status
       });
     }
 
@@ -194,7 +235,8 @@ router.post('/api/create-paypal-order', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Failed to create PayPal order',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -221,24 +263,30 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     });
 
     const orderData = await response.json();
+    console.log('PayPal order verification response:', orderData);
 
     if (response.ok && orderData.status === 'APPROVED') {
       console.log('✅ PayPal order verified and approved:', orderId);
       
       // Capture the payment
+      console.log('🔄 Capturing PayPal payment...');
       const captureResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Prefer': 'return=representation'
         }
       });
 
       const captureData = await captureResponse.json();
+      console.log('PayPal capture response:', captureData);
 
       if (captureResponse.ok && captureData.status === 'COMPLETED') {
         console.log('✅ PayPal payment captured successfully');
@@ -250,6 +298,7 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
           status: captureData.status
         });
       } else {
+        console.error('❌ PayPal payment capture failed:', captureData);
         throw new Error('Failed to capture PayPal payment');
       }
     } else {
@@ -257,7 +306,8 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
       res.status(400).json({ 
         success: false,
         error: 'PayPal order verification failed', 
-        details: orderData 
+        details: orderData,
+        orderStatus: orderData.status
       });
     }
 
@@ -292,10 +342,13 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Prefer': 'return=representation'
       }
     });
 
     const captureData = await response.json();
+    console.log('PayPal capture response:', captureData);
 
     if (response.ok && captureData.status === 'COMPLETED') {
       console.log('✅ PayPal payment captured:', orderId);
@@ -329,11 +382,16 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
 router.get('/payment-success', async (req, res) => {
   try {
     const { token, PayerID } = req.query;
-    console.log('✅ PayPal payment success callback:', { token, PayerID });
+    console.log('✅ PayPal payment success callback received');
+    console.log('Query parameters:', { token, PayerID });
+    console.log('Full query:', req.query);
 
     if (token) {
-      res.redirect(`/submit?paypal_order_id=${token}&payment_success=true`);
+      const redirectUrl = `/submit?paypal_order_id=${token}&payment_success=true`;
+      console.log('Redirecting to:', redirectUrl);
+      res.redirect(redirectUrl);
     } else {
+      console.error('❌ No token received in success callback');
       res.redirect(`/submit?payment_error=true&message=${encodeURIComponent('Invalid payment token')}`);
     }
   } catch (error: any) {
@@ -344,6 +402,7 @@ router.get('/payment-success', async (req, res) => {
 
 router.get('/payment-cancel', (req, res) => {
   console.log('❌ PayPal payment cancelled');
+  console.log('Cancel query parameters:', req.query);
   res.redirect('/submit?payment_cancelled=true');
 });
 
