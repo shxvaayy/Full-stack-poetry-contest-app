@@ -1,3 +1,4 @@
+
 import { Router } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
@@ -5,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
-import * as Razorpay from 'razorpay';
+import Razorpay from 'razorpay';
 
 const router = Router();
 
@@ -175,7 +176,7 @@ router.get('/api/users/:uid/submission-status', async (req, res) => {
     const status = {
       freeSubmissionUsed: freeSubmissions.length > 0,
       totalSubmissions: userSubmissions.length,
-      contestMonth: new Date().toLocaleLe('en-US', { month: 'long', year: 'numeric' })
+      contestMonth: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     };
     
     console.log('✅ Submission status:', status);

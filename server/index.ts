@@ -1,3 +1,4 @@
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -163,7 +164,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('🚀 Starting server initialization...');
     
-    // Validate required environment variables
+    // Validate required environment variables - Updated to remove Stripe requirement
     const requiredEnvVars = {
       'RAZORPAY_KEY_ID': process.env.RAZORPAY_KEY_ID,
       'RAZORPAY_KEY_SECRET': process.env.RAZORPAY_KEY_SECRET,
@@ -186,13 +187,13 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     // Test Razorpay configuration
     if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
       try {
-        const Razorpay = require('razorpay');
+        const Razorpay = (await import('razorpay')).default;
         const razorpay = new Razorpay({
           key_id: process.env.RAZORPAY_KEY_ID,
           key_secret: process.env.RAZORPAY_KEY_SECRET,
         });
         
-        console.log('✅ Razorpay configuration successful');
+        console.log('✅ Razorpay initialized successfully');
       } catch (razorpayError: any) {
         console.error('❌ Razorpay configuration error:', razorpayError.message);
         console.error('🔧 Please check your RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET');
@@ -209,10 +210,11 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
         status: 'OK', 
         timestamp: new Date().toISOString(),
         env: process.env.NODE_ENV,
+        stripe: false,
         razorpay: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
         google: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
         cors: 'enabled',
-        version: '1.0.3',
+        version: '1.0.4',
         host: req.headers.host,
         origin: req.headers.origin
       });
@@ -302,14 +304,14 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     }
 
     // Use PORT from environment (Render sets this automatically)
-    const port = process.env.PORT || 5005;
+    const port = process.env.PORT || 10000;
     
     // Create and start the server
     const server = app.listen(port, '0.0.0.0', () => {
       console.log('\n🎉 Server started successfully!');
       log(`🚀 Server running on port ${port}`);
       log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-      log(`💳 Razorpay configured: ${!!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)}`);
+      log(`💳 Stripe configured: false`);
       log(`🔑 Google configured: ${!!process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
       log(`🌐 CORS configured for: ${process.env.NODE_ENV === 'production' ? 'Render domains' : 'localhost'}`);
       
