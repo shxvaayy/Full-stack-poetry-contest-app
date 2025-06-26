@@ -5,8 +5,7 @@ server/node_modules/
 
 # Ignore environment config
 
-server/poem-submission-service.json
-
+echo ".env" >> .gitignore
 
 # Ignore build output
 client/dist/
@@ -28,3 +27,4 @@ Thumbs.db
 # Optional: Ignore lock files if you prefer (recommended to keep one though)
 # package-lock.json
 # yarn.lock
+.env
