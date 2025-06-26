@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -226,7 +226,10 @@ export default function SubmitPage() {
         tier_id: selectedTier.id
       });
       
-      const response = await fetch('/api/create-checkout-session', {
+      const baseUrl = window.location.origin;
+      console.log('🔗 Base URL:', baseUrl);
+      
+      const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,20 +247,28 @@ export default function SubmitPage() {
       });
 
       console.log('📡 Checkout response status:', response.status);
+      const responseText = await response.text();
+      console.log('📡 Raw response:', responseText);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Checkout session creation failed:', errorData);
-        throw new Error(errorData.error || 'Failed to create checkout session');
+        let errorMessage = 'Failed to create checkout session';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+          console.error('❌ Checkout session creation failed:', errorData);
+        } catch {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const { url, sessionId } = await response.json();
-      console.log('✅ Checkout session created:', { url, sessionId });
+      const data = JSON.parse(responseText);
+      console.log('✅ Checkout session created:', data);
       
-      if (url) {
-        console.log('🔄 Redirecting to Stripe Checkout:', url);
+      if (data.url) {
+        console.log('🔄 Redirecting to Stripe Checkout:', data.url);
         // Redirect to Stripe Checkout
-        window.location.href = url;
+        window.location.href = data.url;
       } else {
         throw new Error('No checkout URL received');
       }
@@ -280,7 +291,8 @@ export default function SubmitPage() {
     try {
       console.log('🏦 Creating QR payment for:', selectedTier);
       
-      const response = await fetch('/api/create-qr-payment', {
+      const baseUrl = window.location.origin;
+      const response = await fetch(`${baseUrl}/api/create-qr-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -354,9 +366,13 @@ export default function SubmitPage() {
       formDataToSubmit.append('tier', selectedTier?.id || 'free');
       formDataToSubmit.append('payment_status', paymentCompleted ? 'completed' : 'free');
       
-      // Add session ID if available
+      // Add session ID or payment intent ID
       if (sessionId) {
-        formDataToSubmit.append('session_id', sessionId);
+        if (sessionId.startsWith('qr_')) {
+          formDataToSubmit.append('payment_intent_id', sessionId);
+        } else {
+          formDataToSubmit.append('session_id', sessionId);
+        }
       }
       
       // Add files
@@ -370,11 +386,14 @@ export default function SubmitPage() {
       console.log("📋 Form data prepared, making API request...");
 
       // Make the API request
-      const response = await fetch('/api/submit-poem', {
+      const baseUrl = window.location.origin;
+      const response = await fetch(`${baseUrl}/api/submit-poem`, {
         method: 'POST',
         body: formDataToSubmit,
         credentials: 'same-origin',
       });
+
+      console.log('📡 Submit response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -630,7 +649,7 @@ export default function SubmitPage() {
             >
               {isSubmitting ? (
                 <span className="flex items-center">
-                  <span className="animate-spin mr-2">🔄</span>
+                  <Loader2 className="animate-spin mr-2" size={16} />
                   Submitting...
                 </span>
               ) : (
@@ -648,84 +667,89 @@ export default function SubmitPage() {
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">Complete Payment</h2>
         {selectedTier && (
-          <p className="text-lg text-gray-600 mb-4">
+          <p className="text-lg text-gray-600 mb-6">
             Complete Payment - ₹{selectedTier.price}
           </p>
         )}
-        <p className="text-gray-600">Choose your payment method</p>
+        <p className="text-gray-600 mb-8">Choose your payment method</p>
       </div>
 
       {!showQRPayment ? (
-        <div className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <Button
-              onClick={handleStripeCheckout}
-              disabled={isProcessingPayment}
-              className="bg-blue-600 hover:bg-blue-700 text-white p-6 h-auto flex flex-col items-center space-y-2"
-            >
-              <CreditCard size={32} />
-              <span className="text-lg font-semibold">Card Payment</span>
-              {isProcessingPayment && <span className="text-sm">Processing...</span>}
-            </Button>
-            
-            <Button
-              onClick={handleQRPayment}
-              variant="outline"
-              className="border-green-500 text-green-600 hover:bg-green-50 p-6 h-auto flex flex-col items-center space-y-2"
-            >
-              <QrCode size={32} />
-              <span className="text-lg font-semibold">UPI/QR Payment</span>
-            </Button>
-          </div>
-          
-          <div className="text-center">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentStep("form")}
-              className="mt-4"
-            >
-              Back to Form
-            </Button>
-          </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Button
+            onClick={handleStripeCheckout}
+            disabled={isProcessingPayment}
+            className="h-24 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-3"
+          >
+            {isProcessingPayment ? (
+              <Loader2 className="animate-spin" size={24} />
+            ) : (
+              <CreditCard size={24} />
+            )}
+            <span className="text-lg">Card Payment</span>
+          </Button>
+
+          <Button
+            onClick={handleQRPayment}
+            variant="outline"
+            className="h-24 border-2 border-green-500 text-green-600 hover:bg-green-50 flex items-center justify-center space-x-3"
+          >
+            <QrCode size={24} />
+            <span className="text-lg">UPI/QR Payment</span>
+          </Button>
         </div>
       ) : (
-        <div className="bg-blue-50 p-8 rounded-lg text-center space-y-4">
-          <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-            <QrCode size={64} className="mx-auto mb-4 text-blue-600" />
-            <div className="text-2xl font-bold text-blue-600 mb-2">₹{selectedTier?.price}</div>
-            <div className="text-sm text-gray-600 mb-4">Amount to pay</div>
-            
-            <div className="space-y-2 text-sm">
-              <div><strong>UPI ID:</strong> {qrPaymentData?.upiId}</div>
-              <div><strong>Name:</strong> {qrPaymentData?.merchantName}</div>
-            </div>
-            
-            <div className="mt-4 text-sm text-gray-600">
-              Pay using PhonePe, Google Pay, Paytm, or any UPI app
-            </div>
+        <div className="bg-blue-50 p-8 rounded-lg text-center">
+          <div className="w-24 h-24 bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-6">
+            <QrCode className="text-white" size={48} />
           </div>
           
-          <Button
-            onClick={handleCompleteQRPayment}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
-          >
-            I have completed the payment
-          </Button>
+          <h3 className="text-xl font-bold mb-4">Scan QR code with any UPI app</h3>
           
-          <Button
-            variant="outline"
-            onClick={() => setShowQRPayment(false)}
-            className="ml-4"
-          >
-            Cancel Payment
-          </Button>
+          <div className="bg-white border-2 border-dashed border-gray-300 p-6 rounded-lg mb-6">
+            <div className="text-3xl font-bold text-blue-600 mb-2">₹{selectedTier?.price}</div>
+            <div className="text-gray-600">Amount to pay</div>
+          </div>
           
-          <div className="text-xs text-gray-500 mt-4">
-            <div>Secure payment powered by Stripe</div>
-            <div>Your payment information is encrypted and secure</div>
+          <div className="space-y-2 text-left mb-6">
+            <div><strong>UPI ID:</strong> {qrPaymentData?.upiId || 'writorycontest@paytm'}</div>
+            <div><strong>Name:</strong> {qrPaymentData?.merchantName || 'Writory Contest'}</div>
+          </div>
+          
+          <p className="text-gray-600 mb-6">Pay using PhonePe, Google Pay, Paytm, or any UPI app</p>
+          
+          <div className="flex gap-4">
+            <Button
+              onClick={handleCompleteQRPayment}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              I have completed the payment
+            </Button>
+            
+            <Button
+              onClick={() => setShowQRPayment(false)}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel Payment
+            </Button>
           </div>
         </div>
       )}
+
+      <div className="text-center">
+        <Button
+          onClick={() => setCurrentStep("form")}
+          variant="outline"
+        >
+          Back to Form
+        </Button>
+      </div>
+
+      <div className="text-center text-sm text-gray-500">
+        <p>Secure payment powered by Stripe</p>
+        <p>Your payment information is encrypted and secure</p>
+      </div>
     </div>
   );
 
