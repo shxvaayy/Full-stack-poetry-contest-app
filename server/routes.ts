@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
-import Razorpay from 'razorpay';
+import * as Razorpay from 'razorpay';
 
 const router = Router();
 

@@ -212,7 +212,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
         razorpay: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
         google: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
         cors: 'enabled',
-        version: '1.0.4',
+        version: '1.0.3',
         host: req.headers.host,
         origin: req.headers.origin
       });
@@ -309,7 +309,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       console.log('\n🎉 Server started successfully!');
       log(`🚀 Server running on port ${port}`);
       log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-      log(`💳 Stripe configured: ${!!process.env.STRIPE_SECRET_KEY}`);
+      log(`💳 Razorpay configured: ${!!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)}`);
       log(`🔑 Google configured: ${!!process.env.GOOGLE_SERVICE_ACCOUNT_JSON}`);
       log(`🌐 CORS configured for: ${process.env.NODE_ENV === 'production' ? 'Render domains' : 'localhost'}`);
       
