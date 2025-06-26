@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -73,6 +73,8 @@ export default function SubmitPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [showQRPayment, setShowQRPayment] = useState(false);
+  const [qrPaymentData, setQrPaymentData] = useState<any>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -98,7 +100,7 @@ export default function SubmitPage() {
     const paymentCancelled = urlParams.get('payment_cancelled');
 
     if (sessionId && paymentSuccess === 'true') {
-      // Verify the payment and set as completed
+      console.log('🎉 Payment successful, verifying session:', sessionId);
       verifyPayment(sessionId);
     } else if (paymentCancelled === 'true') {
       toast({
@@ -117,31 +119,39 @@ export default function SubmitPage() {
 
   const verifyPayment = async (sessionId: string) => {
     try {
+      console.log('🔍 Verifying payment session:', sessionId);
+      
       const response = await fetch('/api/verify-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ sessionId }),
+        credentials: 'same-origin',
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Payment verified successfully:', data);
+        
         setSessionId(sessionId);
         setPaymentCompleted(true);
         setCurrentStep("form");
+        
         toast({
           title: "Payment Successful!",
           description: "Payment completed successfully. You can now submit your poem.",
         });
       } else {
-        throw new Error('Payment verification failed');
+        const errorData = await response.json();
+        console.error('❌ Payment verification failed:', errorData);
+        throw new Error(errorData.error || 'Payment verification failed');
       }
-    } catch (error) {
-      console.error('Payment verification error:', error);
+    } catch (error: any) {
+      console.error('❌ Payment verification error:', error);
       toast({
         title: "Payment Verification Failed",
-        description: "There was an issue verifying your payment. Please contact support.",
+        description: error.message || "There was an issue verifying your payment. Please contact support.",
         variant: "destructive",
       });
     }
@@ -168,6 +178,8 @@ export default function SubmitPage() {
     setSelectedTier(tier);
     setPaymentCompleted(false);
     setSessionId(null);
+    setShowQRPayment(false);
+    setQrPaymentData(null);
     setCurrentStep("form");
   };
 
@@ -197,8 +209,8 @@ export default function SubmitPage() {
       setPaymentCompleted(true);
       setSessionId('free_submission');
     } else if (!paymentCompleted) {
-      // For paid tiers, initiate Stripe Checkout
-      handleStripeCheckout();
+      // For paid tiers, show payment options
+      setCurrentStep("payment");
     }
   };
 
@@ -208,6 +220,12 @@ export default function SubmitPage() {
     setIsProcessingPayment(true);
     
     try {
+      console.log('💳 Initiating Stripe Checkout for:', {
+        amount: selectedTier.price,
+        tier: selectedTier.name,
+        tier_id: selectedTier.id
+      });
+      
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -222,26 +240,86 @@ export default function SubmitPage() {
             poem_title: formData.poemTitle
           }
         }),
+        credentials: 'same-origin',
       });
 
+      console.log('📡 Checkout response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+        const errorData = await response.json();
+        console.error('❌ Checkout session creation failed:', errorData);
+        throw new Error(errorData.error || 'Failed to create checkout session');
       }
 
-      const { url } = await response.json();
+      const { url, sessionId } = await response.json();
+      console.log('✅ Checkout session created:', { url, sessionId });
       
-      // Redirect to Stripe Checkout
-      window.location.href = url;
+      if (url) {
+        console.log('🔄 Redirecting to Stripe Checkout:', url);
+        // Redirect to Stripe Checkout
+        window.location.href = url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
 
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      console.error('❌ Checkout error:', error);
       toast({
         title: "Payment Error",
-        description: "Failed to initiate payment. Please try again.",
+        description: error.message || "Failed to initiate payment. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsProcessingPayment(false);
+    }
+  };
+
+  const handleQRPayment = async () => {
+    if (!selectedTier) return;
+
+    try {
+      console.log('🏦 Creating QR payment for:', selectedTier);
+      
+      const response = await fetch('/api/create-qr-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: selectedTier.price,
+          tier: selectedTier.name,
+        }),
+        credentials: 'same-origin',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ QR payment created:', data);
+        setQrPaymentData(data);
+        setShowQRPayment(true);
+      } else {
+        throw new Error('Failed to create QR payment');
+      }
+
+    } catch (error: any) {
+      console.error('❌ QR payment error:', error);
+      toast({
+        title: "QR Payment Error",
+        description: "Failed to generate QR payment. Please try card payment.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCompleteQRPayment = () => {
+    if (qrPaymentData) {
+      setSessionId(qrPaymentData.paymentId);
+      setPaymentCompleted(true);
+      setCurrentStep("form");
+      toast({
+        title: "Payment Confirmed!",
+        description: "QR payment completed. You can now submit your poem.",
+      });
     }
   };
 
@@ -292,10 +370,7 @@ export default function SubmitPage() {
       console.log("📋 Form data prepared, making API request...");
 
       // Make the API request
-      const baseUrl = window.location.origin;
-      const apiUrl = `${baseUrl}/api/submit-poem`;
-      
-      const response = await fetch(apiUrl, {
+      const response = await fetch('/api/submit-poem', {
         method: 'POST',
         body: formDataToSubmit,
         credentials: 'same-origin',
@@ -343,7 +418,6 @@ export default function SubmitPage() {
     }
   };
 
-  // Rest of your render functions remain the same...
   const renderTierSelection = () => (
     <div className="space-y-6">
       <div className="text-center">
@@ -539,25 +613,13 @@ export default function SubmitPage() {
             variant="outline"
             onClick={() => setCurrentStep("selection")}
             className="flex-1"
-            disabled={isProcessingPayment}
           >
             Back
           </Button>
           
           {selectedTier && selectedTier.price > 0 && !paymentCompleted ? (
-            <Button 
-              type="submit" 
-              className="flex-1 bg-primary hover:bg-green-700"
-              disabled={isProcessingPayment}
-            >
-              {isProcessingPayment ? (
-                <span className="flex items-center">
-                  <span className="animate-spin mr-2">🔄</span>
-                  Processing...
-                </span>
-              ) : (
-                "Proceed to Payment"
-              )}
+            <Button type="submit" className="flex-1 bg-primary hover:bg-green-700">
+              Proceed to Payment
             </Button>
           ) : (
             <Button
@@ -581,6 +643,92 @@ export default function SubmitPage() {
     </div>
   );
 
+  const renderPayment = () => (
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Complete Payment</h2>
+        {selectedTier && (
+          <p className="text-lg text-gray-600 mb-4">
+            Complete Payment - ₹{selectedTier.price}
+          </p>
+        )}
+        <p className="text-gray-600">Choose your payment method</p>
+      </div>
+
+      {!showQRPayment ? (
+        <div className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Button
+              onClick={handleStripeCheckout}
+              disabled={isProcessingPayment}
+              className="bg-blue-600 hover:bg-blue-700 text-white p-6 h-auto flex flex-col items-center space-y-2"
+            >
+              <CreditCard size={32} />
+              <span className="text-lg font-semibold">Card Payment</span>
+              {isProcessingPayment && <span className="text-sm">Processing...</span>}
+            </Button>
+            
+            <Button
+              onClick={handleQRPayment}
+              variant="outline"
+              className="border-green-500 text-green-600 hover:bg-green-50 p-6 h-auto flex flex-col items-center space-y-2"
+            >
+              <QrCode size={32} />
+              <span className="text-lg font-semibold">UPI/QR Payment</span>
+            </Button>
+          </div>
+          
+          <div className="text-center">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentStep("form")}
+              className="mt-4"
+            >
+              Back to Form
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-blue-50 p-8 rounded-lg text-center space-y-4">
+          <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+            <QrCode size={64} className="mx-auto mb-4 text-blue-600" />
+            <div className="text-2xl font-bold text-blue-600 mb-2">₹{selectedTier?.price}</div>
+            <div className="text-sm text-gray-600 mb-4">Amount to pay</div>
+            
+            <div className="space-y-2 text-sm">
+              <div><strong>UPI ID:</strong> {qrPaymentData?.upiId}</div>
+              <div><strong>Name:</strong> {qrPaymentData?.merchantName}</div>
+            </div>
+            
+            <div className="mt-4 text-sm text-gray-600">
+              Pay using PhonePe, Google Pay, Paytm, or any UPI app
+            </div>
+          </div>
+          
+          <Button
+            onClick={handleCompleteQRPayment}
+            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
+          >
+            I have completed the payment
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => setShowQRPayment(false)}
+            className="ml-4"
+          >
+            Cancel Payment
+          </Button>
+          
+          <div className="text-xs text-gray-500 mt-4">
+            <div>Secure payment powered by Stripe</div>
+            <div>Your payment information is encrypted and secure</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderCompleted = () => (
     <div className="text-center space-y-6">
       <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto">
@@ -598,6 +746,8 @@ export default function SubmitPage() {
           setSelectedTier(null);
           setPaymentCompleted(false);
           setSessionId(null);
+          setShowQRPayment(false);
+          setQrPaymentData(null);
           setFormData({
             firstName: "",
             lastName: "",
@@ -656,6 +806,7 @@ export default function SubmitPage() {
         {/* Content based on current step */}
         {currentStep === "selection" && renderTierSelection()}
         {currentStep === "form" && renderForm()}
+        {currentStep === "payment" && renderPayment()}
         {currentStep === "completed" && renderCompleted()}
       </div>
     </section>

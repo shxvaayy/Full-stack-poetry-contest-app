@@ -9,6 +9,18 @@ import Stripe from 'stripe';
 
 const router = Router();
 
+// Environment validation
+const requiredEnvVars = [
+  'STRIPE_SECRET_KEY',
+  'GOOGLE_SERVICE_ACCOUNT_JSON'
+];
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`❌ Missing required environment variable: ${envVar}`);
+  }
+}
+
 // Initialize Stripe with better error handling
 let stripe: Stripe;
 try {
@@ -21,7 +33,6 @@ try {
   console.log('✅ Stripe initialized successfully');
 } catch (error) {
   console.error('❌ Failed to initialize Stripe:', error);
-  process.exit(1);
 }
 
 // Configure multer for file uploads
@@ -87,31 +98,58 @@ router.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
     cors: 'enabled',
-    origin: req.headers.origin
+    origin: req.headers.origin,
+    stripe_configured: !!process.env.STRIPE_SECRET_KEY,
+    google_configured: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   });
 });
 
-// STRIPE CHECKOUT ROUTES - NEW IMPLEMENTATION
+// STRIPE CHECKOUT ROUTES - FIXED IMPLEMENTATION
 
 // Create Stripe Checkout Session
 router.post('/api/create-checkout-session', async (req, res) => {
   try {
-    console.log('📥 Checkout session request received:', req.body);
+    console.log('📥 Checkout session request received');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request headers:', req.headers);
     
+    // Validate Stripe initialization
+    if (!stripe) {
+      console.error('❌ Stripe not initialized');
+      return res.status(500).json({ 
+        error: 'Payment system not configured properly',
+        details: 'Stripe not initialized'
+      });
+    }
+
     const { amount, tier, metadata } = req.body;
 
+    // Validate input
     if (!amount || amount <= 0) {
+      console.error('❌ Invalid amount:', amount);
       return res.status(400).json({ error: 'Valid amount is required' });
     }
 
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? `${req.protocol}://${req.get('host')}`
-      : 'http://localhost:5173';
+    if (!tier) {
+      console.error('❌ Missing tier');
+      return res.status(400).json({ error: 'Tier is required' });
+    }
 
-    console.log('🔗 Base URL for redirects:', baseUrl);
+    // Determine base URL for redirects
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const baseUrl = `${protocol}://${host}`;
+
+    console.log('🔗 Redirect URLs will use base:', baseUrl);
+
+    const successUrl = `${baseUrl}/submit?session_id={CHECKOUT_SESSION_ID}&payment_success=true`;
+    const cancelUrl = `${baseUrl}/submit?payment_cancelled=true`;
+
+    console.log('✅ Success URL:', successUrl);
+    console.log('❌ Cancel URL:', cancelUrl);
 
     // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    const sessionData = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -119,34 +157,62 @@ router.post('/api/create-checkout-session', async (req, res) => {
             currency: 'inr',
             product_data: {
               name: `Poetry Contest - ${tier}`,
-              description: `Submit ${tier === 'single' ? '1' : tier === 'double' ? '2' : '5'} poem(s)`,
+              description: `Submit ${tier === '1 Poem' ? '1' : tier === '2 Poems' ? '2' : '5'} poem(s)`,
             },
-            unit_amount: amount * 100, // Convert to paise
+            unit_amount: Math.round(amount * 100), // Convert to paise
           },
           quantity: 1,
         },
       ],
-      mode: 'payment',
-      success_url: `${baseUrl}/submit?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
-      cancel_url: `${baseUrl}/submit?payment_cancelled=true`,
+      mode: 'payment' as const,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         tier: tier,
         amount: amount.toString(),
-        ...metadata
+        ...(metadata || {})
       },
-    });
+    };
 
-    console.log('✅ Checkout session created:', session.id);
+    console.log('📋 Creating Stripe session with data:', JSON.stringify(sessionData, null, 2));
+
+    const session = await stripe.checkout.sessions.create(sessionData);
+
+    console.log('✅ Checkout session created successfully');
+    console.log('Session ID:', session.id);
+    console.log('Session URL:', session.url);
 
     res.json({
+      success: true,
       sessionId: session.id,
       url: session.url
     });
 
   } catch (error: any) {
     console.error('❌ Error creating checkout session:', error);
-    res.status(500).json({ 
-      error: 'Failed to create checkout session',
+    console.error('Error stack:', error.stack);
+    
+    // More specific error handling
+    let errorMessage = 'Failed to create checkout session';
+    let statusCode = 500;
+    
+    if (error.type === 'StripeCardError') {
+      errorMessage = 'Card error: ' + error.message;
+      statusCode = 400;
+    } else if (error.type === 'StripeInvalidRequestError') {
+      errorMessage = 'Invalid request: ' + error.message;
+      statusCode = 400;
+    } else if (error.type === 'StripeAPIError') {
+      errorMessage = 'Stripe API error: ' + error.message;
+    } else if (error.type === 'StripeConnectionError') {
+      errorMessage = 'Network error connecting to Stripe';
+    } else if (error.type === 'StripeAuthenticationError') {
+      errorMessage = 'Stripe authentication failed';
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
+      type: error.type || 'unknown',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -161,15 +227,20 @@ router.post('/api/verify-checkout-session', async (req, res) => {
       return res.status(400).json({ error: 'Session ID is required' });
     }
 
+    if (!stripe) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
     console.log('🔍 Verifying checkout session:', sessionId);
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    console.log('📊 Session status:', {
+    console.log('📊 Session details:', {
       id: session.id,
       payment_status: session.payment_status,
       amount_total: session.amount_total,
-      currency: session.currency
+      currency: session.currency,
+      metadata: session.metadata
     });
 
     if (session.payment_status === 'paid') {
@@ -196,7 +267,43 @@ router.post('/api/verify-checkout-session', async (req, res) => {
   }
 });
 
-// POEM SUBMISSION ROUTES - Updated to work with Checkout
+// QR Payment Creation (Fallback)
+router.post('/api/create-qr-payment', async (req, res) => {
+  try {
+    const { amount, tier } = req.body;
+    
+    console.log('🏦 Creating QR payment for:', { amount, tier });
+    
+    // Generate a unique QR payment ID
+    const qrPaymentId = `qr_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    
+    // In a real implementation, you would integrate with a UPI payment gateway
+    // For now, we'll return mock QR data
+    const qrData = {
+      paymentId: qrPaymentId,
+      amount: amount,
+      upiId: 'writorycontest@paytm',
+      merchantName: 'Writory Contest',
+      qrCodeUrl: '/api/generate-qr/' + qrPaymentId
+    };
+    
+    console.log('✅ QR payment created:', qrData);
+    
+    res.json({
+      success: true,
+      ...qrData
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error creating QR payment:', error);
+    res.status(500).json({ 
+      error: 'Failed to create QR payment',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// POEM SUBMISSION ROUTES
 
 // Submit poem with enhanced error handling
 router.post('/api/submit-poem', upload.fields([
@@ -206,7 +313,7 @@ router.post('/api/submit-poem', upload.fields([
   try {
     console.log('📝 Received poem submission request');
     console.log('Body keys:', Object.keys(req.body));
-    console.log('Files:', req.files);
+    console.log('Files received:', Object.keys(req.files || {}));
 
     // Validate files
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -242,9 +349,13 @@ router.post('/api/submit-poem', upload.fields([
         });
       }
 
-      // Verify payment with Stripe Checkout or Payment Intent
-      if (submissionData.session_id) {
+      // Verify payment with Stripe Checkout
+      if (submissionData.session_id && submissionData.session_id !== 'free_submission') {
         try {
+          if (!stripe) {
+            throw new Error('Stripe not initialized');
+          }
+
           const session = await stripe.checkout.sessions.retrieve(submissionData.session_id);
           
           if (session.payment_status !== 'paid') {
@@ -261,85 +372,74 @@ router.post('/api/submit-poem', upload.fields([
             error: 'Invalid payment verification' 
           });
         }
-      } else if (submissionData.payment_intent_id && !submissionData.payment_intent_id.startsWith('qr_')) {
-        // Handle old payment intent verification
-        try {
-          const paymentIntent = await stripe.paymentIntents.retrieve(submissionData.payment_intent_id);
-          
-          if (paymentIntent.status !== 'succeeded') {
-            return res.status(400).json({ 
-              error: 'Payment not completed',
-              status: paymentIntent.status 
-            });
-          }
-          
-          console.log('✅ Payment intent verified for submission');
-        } catch (paymentError) {
-          console.error('❌ Payment intent verification failed:', paymentError);
-          return res.status(400).json({ 
-            error: 'Invalid payment verification' 
-          });
-        }
       } else if (submissionData.payment_intent_id?.startsWith('qr_')) {
         console.log('✅ QR Payment ID received:', submissionData.payment_intent_id);
       }
     }
 
     // Process file uploads to Google Drive
-    const { uploadPoemFile, uploadPhotoFile } = await import('./google-drive');
-    
-    const poemFileBuffer = files.poem_file[0].buffer || fs.readFileSync(files.poem_file[0].path);
-    const photoFileBuffer = files.photo[0].buffer || fs.readFileSync(files.photo[0].path);
-    
-    const poemFileUrl = await uploadPoemFile(
-      poemFileBuffer,
-      submissionData.email,
-      files.poem_file[0].originalname
-    );
-    
-    const photoFileUrl = await uploadPhotoFile(
-      photoFileBuffer,
-      submissionData.email,
-      files.photo[0].originalname
-    );
-
-    // Add to Google Sheets
-    const { addPoemSubmissionToSheet } = await import('./google-sheets');
-    
-    await addPoemSubmissionToSheet({
-      name: `${submissionData.firstName} ${submissionData.lastName}`,
-      email: submissionData.email,
-      phone: submissionData.phone || '',
-      age: submissionData.age.toString(),
-      poemTitle: submissionData.poemTitle,
-      tier: submissionData.tier,
-      amount: getTierAmount(submissionData.tier).toString(),
-      poemFile: poemFileUrl,
-      photo: photoFileUrl,
-      timestamp: new Date().toISOString()
-    });
-
-    // Clean up uploaded files
     try {
-      if (files.poem_file[0].path && fs.existsSync(files.poem_file[0].path)) {
-        fs.unlinkSync(files.poem_file[0].path);
+      const { uploadPoemFile, uploadPhotoFile } = await import('./google-drive');
+      
+      const poemFileBuffer = files.poem_file[0].buffer || fs.readFileSync(files.poem_file[0].path);
+      const photoFileBuffer = files.photo[0].buffer || fs.readFileSync(files.photo[0].path);
+      
+      const poemFileUrl = await uploadPoemFile(
+        poemFileBuffer,
+        submissionData.email,
+        files.poem_file[0].originalname
+      );
+      
+      const photoFileUrl = await uploadPhotoFile(
+        photoFileBuffer,
+        submissionData.email,
+        files.photo[0].originalname
+      );
+
+      // Add to Google Sheets
+      const { addPoemSubmissionToSheet } = await import('./google-sheets');
+      
+      await addPoemSubmissionToSheet({
+        name: `${submissionData.firstName} ${submissionData.lastName}`,
+        email: submissionData.email,
+        phone: submissionData.phone || '',
+        age: submissionData.age.toString(),
+        poemTitle: submissionData.poemTitle,
+        tier: submissionData.tier,
+        amount: getTierAmount(submissionData.tier).toString(),
+        poemFile: poemFileUrl,
+        photo: photoFileUrl,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log('✅ Files uploaded and data saved successfully');
+
+      // Clean up uploaded files
+      try {
+        if (files.poem_file[0].path && fs.existsSync(files.poem_file[0].path)) {
+          fs.unlinkSync(files.poem_file[0].path);
+        }
+        if (files.photo[0].path && fs.existsSync(files.photo[0].path)) {
+          fs.unlinkSync(files.photo[0].path);
+        }
+      } catch (cleanupError) {
+        console.warn('⚠️ File cleanup warning:', cleanupError);
       }
-      if (files.photo[0].path && fs.existsSync(files.photo[0].path)) {
-        fs.unlinkSync(files.photo[0].path);
-      }
-    } catch (cleanupError) {
-      console.warn('⚠️ File cleanup warning:', cleanupError);
+
+      console.log('✅ Poem submission completed successfully');
+
+      res.json({
+        success: true,
+        message: 'Poem submitted successfully',
+        poemFileUrl,
+        photoFileUrl,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (uploadError) {
+      console.error('❌ Error during file upload or data saving:', uploadError);
+      throw uploadError;
     }
-
-    console.log('✅ Poem submission completed successfully');
-
-    res.json({
-      success: true,
-      message: 'Poem submitted successfully',
-      poemFileUrl,
-      photoFileUrl,
-      timestamp: new Date().toISOString()
-    });
 
   } catch (error: any) {
     console.error('❌ Error submitting poem:', error);
