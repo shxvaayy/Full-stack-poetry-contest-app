@@ -437,7 +437,7 @@ router.post('/api/submit-poem', upload.fields([
 
     // For paid tiers, verify payment
     if (submissionData.tier !== 'free' && submissionData.payment_status !== 'free') {
-      if (!submissionData.razorpay_order_id && !submissionData.payment_intent_id) {
+      if (!submissionData.razorpay_payment_id && !submissionData.payment_intent_id) {
         return res.status(400).json({ 
           error: 'Payment verification required for paid submissions' 
         });
