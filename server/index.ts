@@ -165,7 +165,8 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     
     // Validate required environment variables
     const requiredEnvVars = {
-      'STRIPE_SECRET_KEY': process.env.STRIPE_SECRET_KEY,
+      'RAZORPAY_KEY_ID': process.env.RAZORPAY_KEY_ID,
+      'RAZORPAY_KEY_SECRET': process.env.RAZORPAY_KEY_SECRET,
       'GOOGLE_SERVICE_ACCOUNT_JSON': process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
       'GOOGLE_SHEET_ID': process.env.GOOGLE_SHEET_ID
     };
@@ -182,20 +183,19 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
     console.log('✅ All required environment variables are present');
 
-    // Test Stripe configuration
-    if (process.env.STRIPE_SECRET_KEY) {
+    // Test Razorpay configuration
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
       try {
-        const Stripe = require('stripe');
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-          apiVersion: '2023-10-16',
+        const Razorpay = require('razorpay');
+        const razorpay = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET,
         });
         
-        // Test Stripe connection
-        await stripe.balance.retrieve();
-        console.log('✅ Stripe connection successful');
-      } catch (stripeError: any) {
-        console.error('❌ Stripe configuration error:', stripeError.message);
-        console.error('🔧 Please check your STRIPE_SECRET_KEY');
+        console.log('✅ Razorpay configuration successful');
+      } catch (razorpayError: any) {
+        console.error('❌ Razorpay configuration error:', razorpayError.message);
+        console.error('🔧 Please check your RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET');
       }
     }
 
@@ -209,10 +209,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
         status: 'OK', 
         timestamp: new Date().toISOString(),
         env: process.env.NODE_ENV,
-        stripe: !!process.env.STRIPE_SECRET_KEY,
+        razorpay: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
         google: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
         cors: 'enabled',
-        version: '1.0.3',
+        version: '1.0.4',
         host: req.headers.host,
         origin: req.headers.origin
       });
