@@ -1,28 +1,19 @@
-
-import { users, submissions, contacts, userSubmissionCounts, type User, type InsertUser, type Submission, type InsertSubmission, type Contact, type InsertContact, type UserSubmissionCount } from "@shared/schema";
+import { users, submissions, contacts, userSubmissionCounts, type User, type InsertUser, type Submission, type InsertSubmission, type Contact, type InsertContact, type UserSubmissionCount } from "./schema.js";
 
 export interface IStorage {
-  // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUid(uid: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
-  // Submission methods
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   getSubmissionsByUser(userId: number): Promise<Submission[]>;
   getWinningSubmissions(): Promise<Submission[]>;
   getAllSubmissions(): Promise<Submission[]>;
-  
-  // Contact methods
   createContact(contact: InsertContact): Promise<Contact>;
-  
-  // Submission count methods
   getUserSubmissionCount(userId: number, contestMonth: string): Promise<UserSubmissionCount | undefined>;
   updateUserSubmissionCount(userId: number, contestMonth: string, freeUsed: boolean, totalCount: number): Promise<void>;
 }
 
-// Simple file-based storage using JSON files
 const DATA_FILE = './data.json';
 
 interface StorageData {
@@ -61,12 +52,10 @@ export class MemStorage implements IStorage {
     if (this.initialized) return;
     
     try {
-      // Try to read existing data file
       const fs = await import('fs/promises');
       const dataString = await fs.readFile(DATA_FILE, 'utf-8');
       const loadedData = JSON.parse(dataString);
       
-      // Convert date strings back to Date objects
       loadedData.users.forEach((user: any) => {
         user.createdAt = new Date(user.createdAt);
       });
@@ -80,10 +69,9 @@ export class MemStorage implements IStorage {
       });
       
       this.data = loadedData;
-      console.log(`📁 Loaded data: ${this.data.users.length} users, ${this.data.submissions.length} submissions`);
+      console.log(`Loaded data: ${this.data.users.length} users, ${this.data.submissions.length} submissions`);
     } catch (error) {
-      console.log('📁 No existing data file found, starting with fresh data');
-      // Keep default empty data structure
+      console.log('No existing data file found, starting with fresh data');
     }
     
     this.initialized = true;
@@ -93,9 +81,9 @@ export class MemStorage implements IStorage {
     try {
       const fs = await import('fs/promises');
       await fs.writeFile(DATA_FILE, JSON.stringify(this.data, null, 2));
-      console.log('💾 Data saved to file');
+      console.log('Data saved to file');
     } catch (error) {
-      console.error('❌ Error saving data:', error);
+      console.error('Error saving data:', error);
     }
   }
 
@@ -112,7 +100,7 @@ export class MemStorage implements IStorage {
   async getUserByUid(uid: string): Promise<User | undefined> {
     await this.loadData();
     const user = this.data.users.find(user => user.uid === uid);
-    console.log(`🔍 Looking for user with UID: ${uid}, found:`, user ? `${user.email} (ID: ${user.id})` : 'none');
+    console.log(`Looking for user with UID: ${uid}, found:`, user ? `${user.email} (ID: ${user.id})` : 'none');
     return user;
   }
 
@@ -128,7 +116,7 @@ export class MemStorage implements IStorage {
     };
     this.data.users.push(user);
     await this.saveData();
-    console.log(`👤 Created and saved user: ${user.email} (ID: ${user.id})`);
+    console.log(`Created and saved user: ${user.email} (ID: ${user.id})`);
     return user;
   }
 
@@ -141,26 +129,26 @@ export class MemStorage implements IStorage {
       userId: insertSubmission.userId || null,
       lastName: insertSubmission.lastName || null,
       phone: insertSubmission.phone || null,
+      age: insertSubmission.age || null,
       price: insertSubmission.price || 0,
-      paymentScreenshotUrl: insertSubmission.paymentScreenshotUrl || null,
+      poemFileUrl: insertSubmission.poemFileUrl || null,
+      photoUrl: insertSubmission.photoUrl || null,
       paymentId: insertSubmission.paymentId || null,
+      paymentMethod: insertSubmission.paymentMethod || null,
       submittedAt: new Date(),
       isWinner: false,
       winnerPosition: null
     };
     this.data.submissions.push(submission);
     await this.saveData();
-    console.log(`📝 Created and saved submission ID ${id} for user ${submission.userId}`);
+    console.log(`Created and saved submission ID ${id} for user ${submission.userId}`);
     return submission;
   }
 
   async getSubmissionsByUser(userId: number): Promise<Submission[]> {
     await this.loadData();
-    console.log(`📋 Getting submissions for user ID: ${userId}`);
-    
     const userSubmissions = this.data.submissions.filter(submission => submission.userId === userId);
-    console.log(`📋 Found ${userSubmissions.length} submissions for user ${userId}`);
-    
+    console.log(`Found ${userSubmissions.length} submissions for user ${userId}`);
     return userSubmissions;
   }
 
@@ -193,7 +181,6 @@ export class MemStorage implements IStorage {
     const result = this.data.submissionCounts.find(count => 
       count.userId === userId && count.contestMonth === contestMonth
     );
-    console.log(`📊 Getting submission count for user ${userId}, month ${contestMonth}:`, result);
     return result;
   }
 
@@ -222,7 +209,7 @@ export class MemStorage implements IStorage {
     }
     
     await this.saveData();
-    console.log(`📊 Updated and saved submission count for user ${userId}: free=${freeUsed}, total=${totalCount}`);
+    console.log(`Updated and saved submission count for user ${userId}: free=${freeUsed}, total=${totalCount}`);
   }
 }
 

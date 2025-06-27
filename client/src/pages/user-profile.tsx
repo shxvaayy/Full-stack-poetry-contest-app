@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +37,7 @@ export default function UserProfilePage() {
   const { user } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // First, ensure user exists in backend storage
+  // Ensure user exists in backend storage
   const { 
     data: backendUser, 
     isLoading: userLoading,
@@ -48,7 +47,6 @@ export default function UserProfilePage() {
     queryFn: async () => {
       if (!user?.uid) throw new Error("No user UID");
       
-      // First try to get existing user
       const response = await fetch(`/api/users/${user.uid}`);
       
       if (response.ok) {
@@ -56,8 +54,6 @@ export default function UserProfilePage() {
       }
       
       if (response.status === 404) {
-        // User doesn't exist, create them
-        console.log("🔄 Creating user in backend storage...");
         const createResponse = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -81,10 +77,10 @@ export default function UserProfilePage() {
     enabled: !!user?.uid,
     retry: 2,
     refetchOnWindowFocus: false,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   });
 
-  // Get user submissions - only after user is confirmed to exist
+  // Get user submissions
   const { 
     data: submissions = [], 
     isLoading: submissionsLoading, 
@@ -101,16 +97,15 @@ export default function UserProfilePage() {
       }
       
       const data = await response.json();
-      console.log("📋 Fetched submissions:", data);
       return Array.isArray(data) ? data : [];
     },
     enabled: !!user?.uid && !!backendUser?.id,
     retry: 2,
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 0,
   });
 
-  // Get user submission status - only after user exists
+  // Get user submission status
   const { 
     data: submissionStatus, 
     isLoading: statusLoading,
@@ -129,20 +124,7 @@ export default function UserProfilePage() {
     },
     enabled: !!user?.uid && !!backendUser?.id,
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always fetch fresh data
-  });
-
-  // Debug logging
-  console.log("🔍 Profile Debug:", {
-    userUid: user?.uid,
-    userEmail: user?.email,
-    backendUser: backendUser,
-    userLoading,
-    submissionsLoading,
-    submissionsError: submissionsError?.message,
-    submissionsCount: submissions?.length,
-    submissions,
-    submissionStatus
+    staleTime: 0,
   });
 
   const getTierColor = (tier: string) => {
@@ -182,20 +164,17 @@ export default function UserProfilePage() {
   const refreshData = async () => {
     setIsRefreshing(true);
     try {
-      // First ensure user exists, then fetch their data
       await refetchUser();
       await Promise.all([refetchSubmissions(), refetchStatus()]);
     } catch (error) {
-      console.error("❌ Error refreshing data:", error);
+      console.error("Error refreshing data:", error);
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // Auto-refresh when user changes or logs in
   useEffect(() => {
     if (user?.uid && !backendUser) {
-      console.log("🔄 User changed, refetching backend user...");
       refetchUser();
     }
   }, [user?.uid, backendUser, refetchUser]);
@@ -216,8 +195,7 @@ export default function UserProfilePage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Setting up your profile...</h2>
-          <p className="text-gray-600">Please wait while we prepare your account.</p>
+          <p className="text-gray-600">Loading your profile...</p>
         </div>
       </div>
     );
@@ -225,30 +203,34 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/">
-            <Button variant="outline" className="mb-4">
-              <ArrowLeft className="mr-2" size={16} />
-              Back to Home
-            </Button>
-          </Link>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-              <p className="text-gray-600">Manage your account and view submission history</p>
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center mb-2">
+              <Link href="/">
+                <Button variant="ghost" className="p-2 hover:bg-gray-100">
+                  <ArrowLeft size={20} />
+                  <span className="ml-2">Back to Home</span>
+                </Button>
+              </Link>
             </div>
-            <Button onClick={refreshData} variant="outline" size="sm" disabled={isRefreshing}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-            </Button>
+            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+            <p className="text-gray-600">Manage your account and view submission history</p>
           </div>
+          <Button 
+            onClick={refreshData} 
+            disabled={isRefreshing}
+            variant="outline"
+            className="flex items-center"
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="ml-2">Refresh Data</span>
+          </Button>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* User Info Card */}
-          <div className="lg:col-span-1">
+          {/* User Information */}
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -257,9 +239,9 @@ export default function UserProfilePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                    <User className="text-white" size={20} />
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                    <User className="text-green-600" size={24} />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">
@@ -268,29 +250,22 @@ export default function UserProfilePage() {
                     <p className="text-sm text-gray-500">Poet</p>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Mail size={16} />
-                  <span className="text-sm">{backendUser?.email || user.email}</span>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Calendar size={16} />
-                  <span className="text-sm">
-                    Joined {new Date(backendUser?.createdAt || user.metadata?.creationTime || Date.now()).toLocaleDateString()}
-                  </span>
+
+                <div className="flex items-center text-gray-600">
+                  <Mail className="mr-2" size={16} />
+                  <span className="text-sm">{user.email}</span>
                 </div>
 
-                {/* User sync status */}
-                <div className="pt-2 border-t text-xs text-gray-400">
-                  <p>Account Status: {backendUser ? '✅ Synced' : '⚠️ Pending'}</p>
-                  <p>Backend ID: {backendUser?.id || 'Not assigned'}</p>
-                  <p>Firebase UID: {user.uid}</p>
+                <div className="flex items-center text-gray-600">
+                  <Calendar className="mr-2" size={16} />
+                  <span className="text-sm">
+                    Joined {backendUser ? formatDate(backendUser.createdAt) : 'Recently'}
+                  </span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Submission Status Card */}
+            {/* Submission Status */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -298,36 +273,27 @@ export default function UserProfilePage() {
                   Submission Status
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {statusLoading ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Total Submissions</span>
-                      <Badge variant="secondary">{submissionStatus?.totalSubmissions || 0}</Badge>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Free Entry Used</span>
-                      <Badge variant={submissionStatus?.freeSubmissionUsed ? "destructive" : "secondary"}>
-                        {submissionStatus?.freeSubmissionUsed ? "Used" : "Available"}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Contest Month</span>
-                      <span className="text-sm font-medium">{submissionStatus?.contestMonth}</span>
-                    </div>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Total Submissions</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    {submissionStatus?.totalSubmissions || 0}
+                  </span>
+                </div>
 
-                    <div className="text-xs text-gray-400 pt-2 border-t">
-                      <p>Last Updated: {new Date().toLocaleTimeString()}</p>
-                      <p>Data Source: {submissions.length > 0 ? 'Backend' : 'Empty'}</p>
-                    </div>
-                  </div>
-                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Free Entry Used</span>
+                  <span className={`text-sm font-medium ${
+                    submissionStatus?.freeSubmissionUsed ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {submissionStatus?.freeSubmissionUsed ? 'Used' : 'Available'}
+                  </span>
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  <p>Contest Month</p>
+                  <p className="font-mono">{submissionStatus?.contestMonth || 'Not set'}</p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -357,12 +323,6 @@ export default function UserProfilePage() {
                     <FileText className="mx-auto h-12 w-12 text-red-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Submissions</h3>
                     <p className="text-red-500 mb-4">{submissionsError.message}</p>
-                    <div className="space-y-2 mb-4 p-3 bg-red-50 rounded-lg">
-                      <p className="text-xs text-red-600">Debug Info:</p>
-                      <p className="text-xs text-red-600">User exists: {backendUser ? 'Yes' : 'No'}</p>
-                      <p className="text-xs text-red-600">Backend User ID: {backendUser?.id || 'None'}</p>
-                      <p className="text-xs text-red-600">Firebase UID: {user.uid}</p>
-                    </div>
                     <Button onClick={refreshData} variant="outline">
                       Try Again
                     </Button>
@@ -379,13 +339,6 @@ export default function UserProfilePage() {
                         : "Start your poetry journey by submitting your first poem!"
                       }
                     </p>
-                    <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Sync Status:</p>
-                      <p className="text-xs text-gray-500">Backend User: {backendUser ? '✅ Connected' : '❌ Missing'}</p>
-                      <p className="text-xs text-gray-500">Total from Status API: {submissionStatus?.totalSubmissions || 0}</p>
-                      <p className="text-xs text-gray-500">Submissions API: {submissions?.length || 0} items</p>
-                      <p className="text-xs text-gray-500">Error: {submissionsError?.message || 'None'}</p>
-                    </div>
                     <div className="space-x-2">
                       <Link href="/submit">
                         <Button>
@@ -406,7 +359,7 @@ export default function UserProfilePage() {
                           <div className="flex items-center space-x-2">
                             {submission.isWinner && (
                               <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                                🏆 Winner #{submission.winnerPosition}
+                                Winner #{submission.winnerPosition}
                               </Badge>
                             )}
                             <Badge className={getTierColor(submission.tier)}>
