@@ -516,7 +516,7 @@ export default function SubmitPage() {
 
       <div className="mt-8 text-center">
         <p className="text-sm text-gray-500">
-          Contest submissions for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          Remember! The more poems you submit, the greater your chances of winning!
         </p>
       </div>
     </div>
@@ -651,7 +651,7 @@ export default function SubmitPage() {
                     <h4 className="font-medium mb-2">Submission Guidelines</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
                       <li>• Poems must be original work</li>
-                      <li>• Maximum 100 lines per poem</li>
+                      <li>• Poems of any length are welcome</li>
                       <li>• File size should not exceed 5MB</li>
                       <li>• Photo should be clear and recent</li>
                     </ul>
