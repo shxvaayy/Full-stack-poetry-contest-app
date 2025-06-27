@@ -158,6 +158,11 @@ export default function SubmitPage() {
           title: "Payment Successful!",
           description: "Payment completed successfully. You can now submit your poem.",
         });
+
+        // Auto-submit after a short delay
+        setTimeout(() => {
+          handleFormSubmit();
+        }, 1000);
       } else {
         const errorData = await response.json();
         console.error('❌ Payment verification failed:', errorData);
