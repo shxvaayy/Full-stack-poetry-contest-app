@@ -5,7 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { uploadPoemFile, uploadPhotoFile } from './google-drive.js';
-import { addPoemSubmissionToSheet, getSubmissionCountFromSheet } from './google-sheets.js';
+import { addPoemSubmissionToSheet, addContactToSheet, getSubmissionCountFromSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 
@@ -582,6 +582,84 @@ router.get('/api/stats/submissions', async (req, res) => {
   } catch (error: any) {
     console.error('Error getting submission statistics:', error);
     res.status(500).json({ error: 'Failed to get statistics' });
+  }
+});
+
+// Submit contact form
+router.post('/api/contact', async (req, res) => {
+  try {
+    console.log('📧 Contact form submission received');
+    console.log('Contact data:', req.body);
+
+    const { name, email, phone, message } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !message) {
+      console.error('❌ Missing required contact fields');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        details: 'Name, email, and message are required'
+      });
+    }
+
+    // Create contact data
+    const contactData = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone ? phone.trim() : '',
+      message: message.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📝 Processing contact submission:', {
+      name: contactData.name,
+      email: contactData.email,
+      phone: contactData.phone,
+      messageLength: contactData.message.length
+    });
+
+    // Save to local storage first
+    try {
+      const contact = await storage.createContact({
+        name: contactData.name,
+        email: contactData.email,
+        phone: contactData.phone,
+        message: contactData.message
+      });
+      console.log('✅ Contact saved to local storage:', contact.id);
+    } catch (storageError) {
+      console.error('❌ Failed to save contact to local storage:', storageError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save contact',
+        details: storageError.message
+      });
+    }
+
+    // Add to Google Sheets (backup/external record)
+    try {
+      await addContactToSheet(contactData);
+      console.log('✅ Contact added to Google Sheets');
+    } catch (sheetsError) {
+      console.error('⚠️ Google Sheets warning:', sheetsError);
+      // Continue even if sheets update fails
+    }
+
+    console.log('✅ Contact submission completed successfully');
+
+    res.json({
+      success: true,
+      message: 'Contact form submitted successfully!'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error processing contact form:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit contact form',
+      details: error.message
+    });
   }
 });
 
