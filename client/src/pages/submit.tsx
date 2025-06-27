@@ -249,8 +249,8 @@ export default function SubmitPage() {
   };
 
   const handlePaymentSuccess = (data: any) => {
-    console.log('💰 Razorpay payment successful:', data);
     console.log('✅ Payment successful, data received:', data);
+    console.log('Setting payment data in state...');
     
     // Ensure payment data is in the correct format
     const processedPaymentData = {
@@ -259,21 +259,24 @@ export default function SubmitPage() {
       amount: selectedTier?.price || 0
     };
     
-    console.log('🔧 Processed payment data:', processedPaymentData);
-    
-    // Set payment data and completion status
+    // CRITICAL FIX: Set payment data BEFORE auto-submit
     setPaymentData(processedPaymentData);
     setPaymentCompleted(true);
+    
+    console.log('✅ Payment data set in state:', processedPaymentData);
     
     toast({
       title: "Payment Successful!",
       description: "Processing your submission...",
     });
 
-    // Auto-submit with the payment data directly to avoid state timing issues
+    // Auto-submit after payment data is set in state
     setTimeout(async () => {
       try {
         console.log('🔄 Auto-submitting after payment success...');
+        console.log('Payment data before submission:', processedPaymentData);
+        
+        // Use the processed payment data directly instead of relying on state
         await handleFormSubmitWithPaymentData(processedPaymentData);
       } catch (error) {
         console.error('❌ Auto-submission failed:', error);
@@ -283,7 +286,7 @@ export default function SubmitPage() {
           variant: "destructive",
         });
       }
-    }, 500);
+    }, 1000); // Increased delay to ensure state update
   };
 
   const handlePaymentError = (error: string) => {
@@ -296,15 +299,15 @@ export default function SubmitPage() {
     setCurrentStep("form");
   };
 
-  const handleFormSubmitWithPaymentData = async (directPaymentData?: any) => {
-    const paymentDataToUse = directPaymentData || paymentData;
-    
+  const handleFormSubmitWithPaymentData = async (providedPaymentData?: any) => {
     try {
       setIsSubmitting(true);
 
+      const effectivePaymentData = providedPaymentData || paymentData;
+
       console.log('🚀 Form submission started');
       console.log('Form data:', formData);
-      console.log('Payment data:', paymentDataToUse);
+      console.log('Payment data:', effectivePaymentData);
       console.log('Selected tier:', selectedTier);
 
       // Validate form
@@ -317,7 +320,7 @@ export default function SubmitPage() {
       }
 
       // For paid tiers, check if payment is completed
-      if (selectedTier?.price && selectedTier.price > 0 && !paymentCompleted && !paymentDataToUse) {
+      if (selectedTier?.price && selectedTier.price > 0 && !paymentCompleted && !effectivePaymentData) {
         console.log('Payment required, redirecting to payment step');
         setCurrentStep("payment");
         return;
@@ -338,31 +341,31 @@ export default function SubmitPage() {
       submitFormData.append('userUid', user?.uid || '');
 
       // Add payment data if available
-      if (paymentDataToUse) {
-        console.log('Adding payment information to submission:', paymentDataToUse);
+      if (paymentData) {
+        console.log('Adding payment information to submission:', paymentData);
         
-        if (paymentDataToUse.razorpay_payment_id) {
-          submitFormData.append('paymentId', paymentDataToUse.razorpay_payment_id);
+        if (paymentData.razorpay_payment_id) {
+          submitFormData.append('paymentId', paymentData.razorpay_payment_id);
           submitFormData.append('paymentMethod', 'razorpay');
-          submitFormData.append('razorpay_order_id', paymentDataToUse.razorpay_order_id || '');
-          submitFormData.append('razorpay_signature', paymentDataToUse.razorpay_signature || '');
+          submitFormData.append('razorpay_order_id', paymentData.razorpay_order_id || '');
+          submitFormData.append('razorpay_signature', paymentData.razorpay_signature || '');
           console.log('✅ Added Razorpay payment data');
-        } else if (paymentDataToUse.paypal_order_id) {
-          submitFormData.append('paymentId', paymentDataToUse.paypal_order_id);
+        } else if (paymentData.paypal_order_id) {
+          submitFormData.append('paymentId', paymentData.paypal_order_id);
           submitFormData.append('paymentMethod', 'paypal');
           console.log('✅ Added PayPal payment data');
-        } else if (paymentDataToUse.payment_method === 'razorpay' || paymentDataToUse.payment_method === 'paypal') {
+        } else if (paymentData.payment_method === 'razorpay' || paymentData.payment_method === 'paypal') {
           // Handle generic payment data
-          submitFormData.append('paymentId', paymentDataToUse.paymentId || paymentDataToUse.transaction_id || 'paid');
-          submitFormData.append('paymentMethod', paymentDataToUse.payment_method);
-          if (paymentDataToUse.razorpay_order_id) {
-            submitFormData.append('razorpay_order_id', paymentDataToUse.razorpay_order_id);
+          submitFormData.append('paymentId', paymentData.paymentId || paymentData.transaction_id || 'paid');
+          submitFormData.append('paymentMethod', paymentData.payment_method);
+          if (paymentData.razorpay_order_id) {
+            submitFormData.append('razorpay_order_id', paymentData.razorpay_order_id);
           }
-          if (paymentDataToUse.razorpay_signature) {
-            submitFormData.append('razorpay_signature', paymentDataToUse.razorpay_signature);
+          if (paymentData.razorpay_signature) {
+            submitFormData.append('razorpay_signature', paymentData.razorpay_signature);
           }
           console.log('✅ Added generic payment data');
-        } else if (paymentDataToUse.payment_method === 'free') {
+        } else if (paymentData.payment_method === 'free') {
           submitFormData.append('paymentMethod', 'free');
           submitFormData.append('paymentId', 'free_entry');
           console.log('✅ Added free entry data');
@@ -436,10 +439,6 @@ export default function SubmitPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleFormSubmit = async () => {
-    return handleFormSubmitWithPaymentData();
   };
 
   // Check for free tier availability
