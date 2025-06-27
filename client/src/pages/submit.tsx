@@ -250,7 +250,15 @@ export default function SubmitPage() {
 
   const handlePaymentSuccess = (data: any) => {
     console.log('✅ Payment successful, data received:', data);
-    setPaymentData(data);
+    
+    // Ensure payment data is in the correct format
+    const processedPaymentData = {
+      ...data,
+      payment_method: data.payment_method || 'razorpay',
+      amount: selectedTier?.price || 0
+    };
+    
+    setPaymentData(processedPaymentData);
     setPaymentCompleted(true);
     
     toast({
@@ -258,14 +266,20 @@ export default function SubmitPage() {
       description: "Processing your submission...",
     });
 
-    // Don't change step immediately, trigger submission directly
+    // Auto-submit immediately after payment success
     setTimeout(async () => {
       try {
+        console.log('🔄 Auto-submitting after payment success...');
         await handleFormSubmit();
       } catch (error) {
-        console.error('Auto-submission failed:', error);
+        console.error('❌ Auto-submission failed:', error);
+        toast({
+          title: "Submission Error",
+          description: "Payment successful but submission failed. Please try submitting again.",
+          variant: "destructive",
+        });
       }
-    }, 1000);
+    }, 500);
   };
 
   const handlePaymentError = (error: string) => {
@@ -319,27 +333,42 @@ export default function SubmitPage() {
 
       // Add payment data if available
       if (paymentData) {
-        console.log('Adding payment information to submission');
+        console.log('Adding payment information to submission:', paymentData);
         
         if (paymentData.razorpay_payment_id) {
           submitFormData.append('paymentId', paymentData.razorpay_payment_id);
           submitFormData.append('paymentMethod', 'razorpay');
           submitFormData.append('razorpay_order_id', paymentData.razorpay_order_id || '');
           submitFormData.append('razorpay_signature', paymentData.razorpay_signature || '');
-          console.log('Added Razorpay payment data');
+          console.log('✅ Added Razorpay payment data');
         } else if (paymentData.paypal_order_id) {
           submitFormData.append('paymentId', paymentData.paypal_order_id);
           submitFormData.append('paymentMethod', 'paypal');
-          console.log('Added PayPal payment data');
+          console.log('✅ Added PayPal payment data');
+        } else if (paymentData.payment_method === 'razorpay' || paymentData.payment_method === 'paypal') {
+          // Handle generic payment data
+          submitFormData.append('paymentId', paymentData.paymentId || paymentData.transaction_id || 'paid');
+          submitFormData.append('paymentMethod', paymentData.payment_method);
+          if (paymentData.razorpay_order_id) {
+            submitFormData.append('razorpay_order_id', paymentData.razorpay_order_id);
+          }
+          if (paymentData.razorpay_signature) {
+            submitFormData.append('razorpay_signature', paymentData.razorpay_signature);
+          }
+          console.log('✅ Added generic payment data');
         } else if (paymentData.payment_method === 'free') {
           submitFormData.append('paymentMethod', 'free');
           submitFormData.append('paymentId', 'free_entry');
-          console.log('Added free entry data');
+          console.log('✅ Added free entry data');
         }
       } else if (selectedTier?.id === 'free') {
         submitFormData.append('paymentMethod', 'free');
         submitFormData.append('paymentId', 'free_entry');
-        console.log('Free tier submission');
+        console.log('✅ Free tier submission');
+      } else if (selectedTier?.price && selectedTier.price > 0) {
+        // This should not happen - payment is required for paid tiers
+        console.error('❌ Missing payment data for paid tier');
+        throw new Error('Payment information is missing for paid tier');
       }
 
       // Add files
