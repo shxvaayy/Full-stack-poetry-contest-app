@@ -13,31 +13,16 @@
   --card-foreground: hsl(20, 14.3%, 4.1%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(158, 64%, 17%);
-  --primary-foreground: hsl(355, 7%, 97%);
+  --primary: hsl(142, 76%, 36%);
+  --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(60, 4.8%, 95.9%);
   --secondary-foreground: hsl(24, 9.8%, 10%);
-  --accent: hsl(207, 90%, 54%);
-  --accent-foreground: hsl(210, 40%, 98%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
   --ring: hsl(20, 14.3%, 4.1%);
   --radius: 0.5rem;
-  --gold: hsl(45, 100%, 50%);
-}
-
-/* Moving text animation */
-@keyframes scroll-left {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
-}
-
-.animate-scroll {
-  animation: scroll-left 15s linear infinite;
 }
 
 .dark {
@@ -52,16 +37,15 @@
   --border: hsl(240, 3.7%, 15.9%);
   --input: hsl(240, 3.7%, 15.9%);
   --primary: hsl(142, 76%, 36%);
-  --primary-foreground: hsl(355, 7%, 97%);
+  --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(240, 3.7%, 15.9%);
   --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(207, 90%, 54%);
-  --accent-foreground: hsl(210, 40%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
   --destructive: hsl(0, 62.8%, 30.6%);
   --destructive-foreground: hsl(0, 0%, 98%);
   --ring: hsl(240, 4.9%, 83.9%);
   --radius: 0.5rem;
-  --gold: hsl(45, 100%, 50%);
 }
 
 @layer base {
@@ -74,16 +58,86 @@
   }
 }
 
-@layer utilities {
-  .text-gold {
-    color: var(--gold);
+/* Chatbot Custom Animations */
+@keyframes glow {
+  0% { 
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
   }
-  
-  .bg-gold {
-    background-color: var(--gold);
+  100% { 
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.8), 0 0 40px rgba(34, 197, 94, 0.4);
   }
-  
-  .border-gold {
-    border-color: var(--gold);
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { 
+    transform: translateY(0);
   }
+  50% { 
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes slide-up {
+  0% { 
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  0% { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-scroll {
+  animation: scroll 20s linear infinite;
+}
+
+/* Custom scrollbar for chat messages */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: hsl(210, 40%, 96%);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(215, 14%, 81%);
+  border-radius: 4px;
 }

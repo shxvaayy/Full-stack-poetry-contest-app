@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Pen, IdCard, Users, Globe, Star, DollarSign, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
+import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
+import ChatbotWidget from "@/components/ChatbotWidget";
 
 export default function HomePage() {
   // Fetch total submission count for live poets count
@@ -205,17 +206,16 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Beginners are encouraged to participate.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">This is an online writing competition. Performance is not required anywhere. Submission has to be made online through our website.</p>
+                  <p className="text-gray-700">Writory reserves the right to disqualify any entry that violates these rules or contains inappropriate content.</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </section>
+
+      {/* Chatbot Widget */}
+      <ChatbotWidget />
     </div>
   );
 }
