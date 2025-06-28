@@ -10,11 +10,12 @@ import ChatbotWidget from "@/components/ChatbotWidget";
 export default function HomePage() {
   // Fetch total submission count for live poets count
   const { data: statsData } = useQuery({
-    queryKey: ['/api/stats/submissions'],
+    queryKey: ['/api/submission-count'],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/stats/submissions");
+      const response = await apiRequest("GET", "/api/submission-count");
       if (response.ok) {
-        return response.json();
+        const data = await response.json();
+        return { totalPoets: data.count || 0 };
       }
       return { totalPoets: 0 };
     },
@@ -54,8 +55,6 @@ export default function HomePage() {
               <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
             </div>
           </div>
-
-          
 
           <Link href="/submit">
             <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
@@ -126,95 +125,174 @@ export default function HomePage() {
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Globe className="text-2xl text-white" size={24} />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Website Publication</h3>
-                <p className="text-gray-600 text-sm">Your poem published on our winners gallery</p>
+                <h3 className="font-semibold text-gray-900 mb-2">Global Exposure</h3>
+                <p className="text-gray-600 text-sm">Showcase your work to a worldwide audience</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-red-50 to-rose-50">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Star className="text-2xl text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Literary Recognition</h3>
+                <p className="text-gray-600 text-sm">Build your reputation in the literary community</p>
               </CardContent>
             </Card>
 
             <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-violet-50">
               <CardContent className="p-6 text-center">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Star className="text-2xl text-white" size={24} />
+                  <Trophy className="text-2xl text-white" size={24} />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Platform Showcase</h3>
-                <p className="text-gray-600 text-sm">Featured in our monthly literary showcase</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <DollarSign className="text-2xl text-white" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Cash Prize</h3>
-                <p className="text-gray-600 text-sm">Monetary rewards for top-performing poems</p>
+                <h3 className="font-semibold text-gray-900 mb-2">Achievement Badge</h3>
+                <p className="text-gray-600 text-sm">Special recognition for your creative excellence</p>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
-      {/* Competition Rules Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-blue-600 bg-clip-text text-transparent">
-            Competition Rules
+      {/* Benefits Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-slate-100">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent">
+            Why Choose Writory?
           </h2>
-          <p className="text-center text-gray-600 mb-12 text-lg">Simple guidelines for a fair and inclusive competition</p>
-          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-8">
-              <div className="space-y-6">
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">The competition is open to anyone who is 13 years old and above.</p>
+          <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <CheckCircle className="text-white" size={32} />
                 </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Poems must be the original work of the author, and must not have been created using AI.</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Easy Submission</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Simple, user-friendly submission process. Upload your poem in minutes and join our community of passionate poets from around the world.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Users className="text-white" size={32} />
                 </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Poems must be written in English only</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Expert Judging</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Professional literary experts and published poets evaluate submissions with care, providing fair and insightful assessment of your work.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Globe className="text-white" size={32} />
                 </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Entries must be the participant's original and unpublished work. Plagiarism will lead to disqualification.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">All entries must be submitted by the announced deadline. Late submissions will not be considered.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Participants retain full rights to their work. Writory may feature selected poems on its website/socials with proper credits.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Any length and style of poetry is welcome.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Poems on any subject are accepted. Our poets are encouraged to take inspiration from wherever they may find it.</p>
-                </div>
-                <div className="flex items-start bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
-                  <CheckCircle className="text-green-600 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-green-800 font-medium">🎉 Each participant is allowed 1 free submission. Entry is free! Anyone can join. Winners will get shoutouts and certificates to showcase their talents from us.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">We encourage participants to submit more poems, as it increases the likelihood of winning. Each poem is considered as an individual entry.</p>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                  <p className="text-gray-700">Writory reserves the right to disqualify any entry that violates these rules or contains inappropriate content.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Global Recognition</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Winners gain international exposure through our platform and social media, connecting with poetry enthusiasts worldwide.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
-      {/* Chatbot Widget */}
+      {/* Pricing Tiers Preview */}
+      <section className="py-16 bg-gradient-to-br from-slate-900 to-gray-900 text-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-4 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+            Submission Options
+          </h2>
+          <p className="text-center text-gray-300 mb-12 text-lg">Choose the option that works best for you</p>
+          
+          <div className="grid md:grid-cols-4 gap-6">
+            <Card className="border border-green-500/30 bg-gradient-to-br from-green-900/20 to-emerald-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Pen className="text-white" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-green-400 mb-2">FREE Entry</h3>
+                <p className="text-3xl font-bold text-white mb-2">₹0</p>
+                <p className="text-gray-300 text-sm mb-4">One poem per month</p>
+                <div className="text-green-400 text-sm">Perfect for beginners</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-blue-500/30 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Pen className="text-white" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Single Poem</h3>
+                <p className="text-3xl font-bold text-white mb-2">₹50</p>
+                <p className="text-gray-300 text-sm mb-4">1 additional poem</p>
+                <div className="text-blue-400 text-sm">Great for testing waters</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-violet-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Pen className="text-white" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-purple-400 mb-2">Double Entry</h3>
+                <p className="text-3xl font-bold text-white mb-2">₹100</p>
+                <p className="text-gray-300 text-sm mb-4">2 additional poems</p>
+                <div className="text-purple-400 text-sm">Popular choice</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-yellow-500/30 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Crown className="text-white" size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-yellow-400 mb-2">Bulk Entry</h3>
+                <p className="text-3xl font-bold text-white mb-2">₹480</p>
+                <p className="text-gray-300 text-sm mb-4">5 additional poems</p>
+                <div className="text-yellow-400 text-sm">Best value & most submissions</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="text-center mt-12">
+            <Link href="/submit">
+              <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                Start Submitting Now
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action */}
+      <section className="py-20 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600">
+        <div className="max-w-4xl mx-auto text-center px-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Ready to Share Your Poetry?
+          </h2>
+          <p className="text-xl text-white/90 mb-8 leading-relaxed">
+            Join thousands of poets who have already shared their voices. Your story matters, your words have power, and your poetry deserves to be heard.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/submit">
+              <Button size="lg" className="bg-white text-purple-600 hover:bg-gray-100 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                Submit Your Poem
+              </Button>
+            </Link>
+            <Link href="/about">
+              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                Learn More
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <ChatbotWidget />
     </div>
   );
