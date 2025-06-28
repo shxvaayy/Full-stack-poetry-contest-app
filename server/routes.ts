@@ -38,6 +38,102 @@ router.get('/api/test', (req, res) => {
   });
 });
 
+// 🔍 DEBUG: Check storage state
+router.get('/api/debug/storage', async (req, res) => {
+  try {
+    // Check if data.json exists
+    const fs = await import('fs/promises');
+    let fileExists = false;
+    let fileContent = null;
+    
+    try {
+      fileContent = await fs.readFile('./data.json', 'utf-8');
+      fileExists = true;
+    } catch (error) {
+      fileExists = false;
+    }
+    
+    // Get current storage data from memory
+    const allSubmissions = await storage.getAllSubmissions();
+    const allUsers = (storage as any).data?.users || [];
+    
+    res.json({
+      fileExists,
+      fileContent: fileExists ? JSON.parse(fileContent) : null,
+      memoryData: {
+        users: allUsers,
+        submissions: allSubmissions,
+        userCount: allUsers.length,
+        submissionCount: allSubmissions.length
+      },
+      workingDirectory: process.cwd()
+    });
+  } catch (error: any) {
+    res.json({ 
+      error: 'Debug failed', 
+      details: error.message 
+    });
+  }
+});
+
+// 🔧 FORCE: Create data.json file
+router.post('/api/debug/create-data-file', async (req, res) => {
+  try {
+    console.log('🔧 Force creating data.json file...');
+    await (storage as any).saveData();
+    
+    res.json({
+      success: true,
+      message: 'data.json file created successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// 🔧 MIGRATION: Link existing submissions to users by email
+router.post('/api/migrate/link-submissions', async (req, res) => {
+  try {
+    console.log('🔄 Starting submission migration...');
+    
+    const allSubmissions = await storage.getAllSubmissions();
+    const allUsers = (storage as any).data?.users || [];
+    
+    let migratedCount = 0;
+    
+    for (const submission of allSubmissions) {
+      if (!submission.userId && submission.email) {
+        // Find user with matching email
+        const matchingUser = allUsers.find((user: any) => user.email === submission.email);
+        
+        if (matchingUser) {
+          // Update submission with userId
+          (submission as any).userId = matchingUser.id;
+          migratedCount++;
+          console.log(`✅ Linked submission "${submission.poemTitle}" to user ${matchingUser.email}`);
+        }
+      }
+    }
+    
+    // Save the updated data
+    await (storage as any).saveData();
+    
+    res.json({
+      success: true,
+      message: `Migration completed. Linked ${migratedCount} submissions to users.`,
+      migratedCount
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Migration error:', error);
+    res.status(500).json({ error: 'Migration failed', details: error.message });
+  }
+});
+
 // Test email endpoint
 router.get('/api/test-email', async (req, res) => {
   try {
@@ -663,7 +759,7 @@ router.get('/api/winners', async (req, res) => {
   }
 });
 
-// 🚀 MISSING EXPORT: registerRoutes function
+// 🚀 REQUIRED: registerRoutes function
 export function registerRoutes(app: any) {
   app.use(router);
 }
