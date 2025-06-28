@@ -30,27 +30,30 @@ export default function Header() {
         <div className="flex justify-between items-center py-4">
           {/* Logo Section - Left */}
           <Link href="/" className="flex items-center flex-shrink-0">
-            <div className="w-12 h-12 mr-4">
+            <div className="w-12 h-12 mr-3">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <h1 className="text-xl font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
-            </div>
+            {/* Only show title on non-home pages or when on mobile */}
+            {location !== "/" && (
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
+              </div>
+            )}
           </Link>
 
           {/* Desktop Navigation - Center */}
           <nav className="hidden lg:flex items-center flex-1 justify-center">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-6">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium ${
-                    location === item.href ? "border-b-2 border-white" : ""
+                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm ${
+                    location === item.href ? "border-b-2 border-white pb-1" : ""
                   }`}
                 >
                   {item.name}
@@ -60,30 +63,30 @@ export default function Header() {
           </nav>
 
           {/* User Section - Right */}
-          <div className="flex items-center space-x-4 flex-shrink-0">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             {user ? (
-              <div className="hidden lg:flex items-center space-x-3">
-                <Link href="/profile">
+              <div className="hidden lg:flex items-center space-x-2">
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  size="sm"
+                  className="text-white border-white hover:bg-white hover:text-primary order-2"
+                >
+                  Logout
+                </Button>
+                <Link href="/profile" className="order-1">
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={16} />
+                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                      <User className="text-green-600" size={14} />
                     </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white hover:bg-white hover:text-primary"
-                >
-                  Logout
-                </Button>
               </div>
             ) : (
-              <div className="hidden lg:flex items-center space-x-3">
+              <div className="hidden lg:flex items-center">
                 <Link href="/login">
                   <Button
                     variant="outline"
@@ -98,10 +101,10 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden text-white"
+              className="lg:hidden text-white p-1"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
@@ -110,26 +113,28 @@ export default function Header() {
       {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-primary border-t border-green-600">
-          <div className="px-2 pt-2 pb-3 space-y-1">
+          <div className="px-3 pt-3 pb-4 space-y-2">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="block px-3 py-2 text-white hover:bg-green-700 rounded-md"
+                className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-colors ${
+                  location === item.href ? "bg-green-700" : ""
+                }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.name}
               </Link>
             ))}
             {user && (
-              <div className="px-3 py-2 space-y-2 border-t border-green-600 mt-2 pt-4">
+              <div className="px-3 py-2 space-y-3 border-t border-green-600 mt-3 pt-4">
                 <Link href="/profile">
                   <button 
                     className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={16} />
+                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                      <User className="text-green-600" size={14} />
                     </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
