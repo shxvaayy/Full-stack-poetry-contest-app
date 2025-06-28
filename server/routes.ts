@@ -38,6 +38,49 @@ router.get('/api/test', (req, res) => {
   });
 });
 
+// Check Google Sheets environment
+router.get('/api/debug-google-env', (req, res) => {
+  res.json({
+    GOOGLE_SERVICE_ACCOUNT_JSON_exists: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    GOOGLE_SERVICE_ACCOUNT_JSON_length: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+    GOOGLE_SHEET_ID_exists: !!process.env.GOOGLE_SHEET_ID,
+    GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID || 'NOT_SET'
+  });
+});
+
+// Super simple Google Sheets test
+router.get('/api/test-sheets-simple', async (req, res) => {
+  try {
+    console.log('🧪 SIMPLE Google Sheets test...');
+    
+    const testData = {
+      name: 'TEST USER',
+      email: 'test@test.com',
+      phone: '1234567890',
+      age: '25',
+      poemTitle: 'Test Poem Title',
+      tier: 'single',
+      amount: '50',
+      poemFile: 'https://drive.google.com/file/d/TEST123/view',
+      photo: 'https://drive.google.com/file/d/TEST456/view',
+      timestamp: '2025-06-29T00:00:00.000Z'
+    };
+    
+    console.log('🧪 Test data:', testData);
+    
+    const { addPoemSubmissionToSheet } = await import('./google-sheets.js');
+    console.log('🧪 Function imported successfully');
+    
+    await addPoemSubmissionToSheet(testData);
+    console.log('🧪 Function called successfully');
+    
+    res.json({ success: true, message: 'Simple test completed' });
+  } catch (error: any) {
+    console.error('🔴 Simple test failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 🧪 Test Google Sheets connection
 router.get('/api/test-sheets-connection', async (req, res) => {
   try {
@@ -578,7 +621,7 @@ router.post('/api/submit-poem', upload.fields([
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     if (files?.poem?.[0]) {
-      console.log('Uploading poem file...');
+      console.log('🔵 Uploading poem file...');
       try {
         const poemBuffer = fs.readFileSync(files.poem[0].path);
         poemFileUrl = await uploadPoemFile(poemBuffer, email, files.poem[0].originalname);
@@ -589,7 +632,7 @@ router.post('/api/submit-poem', upload.fields([
     }
 
     if (files?.photo?.[0]) {
-      console.log('Uploading photo file...');
+      console.log('🔵 Uploading photo file...');
       try {
         const photoBuffer = fs.readFileSync(files.photo[0].path);
         photoUrl = await uploadPhotoFile(photoBuffer, email, files.photo[0].originalname);
@@ -618,12 +661,18 @@ router.post('/api/submit-poem', upload.fields([
 
     console.log('✅ Submission created:', submission);
 
-    // FIXED: Add to Google Sheets with correct data format
+    // FIXED: Add to Google Sheets with EXTENSIVE DEBUGGING
     try {
-      console.log('📊 Adding submission to Google Sheets...');
+      console.log('🟡 STARTING Google Sheets integration...');
+      console.log('🟡 poemFileUrl:', poemFileUrl);
+      console.log('🟡 photoUrl:', photoUrl);
+      console.log('🟡 firstName:', firstName);
+      console.log('🟡 lastName:', lastName);
+      console.log('🟡 email:', email);
       
       // Combine first and last name
       const fullName = `${firstName}${lastName ? ' ' + lastName : ''}`.trim();
+      console.log('🟡 Combined fullName:', fullName);
       
       const sheetsData = {
         name: fullName,                           // Combined name
@@ -638,13 +687,19 @@ router.post('/api/submit-poem', upload.fields([
         timestamp: new Date().toISOString()       // Current timestamp
       };
       
-      console.log('📋 Sending to Google Sheets:', sheetsData);
+      console.log('🟡 COMPLETE sheetsData object:', JSON.stringify(sheetsData, null, 2));
       
+      // Check if the function exists
+      console.log('🟡 addPoemSubmissionToSheet function exists:', typeof addPoemSubmissionToSheet);
+      
+      console.log('🟡 CALLING addPoemSubmissionToSheet...');
       await addPoemSubmissionToSheet(sheetsData);
-      console.log('✅ Added to Google Sheets successfully');
-    } catch (error) {
-      console.error('❌ Failed to add to Google Sheets:', error);
-      console.error('Error details:', error);
+      console.log('🟢 Google Sheets call completed successfully!');
+    } catch (sheetsError) {
+      console.error('🔴 GOOGLE SHEETS ERROR:', sheetsError);
+      console.error('🔴 Error message:', sheetsError?.message);
+      console.error('🔴 Error stack:', sheetsError?.stack);
+      // Don't fail the whole submission
     }
 
     // Send confirmation email
