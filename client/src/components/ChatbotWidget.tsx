@@ -18,11 +18,6 @@ interface FAQData {
   };
 }
 
-interface Position {
-  x: number;
-  y: number;
-}
-
 const faqData: FAQData = {
   "1": {
     question: "What is Writory?",
@@ -89,12 +84,8 @@ export default function ChatbotWidget() {
   const [showMoreQuestions, setShowMoreQuestions] = useState(false);
   const [currentState, setCurrentState] = useState<'questions' | 'typing' | 'followup'>('questions');
   const [isTyping, setIsTyping] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: 20, y: 20 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const widgetRef = useRef<HTMLDivElement>(null);
 
   // Initial welcome message
   useEffect(() => {
@@ -118,53 +109,6 @@ export default function ChatbotWidget() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
-
-  // Handle mouse events for dragging
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isOpen) return; // Don't allow dragging when chat is open
-    
-    setIsDragging(true);
-    const rect = widgetRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    }
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || isOpen) return;
-    
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
-    
-    // Keep widget within viewport bounds
-    const maxX = window.innerWidth - 80; // Widget width
-    const maxY = window.innerHeight - 80; // Widget height
-    
-    setPosition({
-      x: Math.max(20, Math.min(newX, maxX)),
-      y: Math.max(20, Math.min(newY, maxY))
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Add event listeners for mouse events
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, dragOffset, isOpen]);
 
   const toggleChat = () => {
     setIsOpen(!isOpen);
@@ -238,23 +182,11 @@ export default function ChatbotWidget() {
   const additionalQuestions = Object.entries(faqData).slice(6);
 
   return (
-    <div 
-      ref={widgetRef}
-      className={`fixed z-50 transition-all duration-300 ${isDragging ? 'cursor-grabbing' : ''}`}
-      style={{ 
-        left: `${position.x}px`, 
-        bottom: `${position.y}px`,
-        cursor: isOpen ? 'default' : (isDragging ? 'grabbing' : 'grab')
-      }}
-    >
+    <div className="fixed bottom-6 right-6 z-50">
       {/* Chat Button */}
       <Button
         onClick={toggleChat}
-        onMouseDown={handleMouseDown}
-        className={`relative w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 animate-glow hover:animate-bounce-subtle bg-primary hover:bg-primary/90 p-0 overflow-hidden ${
-          !isOpen ? 'cursor-grab hover:cursor-grab' : ''
-        }`}
-        title={isOpen ? "Toggle chat" : "Chat with Writory Assistant (Drag to move)"}
+        className="relative w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 animate-glow hover:animate-bounce-subtle bg-primary hover:bg-primary/90 p-0 overflow-hidden"
       >
         {/* Logo Image */}
         <img 
