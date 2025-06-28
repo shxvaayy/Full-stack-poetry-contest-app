@@ -38,6 +38,35 @@ router.get('/api/test', (req, res) => {
   });
 });
 
+// 🧪 Test Google Sheets connection
+router.get('/api/test-sheets-connection', async (req, res) => {
+  try {
+    console.log('🧪 Testing Google Sheets connection...');
+    
+    // Test data
+    const testData = {
+      name: 'Test User',
+      email: 'test@example.com',
+      phone: '1234567890',
+      age: '25',
+      poemTitle: 'Test Poem',
+      tier: 'single',
+      amount: '50',
+      poemFile: 'https://drive.google.com/test',
+      photo: 'https://drive.google.com/test-photo',
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('📝 Sending test data to sheets...');
+    await addPoemSubmissionToSheet(testData);
+    
+    res.json({ success: true, message: 'Test data sent to sheets' });
+  } catch (error: any) {
+    console.error('❌ Test failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 🔍 DEBUG: Check storage state
 router.get('/api/debug/storage', async (req, res) => {
   try {
@@ -463,7 +492,7 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
   }
 });
 
-// Submit poem with email confirmation
+// Submit poem with email confirmation - FIXED GOOGLE SHEETS INTEGRATION
 router.post('/api/submit-poem', upload.fields([
   { name: 'poem', maxCount: 1 },
   { name: 'photo', maxCount: 1 }
@@ -551,7 +580,8 @@ router.post('/api/submit-poem', upload.fields([
     if (files?.poem?.[0]) {
       console.log('Uploading poem file...');
       try {
-        poemFileUrl = await uploadPoemFile(files.poem[0]);
+        const poemBuffer = fs.readFileSync(files.poem[0].path);
+        poemFileUrl = await uploadPoemFile(poemBuffer, email, files.poem[0].originalname);
         console.log('✅ Poem file uploaded:', poemFileUrl);
       } catch (error) {
         console.error('❌ Poem file upload failed:', error);
@@ -561,7 +591,8 @@ router.post('/api/submit-poem', upload.fields([
     if (files?.photo?.[0]) {
       console.log('Uploading photo file...');
       try {
-        photoUrl = await uploadPhotoFile(files.photo[0]);
+        const photoBuffer = fs.readFileSync(files.photo[0].path);
+        photoUrl = await uploadPhotoFile(photoBuffer, email, files.photo[0].originalname);
         console.log('✅ Photo file uploaded:', photoUrl);
       } catch (error) {
         console.error('❌ Photo file upload failed:', error);
@@ -587,26 +618,33 @@ router.post('/api/submit-poem', upload.fields([
 
     console.log('✅ Submission created:', submission);
 
-    // Add to Google Sheets
+    // FIXED: Add to Google Sheets with correct data format
     try {
       console.log('📊 Adding submission to Google Sheets...');
-      await addPoemSubmissionToSheet({
-        id: submission.id,
-        firstName,
-        lastName: lastName || '',
-        email,
+      
+      // Combine first and last name
+      const fullName = `${firstName}${lastName ? ' ' + lastName : ''}`.trim();
+      
+      const sheetsData = {
+        name: fullName,                           // Combined name
+        email: email,
         phone: phone || '',
         age: age || '',
-        poemTitle,
-        tier,
-        amount: parseFloat(amount) || 0,
-        paymentId: paymentId || '',
-        paymentMethod: paymentMethod || '',
-        submittedAt: submission.submittedAt.toISOString()
-      });
+        poemTitle: poemTitle,
+        tier: tier,
+        amount: (parseFloat(amount) || 0).toString(),  // Convert to string
+        poemFile: poemFileUrl || '',              // Google Drive link
+        photo: photoUrl || '',                    // Google Drive link
+        timestamp: new Date().toISOString()       // Current timestamp
+      };
+      
+      console.log('📋 Sending to Google Sheets:', sheetsData);
+      
+      await addPoemSubmissionToSheet(sheetsData);
       console.log('✅ Added to Google Sheets successfully');
     } catch (error) {
       console.error('❌ Failed to add to Google Sheets:', error);
+      console.error('Error details:', error);
     }
 
     // Send confirmation email
@@ -739,8 +777,6 @@ router.get('/api/submission-count', async (req, res) => {
   }
 });
 
-// Add this endpoint to your routes.ts file
-
 // 🔧 DATABASE: Initialize database tables
 router.post('/api/init-database', async (req, res) => {
   try {
@@ -812,12 +848,6 @@ router.post('/api/init-database', async (req, res) => {
   }
 });
 
-
-
-
-
-
-
 // Get winners
 router.get('/api/winners', async (req, res) => {
   try {
@@ -827,6 +857,7 @@ router.get('/api/winners', async (req, res) => {
       id: winner.id,
       name: `${winner.firstName}${winner.lastName ? ' ' + winner.lastName : ''}`,
       poemTitle: winner.poemTitle,
+      tier: winner.tier,
       position: winner.winnerPosition,
       submittedAt: winner.submittedAt.toISOString()
     }));
@@ -838,9 +869,9 @@ router.get('/api/winners', async (req, res) => {
   }
 });
 
-// 🚀 REQUIRED: registerRoutes function
+// Export router
 export function registerRoutes(app: any) {
   app.use(router);
 }
 
-export default router;
+export { router };
