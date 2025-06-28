@@ -1,11 +1,53 @@
 import { client, connectDatabase } from './db.js';
 
+// Track migration state to prevent multiple runs
+let migrationCompleted = false;
+let migrationInProgress = false;
+
 async function createTables() {
+  // Prevent multiple simultaneous migrations
+  if (migrationInProgress) {
+    console.log('⏳ Migration already in progress, waiting...');
+    while (migrationInProgress) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    return migrationCompleted;
+  }
+
+  if (migrationCompleted) {
+    console.log('✅ Migration already completed, skipping...');
+    return true;
+  }
+
+  migrationInProgress = true;
+
   try {
     console.log('🔧 Starting database migration...');
     
-    // Ensure connection
-    await connectDatabase();
+    // Ensure connection with timeout
+    const connectionTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Connection timeout')), 30000)
+    );
+    
+    await Promise.race([connectDatabase(), connectionTimeout]);
+
+    // Check if tables already exist to avoid conflicts
+    console.log('🔍 Checking existing tables...');
+    const existingTables = await client.query(`
+      SELECT table_name FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('users', 'submissions', 'contacts')
+      ORDER BY table_name;
+    `);
+
+    if (existingTables.rows.length === 3) {
+      console.log('✅ All tables already exist, migration not needed');
+      migrationCompleted = true;
+      migrationInProgress = false;
+      return true;
+    }
+
+    console.log(`📊 Found ${existingTables.rows.length}/3 tables, proceeding with migration...`);
 
     // Create users table
     await client.query(`
@@ -67,26 +109,30 @@ async function createTables() {
     `);
     console.log('✅ Database indexes created/verified');
 
-    // Verify tables exist
-    const result = await client.query(`
+    // Final verification
+    const finalCheck = await client.query(`
       SELECT table_name FROM information_schema.tables 
       WHERE table_schema = 'public' 
       AND table_name IN ('users', 'submissions', 'contacts')
       ORDER BY table_name;
     `);
     
-    console.log(`✅ Verified ${result.rows.length} tables exist:`, result.rows.map(row => row.table_name));
+    console.log(`✅ Final verification: ${finalCheck.rows.length} tables exist:`, finalCheck.rows.map(row => row.table_name));
     
-    if (result.rows.length !== 3) {
-      throw new Error(`Expected 3 tables, found ${result.rows.length}`);
+    if (finalCheck.rows.length !== 3) {
+      throw new Error(`Migration verification failed: Expected 3 tables, found ${finalCheck.rows.length}`);
     }
     
+    migrationCompleted = true;
     console.log('🎉 Database migration completed successfully!');
     return true;
     
   } catch (error) {
     console.error('❌ Error during migration:', error);
+    migrationCompleted = false;
     throw error;
+  } finally {
+    migrationInProgress = false;
   }
 }
 

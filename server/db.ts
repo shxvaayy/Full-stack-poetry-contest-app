@@ -26,8 +26,10 @@ const client = new Client({
 // Global connection state
 let connectionPromise: Promise<void> | null = null;
 let isConnected = false;
+let connectionAttempts = 0;
+const MAX_CONNECTION_ATTEMPTS = 3;
 
-// Single connection function
+// Single connection function with retry logic
 async function connectDatabase() {
   if (isConnected) {
     console.log('✅ Database already connected');
@@ -36,24 +38,44 @@ async function connectDatabase() {
   
   if (connectionPromise) {
     console.log('⏳ Database connection in progress, waiting...');
-    return connectionPromise;
-  }
-
-  connectionPromise = (async () => {
     try {
-      console.log('🔌 Connecting to database...');
-      await client.connect();
-      isConnected = true;
-      console.log('✅ Database connected successfully');
-      
-      // Test the connection
-      const result = await client.query('SELECT NOW()');
-      console.log('✅ Database test query successful:', result.rows[0].now);
+      return await connectionPromise;
     } catch (error) {
-      console.error('❌ Database connection failed:', error);
+      // Reset promise if it failed
       connectionPromise = null;
       throw error;
     }
+  }
+
+  connectionPromise = (async () => {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
+      try {
+        console.log(`🔌 Connecting to database (attempt ${attempt}/${MAX_CONNECTION_ATTEMPTS})...`);
+        await client.connect();
+        isConnected = true;
+        connectionAttempts = 0;
+        console.log('✅ Database connected successfully');
+        
+        // Test the connection
+        const result = await client.query('SELECT NOW()');
+        console.log('✅ Database test query successful:', result.rows[0].now);
+        return;
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Database connection attempt ${attempt} failed:`, error);
+        
+        if (attempt < MAX_CONNECTION_ATTEMPTS) {
+          console.log(`⏳ Retrying in 2 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+    
+    // All attempts failed
+    connectionPromise = null;
+    throw new Error(`Database connection failed after ${MAX_CONNECTION_ATTEMPTS} attempts: ${lastError?.message}`);
   })();
 
   return connectionPromise;
