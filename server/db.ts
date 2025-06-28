@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client } from 'pg';
 
-// Enhanced database configuration
+// Database configuration
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
@@ -12,6 +12,7 @@ console.log('🔍 Database Configuration:');
 console.log('- DATABASE_URL exists:', !!connectionString);
 console.log('- Environment:', process.env.NODE_ENV);
 
+// Create client but don't connect yet
 const client = new Client({
   connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { 
@@ -22,13 +23,24 @@ const client = new Client({
   query_timeout: 60000,
 });
 
-// Track connection state
+// Global connection state
+let connectionPromise: Promise<void> | null = null;
 let isConnected = false;
 
-// Enhanced connection with error handling
+// Single connection function
 async function connectDatabase() {
-  try {
-    if (!isConnected && !client._connected) {
+  if (isConnected) {
+    console.log('✅ Database already connected');
+    return;
+  }
+  
+  if (connectionPromise) {
+    console.log('⏳ Database connection in progress, waiting...');
+    return connectionPromise;
+  }
+
+  connectionPromise = (async () => {
+    try {
       console.log('🔌 Connecting to database...');
       await client.connect();
       isConnected = true;
@@ -37,42 +49,45 @@ async function connectDatabase() {
       // Test the connection
       const result = await client.query('SELECT NOW()');
       console.log('✅ Database test query successful:', result.rows[0].now);
-    } else {
-      console.log('✅ Database already connected');
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      connectionPromise = null;
+      throw error;
     }
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    throw error;
-  }
+  })();
+
+  return connectionPromise;
 }
 
 // Handle connection errors
 client.on('error', (err) => {
   console.error('❌ Database client error:', err);
   isConnected = false;
+  connectionPromise = null;
 });
 
 client.on('end', () => {
   console.log('🔌 Database connection ended');
   isConnected = false;
+  connectionPromise = null;
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
+const cleanup = async () => {
   if (isConnected) {
     console.log('🛑 Closing database connection...');
-    await client.end();
+    try {
+      await client.end();
+    } catch (error) {
+      console.error('Error closing database connection:', error);
+    }
     isConnected = false;
+    connectionPromise = null;
   }
-});
+};
 
-process.on('SIGINT', async () => {
-  if (isConnected) {
-    console.log('🛑 Closing database connection...');
-    await client.end();
-    isConnected = false;
-  }
-});
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);
 
 export const db = drizzle(client);
 export { client, connectDatabase, isConnected };

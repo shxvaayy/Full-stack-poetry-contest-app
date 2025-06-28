@@ -1,13 +1,11 @@
-import { client, connectDatabase, isConnected } from './db.js';
+import { client, connectDatabase } from './db.js';
 
 async function createTables() {
   try {
     console.log('🔧 Starting database migration...');
     
-    // Only connect if not already connected
-    if (!isConnected) {
-      await connectDatabase();
-    }
+    // Ensure connection
+    await connectDatabase();
 
     // Create users table
     await client.query(`
@@ -60,7 +58,7 @@ async function createTables() {
     `);
     console.log('✅ Contacts table created/verified');
 
-    // Create indexes for better performance
+    // Create indexes
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_uid ON users(uid);
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -92,10 +90,9 @@ async function createTables() {
   }
 }
 
-// Export for use in other files
 export { createTables };
 
-// Run migration if this file is executed directly
+// Only run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   createTables()
     .then(() => {
