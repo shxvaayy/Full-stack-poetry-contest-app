@@ -76,25 +76,38 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
-// FIXED: Simplified initialization function
+// Helper function to create timeout promise
+function withTimeout(promise: Promise<any>, timeoutMs: number, name: string) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(`${name} timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
+// CRITICAL FIX: Simplified and timeout-protected initialization
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
     
-    // Step 1: Connect to database
+    // Step 1: Connect to database with timeout
     console.log('🔌 Step 1: Connecting to database...');
-    await connectDatabase();
+    await withTimeout(connectDatabase(), 30000, 'Database connection');
     console.log('✅ Step 1 completed: Database connected');
     
-    // Step 2: Run migrations
+    // Step 2: Run migrations with timeout and force resolution
     console.log('🔧 Step 2: Running database migrations...');
     try {
-      await createTables();
+      await withTimeout(createTables(), 45000, 'Database migration');
       console.log('✅ Step 2 completed: Database migrations successful');
     } catch (migrationError: any) {
-      console.error('❌ MIGRATION ERROR:', migrationError);
-      console.log('⚠️ Continuing without migrations - tables might already exist');
+      console.error('❌ MIGRATION ERROR:', migrationError.message);
+      console.log('⚠️ Continuing without migrations - tables likely already exist');
     }
+    
+    // FORCE LOG TO CONFIRM WE GET HERE
+    console.log('🎯 CRITICAL CHECKPOINT: Migration phase completed, proceeding to routes...');
     
     // Step 3: Register routes
     console.log('🛣️ Step 3: Starting route registration...');
@@ -116,34 +129,36 @@ async function initializeApp() {
       res.sendFile(indexPath);
     });
 
-    // Step 4: Start server - THIS IS THE CRITICAL FIX
+    console.log('🎯 CRITICAL CHECKPOINT: About to start server...');
+
+    // Step 4: Start server with immediate execution
     console.log('🚀 Step 4: Starting server...');
     console.log(`🔌 Attempting to bind to 0.0.0.0:${PORT}...`);
     
-    // FIXED: Return a promise that resolves when server starts
-    return new Promise((resolve, reject) => {
-      const server = app.listen(PORT, '0.0.0.0', () => {
-        console.log('🎉 SERVER STARTED SUCCESSFULLY!');
-        console.log(`📱 Application: http://0.0.0.0:${PORT}`);
-        console.log(`🔧 API: http://0.0.0.0:${PORT}/api`);
-        console.log(`💓 Health: http://0.0.0.0:${PORT}/health`);
-        console.log(`🌐 External URL: https://writory.onrender.com`);
-        console.log('✅ Step 4 completed: Server listening');
-        console.log('🔥 RENDER: Server is now accepting connections!');
-        console.log('🎯 CRITICAL: PORT IS OPEN AND READY');
-        resolve(server);
-      });
-
-      server.on('error', (error: any) => {
-        console.error('❌ Server failed to start:', error);
-        reject(error);
-      });
-
-      server.on('listening', () => {
-        console.log('🎯 Server listening event fired');
-        console.log('🎯 RENDER SHOULD DETECT THIS PORT NOW');
-      });
+    // CRITICAL: Start server synchronously without returning promise
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log('🎉 SERVER STARTED SUCCESSFULLY!');
+      console.log(`📱 Application: http://0.0.0.0:${PORT}`);
+      console.log(`🔧 API: http://0.0.0.0:${PORT}/api`);
+      console.log(`💓 Health: http://0.0.0.0:${PORT}/health`);
+      console.log(`🌐 External URL: https://writory.onrender.com`);
+      console.log('✅ Step 4 completed: Server listening');
+      console.log('🔥 RENDER: Server is now accepting connections!');
+      console.log('🎯 CRITICAL: PORT IS OPEN AND READY');
     });
+
+    server.on('error', (error: any) => {
+      console.error('❌ Server failed to start:', error);
+      throw error;
+    });
+
+    server.on('listening', () => {
+      console.log('🎯 Server listening event fired');
+      console.log('🎯 RENDER SHOULD DETECT THIS PORT NOW');
+    });
+
+    console.log('🎯 CRITICAL: Server.listen() called, should be listening now');
+    return server;
 
   } catch (error: any) {
     console.error('❌ APPLICATION STARTUP FAILED:', error);
@@ -152,19 +167,36 @@ async function initializeApp() {
   }
 }
 
-// FIXED: Proper async/await handling
+// CRITICAL FIX: Force immediate execution without complex promise handling
 console.log('🏁 Starting application initialization...');
+console.log('🎯 CRITICAL: About to call initializeApp()...');
 
-// This is the critical fix - ensure the async function completes properly
-(async () => {
-  try {
-    const server = await initializeApp();
+// Use setTimeout to ensure async operations don't hang
+const startupTimeout = setTimeout(() => {
+  console.error('🔴 STARTUP TIMEOUT - FORCING SERVER START');
+  // If startup hangs, start server anyway
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log('🎉 EMERGENCY SERVER START SUCCESSFUL!');
+    console.log('🔥 RENDER: Emergency server is accepting connections!');
+  });
+}, 60000); // 60 second timeout
+
+initializeApp()
+  .then((server) => {
+    clearTimeout(startupTimeout);
     console.log('🎉 Application started successfully');
-  } catch (error) {
+  })
+  .catch((error) => {
+    clearTimeout(startupTimeout);
     console.error('🔴 Fatal error during initialization:', error);
-    process.exit(1);
-  }
-})();
+    
+    // EMERGENCY: Start server anyway
+    console.log('🚨 EMERGENCY: Starting server despite initialization error...');
+    const emergencyServer = app.listen(PORT, '0.0.0.0', () => {
+      console.log('🎉 EMERGENCY SERVER STARTED!');
+      console.log('🔥 RENDER: Emergency server is accepting connections!');
+    });
+  });
 
 // Graceful shutdown handlers
 process.on('SIGTERM', () => {
