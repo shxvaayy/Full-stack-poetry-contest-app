@@ -5,7 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { uploadPoemFile, uploadPhotoFile } from './google-drive.js';
-import { addPoemSubmissionToSheet, getSubmissionCountFromSheet } from './google-sheets.js';
+import { addPoemSubmissionToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation } from './mailSender.js';
@@ -759,10 +759,17 @@ router.post('/api/submit-poem', upload.fields([
   }
 });
 
-// Contact form submission
+// 🔧 UPDATED: Contact form submission with Google Sheets integration
 router.post('/api/contact', async (req, res) => {
   try {
     const { name, email, phone, message, subject } = req.body;
+
+    console.log('📧 Received contact form submission:', {
+      name,
+      email, 
+      phone: phone || 'not provided',
+      message: message?.substring(0, 50) + '...'
+    });
 
     if (!name || !email || !message) {
       return res.status(400).json({
@@ -771,6 +778,7 @@ router.post('/api/contact', async (req, res) => {
       });
     }
 
+    // Create contact record in database
     const contact = await storage.createContact({
       name,
       email,
@@ -779,7 +787,25 @@ router.post('/api/contact', async (req, res) => {
       subject: subject || null
     });
 
-    console.log('✅ Contact form submitted:', contact);
+    console.log(`✅ Contact saved to database with ID: ${contact.id}`);
+
+    // 🔧 NEW: Add to Google Sheets
+    try {
+      const contactData = {
+        name,
+        email,
+        phone: phone || '',
+        message,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('📊 Sending contact data to Google Sheets:', contactData);
+      await addContactToSheet(contactData);
+      console.log('✅ Contact data added to Google Sheets');
+    } catch (sheetError: any) {
+      console.error('❌ Failed to add contact to Google Sheets:', sheetError);
+      // Don't fail the whole request if sheets fail
+    }
 
     res.json({
       success: true,
@@ -806,127 +832,95 @@ router.get('/api/submissions', async (req, res) => {
       id: sub.id,
       name: `${sub.firstName}${sub.lastName ? ' ' + sub.lastName : ''}`,
       email: sub.email,
+      phone: sub.phone,
+      age: sub.age,
       poemTitle: sub.poemTitle,
       tier: sub.tier,
-      amount: sub.price,
+      price: sub.price,
       submittedAt: sub.submittedAt.toISOString(),
       isWinner: sub.isWinner,
-      winnerPosition: sub.winnerPosition
+      winnerPosition: sub.winnerPosition,
+      poemFileUrl: sub.poemFileUrl,
+      photoUrl: sub.photoUrl
     }));
-
+    
+    console.log(`📊 Returning ${formattedSubmissions.length} total submissions`);
     res.json(formattedSubmissions);
   } catch (error: any) {
     console.error('❌ Error getting submissions:', error);
-    res.status(500).json({ error: 'Failed to get submissions' });
+    res.status(500).json({ error: 'Failed to get submissions', details: error.message });
   }
 });
 
-// Get submission count (for homepage)
+// Get submission count
 router.get('/api/submission-count', async (req, res) => {
   try {
-    const submissions = await storage.getAllSubmissions();
-    res.json({ count: submissions.length });
+    const allSubmissions = await storage.getAllSubmissions();
+    console.log(`📊 Returning ${allSubmissions.length} total submissions`);
+    res.json({ count: allSubmissions.length });
   } catch (error: any) {
     console.error('❌ Error getting submission count:', error);
-    res.status(500).json({ error: 'Failed to get submission count', count: 0 });
+    res.status(500).json({ error: 'Failed to get submission count', details: error.message });
   }
 });
 
-// 🔧 DATABASE: Initialize database tables
-router.post('/api/init-database', async (req, res) => {
+// Get stats endpoint
+router.get('/api/stats/submissions', async (req, res) => {
   try {
-    console.log('🔧 Initializing database tables...');
-    
-    const { client } = await import('./db.js');
-    
-    // Create users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        uid TEXT NOT NULL UNIQUE,
-        email TEXT NOT NULL,
-        name TEXT,
-        phone TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    // Create submissions table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS submissions (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        first_name TEXT NOT NULL,
-        last_name TEXT,
-        email TEXT NOT NULL,
-        phone TEXT,
-        age TEXT,
-        poem_title TEXT NOT NULL,
-        tier TEXT NOT NULL,
-        price INTEGER DEFAULT 0,
-        poem_file_url TEXT,
-        photo_url TEXT,
-        payment_id TEXT,
-        payment_method TEXT,
-        submitted_at TIMESTAMP DEFAULT NOW(),
-        is_winner BOOLEAN DEFAULT FALSE,
-        winner_position INTEGER
-      );
-    `);
-
-    // Create contacts table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS contacts (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        phone TEXT,
-        message TEXT NOT NULL,
-        subject TEXT,
-        submitted_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    console.log('✅ Database tables created successfully');
-    
-    res.json({
-      success: true,
-      message: 'Database tables created successfully'
-    });
+    const allSubmissions = await storage.getAllSubmissions();
+    const count = allSubmissions.length;
+    console.log(`📊 Stats: ${count} total submissions`);
+    res.json({ count });
   } catch (error: any) {
-    console.error('❌ Error creating tables:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create tables',
-      details: error.message
-    });
+    console.error('❌ Error getting stats:', error);
+    res.status(500).json({ error: 'Failed to get stats', details: error.message });
   }
 });
 
 // Get winners
 router.get('/api/winners', async (req, res) => {
   try {
-    const winners = await storage.getWinningSubmissions();
+    const allSubmissions = await storage.getAllSubmissions();
+    const winners = allSubmissions.filter(sub => sub.isWinner);
     
     const formattedWinners = winners.map(winner => ({
       id: winner.id,
       name: `${winner.firstName}${winner.lastName ? ' ' + winner.lastName : ''}`,
       poemTitle: winner.poemTitle,
-      tier: winner.tier,
-      position: winner.winnerPosition,
-      submittedAt: winner.submittedAt.toISOString()
+      position: winner.winnerPosition
     }));
-
+    
+    console.log(`🏆 Returning ${formattedWinners.length} winners`);
     res.json(formattedWinners);
   } catch (error: any) {
     console.error('❌ Error getting winners:', error);
-    res.status(500).json({ error: 'Failed to get winners' });
+    res.status(500).json({ error: 'Failed to get winners', details: error.message });
   }
 });
 
-// Export router
+// Update winner status (admin)
+router.post('/api/submissions/:id/winner', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isWinner, position } = req.body;
+    
+    const submission = await storage.updateSubmissionWinner(parseInt(id), isWinner, position);
+    
+    console.log(`🏆 Updated winner status for submission ${id}`);
+    res.json({
+      success: true,
+      message: 'Winner status updated',
+      submission
+    });
+  } catch (error: any) {
+    console.error('❌ Error updating winner status:', error);
+    res.status(500).json({ error: 'Failed to update winner status', details: error.message });
+  }
+});
+
+// Export the router and the registerRoutes function
 export function registerRoutes(app: any) {
   app.use(router);
 }
 
-export { router };
+export default router;
