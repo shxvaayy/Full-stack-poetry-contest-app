@@ -739,6 +739,85 @@ router.get('/api/submission-count', async (req, res) => {
   }
 });
 
+// Add this endpoint to your routes.ts file
+
+// 🔧 DATABASE: Initialize database tables
+router.post('/api/init-database', async (req, res) => {
+  try {
+    console.log('🔧 Initializing database tables...');
+    
+    const { client } = await import('./db.js');
+    
+    // Create users table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        uid TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        name TEXT,
+        phone TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Create submissions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS submissions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        first_name TEXT NOT NULL,
+        last_name TEXT,
+        email TEXT NOT NULL,
+        phone TEXT,
+        age TEXT,
+        poem_title TEXT NOT NULL,
+        tier TEXT NOT NULL,
+        price INTEGER DEFAULT 0,
+        poem_file_url TEXT,
+        photo_url TEXT,
+        payment_id TEXT,
+        payment_method TEXT,
+        submitted_at TIMESTAMP DEFAULT NOW(),
+        is_winner BOOLEAN DEFAULT FALSE,
+        winner_position INTEGER
+      );
+    `);
+
+    // Create contacts table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        message TEXT NOT NULL,
+        subject TEXT,
+        submitted_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    console.log('✅ Database tables created successfully');
+    
+    res.json({
+      success: true,
+      message: 'Database tables created successfully'
+    });
+  } catch (error: any) {
+    console.error('❌ Error creating tables:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create tables',
+      details: error.message
+    });
+  }
+});
+
+
+
+
+
+
+
 // Get winners
 router.get('/api/winners', async (req, res) => {
   try {

@@ -1,5 +1,48 @@
-// Database schema definitions for the poetry submission platform
+import { pgTable, serial, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
+// Users table
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  uid: text('uid').notNull().unique(),
+  email: text('email').notNull(),
+  name: text('name'),
+  phone: text('phone'),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+// Submissions table
+export const submissions = pgTable('submissions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id),
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name'),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  age: text('age'),
+  poemTitle: text('poem_title').notNull(),
+  tier: text('tier').notNull(),
+  price: integer('price').default(0),
+  poemFileUrl: text('poem_file_url'),
+  photoUrl: text('photo_url'),
+  paymentId: text('payment_id'),
+  paymentMethod: text('payment_method'),
+  submittedAt: timestamp('submitted_at').defaultNow(),
+  isWinner: boolean('is_winner').default(false),
+  winnerPosition: integer('winner_position')
+});
+
+// Contacts table
+export const contacts = pgTable('contacts', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  message: text('message').notNull(),
+  subject: text('subject'),
+  submittedAt: timestamp('submitted_at').defaultNow()
+});
+
+// TypeScript interfaces
 export interface User {
   id: number;
   uid: string;
@@ -56,7 +99,7 @@ export interface Contact {
   id: number;
   name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   message: string;
   subject: string | null;
   submittedAt: Date;
@@ -65,21 +108,7 @@ export interface Contact {
 export interface InsertContact {
   name: string;
   email: string;
-  phone: string;
+  phone?: string | null;
   message: string;
   subject?: string | null;
 }
-
-export interface UserSubmissionCount {
-  id: number;
-  userId: number;
-  contestMonth: string;
-  freeSubmissionUsed: boolean;
-  totalSubmissions: number;
-}
-
-// Export objects for compatibility with original import pattern
-export const users = {};
-export const submissions = {};
-export const contacts = {};
-export const userSubmissionCounts = {};
