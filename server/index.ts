@@ -76,7 +76,7 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
-// CRITICAL FIX: Simplified initialization
+// FINAL FIX: Simple, direct initialization
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
@@ -86,11 +86,16 @@ async function initializeApp() {
     await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
     
-    // Step 2: Run migrations with explicit debugging
+    // Step 2: Run migrations with timeout
     console.log('🔧 Step 2: Running database migrations...');
     console.log('🎯 CRITICAL: About to call createTables()...');
     
-    const migrationResult = await createTables();
+    const migrationPromise = createTables();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Migration timeout')), 30000)
+    );
+    
+    const migrationResult = await Promise.race([migrationPromise, timeoutPromise]);
     
     console.log('🎯 CRITICAL: createTables() returned:', migrationResult);
     console.log('✅ Step 2 completed: Database migrations done');
