@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: writory-poetry-contest
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm run render-build
+    startCommand: cd server && npm run render-start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000

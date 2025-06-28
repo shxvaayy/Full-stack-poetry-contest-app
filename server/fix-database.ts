@@ -1,19 +1,24 @@
-import { db, client } from './db.js';
-import { users, submissions, contacts } from './schema.js';
+import { client, connectDatabase } from './db.js';
 
-async function createTables() {
+async function quickFix() {
   try {
-    console.log('🔧 Starting database migration...');
+    console.log('🔧 Starting quick database fix...');
+    console.log('📊 Connecting to database...');
     
-    // Ensure client is connected
-    if (!client._connected) {
-      await client.connect();
-      console.log('✅ Database connected for migration');
-    }
-
-    // Create users table
+    await connectDatabase();
+    
+    console.log('🗑️ Dropping existing tables if they exist...');
+    
+    // Drop tables in correct order (submissions first due to foreign key)
+    await client.query('DROP TABLE IF EXISTS submissions CASCADE;');
+    await client.query('DROP TABLE IF EXISTS contacts CASCADE;');
+    await client.query('DROP TABLE IF EXISTS users CASCADE;');
+    
+    console.log('✅ Existing tables dropped');
+    
+    console.log('🔨 Creating users table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         uid TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL,
@@ -22,11 +27,10 @@ async function createTables() {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log('✅ Users table created/verified');
-
-    // Create submissions table
+    
+    console.log('🔨 Creating submissions table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS submissions (
+      CREATE TABLE submissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         first_name TEXT NOT NULL,
@@ -46,11 +50,10 @@ async function createTables() {
         winner_position INTEGER
       );
     `);
-    console.log('✅ Submissions table created/verified');
-
-    // Create contacts table
+    
+    console.log('🔨 Creating contacts table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS contacts (
+      CREATE TABLE contacts (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT NOT NULL,
@@ -60,18 +63,16 @@ async function createTables() {
         submitted_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log('✅ Contacts table created/verified');
-
-    // Create indexes for better performance
+    
+    console.log('📊 Creating indexes for performance...');
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_uid ON users(uid);
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_submissions_user_id ON submissions(user_id);
       CREATE INDEX IF NOT EXISTS idx_submissions_email ON submissions(email);
     `);
-    console.log('✅ Database indexes created/verified');
-
-    // Verify tables exist
+    
+    console.log('🔍 Verifying tables were created...');
     const result = await client.query(`
       SELECT table_name FROM information_schema.tables 
       WHERE table_schema = 'public' 
@@ -81,31 +82,22 @@ async function createTables() {
     
     console.log(`✅ Verified ${result.rows.length} tables exist:`, result.rows.map(row => row.table_name));
     
-    if (result.rows.length !== 3) {
-      throw new Error(`Expected 3 tables, found ${result.rows.length}`);
+    if (result.rows.length === 3) {
+      console.log('🎉 Database fix completed successfully!');
+      console.log('✅ All tables created and ready to use');
+    } else {
+      throw new Error(`Expected 3 tables, but found ${result.rows.length}`);
     }
     
-    console.log('🎉 Database migration completed successfully!');
-    return true;
+    await client.end();
+    process.exit(0);
     
   } catch (error) {
-    console.error('❌ Error during migration:', error);
-    throw error;
+    console.error('❌ Database fix failed:', error);
+    console.error('Error details:', error);
+    process.exit(1);
   }
 }
 
-// Export for use in other files
-export { createTables };
-
-// Run migration if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  createTables()
-    .then(() => {
-      console.log('✅ Migration completed successfully');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('❌ Migration failed:', error);
-      process.exit(1);
-    });
-}
+// Run the fix
+quickFix();
