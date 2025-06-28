@@ -76,54 +76,30 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
-// Enhanced initialization function with proper error handling
+// FIXED: Simplified initialization function
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
     
-    // Step 1: Connect to database with timeout
+    // Step 1: Connect to database
     console.log('🔌 Step 1: Connecting to database...');
-    const dbTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database connection timeout')), 45000)
-    );
-    
-    await Promise.race([connectDatabase(), dbTimeout]);
+    await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
     
-    // Step 2: Run migrations with enhanced error handling
+    // Step 2: Run migrations
     console.log('🔧 Step 2: Running database migrations...');
-    const migrationTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Migration timeout')), 60000)
-    );
-    
     try {
-      const migrationResult = await Promise.race([createTables(), migrationTimeout]);
-      if (migrationResult) {
-        console.log('✅ Step 2 completed: Database migrations successful');
-      } else {
-        throw new Error('Migration returned false');
-      }
+      await createTables();
+      console.log('✅ Step 2 completed: Database migrations successful');
     } catch (migrationError: any) {
       console.error('❌ MIGRATION ERROR:', migrationError);
-      console.error('❌ Migration error message:', migrationError?.message);
-      console.error('❌ Migration error stack:', migrationError?.stack);
-      
-      // Don't exit - attempt to continue without migrations if tables might exist
       console.log('⚠️ Continuing without migrations - tables might already exist');
     }
     
-    // Step 3: Register routes with detailed error handling
+    // Step 3: Register routes
     console.log('🛣️ Step 3: Starting route registration...');
-    try {
-      console.log('🛣️ Calling registerRoutes function...');
-      registerRoutes(app);
-      console.log('✅ Step 3 completed: Routes registered successfully');
-    } catch (routeError: any) {
-      console.error('❌ ROUTE REGISTRATION FAILED:', routeError);
-      console.error('❌ Route error message:', routeError?.message);
-      console.error('❌ Route error stack:', routeError?.stack);
-      throw new Error(`Route registration failed: ${routeError?.message}`);
-    }
+    registerRoutes(app);
+    console.log('✅ Step 3 completed: Routes registered successfully');
     
     // Error handling middleware
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -140,10 +116,11 @@ async function initializeApp() {
       res.sendFile(indexPath);
     });
 
-    // Step 4: Start server
+    // Step 4: Start server - THIS IS THE CRITICAL FIX
     console.log('🚀 Step 4: Starting server...');
     console.log(`🔌 Attempting to bind to 0.0.0.0:${PORT}...`);
     
+    // FIXED: Return a promise that resolves when server starts
     return new Promise((resolve, reject) => {
       const server = app.listen(PORT, '0.0.0.0', () => {
         console.log('🎉 SERVER STARTED SUCCESSFULLY!');
@@ -159,80 +136,56 @@ async function initializeApp() {
 
       server.on('error', (error: any) => {
         console.error('❌ Server failed to start:', error);
-        console.error('❌ Error code:', error.code);
-        console.error('❌ Error message:', error.message);
         reject(error);
       });
 
       server.on('listening', () => {
         console.log('🎯 Server listening event fired');
-        console.log('🎯 Server address:', server.address());
         console.log('🎯 RENDER SHOULD DETECT THIS PORT NOW');
       });
-
-      // Server startup timeout
-      setTimeout(() => {
-        reject(new Error('Server startup timeout'));
-      }, 30000);
     });
 
   } catch (error: any) {
     console.error('❌ APPLICATION STARTUP FAILED:', error);
     console.error('❌ Error stack:', error?.stack);
-    console.error('❌ Error message:', error?.message);
-    
-    // If it's a migration error, try to continue
-    if (error?.message?.includes('Migration') || error?.message?.includes('migration')) {
-      console.log('⚠️ Migration failed, but attempting to start server anyway...');
-      // Continue with server startup
-    } else {
-      process.exit(1);
-    }
+    throw error;
   }
 }
 
-// Start the application with proper error handling
+// FIXED: Proper async/await handling
 console.log('🏁 Starting application initialization...');
-initializeApp()
-  .then((server) => {
+
+// This is the critical fix - ensure the async function completes properly
+(async () => {
+  try {
+    const server = await initializeApp();
     console.log('🎉 Application started successfully');
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error('🔴 Fatal error during initialization:', error);
-    
-    // Give Render a bit more time before exiting
-    setTimeout(() => {
-      process.exit(1);
-    }, 5000);
-  });
+    process.exit(1);
+  }
+})();
 
 // Graceful shutdown handlers
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully...');
-  setTimeout(() => process.exit(0), 5000);
+  process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 SIGINT received, shutting down gracefully...');
-  setTimeout(() => process.exit(0), 5000);
+  process.exit(0);
 });
 
-// Enhanced error handling
+// Error handling
 process.on('uncaughtException', (error) => {
   console.error('🔴 Uncaught Exception:', error);
   console.error('🔴 Stack:', error.stack);
-  
-  // Don't exit immediately, give server time to start
-  setTimeout(() => {
-    process.exit(1);
-  }, 10000);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🔴 Unhandled Rejection at:', promise, 'reason:', reason);
-  
-  // Don't exit immediately for unhandled rejections
-  console.log('⚠️ Continuing despite unhandled rejection...');
 });
 
 console.log('🚀 END OF FILE REACHED - All code loaded successfully');
