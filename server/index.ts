@@ -76,35 +76,24 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
-// Helper function to create timeout promise
-function withTimeout(promise: Promise<any>, timeoutMs: number, name: string) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => 
-      setTimeout(() => reject(new Error(`${name} timeout after ${timeoutMs}ms`)), timeoutMs)
-    )
-  ]);
-}
-
-// CRITICAL FIX: Simplified and timeout-protected initialization
+// CRITICAL FIX: Simplified initialization
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
     
-    // Step 1: Connect to database with timeout
+    // Step 1: Connect to database
     console.log('🔌 Step 1: Connecting to database...');
-    await withTimeout(connectDatabase(), 30000, 'Database connection');
+    await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
     
-    // Step 2: Run migrations with timeout and force resolution
+    // Step 2: Run migrations with explicit debugging
     console.log('🔧 Step 2: Running database migrations...');
-    try {
-      await withTimeout(createTables(), 45000, 'Database migration');
-      console.log('✅ Step 2 completed: Database migrations successful');
-    } catch (migrationError: any) {
-      console.error('❌ MIGRATION ERROR:', migrationError.message);
-      console.log('⚠️ Continuing without migrations - tables likely already exist');
-    }
+    console.log('🎯 CRITICAL: About to call createTables()...');
+    
+    const migrationResult = await createTables();
+    
+    console.log('🎯 CRITICAL: createTables() returned:', migrationResult);
+    console.log('✅ Step 2 completed: Database migrations done');
     
     // FORCE LOG TO CONFIRM WE GET HERE
     console.log('🎯 CRITICAL CHECKPOINT: Migration phase completed, proceeding to routes...');
@@ -131,11 +120,10 @@ async function initializeApp() {
 
     console.log('🎯 CRITICAL CHECKPOINT: About to start server...');
 
-    // Step 4: Start server with immediate execution
+    // Step 4: Start server
     console.log('🚀 Step 4: Starting server...');
     console.log(`🔌 Attempting to bind to 0.0.0.0:${PORT}...`);
     
-    // CRITICAL: Start server synchronously without returning promise
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('🎉 SERVER STARTED SUCCESSFULLY!');
       console.log(`📱 Application: http://0.0.0.0:${PORT}`);
@@ -157,7 +145,6 @@ async function initializeApp() {
       console.log('🎯 RENDER SHOULD DETECT THIS PORT NOW');
     });
 
-    console.log('🎯 CRITICAL: Server.listen() called, should be listening now');
     return server;
 
   } catch (error: any) {
@@ -167,57 +154,17 @@ async function initializeApp() {
   }
 }
 
-// CRITICAL FIX: Force immediate execution without complex promise handling
+// Start the application
 console.log('🏁 Starting application initialization...');
 console.log('🎯 CRITICAL: About to call initializeApp()...');
 
-// Use setTimeout to ensure async operations don't hang
-const startupTimeout = setTimeout(() => {
-  console.error('🔴 STARTUP TIMEOUT - FORCING SERVER START');
-  // If startup hangs, start server anyway
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log('🎉 EMERGENCY SERVER START SUCCESSFUL!');
-    console.log('🔥 RENDER: Emergency server is accepting connections!');
-  });
-}, 60000); // 60 second timeout
-
 initializeApp()
   .then((server) => {
-    clearTimeout(startupTimeout);
     console.log('🎉 Application started successfully');
   })
   .catch((error) => {
-    clearTimeout(startupTimeout);
     console.error('🔴 Fatal error during initialization:', error);
-    
-    // EMERGENCY: Start server anyway
-    console.log('🚨 EMERGENCY: Starting server despite initialization error...');
-    const emergencyServer = app.listen(PORT, '0.0.0.0', () => {
-      console.log('🎉 EMERGENCY SERVER STARTED!');
-      console.log('🔥 RENDER: Emergency server is accepting connections!');
-    });
+    process.exit(1);
   });
-
-// Graceful shutdown handlers
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
-
-// Error handling
-process.on('uncaughtException', (error) => {
-  console.error('🔴 Uncaught Exception:', error);
-  console.error('🔴 Stack:', error.stack);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('🔴 Unhandled Rejection at:', promise, 'reason:', reason);
-});
 
 console.log('🚀 END OF FILE REACHED - All code loaded successfully');

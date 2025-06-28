@@ -8,9 +8,13 @@ async function createTables() {
   // Prevent multiple simultaneous migrations
   if (migrationInProgress) {
     console.log('⏳ Migration already in progress, waiting...');
-    while (migrationInProgress) {
+    // CRITICAL FIX: Don't wait indefinitely, return after timeout
+    let waitTime = 0;
+    while (migrationInProgress && waitTime < 30000) {
       await new Promise(resolve => setTimeout(resolve, 1000));
+      waitTime += 1000;
     }
+    console.log('✅ Migration wait completed, returning status:', migrationCompleted);
     return migrationCompleted;
   }
 
@@ -20,16 +24,13 @@ async function createTables() {
   }
 
   migrationInProgress = true;
+  console.log('🔧 Migration started, setting inProgress = true');
 
   try {
     console.log('🔧 Starting database migration...');
     
-    // Ensure connection with timeout
-    const connectionTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Connection timeout')), 30000)
-    );
-    
-    await Promise.race([connectDatabase(), connectionTimeout]);
+    // Ensure connection
+    await connectDatabase();
 
     // Check if tables already exist to avoid conflicts
     console.log('🔍 Checking existing tables...');
@@ -44,6 +45,7 @@ async function createTables() {
       console.log('✅ All tables already exist, migration not needed');
       migrationCompleted = true;
       migrationInProgress = false;
+      console.log('🎯 CRITICAL: Migration flags reset, returning true');
       return true;
     }
 
@@ -125,6 +127,7 @@ async function createTables() {
     
     migrationCompleted = true;
     console.log('🎉 Database migration completed successfully!');
+    console.log('🎯 CRITICAL: Setting migration flags and returning');
     return true;
     
   } catch (error) {
@@ -132,7 +135,9 @@ async function createTables() {
     migrationCompleted = false;
     throw error;
   } finally {
+    // CRITICAL FIX: Always reset the inProgress flag
     migrationInProgress = false;
+    console.log('🎯 CRITICAL: Migration inProgress flag reset to false');
   }
 }
 
