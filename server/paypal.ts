@@ -59,8 +59,6 @@ router.post('/api/create-paypal-order', async (req, res) => {
   try {
     console.log('📥 PayPal order creation request received');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('Request headers host:', req.get('host'));
-    console.log('Request protocol:', req.protocol);
 
     const { amount, tier, currency = 'USD' } = req.body;
 
@@ -140,8 +138,8 @@ router.post('/api/create-paypal-order', async (req, res) => {
         invoice_id: `writory_${Date.now()}` // Add invoice ID
       }],
       application_context: {
-        return_url: `${baseUrl}/payment-success`,
-        cancel_url: `${baseUrl}/payment-cancel`,
+        return_url: `${baseUrl}/submit?payment_success=true&payment_method=paypal`,
+        cancel_url: `${baseUrl}/submit?payment_cancelled=true`,
         shipping_preference: 'NO_SHIPPING',
         user_action: 'PAY_NOW',
         brand_name: 'Writory Poetry Contest',
@@ -166,7 +164,6 @@ router.post('/api/create-paypal-order', async (req, res) => {
 
     const responseText = await response.text();
     console.log('PayPal order response status:', response.status);
-    console.log('PayPal order response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
     console.log('PayPal order response body:', responseText);
 
     let order;
@@ -376,34 +373,6 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
     });
   }
-});
-
-// PayPal success/cancel routes
-router.get('/payment-success', async (req, res) => {
-  try {
-    const { token, PayerID } = req.query;
-    console.log('✅ PayPal payment success callback received');
-    console.log('Query parameters:', { token, PayerID });
-    console.log('Full query:', req.query);
-
-    if (token) {
-      const redirectUrl = `/submit?paypal_order_id=${token}&payment_success=true`;
-      console.log('Redirecting to:', redirectUrl);
-      res.redirect(redirectUrl);
-    } else {
-      console.error('❌ No token received in success callback');
-      res.redirect(`/submit?payment_error=true&message=${encodeURIComponent('Invalid payment token')}`);
-    }
-  } catch (error: any) {
-    console.error('❌ PayPal success callback error:', error);
-    res.redirect(`/submit?payment_error=true&message=${encodeURIComponent('Payment processing error')}`);
-  }
-});
-
-router.get('/payment-cancel', (req, res) => {
-  console.log('❌ PayPal payment cancelled');
-  console.log('Cancel query parameters:', req.query);
-  res.redirect('/submit?payment_cancelled=true');
 });
 
 export { router as paypalRouter };
