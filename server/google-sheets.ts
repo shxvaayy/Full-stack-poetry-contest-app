@@ -1,8 +1,7 @@
-
 import { google } from 'googleapis';
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
 
-// Decode base64-encoded service account JSON
+// Decode base64-encoded service account JSON (keeping your existing method)
 const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   ? JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON, "base64").toString("utf-8"))
   : null;
@@ -135,18 +134,18 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
     };
     const amount = tierAmounts[data.tier as keyof typeof tierAmounts] || 0;
 
-    // FIXED: Ensure correct column mapping
+    // CORRECTED: Match your actual sheet structure (A through J)
     // A=Timestamp, B=Name, C=Email, D=Phone, E=Age, F=Poem Title, G=Tier, H=Amount, I=Poem File, J=Photo
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:J', // Updated range to match actual columns
+      range: 'Poetry!A:J', // Correct range matching your sheet
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
       requestBody: {
         values: [[
           data.timestamp,                    // A - Timestamp
-          data.name,                        // B - Name (firstName + lastName)
+          data.name,                        // B - Name (full name)
           data.email,                       // C - Email
           data.phone || '',                 // D - Phone
           data.age || '',                   // E - Age
@@ -159,16 +158,25 @@ export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promis
       }
     };
 
+    console.log('📊 Sending to Google Sheets (A-J columns):', request.requestBody.values[0]);
+
     await sheets.spreadsheets.values.append(request);
-    console.log('✅ Poem submission added to Google Sheets with correct column mapping');
-    console.log('✅ Poem file link placed in column I (Poem File)');
-    console.log('✅ Photo link placed in column J (Photo)');
+    console.log('✅ Poem submission added to Google Sheets with correct column mapping (A-J)');
+    console.log('✅ Data structure:', {
+      timestamp: data.timestamp,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      poemFile: data.poemFile,
+      photo: data.photo
+    });
 
     const newCount = await getSubmissionCountFromSheet();
     console.log(`🎯 Updated count after submission: ${newCount}`);
 
   } catch (error) {
     console.error('❌ Error adding poem submission to Google Sheets:', error);
+    console.error('Error details:', error);
     throw error;
   }
 }
@@ -187,7 +195,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const existingPoetry = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:J1', // Updated range to match actual columns
+        range: 'Poetry!A1:J1', // Correct range A-J
         auth: authClient,
       });
 
@@ -208,7 +216,7 @@ export async function initializeSheetHeaders(): Promise<void> {
       if (!existingPoetry.data.values || existingPoetry.data.values.length === 0) {
         const poemsRequest = {
           spreadsheetId: SPREADSHEET_ID,
-          range: 'Poetry!A1:J1', // Updated range and headers to match actual columns
+          range: 'Poetry!A1:J1', // Correct range A-J
           valueInputOption: 'USER_ENTERED',
           auth: authClient,
           requestBody: {
@@ -216,7 +224,7 @@ export async function initializeSheetHeaders(): Promise<void> {
           }
         };
         await sheets.spreadsheets.values.update(poemsRequest);
-        console.log('✅ Poetry sheet headers initialized with correct column mapping');
+        console.log('✅ Poetry sheet headers initialized with correct A-J column mapping');
       }
     } catch (error) {
       console.log('📋 Creating new sheets with headers...');
@@ -232,7 +240,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const poemsRequest = {
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:J1', // Updated range to match actual columns
+        range: 'Poetry!A1:J1', // Correct range A-J
         valueInputOption: 'USER_ENTERED',
         auth: authClient,
         requestBody: {
@@ -242,7 +250,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       await sheets.spreadsheets.values.update(contactsRequest);
       await sheets.spreadsheets.values.update(poemsRequest);
-      console.log('✅ Sheet headers created with correct column mapping');
+      console.log('✅ Sheet headers created with correct A-J column mapping');
     }
   } catch (error) {
     console.error('❌ Error initializing sheet headers:', error);
