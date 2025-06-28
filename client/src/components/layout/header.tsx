@@ -63,18 +63,10 @@ export default function Header() {
           </nav>
 
           {/* User Section - Right */}
-          <div className="flex items-center space-x-3 flex-shrink-0">
+          <div className="flex items-center space-x-4 flex-shrink-0">
             {user ? (
-              <div className="hidden lg:flex items-center space-x-2">
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white hover:bg-white hover:text-primary order-2"
-                >
-                  Logout
-                </Button>
-                <Link href="/profile" className="order-1">
+              <div className="hidden lg:flex items-center space-x-4">
+                <Link href="/profile">
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
                     <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
                       <User className="text-green-600" size={14} />
@@ -84,6 +76,14 @@ export default function Header() {
                     </span>
                   </button>
                 </Link>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  size="sm"
+                  className="text-white border-white hover:bg-white hover:text-primary"
+                >
+                  Logout
+                </Button>
               </div>
             ) : (
               <div className="hidden lg:flex items-center">
