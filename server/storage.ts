@@ -32,6 +32,7 @@ interface StorageData {
 export class MemStorage implements IStorage {
   private data: StorageData;
   private initialized: boolean = false;
+  private isLoading: boolean = false;
 
   constructor() {
     this.data = {
@@ -46,16 +47,21 @@ export class MemStorage implements IStorage {
         countId: 1
       }
     };
+    // Initialize data on startup
+    this.loadData();
   }
 
   private async loadData() {
-    if (this.initialized) return;
+    if (this.initialized || this.isLoading) return;
+    
+    this.isLoading = true;
     
     try {
       const fs = await import('fs/promises');
       const dataString = await fs.readFile(DATA_FILE, 'utf-8');
       const loadedData = JSON.parse(dataString);
       
+      // Convert date strings back to Date objects
       loadedData.users.forEach((user: any) => {
         user.createdAt = new Date(user.createdAt);
       });
@@ -69,38 +75,45 @@ export class MemStorage implements IStorage {
       });
       
       this.data = loadedData;
-      console.log(`Loaded data: ${this.data.users.length} users, ${this.data.submissions.length} submissions`);
+      console.log(`✅ Data loaded: ${this.data.users.length} users, ${this.data.submissions.length} submissions`);
     } catch (error) {
-      console.log('No existing data file found, starting with fresh data');
+      console.log('📝 No existing data file found, starting with fresh data');
+      // Initialize with default data structure
+      await this.saveData();
     }
     
     this.initialized = true;
+    this.isLoading = false;
   }
 
   private async saveData() {
     try {
       const fs = await import('fs/promises');
       await fs.writeFile(DATA_FILE, JSON.stringify(this.data, null, 2));
-      console.log('Data saved to file');
+      console.log(`💾 Data saved: ${this.data.users.length} users, ${this.data.submissions.length} submissions`);
     } catch (error) {
-      console.error('Error saving data:', error);
+      console.error('❌ Error saving data:', error);
     }
   }
 
   async getUser(id: number): Promise<User | undefined> {
     await this.loadData();
-    return this.data.users.find(user => user.id === id);
+    const user = this.data.users.find(user => user.id === id);
+    console.log(`🔍 Looking for user ID ${id}:`, user ? `Found ${user.email}` : 'Not found');
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     await this.loadData();
-    return this.data.users.find(user => user.email === email);
+    const user = this.data.users.find(user => user.email === email);
+    console.log(`🔍 Looking for user email ${email}:`, user ? `Found ID ${user.id}` : 'Not found');
+    return user;
   }
 
   async getUserByUid(uid: string): Promise<User | undefined> {
     await this.loadData();
     const user = this.data.users.find(user => user.uid === uid);
-    console.log(`Looking for user with UID: ${uid}, found:`, user ? `${user.email} (ID: ${user.id})` : 'none');
+    console.log(`🔍 Looking for user UID ${uid}:`, user ? `Found ${user.email} (ID: ${user.id})` : 'Not found');
     return user;
   }
 
@@ -116,7 +129,7 @@ export class MemStorage implements IStorage {
     };
     this.data.users.push(user);
     await this.saveData();
-    console.log(`Created and saved user: ${user.email} (ID: ${user.id})`);
+    console.log(`✅ Created user: ${user.email} (ID: ${user.id})`);
     return user;
   }
 
@@ -141,14 +154,23 @@ export class MemStorage implements IStorage {
     };
     this.data.submissions.push(submission);
     await this.saveData();
-    console.log(`Created and saved submission ID ${id} for user ${submission.userId}`);
+    console.log(`✅ Created submission ID ${id} for user ${submission.userId}: "${submission.poemTitle}"`);
     return submission;
   }
 
   async getSubmissionsByUser(userId: number): Promise<Submission[]> {
     await this.loadData();
     const userSubmissions = this.data.submissions.filter(submission => submission.userId === userId);
-    console.log(`Found ${userSubmissions.length} submissions for user ${userId}`);
+    console.log(`📝 Found ${userSubmissions.length} submissions for user ${userId}`);
+    
+    // Debug: Show all submissions for troubleshooting
+    if (userSubmissions.length === 0 && this.data.submissions.length > 0) {
+      console.log('🔍 Debug: All submissions in storage:');
+      this.data.submissions.forEach(sub => {
+        console.log(`  - ID: ${sub.id}, UserID: ${sub.userId}, Title: "${sub.poemTitle}", Email: ${sub.email}`);
+      });
+    }
+    
     return userSubmissions;
   }
 
@@ -159,6 +181,7 @@ export class MemStorage implements IStorage {
 
   async getAllSubmissions(): Promise<Submission[]> {
     await this.loadData();
+    console.log(`📊 Returning ${this.data.submissions.length} total submissions`);
     return this.data.submissions;
   }
 
@@ -173,6 +196,7 @@ export class MemStorage implements IStorage {
     };
     this.data.contacts.push(contact);
     await this.saveData();
+    console.log(`✅ Created contact: ${contact.email} (ID: ${contact.id})`);
     return contact;
   }
 
@@ -181,6 +205,7 @@ export class MemStorage implements IStorage {
     const result = this.data.submissionCounts.find(count => 
       count.userId === userId && count.contestMonth === contestMonth
     );
+    console.log(`📊 Submission count for user ${userId}, month ${contestMonth}:`, result);
     return result;
   }
 
@@ -209,7 +234,7 @@ export class MemStorage implements IStorage {
     }
     
     await this.saveData();
-    console.log(`Updated and saved submission count for user ${userId}: free=${freeUsed}, total=${totalCount}`);
+    console.log(`✅ Updated submission count for user ${userId}: free=${freeUsed}, total=${totalCount}`);
   }
 }
 

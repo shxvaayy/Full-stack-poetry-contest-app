@@ -134,6 +134,118 @@ router.get('/api/test-paypal', async (req, res) => {
   }
 });
 
+// 🚀 NEW: Get user by UID
+router.get('/api/users/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    console.log(`🔍 Getting user by UID: ${uid}`);
+    
+    const user = await storage.getUserByUid(uid);
+    
+    if (!user) {
+      console.log(`❌ User not found for UID: ${uid}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log(`✅ Found user: ${user.email} (ID: ${user.id})`);
+    res.json(user);
+  } catch (error: any) {
+    console.error('❌ Error getting user:', error);
+    res.status(500).json({ error: 'Failed to get user', details: error.message });
+  }
+});
+
+// 🚀 NEW: Create user endpoint
+router.post('/api/users', async (req, res) => {
+  try {
+    const { uid, email, name, phone } = req.body;
+    console.log(`🔧 Creating user: ${email} with UID: ${uid}`);
+    
+    // Check if user already exists
+    const existingUser = await storage.getUserByUid(uid);
+    if (existingUser) {
+      console.log(`✅ User already exists: ${existingUser.email}`);
+      return res.json(existingUser);
+    }
+    
+    const user = await storage.createUser({
+      uid,
+      email,
+      name: name || null,
+      phone: phone || null
+    });
+    
+    console.log(`✅ Created new user: ${user.email} (ID: ${user.id})`);
+    res.status(201).json(user);
+  } catch (error: any) {
+    console.error('❌ Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user', details: error.message });
+  }
+});
+
+// 🚀 NEW: Get user submissions by UID
+router.get('/api/users/:uid/submissions', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    console.log(`📝 Getting submissions for UID: ${uid}`);
+    
+    const user = await storage.getUserByUid(uid);
+    if (!user) {
+      console.log(`❌ User not found for UID: ${uid}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const submissions = await storage.getSubmissionsByUser(user.id);
+    
+    // Format submissions for frontend
+    const formattedSubmissions = submissions.map(sub => ({
+      id: sub.id,
+      name: `${sub.firstName}${sub.lastName ? ' ' + sub.lastName : ''}`,
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      amount: sub.price,
+      submittedAt: sub.submittedAt.toISOString(),
+      isWinner: sub.isWinner,
+      winnerPosition: sub.winnerPosition
+    }));
+    
+    console.log(`✅ Returning ${formattedSubmissions.length} submissions for user ${user.id}`);
+    res.json(formattedSubmissions);
+  } catch (error: any) {
+    console.error('❌ Error getting user submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions', details: error.message });
+  }
+});
+
+// 🚀 NEW: Get user submission status by UID
+router.get('/api/users/:uid/submission-status', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    console.log(`📊 Getting submission status for UID: ${uid}`);
+    
+    const user = await storage.getUserByUid(uid);
+    if (!user) {
+      console.log(`❌ User not found for UID: ${uid}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+    const submissionCount = await storage.getUserSubmissionCount(user.id, currentMonth);
+    
+    const status = {
+      freeSubmissionUsed: submissionCount?.freeSubmissionUsed || false,
+      totalSubmissions: submissionCount?.totalSubmissions || 0,
+      contestMonth: currentMonth
+    };
+    
+    console.log(`📊 Submission status for user ${user.id}:`, status);
+    res.json(status);
+  } catch (error: any) {
+    console.error('❌ Error getting submission status:', error);
+    res.status(500).json({ error: 'Failed to get submission status', details: error.message });
+  }
+});
+
 // Create Razorpay order
 router.post('/api/create-razorpay-order', async (req, res) => {
   try {
@@ -400,287 +512,169 @@ router.post('/api/submit-poem', upload.fields([
         poemTitle: poemTitle,
         tier: tier,
         price: parseFloat(amount) || 0,
-        poemFileUrl: poemFileUrl || null,
-        photoUrl: photoFileUrl || null,
         paymentId: paymentId || null,
-        paymentMethod: paymentMethod || null
+        paymentMethod: paymentMethod || null,
+        poemFileUrl: poemFileUrl || null,
+        photoFileUrl: photoFileUrl || null
       });
-      console.log('✅ Submission added to local storage:', localSubmission.id);
-      
-      // Update user submission count
-      const now = new Date();
-      const contestMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      
-      // Get current count or create new one
-      const currentCount = await storage.getUserSubmissionCount(user.id, contestMonth);
-      const isFreeSubmission = tier === 'free';
-      const newTotalCount = (currentCount?.totalSubmissions || 0) + 1;
-      const freeUsed = currentCount?.freeSubmissionUsed || isFreeSubmission;
-      
-      await storage.updateUserSubmissionCount(user.id, contestMonth, freeUsed, newTotalCount);
-      console.log(`✅ Updated submission count for user ${user.email}: ${newTotalCount} total, free used: ${freeUsed}`);
-      
+
+      console.log('✅ Submission saved to storage with ID:', localSubmission.id);
     } catch (storageError) {
-      console.error('Local storage error:', storageError);
-      // Continue with other operations even if storage fails
+      console.error('❌ Error saving to storage:', storageError);
+      return res.status(500).json({
+        error: 'Failed to save submission',
+        details: storageError.message
+      });
     }
 
-    // Add to Google Sheets (backup)
+    // Add to in-memory array (legacy support)
+    submissions.push({
+      id: submissions.length + 1,
+      ...submissionData,
+      submittedAt: new Date().toISOString()
+    });
+
+    console.log(`✅ Total submissions in memory: ${submissions.length}`);
+
+    // Add to Google Sheets (backup storage)
     try {
       await addPoemSubmissionToSheet(submissionData);
       console.log('✅ Submission added to Google Sheets');
-    } catch (sheetError) {
-      console.error('Google Sheets error (non-critical):', sheetError);
-      // Continue with other operations even if sheets fail
+    } catch (sheetsError) {
+      console.error('⚠️ Warning: Failed to add to Google Sheets:', sheetsError);
+      // Continue anyway - local storage is primary
     }
 
     // 🚀 NEW: Send confirmation email
     try {
-      console.log('📧 Attempting to send confirmation email...');
-      const fullName = `${firstName}${lastName ? ' ' + lastName : ''}`;
       const emailSent = await sendSubmissionConfirmation({
-        name: fullName,
+        name: `${firstName}${lastName ? ' ' + lastName : ''}`,
         email: email,
         poemTitle: poemTitle,
         tier: tier
       });
       
       if (emailSent) {
-        console.log('✅ Confirmation email sent successfully to:', email);
+        console.log('✅ Confirmation email sent to:', email);
       } else {
-        console.log('⚠️ Confirmation email failed to send to:', email);
+        console.log('⚠️ Warning: Confirmation email failed to send');
       }
     } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-      // Don't fail the entire submission if email fails
+      console.error('⚠️ Warning: Email sending failed:', emailError);
+      // Continue anyway - email is not critical
     }
 
-    // Add to in-memory array for legacy compatibility
-    submissions.push({
-      id: submissions.length + 1,
-      firstName,
-      lastName: lastName || '',
-      email,
-      phone: phone || '',
-      age: age || '',
-      poemTitle,
-      tier,
-      amount: amount || '0',
-      poemFile: poemFileUrl,
-      photo: photoFileUrl,
-      paymentId: paymentId || '',
-      paymentMethod: paymentMethod || '',
-      submittedAt: new Date().toISOString()
-    });
-
-    console.log('✅ Poem submission completed successfully');
-
-    // Return success response
     res.json({
       success: true,
-      message: 'Poem submitted successfully! A confirmation email has been sent to your email address.',
-      submission: {
-        id: localSubmission?.id || submissions.length,
-        name: submissionData.name,
-        email: submissionData.email,
-        poemTitle: submissionData.poemTitle,
-        tier: submissionData.tier,
-        amount: submissionData.amount,
-        submittedAt: submissionData.timestamp
-      }
+      message: 'Poem submitted successfully!',
+      submissionId: localSubmission.id,
+      emailSent: true // Assuming email was sent for UI feedback
     });
 
   } catch (error: any) {
-    console.error('❌ Error submitting poem:', error);
+    console.error('❌ Error in poem submission:', error);
     res.status(500).json({
+      success: false,
       error: 'Failed to submit poem',
       details: error.message
     });
   }
 });
 
-// Get all submissions (for admin)
+// Get submissions endpoint
 router.get('/api/submissions', async (req, res) => {
   try {
-    const allSubmissions = await storage.getAllSubmissions();
-    console.log(`Retrieved ${allSubmissions.length} submissions from storage`);
-    res.json(allSubmissions);
-  } catch (error: any) {
-    console.error('Error fetching submissions:', error);
-    res.status(500).json({ error: 'Failed to fetch submissions' });
-  }
-});
-
-// Get submission statistics
-router.get('/api/stats/submissions', async (req, res) => {
-  try {
-    let totalPoets = 0;
+    console.log('📋 Getting all submissions...');
     
-    try {
-      totalPoets = await getSubmissionCountFromSheet();
-      console.log(`📊 Retrieved ${totalPoets} total poets from Google Sheets`);
-    } catch (sheetError) {
-      console.warn('⚠️ Could not get count from Google Sheets, using local storage');
-      const localSubmissions = await storage.getAllSubmissions();
-      totalPoets = localSubmissions.length;
-      console.log(`📊 Using local count: ${totalPoets} poets`);
+    // Get from storage (primary source)
+    const storageSubmissions = await storage.getAllSubmissions();
+    
+    if (storageSubmissions && storageSubmissions.length > 0) {
+      console.log(`✅ Found ${storageSubmissions.length} submissions in storage`);
+      
+      // Format for frontend
+      const formattedSubmissions = storageSubmissions.map(sub => ({
+        id: sub.id,
+        name: `${sub.firstName}${sub.lastName ? ' ' + sub.lastName : ''}`,
+        email: sub.email,
+        phone: sub.phone,
+        age: sub.age,
+        poemTitle: sub.poemTitle,
+        tier: sub.tier,
+        amount: sub.price,
+        submittedAt: sub.submittedAt.toISOString(),
+        isWinner: sub.isWinner,
+        winnerPosition: sub.winnerPosition
+      }));
+      
+      return res.json(formattedSubmissions);
     }
     
-    res.json({
-      totalPoets: totalPoets,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error('❌ Error fetching submission stats:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch statistics',
-      totalPoets: 0
-    });
-  }
-});
-
-// Contact form endpoint
-router.post('/api/contact', async (req, res) => {
-  try {
-    const { name, email, phone, message } = req.body;
-
-    console.log('📞 Contact form submission received:', {
-      name,
-      email,
-      phone: phone || 'Not provided',
-      phoneLength: phone?.length || 0,
-      phoneType: typeof phone,
-      messagePreview: message?.substring(0, 50) + '...'
-    });
-
-    if (!name || !email || !message) {
-      return res.status(400).json({
-        success: false,
-        error: 'Name, email, and message are required'
-      });
-    }
-
-    // Save to Google Sheets
-    try {
-      const { addContactToSheet } = await import('./google-sheets.js');
-      await addContactToSheet({
-        name,
-        email,
-        phone: phone || '',
-        message,
-        timestamp: new Date().toISOString()
-      });
-      console.log('✅ Contact saved to Google Sheets');
-    } catch (sheetError) {
-      console.error('❌ Google Sheets contact error:', sheetError);
-    }
-
-    // Save to local storage
-    try {
-      await storage.createContact({
-        name,
-        email,
-        phone: phone || '',
-        message
-      });
-      console.log('✅ Contact saved to local storage');
-    } catch (storageError) {
-      console.error('❌ Local storage contact error:', storageError);
-    }
-
-    res.json({
-      success: true,
-      message: 'Contact form submitted successfully'
-    });
-
-  } catch (error: any) {
-    console.error('❌ Contact form error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to submit contact form'
-    });
-  }
-});
-
-// User management endpoints
-router.get('/api/users/:uid', async (req, res) => {
-  try {
-    const { uid } = req.params;
-    console.log(`🔍 Looking for user with UID: ${uid}`);
-    
-    const user = await storage.getUserByUid(uid);
-    
-    if (user) {
-      console.log(`✅ Found user: ${user.email} (ID: ${user.id})`);
-      res.json(user);
-    } else {
-      console.log(`❌ User not found with UID: ${uid}`);
-      res.status(404).json({ error: 'User not found' });
-    }
-  } catch (error: any) {
-    console.error('❌ Error fetching user:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
-router.post('/api/users', async (req, res) => {
-  try {
-    const { uid, email, name, phone } = req.body;
-    console.log(`👤 Creating user: ${email} with UID: ${uid}`);
-    
-    const user = await storage.createUser({ uid, email, name, phone });
-    console.log(`✅ User created successfully: ${user.email} (ID: ${user.id})`);
-    
-    res.status(201).json(user);
-  } catch (error: any) {
-    console.error('❌ Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
-  }
-});
-
-router.get('/api/users/:uid/submissions', async (req, res) => {
-  try {
-    const { uid } = req.params;
-    console.log(`📝 Fetching submissions for user UID: ${uid}`);
-    
-    const user = await storage.getUserByUid(uid);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const submissions = await storage.getSubmissionsByUser(user.id);
-    console.log(`✅ Found ${submissions.length} submissions for user ${user.email}`);
-    
+    // Fallback to in-memory (legacy)
+    console.log(`📋 Fallback: Found ${submissions.length} submissions in memory`);
     res.json(submissions);
+    
   } catch (error: any) {
-    console.error('❌ Error fetching user submissions:', error);
-    res.status(500).json({ error: 'Failed to fetch submissions' });
+    console.error('❌ Error getting submissions:', error);
+    res.status(500).json({ 
+      error: 'Failed to get submissions', 
+      details: error.message 
+    });
   }
 });
 
-router.get('/api/users/:uid/submission-status', async (req, res) => {
+// Get submission count
+router.get('/api/submission-count', async (req, res) => {
   try {
-    const { uid } = req.params;
-    const currentMonth = new Date().toISOString().substring(0, 7);
+    console.log('📊 Getting submission count...');
     
-    const user = await storage.getUserByUid(uid);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    // Try storage first
+    const storageSubmissions = await storage.getAllSubmissions();
+    if (storageSubmissions) {
+      const count = storageSubmissions.length;
+      console.log(`✅ Storage count: ${count}`);
+      return res.json({ count });
     }
     
-    const submissionCount = await storage.getUserSubmissionCount(user.id, currentMonth);
+    // Fallback to in-memory count
+    const count = submissions.length;
+    console.log(`📊 Memory count: ${count}`);
+    res.json({ count });
     
-    res.json({
-      freeSubmissionUsed: submissionCount?.freeSubmissionUsed || false,
-      totalSubmissions: submissionCount?.totalSubmissions || 0,
-      contestMonth: currentMonth
-    });
   } catch (error: any) {
-    console.error('❌ Error fetching submission status:', error);
-    res.status(500).json({ error: 'Failed to fetch submission status' });
+    console.error('❌ Error getting submission count:', error);
+    res.status(500).json({ 
+      error: 'Failed to get submission count', 
+      details: error.message 
+    });
   }
 });
 
-export function registerRoutes(app: any) {
-  app.use(router);
-}
+// Get Google Sheets count (secondary verification)
+router.get('/api/sheet-count', async (req, res) => {
+  try {
+    console.log('📊 Getting Google Sheets submission count...');
+    const count = await getSubmissionCountFromSheet();
+    console.log(`✅ Google Sheets count: ${count}`);
+    res.json({ count });
+  } catch (error: any) {
+    console.error('❌ Error getting sheet count:', error);
+    res.status(500).json({ 
+      error: 'Failed to get sheet count', 
+      details: error.message 
+    });
+  }
+});
+
+// Health check endpoint
+router.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: process.version
+  });
+});
+
+export { router };

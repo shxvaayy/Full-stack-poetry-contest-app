@@ -28,7 +28,7 @@ export default function Header() {
     <header className="bg-primary text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          {/* Logo Section */}
+          {/* Logo Section - Left */}
           <Link href="/" className="flex items-center flex-shrink-0">
             <div className="w-12 h-12 mr-4">
               <img 
@@ -42,9 +42,9 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Center */}
           <nav className="hidden lg:flex items-center flex-1 justify-center">
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-8">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -59,7 +59,7 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* User Section - Always on the right */}
+          {/* User Section - Right */}
           <div className="flex items-center space-x-4 flex-shrink-0">
             {user ? (
               <div className="hidden lg:flex items-center space-x-3">
