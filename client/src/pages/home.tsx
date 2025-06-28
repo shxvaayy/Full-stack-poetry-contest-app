@@ -249,7 +249,7 @@ export default function HomePage() {
             <Card className="border border-yellow-500/30 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
               <CardContent className="p-6 text-center">
                 <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Crown className="text-white" size={24} />
+                  <Trophy className="text-white" size={24} />
                 </div>
                 <h3 className="text-xl font-bold text-yellow-400 mb-2">Bulk Entry</h3>
                 <p className="text-3xl font-bold text-white mb-2">₹480</p>
