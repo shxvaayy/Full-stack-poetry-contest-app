@@ -94,7 +94,8 @@ export default function WinningPoemsPage() {
             <h3 className="text-2xl font-bold text-gray-900 mb-6">What to Expect</h3>
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div>
-                <div className="w-16 h-16 bg-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                {/* 🚀 FIXED: Changed bg-gold to bg-yellow-500 */}
+                <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trophy className="text-2xl text-white" size={24} />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">First Place Winner</h4>
