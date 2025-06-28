@@ -37,12 +37,10 @@ export default function Header() {
                 className="w-full h-full object-contain"
               />
             </div>
-            {/* Only show title on non-home pages or when on mobile */}
-            {location !== "/" && (
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
-              </div>
-            )}
+            {/* Title always visible on desktop */}
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
+            </div>
           </Link>
 
           {/* Desktop Navigation - Center */}
