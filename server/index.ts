@@ -84,12 +84,13 @@ async function initializeApp() {
       res.sendFile(indexPath);
     });
 
-    // Start server
-    app.listen(PORT, () => {
+    // Start server - FIXED: Bind to 0.0.0.0 for Render
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('🎉 Server started successfully!');
-      console.log(`📱 Application: http://localhost:${PORT}`);
-      console.log(`🔧 API: http://localhost:${PORT}/api`);
-      console.log(`💓 Health: http://localhost:${PORT}/health`);
+      console.log(`📱 Application: http://0.0.0.0:${PORT}`);
+      console.log(`🔧 API: http://0.0.0.0:${PORT}/api`);
+      console.log(`💓 Health: http://0.0.0.0:${PORT}/health`);
+      console.log(`🌐 External URL: https://writory.onrender.com`);
     });
 
   } catch (error) {
