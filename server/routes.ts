@@ -663,4 +663,9 @@ router.get('/api/winners', async (req, res) => {
   }
 });
 
+// 🚀 MISSING EXPORT: registerRoutes function
+export function registerRoutes(app: any) {
+  app.use(router);
+}
+
 export default router;
