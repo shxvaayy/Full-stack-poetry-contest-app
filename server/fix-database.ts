@@ -1,11 +1,14 @@
-import { client, connectDatabase } from './db.js';
+import { client, connectDatabase, isConnected } from './db.js';
 
 async function quickFix() {
   try {
     console.log('🔧 Starting quick database fix...');
-    console.log('📊 Connecting to database...');
     
-    await connectDatabase();
+    // Only connect if not already connected
+    if (!isConnected) {
+      console.log('📊 Connecting to database...');
+      await connectDatabase();
+    }
     
     console.log('🗑️ Dropping existing tables if they exist...');
     
@@ -89,15 +92,28 @@ async function quickFix() {
       throw new Error(`Expected 3 tables, but found ${result.rows.length}`);
     }
     
-    await client.end();
-    process.exit(0);
+    // Don't close connection here since it might be used by other parts
+    console.log('✅ Database fix completed, keeping connection open for server');
     
   } catch (error) {
     console.error('❌ Database fix failed:', error);
     console.error('Error details:', error);
-    process.exit(1);
+    throw error;
   }
 }
 
-// Run the fix
-quickFix();
+// Export for use in other files
+export { quickFix };
+
+// Run the fix if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  quickFix()
+    .then(() => {
+      console.log('✅ Fix completed successfully');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('❌ Fix failed:', error);
+      process.exit(1);
+    });
+}

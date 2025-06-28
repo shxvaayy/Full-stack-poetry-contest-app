@@ -1,14 +1,12 @@
-import { db, client } from './db.js';
-import { users, submissions, contacts } from './schema.js';
+import { client, connectDatabase, isConnected } from './db.js';
 
 async function createTables() {
   try {
     console.log('🔧 Starting database migration...');
     
-    // Ensure client is connected
-    if (!client._connected) {
-      await client.connect();
-      console.log('✅ Database connected for migration');
+    // Only connect if not already connected
+    if (!isConnected) {
+      await connectDatabase();
     }
 
     // Create users table
