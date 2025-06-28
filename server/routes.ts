@@ -677,4 +677,10 @@ router.get('/api/health', (req, res) => {
   });
 });
 
+// 🚀 EXPORT: Function to register routes with Express app (matching index.ts expectations)
+export const registerRoutes = (app: any) => {
+  app.use(router);
+};
+
+// Also export the router for flexibility
 export { router };
