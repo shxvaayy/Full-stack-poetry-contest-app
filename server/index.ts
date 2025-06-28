@@ -91,10 +91,19 @@ async function initializeApp() {
     await createTables();
     console.log('✅ Step 2 completed: Migrations done');
     
-    // Register routes
-    console.log('🛣️ Step 3: Registering routes...');
-    registerRoutes(app);
-    console.log('✅ Step 3 completed: Routes registered');
+    // Register routes with detailed error handling
+    console.log('🛣️ Step 3: Starting route registration...');
+    try {
+      console.log('🛣️ Calling registerRoutes function...');
+      registerRoutes(app);
+      console.log('✅ Step 3 completed: Routes registered successfully');
+    } catch (routeError: any) {
+      console.error('❌ ROUTE REGISTRATION FAILED:', routeError);
+      console.error('❌ Route error message:', routeError?.message);
+      console.error('❌ Route error stack:', routeError?.stack);
+      console.error('❌ Full route error object:', routeError);
+      throw new Error(`Route registration failed: ${routeError?.message}`);
+    }
     
     // Error handling
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -145,7 +154,7 @@ async function initializeApp() {
     return server;
 
   } catch (error: any) {
-    console.error('❌ Application startup failed:', error);
+    console.error('❌ APPLICATION STARTUP FAILED:', error);
     console.error('❌ Error stack:', error?.stack);
     console.error('❌ Error message:', error?.message);
     console.error('❌ Full error object:', error);
