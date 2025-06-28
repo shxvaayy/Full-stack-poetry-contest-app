@@ -28,7 +28,8 @@ export default function Header() {
     <header className="bg-primary text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <Link href="/" className="flex items-center">
+          {/* Logo Section */}
+          <Link href="/" className="flex items-center flex-shrink-0">
             <div className="w-12 h-12 mr-4">
               <img 
                 src={logoImage} 
@@ -37,24 +38,31 @@ export default function Header() {
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold">WRITORY POETRY CONTEST</h1>
+              <h1 className="text-xl font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`hover:text-gray-200 transition-colors ${
-                  location === item.href ? "border-b-2 border-white" : ""
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-            {user && (
-              <div className="flex items-center space-x-3">
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center flex-1 justify-center">
+            <div className="flex items-center space-x-6">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium ${
+                    location === item.href ? "border-b-2 border-white" : ""
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          </nav>
+
+          {/* User Section - Always on the right */}
+          <div className="flex items-center space-x-4 flex-shrink-0">
+            {user ? (
+              <div className="hidden lg:flex items-center space-x-3">
                 <Link href="/profile">
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
                     <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
@@ -74,21 +82,34 @@ export default function Header() {
                   Logout
                 </Button>
               </div>
+            ) : (
+              <div className="hidden lg:flex items-center space-x-3">
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white border-white hover:bg-white hover:text-primary"
+                  >
+                    Login
+                  </Button>
+                </Link>
+              </div>
             )}
-          </nav>
 
-          <button
-            className="md:hidden text-white"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+            {/* Mobile menu button */}
+            <button
+              className="lg:hidden text-white"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-primary border-t border-green-600">
+        <div className="lg:hidden bg-primary border-t border-green-600">
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navigation.map((item) => (
               <Link
@@ -101,7 +122,7 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <div className="px-3 py-2 space-y-2">
+              <div className="px-3 py-2 space-y-2 border-t border-green-600 mt-2 pt-4">
                 <Link href="/profile">
                   <button 
                     className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
