@@ -14,7 +14,7 @@ console.log('🚀 Basic imports successful');
 
 import { registerRoutes } from './routes.js';
 import { connectDatabase } from './db.js';
-import { createTables } from './migrate.js';
+// import { createTables } from './migrate.js';  // TEMPORARILY COMMENTED OUT
 
 console.log('🚀 All imports successful');
 
@@ -76,7 +76,7 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
-// Single initialization function with enhanced debugging
+// Simplified initialization function - NO MIGRATION
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
@@ -86,10 +86,9 @@ async function initializeApp() {
     await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
     
-    // Run migrations
-    console.log('🔧 Step 2: Running migrations...');
-    await createTables();
-    console.log('✅ Step 2 completed: Migrations done');
+    // SKIP MIGRATIONS FOR TESTING
+    console.log('🔧 Step 2: SKIPPING migrations for testing...');
+    console.log('✅ Step 2 completed: Migrations skipped');
     
     // Register routes with detailed error handling
     console.log('🛣️ Step 3: Starting route registration...');
@@ -101,7 +100,6 @@ async function initializeApp() {
       console.error('❌ ROUTE REGISTRATION FAILED:', routeError);
       console.error('❌ Route error message:', routeError?.message);
       console.error('❌ Route error stack:', routeError?.stack);
-      console.error('❌ Full route error object:', routeError);
       throw new Error(`Route registration failed: ${routeError?.message}`);
     }
     
@@ -123,7 +121,7 @@ async function initializeApp() {
     console.log('🚀 Step 4: Starting server...');
     console.log(`🔌 Attempting to bind to 0.0.0.0:${PORT}...`);
     
-    // Start server - FIXED: Bind to 0.0.0.0 for Render
+    // Start server
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('🎉 SERVER STARTED SUCCESSFULLY!');
       console.log(`📱 Application: http://0.0.0.0:${PORT}`);
@@ -137,27 +135,19 @@ async function initializeApp() {
 
     server.on('error', (error: any) => {
       console.error('❌ Server failed to start:', error);
-      console.error('❌ Error code:', error.code);
-      console.error('❌ Error message:', error.message);
-      console.error('❌ Full error:', error);
       throw error;
     });
 
     server.on('listening', () => {
       console.log('🎯 Server listening event fired');
-      console.log('🎯 Server address:', server.address());
       console.log('🎯 RENDER SHOULD DETECT THIS PORT NOW');
     });
 
-    // Keep process alive
-    console.log('🚀 Application fully initialized');
     return server;
 
   } catch (error: any) {
     console.error('❌ APPLICATION STARTUP FAILED:', error);
     console.error('❌ Error stack:', error?.stack);
-    console.error('❌ Error message:', error?.message);
-    console.error('❌ Full error object:', error);
     process.exit(1);
   }
 }
@@ -168,29 +158,6 @@ initializeApp().then((server) => {
   console.log('🎉 Application started successfully');
 }).catch((error) => {
   console.error('🔴 Fatal error during initialization:', error);
-  process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
-
-// Additional debugging
-process.on('uncaughtException', (error) => {
-  console.error('🔴 Uncaught Exception:', error);
-  console.error('🔴 Stack:', error.stack);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('🔴 Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 });
 
