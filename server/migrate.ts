@@ -1,3 +1,4 @@
+
 import { db, client } from './db.js';
 import { users, submissions, contacts } from './schema.js';
 
@@ -16,6 +17,7 @@ async function createTables() {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    console.log('✅ Users table created');
 
     // Create submissions table
     await client.query(`
@@ -39,6 +41,7 @@ async function createTables() {
         winner_position INTEGER
       );
     `);
+    console.log('✅ Submissions table created');
 
     // Create contacts table
     await client.query(`
@@ -52,15 +55,29 @@ async function createTables() {
         submitted_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    console.log('✅ Contacts table created');
 
-    console.log('✅ Database tables created successfully');
+    // Verify tables exist
+    const result = await client.query(`
+      SELECT table_name FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('users', 'submissions', 'contacts');
+    `);
+    
+    console.log(`✅ Verified ${result.rows.length} tables exist:`, result.rows.map(row => row.table_name));
+    console.log('🎉 Database migration completed successfully!');
+    
   } catch (error) {
     console.error('❌ Error creating tables:', error);
+    throw error;
   }
 }
 
 // Run migration
 createTables().then(() => {
-  console.log('Migration completed');
+  console.log('✅ Migration completed successfully');
   process.exit(0);
+}).catch((error) => {
+  console.error('❌ Migration failed:', error);
+  process.exit(1);
 });
