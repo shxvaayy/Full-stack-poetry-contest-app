@@ -1,3 +1,4 @@
+
 import { pgTable, serial, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
 // Users table
@@ -42,73 +43,10 @@ export const contacts = pgTable('contacts', {
   submittedAt: timestamp('submitted_at').defaultNow()
 });
 
-// TypeScript interfaces
-export interface User {
-  id: number;
-  uid: string;
-  email: string;
-  name: string | null;
-  phone: string | null;
-  createdAt: Date;
-}
-
-export interface InsertUser {
-  uid: string;
-  email: string;
-  name?: string | null;
-  phone?: string | null;
-}
-
-export interface Submission {
-  id: number;
-  userId: number | null;
-  firstName: string;
-  lastName: string | null;
-  email: string;
-  phone: string | null;
-  age: string | null;
-  poemTitle: string;
-  tier: string;
-  price: number;
-  poemFileUrl: string | null;
-  photoUrl: string | null;
-  paymentId: string | null;
-  paymentMethod: string | null;
-  submittedAt: Date;
-  isWinner: boolean;
-  winnerPosition: number | null;
-}
-
-export interface InsertSubmission {
-  userId?: number | null;
-  firstName: string;
-  lastName?: string | null;
-  email: string;
-  phone?: string | null;
-  age?: string | null;
-  poemTitle: string;
-  tier: string;
-  price?: number;
-  poemFileUrl?: string | null;
-  photoUrl?: string | null;
-  paymentId?: string | null;
-  paymentMethod?: string | null;
-}
-
-export interface Contact {
-  id: number;
-  name: string;
-  email: string;
-  phone: string | null;
-  message: string;
-  subject: string | null;
-  submittedAt: Date;
-}
-
-export interface InsertContact {
-  name: string;
-  email: string;
-  phone?: string | null;
-  message: string;
-  subject?: string | null;
-}
+// Export types
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type Submission = typeof submissions.$inferSelect;
+export type InsertSubmission = typeof submissions.$inferInsert;
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = typeof contacts.$inferInsert;
