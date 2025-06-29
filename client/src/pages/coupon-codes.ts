@@ -1,6 +1,6 @@
 
 // Coupon codes configuration
-export const IS_FIRST_MONTH = false; // Change this to false for second month onwards
+export const IS_FIRST_MONTH = true; // Change this to false for second month onwards
 
 // Free tier unlock codes (top 50) - these unlock the Free Entry form
 export const FREE_TIER_CODES = [
