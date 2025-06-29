@@ -235,9 +235,9 @@ export default function AuthPage() {
               className="w-full h-full object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Writory</h1>
-          <p className="text-gray-600 text-sm mt-1">Write Your Own Victory</p>
-          <p className="text-gray-500 text-sm mt-2">Poetry Contest Platform</p>
+          <h1 className="text-3xl font-bold text-gray-900">WRITORY</h1>
+          <p className="text-gray-600 text-sm mt-1">WRITE YOUR OWN VICTORY</p>
+          <p className="text-gray-500 text-sm mt-2">POETRY CONTEST PLATFORM</p>
         </div>
       </div>
 
