@@ -14,9 +14,9 @@ import PastWinnersPage from "@/pages/past-winners";
 import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
 import UserProfilePage from "@/pages/user-profile";
-import TermsPage from "@/pages/terms";
-import PrivacyPage from "@/pages/privacy";
-import NotFound from "@/pages/not-found";
+import NotFoundPage from "./pages/not-found";
+import TermsPage from "./pages/terms";
+import PrivacyPage from "./pages/privacy";
 
 function AppContent() {
   return (
@@ -34,7 +34,7 @@ function AppContent() {
             <Route path="/profile" component={UserProfilePage} />
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />
-            <Route component={NotFound} />
+            <Route component={NotFoundPage} />
           </Switch>
         </main>
         <Footer />

@@ -6,11 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2, Tag } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
+import { validateCouponCode, calculateDiscountedPrice, IS_FIRST_MONTH, type CouponCode } from "./coupon-codes";
 
 const TIERS = [
   { 
@@ -91,6 +92,10 @@ export default function SubmitPage() {
     poem: null as File | null,
     photo: null as File | null,
   });
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponCode | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [freeFormUnlocked, setFreeFormUnlocked] = useState(IS_FIRST_MONTH);
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
@@ -248,6 +253,57 @@ export default function SubmitPage() {
     setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
+  const handleCouponValidation = () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    const validatedCoupon = validateCouponCode(couponCode);
+    
+    if (!validatedCoupon) {
+      setCouponError("Invalid or expired coupon code");
+      setAppliedCoupon(null);
+      return;
+    }
+
+    setAppliedCoupon(validatedCoupon);
+    setCouponError("");
+
+    if (validatedCoupon.type === 'free') {
+      setFreeFormUnlocked(true);
+      toast({
+        title: "Coupon Applied!",
+        description: "Free entry unlocked! You can now submit for free.",
+      });
+    } else if (validatedCoupon.type === 'discount') {
+      toast({
+        title: "Discount Applied!",
+        description: `${validatedCoupon.discount}% discount applied to your selected tier.`,
+      });
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+    if (!IS_FIRST_MONTH) {
+      setFreeFormUnlocked(false);
+    }
+    toast({
+      title: "Coupon Removed",
+      description: "Coupon code has been removed.",
+    });
+  };
+
+  const getDiscountedPrice = (originalPrice: number) => {
+    if (appliedCoupon?.type === 'discount' && appliedCoupon.discount) {
+      return calculateDiscountedPrice(originalPrice, appliedCoupon.discount);
+    }
+    return originalPrice;
+  };
+
   const handlePaymentSuccess = (data: any) => {
     console.log('✅ Payment successful, data received:', data);
     
@@ -338,8 +394,19 @@ export default function SubmitPage() {
       submitFormData.append('age', formData.age || '');
       submitFormData.append('poemTitle', formData.poemTitle);
       submitFormData.append('tier', selectedTier?.id || 'free');
-      submitFormData.append('amount', selectedTier?.price?.toString() || '0');
+      const finalAmount = selectedTier?.price ? getDiscountedPrice(selectedTier.price) : 0;
+      submitFormData.append('amount', finalAmount.toString());
+      submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
       submitFormData.append('userUid', user?.uid || '');
+      
+      // Add coupon information
+      if (appliedCoupon) {
+        submitFormData.append('couponCode', appliedCoupon.code);
+        submitFormData.append('couponType', appliedCoupon.type);
+        if (appliedCoupon.discount) {
+          submitFormData.append('discount', appliedCoupon.discount.toString());
+        }
+      }
 
       // Add payment data if available
       if (actualPaymentData) {
@@ -443,7 +510,7 @@ export default function SubmitPage() {
   };
 
   // Check for free tier availability
-  const canUseFreeEntry = !submissionStatus?.freeSubmissionUsed;
+  const canUseFreeEntry = freeFormUnlocked && !submissionStatus?.freeSubmissionUsed;
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
@@ -503,7 +570,18 @@ export default function SubmitPage() {
                 <h3 className="text-xl font-semibold mb-2">{tier.name}</h3>
                 <p className="text-gray-600 text-sm mb-4">{tier.description}</p>
                 <div className="text-2xl font-bold mb-4">
-                  {tier.price === 0 ? "Free" : `₹${tier.price}`}
+                  {tier.price === 0 ? "Free" : (
+                    <>
+                      {appliedCoupon?.type === 'discount' ? (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-500 line-through">₹{tier.price}</div>
+                          <div className="text-green-600">₹{getDiscountedPrice(tier.price)}</div>
+                        </div>
+                      ) : (
+                        `₹${tier.price}`
+                      )}
+                    </>
+                  )}
                 </div>
                 {isDisabled && (
                   <p className="text-red-500 text-sm">Already used this month</p>
@@ -659,6 +737,68 @@ export default function SubmitPage() {
                 </div>
               </div>
 
+              {/* Coupon Code Section */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium mb-3 flex items-center">
+                  <Tag className="w-4 h-4 mr-2 text-green-600" />
+                  Have a Coupon Code?
+                </h4>
+                
+                {!appliedCoupon ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setCouponError("");
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleCouponValidation}
+                        variant="outline"
+                        disabled={!couponCode.trim()}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {couponError && (
+                      <p className="text-red-500 text-sm">{couponError}</p>
+                    )}
+                    <p className="text-gray-600 text-sm">
+                      Enter a coupon code to unlock free entry or get discounts on paid tiers
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <div>
+                        <p className="font-medium text-green-800">{appliedCoupon.code}</p>
+                        <p className="text-sm text-green-600">
+                          {appliedCoupon.type === 'free' 
+                            ? 'Free entry unlocked!' 
+                            : `${appliedCoupon.discount}% discount applied`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={removeCoupon}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div className="mt-6 flex items-center space-x-2">
                 <Checkbox
                   id="terms"
@@ -714,7 +854,16 @@ export default function SubmitPage() {
                   
                   <div className="text-center">
                     <span className="text-2xl font-bold">
-                      {selectedTier.price === 0 ? "Free" : `₹${selectedTier.price}`}
+                      {selectedTier.price === 0 ? "Free" : (
+                        appliedCoupon?.type === 'discount' ? (
+                          <div className="space-y-1">
+                            <div className="text-sm text-gray-500 line-through">₹{selectedTier.price}</div>
+                            <div className="text-green-600">₹{getDiscountedPrice(selectedTier.price)}</div>
+                          </div>
+                        ) : (
+                          `₹${selectedTier.price}`
+                        )
+                      )}
                     </span>
                   </div>
 
@@ -787,57 +936,25 @@ export default function SubmitPage() {
               <span>{selectedTier?.name}</span>
             </div>
             {selectedTier?.price && selectedTier.price > 0 && (
-              <div className="flex justify-between">
-                <span>Amount Paid:</span>
-                <span>₹{selectedTier.price}</span>
+              <>
+                <div className="flex justify-between">
+                  <span>Amount Paid:</span>
+                  <span>₹{getDiscountedPrice(selectedTier.price)}</span>
+                </div>
+                {appliedCoupon?.type === 'discount' && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount Applied:</span>
+                    <span>{appliedCoupon.discount}% off</span>
+                  </div>
+                )}
+              </>
+            )}
+            {appliedCoupon?.type === 'free' && (
+              <div className="flex justify-between text-green-600">
+                <span>Coupon Applied:</span>
+                <span>Free Entry Unlocked</span>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border mb-6">
-          <h3 className="font-semibold mb-4 text-center">Follow us on Social Media</h3>
-          <div className="flex justify-center space-x-6">
-            <a 
-              href="https://x.com/writoryofficial" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-blue-500 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://www.facebook.com/share/16hyCrZbE2/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-blue-600 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://www.instagram.com/writoryofficial/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-pink-500 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://www.linkedin.com/company/writoryofficial/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-600 hover:text-blue-700 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
-            </a>
           </div>
         </div>
 
@@ -858,6 +975,10 @@ export default function SubmitPage() {
                 termsAccepted: false,
               });
               setFiles({ poem: null, photo: null });
+              setCouponCode("");
+              setAppliedCoupon(null);
+              setCouponError("");
+              setFreeFormUnlocked(IS_FIRST_MONTH);
             }}
             className="w-full bg-green-600 hover:bg-green-700"
           >
