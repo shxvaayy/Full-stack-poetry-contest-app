@@ -20,6 +20,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fadeIn, setFadeIn] = useState(false);
   const { toast } = useToast();
 
   const [phone, setPhone] = useState("");
@@ -28,6 +29,12 @@ export default function AuthPage() {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isLinkingPhone, setIsLinkingPhone] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
+
+  // Fade in animation when component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => setFadeIn(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Clean up recaptcha on unmount
   useEffect(() => {
@@ -225,7 +232,7 @@ export default function AuthPage() {
   const isOtpButtonDisabled = loading || !phone || otpTimer > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className={`min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex flex-col items-center">
           <div className="w-20 h-20 mb-4">
@@ -388,9 +395,10 @@ export default function AuthPage() {
                 {isSignIn ? "Sign up" : "Sign in"}
               </button>
             </div>
+
+            <div id="recaptcha-container"></div>
           </CardContent>
         </Card>
-        <div id="recaptcha-container"></div>
       </div>
     </div>
   );
