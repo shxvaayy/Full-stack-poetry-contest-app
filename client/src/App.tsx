@@ -14,6 +14,8 @@ import PastWinnersPage from "@/pages/past-winners";
 import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
 import UserProfilePage from "@/pages/user-profile";
+import TermsPage from "@/pages/terms";
+import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -30,6 +32,8 @@ function AppContent() {
             <Route path="/about" component={AboutPage} />
             <Route path="/contact" component={ContactPage} />
             <Route path="/profile" component={UserProfilePage} />
+            <Route path="/terms" component={TermsPage} />
+            <Route path="/privacy" component={PrivacyPage} />
             <Route component={NotFound} />
           </Switch>
         </main>
