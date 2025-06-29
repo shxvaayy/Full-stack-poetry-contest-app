@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface PaymentFormProps {
   selectedTier: string;
   amount: number;
+  originalAmount?: number;
+  discountAmount?: number;
   onPaymentSuccess: (paymentData: any) => void;
   onPaymentError: (error: string) => void;
 }
@@ -17,7 +19,7 @@ declare global {
   }
 }
 
-export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
+export default function PaymentForm({ selectedTier, amount, originalAmount, discountAmount, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
         handler: async function (response: any) {
           console.log('💰 Razorpay payment successful:', response);
           setIsProcessing(false);
-          
+
           // Immediately call success with Razorpay data
           onPaymentSuccess({
             razorpay_order_id: response.razorpay_order_id,
@@ -137,7 +139,7 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
       // Test PayPal config before creating order
       const testResponse = await fetch('/api/test-paypal');
       const testData = await testResponse.json();
-      
+
       console.log('PayPal config test result:', testData);
 
       if (!testData.success || !testData.configured) {
@@ -210,7 +212,14 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
     <div className="w-full max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-center">Complete Payment - ₹{amount}</CardTitle>
+          <CardTitle className="text-center">
+          Complete Payment - ₹{amount}
+          {discountAmount > 0 && originalAmount > 0 && (
+            <span className="block text-sm text-gray-500 mt-1">
+              Original: <span className="line-through">₹{originalAmount}</span> • You save: ₹{discountAmount}
+            </span>
+          )}
+        </CardTitle>
           <p className="text-center text-gray-600">Choose your payment method</p>
         </CardHeader>
         <CardContent className="space-y-4">
