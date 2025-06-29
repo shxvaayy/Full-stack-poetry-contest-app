@@ -106,7 +106,7 @@ export default function TermsPage() {
             <h2>12. Contact Information</h2>
             <p>
               For questions about these Terms and Conditions, please contact us at{" "}
-              <a href="mailto:support@writory.com" className="text-green-600">support@writory.com</a>
+              <a href="mailto:writorycontest@gmail.com" className="text-green-600">writorycontest@gmail</a>
             </p>
           </CardContent>
         </Card>

@@ -136,7 +136,7 @@ export default function PrivacyPage() {
             <h2>12. Contact Us</h2>
             <p>For privacy-related questions or to exercise your rights, contact us at:</p>
             <ul>
-              <li>Email: <a href="mailto:privacy@writory.com" className="text-green-600">privacy@writory.com</a></li>
+              <li>Email: <a href="mailto:writorycontest@gmail.com" className="text-green-600">writorycontest@gmail</a></li>
               <li>Address: [Your business address]</li>
               <li>Phone: [Your contact number]</li>
             </ul>
