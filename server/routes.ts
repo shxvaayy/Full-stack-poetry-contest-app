@@ -833,245 +833,242 @@ router.get('/api/submission-count', async (req, res) => {
   }
 });
 
-// Stripe checkout session creation
-router.post('/api/create-checkout-session', async (req, res) => {
+// Legacy endpoints for backward compatibility
+router.get('/api/count', async (req, res) => {
   try {
-    const { amount, tier, currency = 'INR' } = req.body;
-    console.log('💳 Creating Stripe checkout session:', { amount, tier, currency });
+    const allSubmissions = await storage.getAllSubmissions();
+    res.json({ count: allSubmissions.length });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to get count' });
+  }
+});
 
-    const stripe = (await import('stripe')).default;
-    const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2024-06-20',
-    });
+// Health check endpoint
+router.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
 
-    const session = await stripeInstance.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: currency.toLowerCase(),
-          product_data: {
-            name: `Poetry Contest - ${tier} Tier`,
-            description: `Submission for ${tier} tier poetry contest`,
-          },
-          unit_amount: amount * 100, // Convert to cents/paisa
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      success_url: `${req.headers.origin}/submit?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
-      cancel_url: `${req.headers.origin}/submit?payment_cancelled=true`,
-      metadata: {
-        tier: tier,
-        amount: amount.toString(),
-      },
-    });
+// Get environment info (for debugging)
+router.get('/api/env-info', (req, res) => {
+  res.json({
+    node_env: process.env.NODE_ENV,
+    razorpay_configured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
+    paypal_configured: !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
+    google_configured: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
+    timestamp: new Date().toISOString()
+  });
+});
 
-    console.log('✅ Stripe session created:', session.id);
+// Get stats endpoint
+router.get('/api/stats', async (req, res) => {
+  try {
+    const allSubmissions = await storage.getAllSubmissions();
+    const allUsers = (storage as any).data?.users || [];
+    
+    const stats = {
+      totalSubmissions: allSubmissions.length,
+      totalUsers: allUsers.length,
+      freeSubmissions: allSubmissions.filter(s => s.tier === 'free').length,
+      paidSubmissions: allSubmissions.filter(s => s.tier !== 'free').length,
+      winners: allSubmissions.filter(s => s.isWinner).length,
+      recentSubmissions: allSubmissions
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+        .slice(0, 5)
+        .map(s => ({
+          name: `${s.firstName} ${s.lastName || ''}`.trim(),
+          poemTitle: s.poemTitle,
+          tier: s.tier,
+          submittedAt: s.submittedAt
+        }))
+    };
+    
+    res.json(stats);
+  } catch (error: any) {
+    console.error('❌ Error getting stats:', error);
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
+
+// Admin endpoints (you can add authentication later)
+router.post('/api/admin/mark-winner', async (req, res) => {
+  try {
+    const { submissionId, position } = req.body;
+    
+    console.log(`🏆 Marking submission ${submissionId} as winner at position ${position}`);
+    
+    // Get submission
+    const allSubmissions = await storage.getAllSubmissions();
+    const submission = allSubmissions.find(s => s.id === submissionId);
+    
+    if (!submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    
+    // Update submission
+    submission.isWinner = true;
+    submission.winnerPosition = position;
+    
+    // Save changes
+    await (storage as any).saveData();
+    
+    console.log(`✅ Marked ${submission.poemTitle} as winner`);
+    res.json({ success: true, message: 'Winner marked successfully' });
+    
+  } catch (error: any) {
+    console.error('❌ Error marking winner:', error);
+    res.status(500).json({ error: 'Failed to mark winner' });
+  }
+});
+
+router.post('/api/admin/unmark-winner', async (req, res) => {
+  try {
+    const { submissionId } = req.body;
+    
+    console.log(`❌ Unmarking submission ${submissionId} as winner`);
+    
+    // Get submission
+    const allSubmissions = await storage.getAllSubmissions();
+    const submission = allSubmissions.find(s => s.id === submissionId);
+    
+    if (!submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    
+    // Update submission
+    submission.isWinner = false;
+    submission.winnerPosition = null;
+    
+    // Save changes
+    await (storage as any).saveData();
+    
+    console.log(`✅ Unmarked ${submission.poemTitle} as winner`);
+    res.json({ success: true, message: 'Winner unmarked successfully' });
+    
+  } catch (error: any) {
+    console.error('❌ Error unmarking winner:', error);
+    res.status(500).json({ error: 'Failed to unmark winner' });
+  }
+});
+
+// Export data endpoints
+router.get('/api/export/submissions', async (req, res) => {
+  try {
+    const allSubmissions = await storage.getAllSubmissions();
+    
+    const exportData = allSubmissions.map(sub => ({
+      id: sub.id,
+      name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
+      email: sub.email,
+      phone: sub.phone,
+      age: sub.age,
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      price: sub.price,
+      submittedAt: sub.submittedAt,
+      isWinner: sub.isWinner,
+      winnerPosition: sub.winnerPosition,
+      poemFileUrl: sub.poemFileUrl,
+      photoUrl: sub.photoUrl
+    }));
+    
+    res.json(exportData);
+  } catch (error: any) {
+    console.error('❌ Error exporting submissions:', error);
+    res.status(500).json({ error: 'Failed to export submissions' });
+  }
+});
+
+router.get('/api/export/users', async (req, res) => {
+  try {
+    const allUsers = (storage as any).data?.users || [];
+    
+    const exportData = allUsers.map((user: any) => ({
+      id: user.id,
+      uid: user.uid,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      createdAt: user.createdAt
+    }));
+    
+    res.json(exportData);
+  } catch (error: any) {
+    console.error('❌ Error exporting users:', error);
+    res.status(500).json({ error: 'Failed to export users' });
+  }
+});
+
+// Backup and restore endpoints
+router.post('/api/backup', async (req, res) => {
+  try {
+    const allSubmissions = await storage.getAllSubmissions();
+    const allUsers = (storage as any).data?.users || [];
+    const allContacts = (storage as any).data?.contacts || [];
+    
+    const backupData = {
+      submissions: allSubmissions,
+      users: allUsers,
+      contacts: allContacts,
+      timestamp: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    const backupFileName = `backup_${Date.now()}.json`;
+    fs.writeFileSync(backupFileName, JSON.stringify(backupData, null, 2));
+    
     res.json({ 
       success: true, 
-      sessionId: session.id, 
-      url: session.url 
+      message: 'Backup created successfully',
+      filename: backupFileName,
+      stats: {
+        submissions: allSubmissions.length,
+        users: allUsers.length,
+        contacts: allContacts.length
+      }
     });
-
   } catch (error: any) {
-    console.error('❌ Stripe session creation failed:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to create checkout session',
-      details: error.message 
-    });
+    console.error('❌ Error creating backup:', error);
+    res.status(500).json({ error: 'Failed to create backup' });
   }
 });
 
-// Verify Stripe checkout session
-router.post('/api/verify-checkout-session', async (req, res) => {
+// Cleanup endpoints
+router.post('/api/cleanup/temp-files', async (req, res) => {
   try {
-    const { sessionId } = req.body;
-    console.log('🔍 Verifying Stripe session:', sessionId);
-
-    const stripe = (await import('stripe')).default;
-    const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2024-06-20',
-    });
-
-    const session = await stripeInstance.checkout.sessions.retrieve(sessionId);
-
-    if (session.payment_status === 'paid') {
-      console.log('✅ Stripe payment verified successfully');
-      res.json({ 
-        verified: true, 
-        session: {
-          id: session.id,
-          amount: session.amount_total,
-          currency: session.currency,
-          tier: session.metadata?.tier
+    const uploadsDir = './uploads';
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      let deletedCount = 0;
+      
+      files.forEach(file => {
+        const filePath = path.join(uploadsDir, file);
+        const stats = fs.statSync(filePath);
+        
+        // Delete files older than 1 hour
+        if (Date.now() - stats.mtime.getTime() > 3600000) {
+          fs.unlinkSync(filePath);
+          deletedCount++;
         }
       });
-    } else {
-      console.log('❌ Stripe payment not completed');
-      res.status(400).json({ error: 'Payment not completed' });
-    }
-
-  } catch (error: any) {
-    console.error('❌ Stripe verification error:', error);
-    res.status(500).json({ 
-      error: 'Payment verification failed',
-      details: error.message 
-    });
-  }
-});
-
-// Create PayPal order
-router.post('/api/create-paypal-order', async (req, res) => {
-  try {
-    const { amount, tier, currency = 'INR' } = req.body;
-    console.log('💳 Creating PayPal order:', { amount, tier, currency });
-
-    const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-    const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-    const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
-      ? 'https://api.paypal.com' 
-      : 'https://api.sandbox.paypal.com';
-
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-      throw new Error('PayPal credentials not configured');
-    }
-
-    // Get access token
-    const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
-    
-    const tokenResponse = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials'
-    });
-
-    const tokenData = await tokenResponse.json();
-    
-    if (!tokenResponse.ok) {
-      throw new Error(`PayPal token error: ${tokenData.error_description}`);
-    }
-
-    // Create order
-    const orderResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        intent: 'CAPTURE',
-        purchase_units: [{
-          amount: {
-            currency_code: currency,
-            value: amount.toString()
-          },
-          description: `Poetry Contest - ${tier} Tier`
-        }],
-        application_context: {
-          return_url: `${req.headers.origin}/submit?paypal_order_id=ORDER_ID&payment_success=true`,
-          cancel_url: `${req.headers.origin}/submit?payment_cancelled=true`,
-          brand_name: 'Writory Poetry Contest',
-          landing_page: 'BILLING',
-          user_action: 'PAY_NOW'
-        }
-      })
-    });
-
-    const orderData = await orderResponse.json();
-    
-    if (!orderResponse.ok) {
-      throw new Error(`PayPal order error: ${orderData.message}`);
-    }
-
-    const approvalUrl = orderData.links.find((link: any) => link.rel === 'approve')?.href;
-    
-    console.log('✅ PayPal order created:', orderData.id);
-    res.json({ 
-      success: true, 
-      orderId: orderData.id, 
-      approvalUrl: approvalUrl?.replace('ORDER_ID', orderData.id)
-    });
-
-  } catch (error: any) {
-    console.error('❌ PayPal order creation failed:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to create PayPal order',
-      details: error.message 
-    });
-  }
-});
-
-// Verify PayPal payment
-router.post('/api/verify-paypal-payment', async (req, res) => {
-  try {
-    const { orderId } = req.body;
-    console.log('🔍 Verifying PayPal order:', orderId);
-
-    const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-    const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-    const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
-      ? 'https://api.paypal.com' 
-      : 'https://api.sandbox.paypal.com';
-
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-      throw new Error('PayPal credentials not configured');
-    }
-
-    // Get access token
-    const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
-    
-    const tokenResponse = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials'
-    });
-
-    const tokenData = await tokenResponse.json();
-    
-    if (!tokenResponse.ok) {
-      throw new Error(`PayPal token error: ${tokenData.error_description}`);
-    }
-
-    // Capture the order
-    const captureResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const captureData = await captureResponse.json();
-    
-    if (captureResponse.ok && captureData.status === 'COMPLETED') {
-      console.log('✅ PayPal payment verified successfully');
+      
       res.json({ 
-        verified: true, 
-        order: {
-          id: captureData.id,
-          status: captureData.status,
-          amount: captureData.purchase_units[0].payments.captures[0].amount
-        }
+        success: true, 
+        message: `Cleaned up ${deletedCount} temporary files` 
       });
     } else {
-      console.log('❌ PayPal payment verification failed');
-      res.status(400).json({ error: 'PayPal payment verification failed' });
+      res.json({ 
+        success: true, 
+        message: 'No uploads directory found' 
+      });
     }
-
   } catch (error: any) {
-    console.error('❌ PayPal verification error:', error);
-    res.status(500).json({ 
-      error: 'PayPal verification failed',
-      details: error.message 
-    });
+    console.error('❌ Error cleaning up temp files:', error);
+    res.status(500).json({ error: 'Failed to cleanup temp files' });
   }
 });
 
