@@ -78,7 +78,7 @@ export default function Header() {
                   onClick={handleLogout}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white"
+                  className="text-white border-white data-[hover]:bg-transparent data-[hover]:text-white"
                 >
                   Logout
                 </Button>
@@ -146,7 +146,7 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="w-full text-white border-white"
+                  className="w-full text-white border-white data-[hover]:bg-transparent data-[hover]:text-white"
                 >
                   Logout
                 </Button>
