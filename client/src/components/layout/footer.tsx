@@ -70,7 +70,7 @@ export default function Footer() {
             <a href="https://x.com/writoryofficial" className="text-gray-300 hover:text-white transition-colors">
               <Twitter size={20} />
             </a>
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">
+            <a href="https://www.facebook.com/share/16hyCrZbE2/" className="text-gray-300 hover:text-white transition-colors">
               <Facebook size={20} />
             </a>
             <a href="https://www.instagram.com/writoryofficial/" className="text-gray-300 hover:text-white transition-colors">
