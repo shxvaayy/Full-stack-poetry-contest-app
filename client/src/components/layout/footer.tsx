@@ -67,7 +67,7 @@ export default function Footer() {
         {/* Social Media & Copyright */}
         <div className="border-t border-green-600 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex space-x-4 mb-4 md:mb-0">
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">
+            <a href="https://x.com/writoryofficial" className="text-gray-300 hover:text-white transition-colors">
               <Twitter size={20} />
             </a>
             <a href="#" className="text-gray-300 hover:text-white transition-colors">
@@ -76,7 +76,7 @@ export default function Footer() {
             <a href="https://www.instagram.com/writoryofficial/" className="text-gray-300 hover:text-white transition-colors">
               <Instagram size={20} />
             </a>
-            <a href="https://www.linkedin.com/in/shivay-mehra-8a66ba251/" className="text-gray-300 hover:text-white transition-colors">
+            <a href="https://www.linkedin.com/company/writoryofficial/" className="text-gray-300 hover:text-white transition-colors">
               <Linkedin size={20} />
             </a>
           </div>
