@@ -764,7 +764,7 @@ export default function SubmitPage() {
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Submission Successful!</h2>
         <p className="text-gray-600 mb-6">
-          Your poem has been submitted successfully for the contest. We'll review your submission and notify you of the results.
+          Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
         </p>
         
         <div className="bg-white p-4 rounded-lg border mb-6">
