@@ -241,9 +241,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-
+    
     const validation = validateCouponCode(code, tier);
-
+    
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -1009,28 +1009,44 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     const csvContent = await fs.readFile(req.file.path, 'utf-8');
     console.log('📄 CSV content loaded, length:', csvContent.length);
 
-    // Parse CSV (simple parsing - in production you might want to use a library like csv-parser)
-    const lines = csvContent.trim().split('\n').filter(line => line.trim().length > 0);
+    // Parse CSV with proper CSV parsing
+    const lines = csvContent.trim().split('\n');
+    
+    // Function to parse CSV line properly
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      
+      result.push(current.trim());
+      return result;
+    };
+    
+    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+    
+    console.log('📊 CSV headers:', headers);
 
-    if (lines.length < 2) {
-      return res.status(400).json({
-        error: 'Invalid CSV format',
-        details: 'CSV must contain at least a header row and one data row'
-      });
-    }
-
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-    console.log('📊 CSV headers (normalized):', headers);
-
-    // Validate headers (flexible checking - allow extra headers, case insensitive)
-    const requiredHeaders = ['email', 'title', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
-    const missingHeaders = requiredHeaders.filter(h => !headers.includes(h.toLowerCase()));
-
+    // Validate headers - more flexible matching
+    const expectedHeaders = ['email', 'title', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
+    const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+    
     if (missingHeaders.length > 0) {
       return res.status(400).json({
         error: 'Invalid CSV format',
-        details: `Missing headers: ${missingHeaders.join(', ')}`
+        details: `Missing headers: ${missingHeaders.join(', ')}. Found headers: ${headers.join(', ')}`
       });
     }
 
@@ -1040,23 +1056,32 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     // Process each row
     for (let i = 1; i < lines.length; i++) {
       try {
-        const values = lines[i].split(',').map(v => v.trim());
-
+        const line = lines[i].trim();
+        if (!line) continue; // Skip empty lines
+        
+        const values = parseCSVLine(line);
+        
         if (values.length !== headers.length) {
-          errors.push(`Row ${i + 1}: Invalid number of columns`);
+          errors.push(`Row ${i + 1}: Invalid number of columns (expected ${headers.length}, got ${values.length})`);
           continue;
         }
 
         const rowData: any = {};
         headers.forEach((header, index) => {
-          rowData[header] = values[index];
+          rowData[header] = values[index].replace(/^["']|["']$/g, ''); // Remove quotes
         });
 
         console.log(`📝 Processing row ${i + 1}:`, rowData);
+        console.log(`📧 Looking for user with email: "${rowData.email}"`);
 
         // Find user by email
         const allUsers = (storage as any).data?.users || [];
         const user = allUsers.find((u: any) => u.email === rowData.email);
+        
+        console.log(`👥 Total users in database: ${allUsers.length}`);
+        if (allUsers.length > 0) {
+          console.log(`📧 Available emails: ${allUsers.map((u: any) => u.email).join(', ')}`);
+        }
 
         if (!user) {
           errors.push(`Row ${i + 1}: User not found with email ${rowData.email}`);
@@ -1115,7 +1140,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
 
   } catch (error: any) {
     console.error('❌ CSV upload error:', error);
-
+    
     // Clean up file if it exists
     if (req.file) {
       try {
