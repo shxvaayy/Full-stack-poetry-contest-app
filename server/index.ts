@@ -13,7 +13,7 @@ import { dirname } from 'path';
 console.log('🚀 Basic imports successful');
 
 import { registerRoutes } from './routes.js';
-import { connectDatabase } from './db.js';
+import { connectDatabase, client } from './db.js';
 import { createTables } from './migrate.js';
 
 console.log('🚀 All imports successful');
@@ -76,6 +76,72 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
+// Database fix function
+async function fixDatabaseSchema() {
+  try {
+    console.log('🔧 Fixing database schema...');
+    
+    // Add status column if it doesn't exist
+    try {
+      await client.query(`
+        ALTER TABLE submissions 
+        ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+      `);
+      console.log('✅ Status column added/verified');
+    } catch (error) {
+      console.log('Status column handling:', error.message);
+    }
+    
+    // Add other missing columns that might be needed
+    const columnsToAdd = [
+      { name: 'author_bio', type: 'TEXT' },
+      { name: 'contest_month', type: 'TEXT DEFAULT \'current\'' },
+      { name: 'payment_screenshot_url', type: 'TEXT' }
+    ];
+    
+    for (const column of columnsToAdd) {
+      try {
+        await client.query(`ALTER TABLE submissions ADD COLUMN IF NOT EXISTS ${column.name} ${column.type}`);
+        console.log(`✅ Added/verified column: ${column.name}`);
+      } catch (error) {
+        console.log(`Column ${column.name} handling:`, error.message);
+      }
+    }
+    
+    // Update existing submissions to have pending status
+    try {
+      const result = await client.query(`
+        UPDATE submissions 
+        SET status = 'pending' 
+        WHERE status IS NULL
+      `);
+      console.log(`✅ Updated ${result.rowCount} submissions with pending status`);
+    } catch (error) {
+      console.log('Status update handling:', error.message);
+    }
+    
+    // Verify table structure
+    const columns = await client.query(`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns 
+      WHERE table_name = 'submissions'
+      ORDER BY ordinal_position
+    `);
+    
+    console.log('📋 Current submissions table structure:');
+    columns.rows.forEach(col => {
+      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
+    });
+    
+    console.log('🎉 Database schema fix completed successfully!');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Database schema fix failed:', error);
+    return false;
+  }
+}
+
 // FINAL FIX: Simple, direct initialization
 async function initializeApp() {
   try {
@@ -85,6 +151,15 @@ async function initializeApp() {
     console.log('🔌 Step 1: Connecting to database...');
     await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
+    
+    // Step 1.5: Fix database schema
+    console.log('🔧 Step 1.5: Fixing database schema...');
+    const schemaFixed = await fixDatabaseSchema();
+    if (schemaFixed) {
+      console.log('✅ Step 1.5 completed: Database schema fixed');
+    } else {
+      console.log('⚠️ Step 1.5: Schema fix had issues, but continuing...');
+    }
     
     // Step 2: Run migrations with timeout
     console.log('🔧 Step 2: Running database migrations...');
