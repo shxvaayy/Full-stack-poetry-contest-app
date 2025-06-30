@@ -37,7 +37,7 @@ async function createTables() {
     `);
     console.log('✅ Users table created/verified');
 
-    // Create submissions table with ALL required columns
+    // Create submissions table with ALL columns from shared/schema.ts
     await client.query(`
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
