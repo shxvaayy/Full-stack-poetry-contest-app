@@ -110,6 +110,35 @@ router.get('/api/test-sheets-connection', async (req, res) => {
   }
 });
 
+// 🔍 DEBUG: Check submission status in database
+router.get('/api/debug/submissions-status', async (req, res) => {
+  try {
+    const allSubmissions = await storage.getAllSubmissions();
+    
+    const statusBreakdown = allSubmissions.map(sub => ({
+      id: sub.id,
+      poemTitle: sub.poemTitle,
+      email: sub.email,
+      status: sub.status,
+      score: sub.score,
+      type: sub.type,
+      scoreBreakdown: sub.scoreBreakdown
+    }));
+
+    res.json({
+      totalSubmissions: allSubmissions.length,
+      submissions: statusBreakdown,
+      statusCounts: {
+        pending: allSubmissions.filter(s => s.status === 'pending' || s.status === 'Pending').length,
+        evaluated: allSubmissions.filter(s => s.status === 'Evaluated').length,
+        rejected: allSubmissions.filter(s => s.status === 'Rejected').length
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 🔍 DEBUG: Check storage state
 router.get('/api/debug/storage', async (req, res) => {
   try {
@@ -1144,8 +1173,8 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         // Update submission with evaluation results
         await storage.updateSubmissionEvaluation(submission.id, {
           score: score,
-          type: rowData.type || 'AI',
-          status: rowData.status || 'Evaluated',
+          type: rowData.type || 'Human',
+          status: 'Evaluated', // Force status to Evaluated
           scoreBreakdown: {
             originality,
             emotion,
@@ -1206,6 +1235,35 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
       processed: 0,
       errors: [error.message]
     });
+  }
+});
+
+// 🔧 MANUAL: Update submission status for testing
+router.post('/api/debug/update-submission-status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, score, type } = req.body;
+
+    const submission = await storage.updateSubmissionEvaluation(parseInt(id), {
+      score: score || 75,
+      type: type || 'Human',
+      status: status || 'Evaluated',
+      scoreBreakdown: {
+        originality: 20,
+        emotion: 20,
+        structure: 15,
+        language: 15,
+        theme: 5
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Submission status updated manually',
+      submission
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

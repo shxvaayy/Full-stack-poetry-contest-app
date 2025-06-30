@@ -139,6 +139,8 @@ export class PostgreSQLStorage implements IStorage {
     };
   }): Promise<Submission | undefined> {
     try {
+      console.log(`📝 Updating submission ${id} with:`, evaluation);
+      
       const [submission] = await db.update(submissions)
         .set({
           score: evaluation.score,
@@ -150,14 +152,15 @@ export class PostgreSQLStorage implements IStorage {
         .returning();
 
       if (!submission) {
-        console.log(`Submission with id ${id} not found`);
+        console.log(`❌ Submission with id ${id} not found`);
         return undefined;
       }
 
-      console.log(`✅ Updated submission evaluation for submission ID ${id}`);
+      console.log(`✅ Updated submission evaluation for submission ID ${id} - Status: ${submission.status}, Score: ${submission.score}`);
       return submission;
     } catch (error) {
       console.error('❌ Error updating submission evaluation:', error);
+      console.error('❌ Error details:', error);
       return undefined;
     }
   }
