@@ -992,26 +992,54 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
   try {
     console.log('📊 Admin CSV upload request received');
 
-    // Check if user is admin (in a real app, you'd check the auth token)
-    // For now, we'll trust that the frontend has already validated this
+    // Set proper JSON content type
+    res.setHeader('Content-Type', 'application/json');
 
     if (!req.file) {
+      console.error('❌ No file provided in request');
       return res.status(400).json({
+        success: false,
         error: 'No CSV file provided',
         details: 'Please upload a CSV file'
       });
     }
 
-    console.log('📁 CSV file received:', req.file.originalname);
+    console.log('📁 CSV file received:', req.file.originalname, 'Size:', req.file.size);
 
-    // Read and parse CSV file
-    const fs = await import('fs/promises');
-    const csvContent = await fs.readFile(req.file.path, 'utf-8');
-    console.log('📄 CSV content loaded, length:', csvContent.length);
+    // Read and parse CSV file with error handling
+    let csvContent;
+    try {
+      const fs = await import('fs/promises');
+      csvContent = await fs.readFile(req.file.path, 'utf-8');
+      console.log('📄 CSV content loaded, length:', csvContent.length);
+    } catch (fileError: any) {
+      console.error('❌ Error reading CSV file:', fileError);
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to read CSV file',
+        details: fileError.message
+      });
+    }
+
+    if (!csvContent || csvContent.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'CSV file is empty',
+        details: 'Please provide a valid CSV file with data'
+      });
+    }
 
     // Parse CSV with proper CSV parsing
     const lines = csvContent.trim().split('\n');
     
+    if (lines.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'CSV file must have header and at least one data row',
+        details: 'File has insufficient data'
+      });
+    }
+
     // Function to parse CSV line properly
     const parseCSVLine = (line: string): string[] => {
       const result: string[] = [];
@@ -1036,15 +1064,16 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     };
     
     const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
-    
-    console.log('📊 CSV headers:', headers);
+    console.log('📊 CSV headers found:', headers);
 
     // Validate headers - more flexible matching
     const expectedHeaders = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
     const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
     
     if (missingHeaders.length > 0) {
+      console.error('❌ Missing required headers:', missingHeaders);
       return res.status(400).json({
+        success: false,
         error: 'Invalid CSV format',
         details: `Missing headers: ${missingHeaders.join(', ')}. Found headers: ${headers.join(', ')}`
       });
@@ -1052,6 +1081,16 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
 
     let processedCount = 0;
     const errors: string[] = [];
+
+    console.log(`📊 Processing ${lines.length - 1} data rows...`);
+
+    // Get all users first to avoid repeated database calls
+    const allUsers = await storage.getAllSubmissions().then(submissions => {
+      const userEmails = new Set(submissions.map(s => s.email));
+      return Array.from(userEmails).map(email => ({ email }));
+    });
+
+    console.log(`👥 Found ${allUsers.length} unique user emails in database`);
 
     // Process each row
     for (let i = 1; i < lines.length; i++) {
@@ -1071,89 +1110,53 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
           rowData[header] = values[index].replace(/^["']|["']$/g, ''); // Remove quotes
         });
 
-        console.log(`📝 Processing row ${i + 1}:`, rowData);
-        console.log(`📧 Looking for user with email: "${rowData.email}"`);
+        console.log(`📝 Processing row ${i + 1}: ${rowData.email} - ${rowData.poemtitle}`);
 
-        // Find user by email - try both direct lookup and case-insensitive
-        const allUsers = (storage as any).data?.users || [];
-        let user = allUsers.find((u: any) => u.email === rowData.email);
+        // Find user by email (using direct database query)
+        const user = await storage.getUserByEmail(rowData.email);
         
-        // If not found, try case-insensitive search
         if (!user) {
-          user = allUsers.find((u: any) => u.email.toLowerCase() === rowData.email.toLowerCase());
-        }
-        
-        console.log(`👥 Total users in database: ${allUsers.length}`);
-        if (allUsers.length > 0) {
-          console.log(`📧 Available emails: ${allUsers.slice(0, 5).map((u: any) => u.email).join(', ')}${allUsers.length > 5 ? '...' : ''}`);
-        }
-
-        if (!user) {
-          // Try to find submission by email instead of requiring user account
-          const allSubmissions = await storage.getAllSubmissions();
-          const submissionByEmail = allSubmissions.find((s: any) => 
-            s.email.toLowerCase() === rowData.email.toLowerCase()
-          );
-          
-          if (submissionByEmail) {
-            console.log(`📝 Found submission by email for ${rowData.email}, will update directly`);
-            
-            // Find matching poem title
-            if (submissionByEmail.poemTitle.toLowerCase() === rowData.poemtitle.toLowerCase()) {
-              // Update submission directly
-              await storage.updateSubmissionEvaluation(submissionByEmail.id, {
-                score: parseInt(rowData.score) || 0,
-                type: rowData.type || 'Human',
-                status: rowData.status || 'Evaluated',
-                scoreBreakdown: {
-                  originality: parseInt(rowData.originality) || 0,
-                  emotion: parseInt(rowData.emotion) || 0,
-                  structure: parseInt(rowData.structure) || 0,
-                  language: parseInt(rowData.language) || 0,
-                  theme: parseInt(rowData.theme) || 0
-                }
-              });
-
-              processedCount++;
-              console.log(`✅ Updated submission ${submissionByEmail.id} for ${rowData.email} (no user account)`);
-              continue;
-            } else {
-              errors.push(`Row ${i + 1}: Poem "${rowData.poemtitle}" not found for email ${rowData.email}`);
-              continue;
-            }
-          }
-          
-          errors.push(`Row ${i + 1}: No user or submission found with email ${rowData.email}`);
+          errors.push(`Row ${i + 1}: User not found with email ${rowData.email}`);
+          console.log(`❌ User not found: ${rowData.email}`);
           continue;
         }
 
         // Find submission by title and user
         const userSubmissions = await storage.getSubmissionsByUser(user.id);
         const submission = userSubmissions.find((s: any) => 
-          s.poemTitle.toLowerCase() === rowData.poemtitle.toLowerCase()
+          s.poemTitle.toLowerCase().trim() === rowData.poemtitle.toLowerCase().trim()
         );
 
         if (!submission) {
           errors.push(`Row ${i + 1}: Poem "${rowData.poemtitle}" not found for user ${rowData.email}`);
+          console.log(`❌ Submission not found: "${rowData.poemtitle}" for ${rowData.email}`);
           continue;
         }
 
+        // Parse numeric values safely
+        const score = parseInt(rowData.score) || 0;
+        const originality = parseInt(rowData.originality) || 0;
+        const emotion = parseInt(rowData.emotion) || 0;
+        const structure = parseInt(rowData.structure) || 0;
+        const language = parseInt(rowData.language) || 0;
+        const theme = parseInt(rowData.theme) || 0;
+
         // Update submission with evaluation results
         await storage.updateSubmissionEvaluation(submission.id, {
-          score: parseInt(rowData.score) || 0,
-          type: rowData.type || 'Human',
+          score: score,
+          type: rowData.type || 'AI',
           status: rowData.status || 'Evaluated',
           scoreBreakdown: {
-            originality: parseInt(rowData.originality) || 0,
-            emotion: parseInt(rowData.emotion) || 0,
-            structure: parseInt(rowData.structure) || 0,
-            language: parseInt(rowData.language) || 0,
-            theme: parseInt(rowData.theme) || 0
+            originality,
+            emotion,
+            structure,
+            language,
+            theme
           }
         });
 
         processedCount++;
-        console.log(`✅ Updated submission ${submission.id} for ${rowData.email}`);
+        console.log(`✅ Updated submission ${submission.id} for ${rowData.email} with score ${score}`);
 
       } catch (rowError: any) {
         console.error(`❌ Error processing row ${i + 1}:`, rowError);
@@ -1163,22 +1166,27 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
 
     // Clean up uploaded file
     try {
+      const fs = await import('fs/promises');
       await fs.unlink(req.file.path);
+      console.log('🧹 Cleaned up uploaded file');
     } catch (cleanupError) {
-      console.error('Error cleaning up file:', cleanupError);
+      console.error('⚠️ Error cleaning up file:', cleanupError);
     }
 
     console.log(`📊 CSV processing complete: ${processedCount} processed, ${errors.length} errors`);
 
-    res.json({
+    // Return success response
+    return res.status(200).json({
       success: true,
       message: `Successfully processed ${processedCount} records`,
       processed: processedCount,
-      errors: errors.slice(0, 10) // Limit errors to first 10 to avoid huge responses
+      totalRows: lines.length - 1,
+      errors: errors.slice(0, 20) // Show more errors for debugging
     });
 
   } catch (error: any) {
     console.error('❌ CSV upload error:', error);
+    console.error('❌ Error stack:', error.stack);
     
     // Clean up file if it exists
     if (req.file) {
@@ -1190,9 +1198,13 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
       }
     }
 
-    res.status(500).json({
+    // Always return JSON error response
+    return res.status(500).json({
+      success: false,
       error: 'CSV processing failed',
-      details: error.message
+      details: error.message,
+      processed: 0,
+      errors: [error.message]
     });
   }
 });

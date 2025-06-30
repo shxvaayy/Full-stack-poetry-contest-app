@@ -88,6 +88,8 @@ export default function AdminUpload() {
     setResult(null);
 
     try {
+      console.log('🚀 Starting CSV upload for file:', file.name);
+      
       const formData = new FormData();
       formData.append('csvFile', file);
 
@@ -96,9 +98,23 @@ export default function AdminUpload() {
         body: formData,
       });
 
-      const data = await response.json();
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
-      if (response.ok) {
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('❌ Non-JSON response received');
+        const textResponse = await response.text();
+        console.error('❌ Response body:', textResponse.substring(0, 500));
+        
+        throw new Error('Server returned non-JSON response. Please check server logs.');
+      }
+
+      const data = await response.json();
+      console.log('📊 Response data:', data);
+
+      if (response.ok && data.success) {
         setResult({
           success: true,
           message: data.message,
@@ -113,29 +129,37 @@ export default function AdminUpload() {
       } else {
         setResult({
           success: false,
-          message: data.error || 'Upload failed',
-          processed: 0,
+          message: data.error || data.message || 'Upload failed',
+          processed: data.processed || 0,
           errors: data.errors || []
         });
 
         toast({
           title: "Upload Failed",
-          description: data.error || 'An error occurred during upload.',
+          description: data.error || data.message || 'An error occurred during upload.',
           variant: "destructive",
         });
       }
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
+      
+      let errorMessage = 'Network error occurred';
+      if (error.message.includes('JSON')) {
+        errorMessage = 'Server error - received invalid response format';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setResult({
         success: false,
-        message: 'Network error occurred',
+        message: errorMessage,
         processed: 0,
-        errors: [error.message]
+        errors: [error.message || 'Unknown error']
       });
 
       toast({
         title: "Upload Failed",
-        description: "A network error occurred. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
