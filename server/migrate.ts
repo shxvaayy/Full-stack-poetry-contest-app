@@ -55,11 +55,46 @@ async function createTables() {
         payment_id TEXT,
         payment_method TEXT,
         submitted_at TIMESTAMP DEFAULT NOW(),
+        status TEXT DEFAULT 'pending',
+        score INTEGER,
+        type TEXT,
+        score_breakdown JSON,
         is_winner BOOLEAN DEFAULT FALSE,
         winner_position INTEGER
       );
     `);
     console.log('✅ Submissions table created/verified');
+
+    // Check and add missing columns to existing submissions table
+    console.log('🔍 Checking for missing columns in submissions table...');
+    
+    const columnsToAdd = [
+      { name: 'status', type: 'TEXT DEFAULT \'pending\'', description: 'submission status' },
+      { name: 'score', type: 'INTEGER', description: 'evaluation score' },
+      { name: 'type', type: 'TEXT', description: 'evaluation type' },
+      { name: 'score_breakdown', type: 'JSON', description: 'detailed score breakdown' }
+    ];
+
+    for (const column of columnsToAdd) {
+      try {
+        const columnExists = await client.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'submissions' 
+          AND column_name = $1
+        `, [column.name]);
+
+        if (columnExists.rows.length === 0) {
+          console.log(`➕ Adding missing column: ${column.name}`);
+          await client.query(`ALTER TABLE submissions ADD COLUMN ${column.name} ${column.type}`);
+          console.log(`✅ Added ${column.description} column`);
+        } else {
+          console.log(`✅ Column ${column.name} already exists`);
+        }
+      } catch (error) {
+        console.error(`❌ Error checking/adding column ${column.name}:`, error);
+      }
+    }
 
     // Create contacts table
     await client.query(`
