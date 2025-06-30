@@ -251,8 +251,7 @@ router.post('/api/validate-coupon', async (req, res) => {
       });
     }
 
-    // Mark code as used if valid
-    markCodeAsUsed(code);
+    // Don't mark code as used here - only mark after successful submission
 
     // Calculate discount amount based on percentage
     let discountAmount = 0;
@@ -718,6 +717,18 @@ router.post('/api/submit-poem', upload.fields([
     });
 
     console.log('✅ Submission created:', submission);
+
+    // Mark coupon code as used only after successful submission
+    const { couponCode } = req.body;
+    if (couponCode) {
+      try {
+        const { markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
+        markCodeAsUsed(couponCode);
+        console.log(`✅ Marked coupon code "${couponCode}" as used after successful submission`);
+      } catch (error) {
+        console.error('❌ Error marking coupon code as used:', error);
+      }
+    }
 
     // FIXED: Add to Google Sheets with EXTENSIVE DEBUGGING
     try {
