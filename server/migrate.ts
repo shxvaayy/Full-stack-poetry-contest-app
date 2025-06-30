@@ -37,76 +37,35 @@ async function createTables() {
     `);
     console.log('✅ Users table created/verified');
 
-    // Create submissions table with all required columns
+    // Create submissions table with ALL required columns
     await client.query(`
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
-        first_name VARCHAR(100) NOT NULL,
-        last_name VARCHAR(100),
-        email VARCHAR(255) NOT NULL,
-        phone VARCHAR(20),
-        age VARCHAR(10),
-        poem_title VARCHAR(255) NOT NULL,
-        tier VARCHAR(50) NOT NULL,
-        price DECIMAL(10,2) DEFAULT 0.00,
-        poem_file_url TEXT,
-        photo_url TEXT,
-        payment_id VARCHAR(255),
-        payment_method VARCHAR(50),
-        submitted_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+        first_name TEXT NOT NULL,
+        last_name TEXT,
+        email TEXT NOT NULL,
+        phone TEXT,
+        age INTEGER NOT NULL,
+        author_bio TEXT NOT NULL,
+        poem_title TEXT NOT NULL,
+        poem_file_url TEXT NOT NULL,
+        photo_url TEXT NOT NULL,
+        tier TEXT NOT NULL,
+        price INTEGER DEFAULT 0,
+        payment_screenshot_url TEXT,
+        payment_id TEXT,
+        contest_month TEXT NOT NULL,
+        submitted_at TIMESTAMP DEFAULT NOW(),
+        status TEXT DEFAULT 'pending' NOT NULL,
         score INTEGER,
-        type VARCHAR(50),
-        score_breakdown JSON,
+        type TEXT,
+        score_breakdown JSONB,
         is_winner BOOLEAN DEFAULT FALSE,
         winner_position INTEGER
       );
     `);
     console.log('✅ Submissions table created/verified');
-
-    // Check and add missing columns to existing submissions table
-    console.log('🔍 Checking for missing columns in submissions table...');
-    
-    const missingColumns = [
-      { name: 'status', type: 'VARCHAR(50) DEFAULT \'pending\' NOT NULL' },
-      { name: 'score', type: 'INTEGER' },
-      { name: 'type', type: 'VARCHAR(50)' },
-      { name: 'score_breakdown', type: 'JSON' }
-    ];
-
-    for (const column of missingColumns) {
-      try {
-        const columnExists = await client.query(`
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'submissions' 
-          AND column_name = $1
-        `, [column.name]);
-
-        if (columnExists.rows.length === 0) {
-          console.log(`➕ Adding missing column: ${column.name}`);
-          await client.query(`ALTER TABLE submissions ADD COLUMN ${column.name} ${column.type}`);
-          console.log(`✅ Added ${column.name} column`);
-        } else {
-          console.log(`✅ Column ${column.name} already exists`);
-        }
-      } catch (error) {
-        console.error(`❌ Error checking/adding column ${column.name}:`, error);
-      }
-    }
-
-    // Ensure all existing submissions have a status
-    try {
-      const updateResult = await client.query(`
-        UPDATE submissions 
-        SET status = 'pending' 
-        WHERE status IS NULL OR status = ''
-      `);
-      console.log(`✅ Updated ${updateResult.rowCount} submissions with pending status`);
-    } catch (error) {
-      console.log('Note: Status update skipped (expected if column was just added)');
-    }
 
     // Create contacts table
     await client.query(`
