@@ -347,7 +347,7 @@ export default function UserProfile() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Award className="mr-2" size={20} />
-                      AI Evaluation Results
+                      Results
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
