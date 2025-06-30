@@ -1,6 +1,6 @@
 
 // Coupon configuration
-export const IS_FIRST_MONTH = true; // Change to false for second month onwards
+export const IS_FIRST_MONTH = false; // Change to false for second month onwards
 
 export interface CouponCode {
   code: string;
