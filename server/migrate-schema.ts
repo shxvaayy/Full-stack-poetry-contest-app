@@ -1,13 +1,12 @@
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { Client } from 'pg';
 
-const pool = new Pool({
+const client = new Client({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false 
+  } : false,
 });
-
-const db = drizzle(pool);
 
 async function updateSchema() {
   try {
