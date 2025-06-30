@@ -29,6 +29,10 @@ export const submissions = pgTable("submissions", {
   paymentId: text("payment_id"),
   contestMonth: text("contest_month").notNull(),
   submittedAt: timestamp("submitted_at").defaultNow(),
+  status: text("status").default("pending").notNull(),
+  score: integer("score"),
+  type: text("type"),
+  scoreBreakdown: jsonb("score_breakdown"),
   isWinner: boolean("is_winner").default(false),
   winnerPosition: integer("winner_position"), // 1, 2, 3
 });
