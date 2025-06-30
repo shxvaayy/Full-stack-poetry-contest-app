@@ -7,8 +7,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface PaymentFormProps {
   selectedTier: string;
   amount: number;
-  originalAmount?: number;
-  discountAmount?: number;
   onPaymentSuccess: (paymentData: any) => void;
   onPaymentError: (error: string) => void;
 }
@@ -19,7 +17,7 @@ declare global {
   }
 }
 
-export default function PaymentForm({ selectedTier, amount, originalAmount, discountAmount, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
+export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +85,7 @@ export default function PaymentForm({ selectedTier, amount, originalAmount, disc
         handler: async function (response: any) {
           console.log('💰 Razorpay payment successful:', response);
           setIsProcessing(false);
-
+          
           // Immediately call success with Razorpay data
           onPaymentSuccess({
             razorpay_order_id: response.razorpay_order_id,
@@ -139,7 +137,7 @@ export default function PaymentForm({ selectedTier, amount, originalAmount, disc
       // Test PayPal config before creating order
       const testResponse = await fetch('/api/test-paypal');
       const testData = await testResponse.json();
-
+      
       console.log('PayPal config test result:', testData);
 
       if (!testData.success || !testData.configured) {
@@ -188,17 +186,24 @@ export default function PaymentForm({ selectedTier, amount, originalAmount, disc
     }
   };
 
-  if (selectedTier === 'free') {
+  if (selectedTier === 'free' || amount === 0) {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
-          <CardTitle className="text-center text-green-600">Free Entry Selected</CardTitle>
+          <CardTitle className="text-center text-green-600">
+            {amount === 0 ? "Free Entry with Coupon" : "Free Entry Selected"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">Your free entry is ready to submit!</p>
+          <p className="text-gray-600 mb-4">
+            {amount === 0 ? "Your coupon made this submission free!" : "Your free entry is ready to submit!"}
+          </p>
           <Button 
-            onClick={() => onPaymentSuccess({ payment_status: 'free', payment_method: 'free' })}
+            onClick={() => onPaymentSuccess({ 
+              payment_status: 'free', 
+              payment_method: amount === 0 ? 'coupon_free' : 'free' 
+            })}
             className="w-full bg-green-600 hover:bg-green-700"
           >
             Continue with Free Entry
@@ -212,14 +217,7 @@ export default function PaymentForm({ selectedTier, amount, originalAmount, disc
     <div className="w-full max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-center">
-          Complete Payment - ₹{amount}
-          {discountAmount > 0 && originalAmount > 0 && (
-            <span className="block text-sm text-gray-500 mt-1">
-              Original: <span className="line-through">₹{originalAmount}</span> • You save: ₹{discountAmount}
-            </span>
-          )}
-        </CardTitle>
+          <CardTitle className="text-center">Complete Payment - ₹{amount}</CardTitle>
           <p className="text-center text-gray-600">Choose your payment method</p>
         </CardHeader>
         <CardContent className="space-y-4">
