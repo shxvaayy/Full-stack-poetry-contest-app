@@ -980,7 +980,7 @@ export default function SubmitPage() {
               Facebook
             </a>
             <a 
-              href="https://www.instagram.com/writoryofficial/" 
+              href="https://www.instagram.com/writoryofficial?igsh=MXkxbWcxc3czdHo5cQ==" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-pink-500 hover:text-pink-600 transition-colors flex flex-col items-center"
