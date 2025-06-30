@@ -19,45 +19,66 @@ export default function PastWinnersPage() {
     3: null
   });
 
+  // Winner data - you can change these names and scores
+  const winners = {
+    1: { name: "Sarah Johnson", score: 9.5 },
+    2: { name: "Michael Chen", score: 8.8 },
+    3: { name: "Emily Rodriguez", score: 8.2 }
+  };
+
   useEffect(() => {
     // Load winner photos on component mount
     const loadWinnerPhotos = async () => {
       const photos: {[key: number]: string | null} = {};
-
+      
       for (let i = 1; i <= 3; i++) {
         photos[i] = await getWinnerPhoto(i);
       }
-
+      
       setWinnerPhotos(photos);
     };
 
     loadWinnerPhotos();
   }, []);
 
-  const WinnerPhotoSection = ({ position }: { position: number }) => {
+  const WinnerCard = ({ position, icon: Icon, color, title }: { position: number, icon: any, color: string, title: string }) => {
     const photo = winnerPhotos[position];
-
-    if (photo) {
-      return (
-        <div className="mt-4">
-          <img 
-            src={photo} 
-            alt={`Winner ${position}`}
-            className="w-24 h-24 object-cover rounded-full mx-auto border-4 border-current"
-          />
-        </div>
-      );
-    }
-
+    const winner = winners[position as keyof typeof winners];
+    
     return (
-      <div className="mt-4">
-        <div className="w-24 h-24 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex flex-col items-center justify-center">
-          <Image className="text-gray-400" size={16} />
+      <div className="text-center">
+        <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
+          <Icon className="text-2xl text-white" size={24} />
         </div>
+        <h4 className="font-semibold text-gray-900 mb-2">{title}</h4>
+        
+        {photo ? (
+          <div className="mt-4">
+            <img 
+              src={photo} 
+              alt={`Winner ${position}`}
+              className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 shadow-lg"
+            />
+            <div className="mt-3">
+              <p className="font-semibold text-gray-900">{winner.name}</p>
+              <p className="text-sm text-gray-600">Score: {winner.score}/10</p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex flex-col items-center justify-center">
+              <Image className="text-gray-400 mb-2" size={24} />
+              <p className="text-xs text-gray-500 text-center px-2">Winner photo</p>
+            </div>
+            <div className="mt-3">
+              <p className="font-semibold text-gray-900">{winner.name}</p>
+              <p className="text-sm text-gray-600">Score: {winner.score}/10</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
-
   return (
     <section className="py-16 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4">
@@ -84,38 +105,30 @@ export default function PastWinnersPage() {
             </p>
 
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Coming Soon</h3>
-              <p className="text-gray-600">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
-            </div>
-{/* Winner Profile Photos Preview */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                <div className="text-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-yellow-100 to-yellow-200 border-4 border-yellow-400 rounded-full mx-auto mb-3 flex items-center justify-center">
-                    {winnerPhotos[1] ? null : <Trophy className="text-yellow-600" size={32} />}
-                  </div>
-                  <WinnerPhotoSection position={1} />
-                  <h4 className="font-semibold text-gray-900 text-sm">1st Place Winner</h4>
-                  <p className="text-xs text-gray-500">Profile photo will appear here</p>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 border-4 border-gray-400 rounded-full mx-auto mb-3 flex items-center justify-center">
-                    {winnerPhotos[2] ? null : <Medal className="text-gray-600" size={32} />}
-                  </div>
-                  <WinnerPhotoSection position={2} />
-                  <h4 className="font-semibold text-gray-900 text-sm">2nd Place Winner</h4>
-                  <p className="text-xs text-gray-500">Profile photo will appear here</p>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-amber-100 to-amber-200 border-4 border-amber-500 rounded-full mx-auto mb-3 flex items-center justify-center">
-                    {winnerPhotos[3] ? null : <Award className="text-amber-600" size={32} />}
-                  </div>
-                  <WinnerPhotoSection position={3} />
-                  <h4 className="font-semibold text-gray-900 text-sm">3rd Place Winner</h4>
-                  <p className="text-xs text-gray-500">Profile photo will appear here</p>
-                </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">Coming Soon</h3>
+              <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
+              
+              <div className="grid md:grid-cols-3 gap-8">
+                <WinnerCard 
+                  position={1} 
+                  icon={Trophy} 
+                  color="bg-yellow-500" 
+                  title="1st Place Winner" 
+                />
+                <WinnerCard 
+                  position={2} 
+                  icon={Medal} 
+                  color="bg-gray-400" 
+                  title="2nd Place Winner" 
+                />
+                <WinnerCard 
+                  position={3} 
+                  icon={Award} 
+                  color="bg-yellow-600" 
+                  title="3rd Place Winner" 
+                />
               </div>
+            </div>
           </CardContent>
         </Card>
 

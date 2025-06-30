@@ -20,6 +20,13 @@ export default function WinningPoemsPage() {
     3: null
   });
 
+  // Winner data - you can change these names and scores
+  const winners = {
+    1: { name: "Sarah Johnson", score: 9.5 },
+    2: { name: "Michael Chen", score: 8.8 },
+    3: { name: "Emily Rodriguez", score: 8.2 }
+  };
+
   useEffect(() => {
     // Load winner photos on component mount
     const loadWinnerPhotos = async () => {
@@ -37,6 +44,7 @@ export default function WinningPoemsPage() {
 
   const WinnerPhotoSection = ({ position }: { position: number }) => {
     const photo = winnerPhotos[position];
+    const winner = winners[position as keyof typeof winners];
     
     if (photo) {
       return (
@@ -44,17 +52,25 @@ export default function WinningPoemsPage() {
           <img 
             src={photo} 
             alt={`Winner ${position}`}
-            className="w-48 h-36 object-cover rounded-lg mx-auto border border-gray-200 shadow-sm"
+            className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 shadow-lg"
           />
+          <div className="mt-3">
+            <p className="font-semibold text-gray-900">{winner.name}</p>
+            <p className="text-sm text-gray-600">Score: {winner.score}/10</p>
+          </div>
         </div>
       );
     }
     
     return (
       <div className="mt-4">
-        <div className="w-48 h-36 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg mx-auto flex flex-col items-center justify-center">
+        <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex flex-col items-center justify-center">
           <Image className="text-gray-400 mb-2" size={24} />
-          <p className="text-xs text-gray-500 text-center px-4">Photos of winners will be shown here</p>
+          <p className="text-xs text-gray-500 text-center px-2">Winner photo</p>
+        </div>
+        <div className="mt-3">
+          <p className="font-semibold text-gray-900">{winner.name}</p>
+          <p className="text-sm text-gray-600">Score: {winner.score}/10</p>
         </div>
       </div>
     );
