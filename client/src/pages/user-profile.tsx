@@ -64,26 +64,22 @@ export default function UserProfile() {
     try {
       setLoading(true);
 
-      // Add cache-busting parameter to force fresh data
-      const timestamp = Date.now();
-
       // Fetch user details
-      const userResponse = await fetch(`/api/users/${user!.uid}?t=${timestamp}`);
+      const userResponse = await fetch(`/api/users/${user!.uid}`);
       if (userResponse.ok) {
         const userData = await userResponse.json();
         setBackendUser(userData);
       }
 
-      // Fetch user submissions with cache-busting
-      const submissionsResponse = await fetch(`/api/users/${user!.uid}/submissions?t=${timestamp}`);
+      // Fetch user submissions
+      const submissionsResponse = await fetch(`/api/users/${user!.uid}/submissions`);
       if (submissionsResponse.ok) {
         const submissionsData = await submissionsResponse.json();
-        console.log('📝 Fetched submissions:', submissionsData);
         setSubmissions(submissionsData);
       }
 
       // Fetch submission status
-      const statusResponse = await fetch(`/api/users/${user!.uid}/submission-status?t=${timestamp}`);
+      const statusResponse = await fetch(`/api/users/${user!.uid}/submission-status`);
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
         setSubmissionStatus(statusData);
@@ -107,6 +103,13 @@ export default function UserProfile() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Force refresh data
+  const refreshData = async () => {
+    if (user?.uid) {
+      await fetchUserData();
+    }
   };
 
   const getTierColor = (tier: string) => {
@@ -349,9 +352,20 @@ export default function UserProfile() {
               <TabsContent value="results" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Award className="mr-2" size={20} />
-                      Results
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Award className="mr-2" size={20} />
+                        Results
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={refreshData}
+                        disabled={loading}
+                      >
+                        {loading ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                        Refresh
+                      </Button>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

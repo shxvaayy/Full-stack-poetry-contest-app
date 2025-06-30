@@ -110,35 +110,6 @@ router.get('/api/test-sheets-connection', async (req, res) => {
   }
 });
 
-// 🔍 DEBUG: Check submission status in database
-router.get('/api/debug/submissions-status', async (req, res) => {
-  try {
-    const allSubmissions = await storage.getAllSubmissions();
-    
-    const statusBreakdown = allSubmissions.map(sub => ({
-      id: sub.id,
-      poemTitle: sub.poemTitle,
-      email: sub.email,
-      status: sub.status,
-      score: sub.score,
-      type: sub.type,
-      scoreBreakdown: sub.scoreBreakdown
-    }));
-
-    res.json({
-      totalSubmissions: allSubmissions.length,
-      submissions: statusBreakdown,
-      statusCounts: {
-        pending: allSubmissions.filter(s => s.status === 'pending' || s.status === 'Pending').length,
-        evaluated: allSubmissions.filter(s => s.status === 'Evaluated').length,
-        rejected: allSubmissions.filter(s => s.status === 'Rejected').length
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // 🔍 DEBUG: Check storage state
 router.get('/api/debug/storage', async (req, res) => {
   try {
@@ -443,7 +414,7 @@ router.get('/api/users/:uid/submissions', async (req, res) => {
 
     const submissions = await storage.getSubmissionsByUser(user.id);
 
-    // Format submissions for frontend
+    // Format submissions for frontend with complete evaluation data
     const formattedSubmissions = submissions.map(sub => ({
       id: sub.id,
       name: `${sub.firstName}${sub.lastName ? ' ' + sub.lastName : ''}`,
@@ -452,7 +423,17 @@ router.get('/api/users/:uid/submissions', async (req, res) => {
       amount: sub.price,
       submittedAt: sub.submittedAt.toISOString(),
       isWinner: sub.isWinner,
-      winnerPosition: sub.winnerPosition
+      winnerPosition: sub.winnerPosition,
+      score: sub.score || 0,
+      type: sub.type || 'Human',
+      status: sub.status || 'Pending',
+      scoreBreakdown: sub.scoreBreakdown || {
+        originality: 0,
+        emotion: 0,
+        structure: 0,
+        language: 0,
+        theme: 0
+      }
     }));
 
     console.log(`✅ Returning ${formattedSubmissions.length} submissions for user ${user.id}`);
@@ -1150,8 +1131,12 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
           continue;
         }
 
+        console.log(`✅ Found user: ${user.email} (ID: ${user.id})`);
+
         // Find submission by title and user
         const userSubmissions = await storage.getSubmissionsByUser(user.id);
+        console.log(`📄 User has ${userSubmissions.length} submissions`);
+        
         const submission = userSubmissions.find((s: any) => 
           s.poemTitle.toLowerCase().trim() === rowData.poemtitle.toLowerCase().trim()
         );
@@ -1159,8 +1144,12 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         if (!submission) {
           errors.push(`Row ${i + 1}: Poem "${rowData.poemtitle}" not found for user ${rowData.email}`);
           console.log(`❌ Submission not found: "${rowData.poemtitle}" for ${rowData.email}`);
+          console.log(`Available poems for user:`, userSubmissions.map(s => s.poemTitle));
           continue;
         }
+
+        console.log(`✅ Found submission: ${submission.poemTitle} (ID: ${submission.id})`);
+        console.log(`📊 Current submission status: ${submission.status}, score: ${submission.score}`);
 
         // Parse numeric values safely
         const score = parseInt(rowData.score) || 0;
@@ -1174,7 +1163,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         await storage.updateSubmissionEvaluation(submission.id, {
           score: score,
           type: rowData.type || 'Human',
-          status: 'Evaluated', // Force status to Evaluated
+          status: rowData.status || 'Evaluated',
           scoreBreakdown: {
             originality,
             emotion,
@@ -1235,35 +1224,6 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
       processed: 0,
       errors: [error.message]
     });
-  }
-});
-
-// 🔧 MANUAL: Update submission status for testing
-router.post('/api/debug/update-submission-status/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, score, type } = req.body;
-
-    const submission = await storage.updateSubmissionEvaluation(parseInt(id), {
-      score: score || 75,
-      type: type || 'Human',
-      status: status || 'Evaluated',
-      scoreBreakdown: {
-        originality: 20,
-        emotion: 20,
-        structure: 15,
-        language: 15,
-        theme: 5
-      }
-    });
-
-    res.json({
-      success: true,
-      message: 'Submission status updated manually',
-      submission
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
   }
 });
 
