@@ -6,12 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2, Twitter, Facebook, Instagram, Linkedin } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH } from "./coupon-codes";
+import { IS_FIRST_MONTH, ENABLE_FREE_TIER } from "./coupon-codes";
 
 const TIERS = [
   { 
@@ -518,8 +518,8 @@ export default function SubmitPage() {
     }
   };
 
-  // Check for free tier availability - controlled by IS_FIRST_MONTH flag
-  const canUseFreeEntry = IS_FIRST_MONTH;
+  // Check for free tier availability - controlled by ENABLE_FREE_TIER and IS_FIRST_MONTH flags
+  const canUseFreeEntry = ENABLE_FREE_TIER && IS_FIRST_MONTH;
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
@@ -582,7 +582,9 @@ export default function SubmitPage() {
                   {tier.price === 0 ? "Free" : `₹${tier.price}`}
                 </div>
                 {isDisabled && (
-                  <p className="text-red-500 text-sm">Already used this month</p>
+                  <p className="text-red-500 text-sm">
+                    {!ENABLE_FREE_TIER ? "Free tier is currently disabled" : "Already used this month"}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -944,12 +946,51 @@ export default function SubmitPage() {
               <span>Tier:</span>
               <span>{selectedTier?.name}</span>
             </div>
-            {selectedTier?.price && selectedTier.price > 0 && (
+            {((selectedTier?.price && selectedTier.price > 0) || discountedAmount > 0) && (
               <div className="flex justify-between">
                 <span>Amount Paid:</span>
-                <span>₹{selectedTier.price}</span>
+                <span>₹{discountedAmount || selectedTier?.price || 0}</span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Follow us section */}
+        <div className="bg-white p-4 rounded-lg border mb-6">
+          <h3 className="font-semibold mb-3">Follow us</h3>
+          <div className="flex justify-center space-x-4">
+            <a 
+              href="https://x.com/writoryofficial" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-blue-400 transition-colors"
+            >
+              <Twitter size={24} />
+            </a>
+            <a 
+              href="https://www.facebook.com/share/16hyCrZbE2/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              <Facebook size={24} />
+            </a>
+            <a 
+              href="https://www.instagram.com/writoryofficial/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-pink-600 transition-colors"
+            >
+              <Instagram size={24} />
+            </a>
+            <a 
+              href="https://www.linkedin.com/company/writoryofficial/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-blue-700 transition-colors"
+            >
+              <Linkedin size={24} />
+            </a>
           </div>
         </div>
 
