@@ -1,40 +1,49 @@
 
-import { db } from './db.js';
+import { connectDatabase, client } from './db.js';
 
 async function addStatusColumn() {
   try {
     console.log('🔧 Adding status column to submissions table...');
     
-    // Add the status column with default value
-    await db.execute(`
-      ALTER TABLE submissions 
-      ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Submitted'
+    await connectDatabase();
+    
+    // Check if status column already exists
+    const columnCheck = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'submissions' 
+      AND column_name = 'status'
     `);
     
-    console.log('✅ Status column added successfully!');
+    if (columnCheck.rows.length > 0) {
+      console.log('✅ Status column already exists');
+      return;
+    }
     
-    // Update existing records to have 'Submitted' status
-    await db.execute(`
+    // Add the status column
+    console.log('📝 Adding status column...');
+    await client.query(`
+      ALTER TABLE submissions 
+      ADD COLUMN status VARCHAR(50) DEFAULT 'pending' NOT NULL
+    `);
+    
+    console.log('✅ Status column added successfully');
+    
+    // Update existing submissions to have 'pending' status
+    const updateResult = await client.query(`
       UPDATE submissions 
-      SET status = 'Submitted' 
+      SET status = 'pending' 
       WHERE status IS NULL
     `);
     
-    console.log('✅ Updated existing records with default status');
+    console.log(`✅ Updated ${updateResult.rowCount} existing submissions with pending status`);
     
   } catch (error) {
     console.error('❌ Error adding status column:', error);
     throw error;
+  } finally {
+    process.exit(0);
   }
 }
 
-// Run the migration
-addStatusColumn()
-  .then(() => {
-    console.log('🎉 Migration completed successfully!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Migration failed:', error);
-    process.exit(1);
-  });
+addStatusColumn();
