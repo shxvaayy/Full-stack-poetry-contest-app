@@ -9,6 +9,7 @@ import { addPoemSubmissionToSheet, getSubmissionCountFromSheet, addContactToShee
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation } from './mailSender.js';
+import csv from 'csv-parser';
 
 const router = Router();
 
@@ -241,9 +242,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-    
+
     const validation = validateCouponCode(code, tier);
-    
+
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -984,6 +985,104 @@ router.post('/api/submissions/:id/winner', async (req, res) => {
   } catch (error: any) {
     console.error('❌ Error updating winner status:', error);
     res.status(500).json({ error: 'Failed to update winner status', details: error.message });
+  }
+});
+
+// Admin CSV upload endpoint
+router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const results: any[] = [];
+    fs.createReadStream(req.file.path)
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', async () => {
+        fs.unlinkSync(req.file.path); // Delete file after processing
+        
+        // Process the CSV data (example: add to database)
+        for (const row of results) {
+          // Basic validation - adjust based on your CSV structure
+          if (!row.email || !row.firstName || !row.poemTitle) {
+            console.warn('Skipping row due to missing fields:', row);
+            continue;
+          }
+
+          // Check if user exists or create new user
+          let user = await storage.getUserByEmail(row.email);
+          if (!user) {
+            user = await storage.createUser({
+              email: row.email,
+              name: row.firstName + (row.lastName ? ' ' + row.lastName : ''),
+              phone: row.phone || null,
+              uid: uuidv4() // Generate a unique UID
+            });
+          }
+
+          // Create submission record
+          const submission = await storage.createSubmission({
+            userId: user.id,
+            firstName: row.firstName,
+            lastName: row.lastName || null,
+            email: row.email,
+            phone: row.phone || null,
+            age: row.age || null,
+            poemTitle: row.poemTitle,
+            tier: row.tier || 'free', // Default tier
+            price: parseFloat(row.price || 0),
+            poemFileUrl: row.poemFileUrl || null,
+            photoUrl: row.photoUrl || null,
+            paymentId: null,
+            paymentMethod: null,
+          });
+          console.log(`Created submission ${submission.id} for user ${user.email}`);
+        }
+
+        res.json({ success: true, message: 'CSV data processed successfully', rowCount: results.length });
+      });
+  } catch (error: any) {
+    console.error('CSV upload error:', error);
+    res.status(500).json({ error: 'Failed to upload and process CSV', details: error.message });
+  }
+});
+
+// Get user results (admin)
+router.get('/api/admin/user-results', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await storage.getUserByEmail(email as string);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const submissions = await storage.getSubmissionsByUser(user.id);
+
+    const formattedSubmissions = submissions.map(sub => ({
+      id: sub.id,
+      name: `${sub.firstName}${sub.lastName ? ' ' + sub.lastName : ''}`,
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      amount: sub.price,
+      submittedAt: sub.submittedAt.toISOString(),
+      isWinner: sub.isWinner,
+      winnerPosition: sub.winnerPosition
+    }));
+
+    res.json({
+      user,
+      submissions: formattedSubmissions
+    });
+
+  } catch (error: any) {
+    console.error('Error getting user results:', error);
+    res.status(500).json({ error: 'Failed to get user results', details: error.message });
   }
 });
 
