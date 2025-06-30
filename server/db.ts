@@ -35,7 +35,7 @@ async function connectDatabase() {
     console.log('✅ Database already connected');
     return;
   }
-  
+
   if (connectionPromise) {
     console.log('⏳ Database connection in progress, waiting...');
     try {
@@ -49,7 +49,7 @@ async function connectDatabase() {
 
   connectionPromise = (async () => {
     let lastError;
-    
+
     for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
       try {
         console.log(`🔌 Connecting to database (attempt ${attempt}/${MAX_CONNECTION_ATTEMPTS})...`);
@@ -57,7 +57,7 @@ async function connectDatabase() {
         isConnected = true;
         connectionAttempts = 0;
         console.log('✅ Database connected successfully');
-        
+
         // Test the connection
         const result = await client.query('SELECT NOW()');
         console.log('✅ Database test query successful:', result.rows[0].now);
@@ -65,14 +65,14 @@ async function connectDatabase() {
       } catch (error) {
         lastError = error;
         console.error(`❌ Database connection attempt ${attempt} failed:`, error);
-        
+
         if (attempt < MAX_CONNECTION_ATTEMPTS) {
           console.log(`⏳ Retrying in 2 seconds...`);
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     }
-    
+
     // All attempts failed
     connectionPromise = null;
     throw new Error(`Database connection failed after ${MAX_CONNECTION_ATTEMPTS} attempts: ${lastError?.message}`);
