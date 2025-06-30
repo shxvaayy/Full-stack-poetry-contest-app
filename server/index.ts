@@ -76,51 +76,52 @@ app.use(express.static(publicPath));
 
 console.log('🚀 Static files configured, path:', publicPath);
 
-// Database fix function
+// COMPREHENSIVE Database fix function
 async function fixDatabaseSchema() {
   try {
-    console.log('🔧 Fixing database schema...');
+    console.log('🔧 Comprehensive database schema fix...');
     
-    // Add status column if it doesn't exist
-    try {
-      await client.query(`
-        ALTER TABLE submissions 
-        ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
-      `);
-      console.log('✅ Status column added/verified');
-    } catch (error) {
-      console.log('Status column handling:', error.message);
-    }
-    
-    // Add other missing columns that might be needed
+    // ALL missing columns that might be needed based on your schema
     const columnsToAdd = [
+      { name: 'status', type: 'VARCHAR(50) DEFAULT \'pending\'' },
+      { name: 'score', type: 'INTEGER' },
+      { name: 'type', type: 'VARCHAR(50)' },
+      { name: 'score_breakdown', type: 'JSONB' },
+      { name: 'is_winner', type: 'BOOLEAN DEFAULT FALSE' },
+      { name: 'winner_position', type: 'INTEGER' },
       { name: 'author_bio', type: 'TEXT' },
       { name: 'contest_month', type: 'TEXT DEFAULT \'current\'' },
-      { name: 'payment_screenshot_url', type: 'TEXT' }
+      { name: 'payment_screenshot_url', type: 'TEXT' },
+      { name: 'payment_method', type: 'VARCHAR(50)' }
     ];
+    
+    console.log('📋 Adding/verifying columns...');
     
     for (const column of columnsToAdd) {
       try {
         await client.query(`ALTER TABLE submissions ADD COLUMN IF NOT EXISTS ${column.name} ${column.type}`);
         console.log(`✅ Added/verified column: ${column.name}`);
       } catch (error) {
-        console.log(`Column ${column.name} handling:`, error.message);
+        console.log(`⚠️ Column ${column.name} issue:`, error.message);
       }
     }
     
-    // Update existing submissions to have pending status
+    // Update existing submissions to have proper default values
     try {
-      const result = await client.query(`
+      await client.query(`
         UPDATE submissions 
-        SET status = 'pending' 
-        WHERE status IS NULL
+        SET 
+          status = COALESCE(status, 'pending'),
+          is_winner = COALESCE(is_winner, FALSE),
+          contest_month = COALESCE(contest_month, 'current')
+        WHERE status IS NULL OR is_winner IS NULL OR contest_month IS NULL
       `);
-      console.log(`✅ Updated ${result.rowCount} submissions with pending status`);
+      console.log('✅ Updated existing submissions with default values');
     } catch (error) {
-      console.log('Status update handling:', error.message);
+      console.log('⚠️ Default values update issue:', error.message);
     }
     
-    // Verify table structure
+    // Verify final table structure
     const columns = await client.query(`
       SELECT column_name, data_type, is_nullable, column_default
       FROM information_schema.columns 
@@ -128,12 +129,27 @@ async function fixDatabaseSchema() {
       ORDER BY ordinal_position
     `);
     
-    console.log('📋 Current submissions table structure:');
+    console.log('📋 Final submissions table structure:');
     columns.rows.forEach(col => {
-      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
+      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable}, default: ${col.column_default || 'none'})`);
     });
     
-    console.log('🎉 Database schema fix completed successfully!');
+    // Test insert to verify schema is complete
+    try {
+      await client.query(`
+        SELECT 
+          id, first_name, email, poem_title, tier, status, 
+          score, type, is_winner, author_bio, contest_month
+        FROM submissions 
+        LIMIT 1
+      `);
+      console.log('✅ Schema verification query successful');
+    } catch (error) {
+      console.error('❌ Schema verification failed:', error.message);
+      throw error;
+    }
+    
+    console.log('🎉 Comprehensive database schema fix completed!');
     return true;
     
   } catch (error) {
@@ -152,13 +168,13 @@ async function initializeApp() {
     await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
     
-    // Step 1.5: Fix database schema
-    console.log('🔧 Step 1.5: Fixing database schema...');
+    // Step 1.5: Fix database schema COMPREHENSIVELY
+    console.log('🔧 Step 1.5: Comprehensive database schema fix...');
     const schemaFixed = await fixDatabaseSchema();
     if (schemaFixed) {
-      console.log('✅ Step 1.5 completed: Database schema fixed');
+      console.log('✅ Step 1.5 completed: Database schema fully fixed');
     } else {
-      console.log('⚠️ Step 1.5: Schema fix had issues, but continuing...');
+      console.log('❌ Step 1.5 FAILED: Schema fix failed - this might cause issues');
     }
     
     // Step 2: Run migrations with timeout
