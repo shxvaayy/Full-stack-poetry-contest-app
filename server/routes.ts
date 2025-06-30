@@ -241,9 +241,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-
+    
     const validation = validateCouponCode(code, tier);
-
+    
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -923,7 +923,7 @@ router.get('/api/submissions', async (req, res) => {
       photoUrl: sub.photoUrl
     }));
 
-    console.log(`📊 Returning ${formattedSubmissions.length} total submissions`);
+    console.log(`Returning ${formattedSubmissions.length} total submissions`);
     res.json(formattedSubmissions);
   } catch (error: any) {
     console.error('❌ Error getting submissions:', error);
@@ -932,11 +932,10 @@ router.get('/api/submissions', async (req, res) => {
 });
 
 // Get submission count
-router.get('/api/submission-count',```tool_code
- async (req, res) => {
+router.get('/api/submission-count', async (req, res) => {
   try {
     const allSubmissions = await storage.getAllSubmissions();
-    console.log(`📊 Returning ${allSubmissions.length} total submissions`);
+    console.log(`Returning ${allSubmissions.length} total submissions`);
     res.json({ count: allSubmissions.length });
   } catch (error: any) {
     console.error('❌ Error getting submission count:', error);
@@ -949,7 +948,7 @@ router.get('/api/stats/submissions', async (req, res) => {
   try {
     const allSubmissions = await storage.getAllSubmissions();
     const count = allSubmissions.length;
-    console.log(`📊 Stats: ${count} total submissions`);
+    console.log(`Stats: ${count} total submissions`);
     res.json({ count });
   } catch (error: any) {
     console.error('❌ Error getting stats:', error);
@@ -970,7 +969,7 @@ router.get('/api/winners', async (req, res) => {
       position: winner.winnerPosition
     }));
 
-    console.log(`🏆 Returning ${formattedWinners.length} winners`);
+    console.log(`Returning ${formattedWinners.length} winners`);
     res.json(formattedWinners);
   } catch (error: any) {
     console.error('❌ Error getting winners:', error);
@@ -1001,7 +1000,7 @@ router.post('/api/submissions/:id/winner', async (req, res) => {
 // Admin CSV upload endpoint
 router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) => {
   try {
-    console.log('📊 Admin CSV upload request received');
+    console.log('Admin CSV upload request received');
 
     // Check if user is admin (in a real app, you'd check the auth token)
     // For now, we'll trust that the frontend has already validated this
@@ -1013,25 +1012,25 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
       });
     }
 
-    console.log('📁 CSV file received:', req.file.originalname);
+    console.log('CSV file received:', req.file.originalname);
 
     // Read and parse CSV file
     const fs = await import('fs/promises');
     const csvContent = await fs.readFile(req.file.path, 'utf-8');
-    console.log('📄 CSV content loaded, length:', csvContent.length);
+    console.log('CSV content loaded, length:', csvContent.length);
 
     // Parse CSV with proper CSV parsing
     const lines = csvContent.trim().split('\n');
-
+    
     // Function to parse CSV line properly
     const parseCSVLine = (line: string): string[] => {
       const result: string[] = [];
       let current = '';
       let inQuotes = false;
-
+      
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
-
+        
         if (char === '"') {
           inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
@@ -1041,19 +1040,19 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
           current += char;
         }
       }
-
+      
       result.push(current.trim());
       return result;
     };
-
+    
     const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
-
-    console.log('📊 CSV headers:', headers);
+    
+    console.log('CSV headers:', headers);
 
     // Validate headers - more flexible matching
     const expectedHeaders = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
     const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
-
+    
     if (missingHeaders.length > 0) {
       return res.status(400).json({
         error: 'Invalid CSV format',
@@ -1069,9 +1068,9 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
       try {
         const line = lines[i].trim();
         if (!line) continue; // Skip empty lines
-
+        
         const values = parseCSVLine(line);
-
+        
         if (values.length !== headers.length) {
           errors.push(`Row ${i + 1}: Invalid number of columns (expected ${headers.length}, got ${values.length})`);
           continue;
@@ -1082,16 +1081,16 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
           rowData[header] = values[index].replace(/^["']|["']$/g, ''); // Remove quotes
         });
 
-        console.log(`📝 Processing row ${i + 1}:`, rowData);
-        console.log(`📧 Looking for user with email: "${rowData.email}"`);
+        console.log(`Processing row ${i + 1}:`, rowData);
+        console.log(`Looking for user with email: "${rowData.email}"`);
 
         // Find user by email
         const allUsers = (storage as any).data?.users || [];
         const user = allUsers.find((u: any) => u.email === rowData.email);
-
-        console.log(`👥 Total users in database: ${allUsers.length}`);
+        
+        console.log(`Total users in database: ${allUsers.length}`);
         if (allUsers.length > 0) {
-          console.log(`📧 Available emails: ${allUsers.map((u: any) => u.email).join(', ')}`);
+          console.log(`Available emails: ${allUsers.map((u: any) => u.email).join(', ')}`);
         }
 
         if (!user) {
@@ -1125,7 +1124,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         });
 
         processedCount++;
-        console.log(`✅ Updated submission ${submission.id} for ${rowData.email}`);
+        console.log(`Updated submission ${submission.id} for ${rowData.email}`);
 
       } catch (rowError: any) {
         console.error(`❌ Error processing row ${i + 1}:`, rowError);
@@ -1140,7 +1139,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
       console.error('Error cleaning up file:', cleanupError);
     }
 
-    console.log(`📊 CSV processing complete: ${processedCount} processed, ${errors.length} errors`);
+    console.log(`CSV processing complete: ${processedCount} processed, ${errors.length} errors`);
 
     res.json({
       success: true,
@@ -1151,7 +1150,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
 
   } catch (error: any) {
     console.error('❌ CSV upload error:', error);
-
+    
     // Clean up file if it exists
     if (req.file) {
       try {
@@ -1168,3 +1167,10 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     });
   }
 });
+
+// Export the router and the registerRoutes function
+export function registerRoutes(app: any) {
+  app.use(router);
+}
+
+export default router;
