@@ -1,14 +1,22 @@
 
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { User, Mail, Calendar, FileText, Trophy, Clock, ArrowLeft, RefreshCw, Award, TrendingUp } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/use-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Badge } from '../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2 } from 'lucide-react';
+import { toast } from '../hooks/use-toast';
+
+interface BackendUser {
+  id: number;
+  email: string;
+  name: string | null;
+  uid: string;
+  phone: string | null;
+  createdAt: string;
+}
 
 interface Submission {
   id: number;
@@ -20,8 +28,8 @@ interface Submission {
   isWinner: boolean;
   winnerPosition: number | null;
   score?: number;
-  type?: string;
-  status?: string;
+  type?: 'Human' | 'AI' | 'Copied';
+  status?: 'Pending' | 'Evaluated' | 'Rejected';
   scoreBreakdown?: {
     originality: number;
     emotion: number;
@@ -35,269 +43,136 @@ interface SubmissionStatus {
   freeSubmissionUsed: boolean;
   totalSubmissions: number;
   contestMonth: string;
+  allTimeSubmissions: number;
 }
 
-interface UserData {
-  id: number;
-  uid: string;
-  email: string;
-  name: string | null;
-  phone: string | null;
-  createdAt: string;
-}
+export default function UserProfile() {
+  const { user, dbUser } = useAuth();
+  const [backendUser, setBackendUser] = useState<BackendUser | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
-export default function UserProfilePage() {
-  const { user } = useAuth();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState("submissions");
+  useEffect(() => {
+    if (user?.uid) {
+      fetchUserData();
+    }
+  }, [user]);
 
-  // Ensure user exists in backend storage
-  const { 
-    data: backendUser, 
-    isLoading: userLoading,
-    refetch: refetchUser 
-  } = useQuery<UserData>({
-    queryKey: [`/api/users/${user?.uid}`],
-    queryFn: async () => {
-      if (!user?.uid) throw new Error("No user UID");
-      
-      const response = await fetch(`/api/users/${user.uid}`);
-      
-      if (response.ok) {
-        return response.json();
-      }
-      
-      if (response.status === 404) {
-        const createResponse = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uid: user.uid,
-            email: user.email || '',
-            name: user.displayName || user.email?.split('@')[0] || 'User',
-            phone: user.phoneNumber || null
-          })
-        });
-        
-        if (!createResponse.ok) {
-          throw new Error('Failed to create user in backend');
-        }
-        
-        return createResponse.json();
-      }
-      
-      throw new Error(`Failed to get user: ${response.status}`);
-    },
-    enabled: !!user?.uid,
-    retry: 2,
-    refetchOnWindowFocus: false,
-    staleTime: 30000,
-  });
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
 
-  // Get user submissions
-  const { 
-    data: submissions = [], 
-    isLoading: submissionsLoading, 
-    error: submissionsError,
-    refetch: refetchSubmissions 
-  } = useQuery({
-    queryKey: [`/api/users/${user?.uid}/submissions`, backendUser?.id],
-    queryFn: async () => {
-      if (!user?.uid) throw new Error("No user UID");
-      
-      const response = await fetch(`/api/users/${user.uid}/submissions`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch submissions: ${response.status}`);
+      // Fetch user details
+      const userResponse = await fetch(`/api/users/${user!.uid}`);
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setBackendUser(userData);
       }
-      
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: !!user?.uid && !!backendUser?.id,
-    retry: 2,
-    refetchOnWindowFocus: false,
-    staleTime: 0,
-  });
 
-  // Get user submission status
-  const { 
-    data: submissionStatus, 
-    isLoading: statusLoading,
-    refetch: refetchStatus 
-  } = useQuery<SubmissionStatus>({
-    queryKey: [`/api/users/${user?.uid}/submission-status`, backendUser?.id],
-    queryFn: async () => {
-      if (!user?.uid) throw new Error("No user UID");
-      
-      const response = await fetch(`/api/users/${user.uid}/submission-status`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch submission status: ${response.status}`);
+      // Fetch user submissions
+      const submissionsResponse = await fetch(`/api/users/${user!.uid}/submissions`);
+      if (submissionsResponse.ok) {
+        const submissionsData = await submissionsResponse.json();
+        setSubmissions(submissionsData);
       }
-      
-      return response.json();
-    },
-    enabled: !!user?.uid && !!backendUser?.id,
-    refetchOnWindowFocus: false,
-    staleTime: 0,
-  });
+
+      // Fetch submission status
+      const statusResponse = await fetch(`/api/users/${user!.uid}/submission-status`);
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        setSubmissionStatus(statusData);
+      }
+
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   const getTierColor = (tier: string) => {
     switch (tier) {
-      case 'free': return 'bg-green-100 text-green-800 border-green-200';
-      case 'single': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'double': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'bulk': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getTierName = (tier: string) => {
-    switch (tier) {
-      case 'free': return 'Free Entry';
-      case 'single': return '1 Poem';
-      case 'double': return '2 Poems';
-      case 'bulk': return '5 Poems';
-      default: return tier;
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'human': return 'bg-green-100 text-green-800 border-green-200';
-      case 'ai': return 'bg-red-100 text-red-800 border-red-200';
-      case 'copied': return 'bg-orange-100 text-orange-800 border-orange-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'free': return 'bg-green-100 text-green-800';
+      case 'single': return 'bg-blue-100 text-blue-800';
+      case 'multiple': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'evaluated': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    switch (status) {
+      case 'Evaluated': return 'bg-green-100 text-green-800';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return 'Invalid date';
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Human': return 'bg-green-100 text-green-800';
+      case 'AI': return 'bg-orange-100 text-orange-800';
+      case 'Copied': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const refreshData = async () => {
-    setIsRefreshing(true);
-    try {
-      await refetchUser();
-      await Promise.all([refetchSubmissions(), refetchStatus()]);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.uid && !backendUser) {
-      refetchUser();
-    }
-  }, [user?.uid, backendUser, refetchUser]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+        <div className="flex items-center space-x-3">
+          <Loader2 className="animate-spin" size={24} />
+          <span className="text-lg">Loading profile...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Login</h2>
-          <p className="text-gray-600">You need to be logged in to view your profile.</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Please Log In</h2>
+            <p className="text-gray-600">You need to be logged in to view your profile.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
-
-  if (userLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Filter submissions by status for different tabs
-  const evaluatedSubmissions = submissions.filter((sub: Submission) => sub.status === 'Evaluated');
-  const pendingSubmissions = submissions.filter((sub: Submission) => sub.status !== 'Evaluated');
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center mb-2">
-              <Link href="/">
-                <Button variant="ghost" className="p-2 hover:bg-gray-100">
-                  <ArrowLeft size={20} />
-                  <span className="ml-2">Back to Home</span>
-                </Button>
-              </Link>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600">Manage your account and view submission history</p>
-          </div>
-          <Button 
-            onClick={refreshData} 
-            disabled={isRefreshing}
-            variant="outline"
-            className="flex items-center"
-          >
-            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-            <span className="ml-2">Refresh Data</span>
-          </Button>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* User Information */}
-          <div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-8">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Profile Sidebar */}
+          <div className="lg:col-span-1">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="mr-2" size={20} />
-                  User Information
+              <CardHeader className="text-center">
+                <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="text-white" size={32} />
+                </div>
+                <CardTitle className="text-xl">
+                  {user.displayName || backendUser?.name || 'User'}
                 </CardTitle>
+                <p className="text-gray-600 text-sm">{user.email}</p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                    <User className="text-green-600" size={24} />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {backendUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
-                    </p>
-                    <p className="text-sm text-gray-500">Poet</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center text-gray-600">
-                  <Mail className="mr-2" size={16} />
-                  <span className="text-sm">{user.email}</span>
-                </div>
-
                 <div className="flex items-center text-gray-600">
                   <Calendar className="mr-2" size={16} />
                   <span className="text-sm">
@@ -324,13 +199,6 @@ export default function UserProfilePage() {
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Evaluated</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    {evaluatedSubmissions.length}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Free Entry Used</span>
                   <span className={`text-sm font-medium ${
                     submissionStatus?.freeSubmissionUsed ? 'text-red-600' : 'text-green-600'
@@ -339,248 +207,235 @@ export default function UserProfilePage() {
                   </span>
                 </div>
 
-                <div className="text-sm text-gray-500">
-                  <p>Contest Month</p>
-                  <p className="font-mono">{submissionStatus?.contestMonth || 'Not set'}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">All Time</span>
+                  <span className="text-lg font-semibold text-blue-600">
+                    {submissionStatus?.allTimeSubmissions || 0}
+                  </span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Submissions and Results */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FileText className="mr-2" size={20} />
-                    My Submissions & Results
-                  </div>
-                  <Link href="/submit">
-                    <Button size="sm">Submit New Poem</Button>
-                  </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="submissions">All Submissions ({submissions.length})</TabsTrigger>
-                    <TabsTrigger value="results">Results ({evaluatedSubmissions.length})</TabsTrigger>
-                  </TabsList>
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="submissions">Submissions</TabsTrigger>
+                <TabsTrigger value="results">Results</TabsTrigger>
+              </TabsList>
 
-                  <TabsContent value="submissions" className="mt-6">
-                    {submissionsLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                        <p className="text-gray-500 mt-2">Loading submissions...</p>
-                      </div>
-                    ) : submissionsError ? (
-                      <div className="text-center py-8">
-                        <FileText className="mx-auto h-12 w-12 text-red-400 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Submissions</h3>
-                        <p className="text-red-500 mb-4">{submissionsError.message}</p>
-                        <Button onClick={refreshData} variant="outline">
-                          Try Again
-                        </Button>
-                      </div>
-                    ) : (!submissions || submissions.length === 0) ? (
-                      <div className="text-center py-8">
-                        <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          {submissionStatus?.totalSubmissions > 0 ? "Submissions Not Displaying" : "No submissions yet"}
-                        </h3>
-                        <p className="text-gray-500 mb-4">
-                          {submissionStatus?.totalSubmissions > 0 
-                            ? "Your submissions exist but are not displaying properly. This might be a sync issue." 
-                            : "Start your poetry journey by submitting your first poem!"
-                          }
-                        </p>
-                        <div className="space-x-2">
-                          <Link href="/submit">
-                            <Button>
-                              {submissionStatus?.totalSubmissions > 0 ? "Submit Another Poem" : "Submit Your First Poem"}
-                            </Button>
-                          </Link>
-                          <Button onClick={refreshData} variant="outline">
-                            Refresh Data
-                          </Button>
+              {/* Overview Tab */}
+              <TabsContent value="overview" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <BarChart3 className="mr-2" size={20} />
+                      Quick Stats
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {submissions.length}
                         </div>
+                        <div className="text-sm text-gray-600">Total Poems</div>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {submissions.map((submission: Submission) => (
-                          <div key={submission.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-semibold text-gray-900">{submission.poemTitle}</h4>
-                              <div className="flex items-center space-x-2">
-                                {submission.isWinner && (
-                                  <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                                    Winner #{submission.winnerPosition}
-                                  </Badge>
-                                )}
-                                {submission.status && (
-                                  <Badge className={getStatusColor(submission.status)}>
-                                    {submission.status}
-                                  </Badge>
-                                )}
-                                <Badge className={getTierColor(submission.tier)}>
-                                  {getTierName(submission.tier)}
-                                </Badge>
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {submissions.filter(s => s.isWinner).length}
+                        </div>
+                        <div className="text-sm text-gray-600">Wins</div>
+                      </div>
+                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {submissions.filter(s => s.status === 'Evaluated').length}
+                        </div>
+                        <div className="text-sm text-gray-600">Evaluated</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {submissions.length > 0 ? (
+                      <div className="space-y-3">
+                        {submissions.slice(0, 5).map((submission) => (
+                          <div key={submission.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <div className="font-medium">{submission.poemTitle}</div>
+                              <div className="text-sm text-gray-600">
+                                {formatDate(submission.submittedAt)}
                               </div>
                             </div>
-                            
-                            <div className="flex items-center justify-between text-sm text-gray-500">
-                              <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-1">
-                                  <Clock size={14} />
-                                  <span>{formatDate(submission.submittedAt)}</span>
+                            <Badge className={getTierColor(submission.tier)}>
+                              {submission.tier}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">No submissions yet.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Submissions Tab */}
+              <TabsContent value="submissions" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <FileText className="mr-2" size={20} />
+                      My Submissions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {submissions.length > 0 ? (
+                      <div className="space-y-4">
+                        {submissions.map((submission) => (
+                          <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-lg">{submission.poemTitle}</h3>
+                                <p className="text-gray-600 text-sm mb-2">
+                                  Submitted on {formatDate(submission.submittedAt)}
+                                </p>
+                                <div className="flex items-center space-x-2">
+                                  <Badge className={getTierColor(submission.tier)}>
+                                    {submission.tier}
+                                  </Badge>
+                                  {submission.isWinner && (
+                                    <Badge className="bg-yellow-100 text-yellow-800">
+                                      <Award className="mr-1" size={12} />
+                                      Winner #{submission.winnerPosition}
+                                    </Badge>
+                                  )}
                                 </div>
-                                {submission.amount > 0 && (
-                                  <span className="font-medium">₹{submission.amount}</span>
-                                )}
                               </div>
-                              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                                ID: {submission.id}
-                              </span>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-green-600">
+                                  ₹{submission.amount}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}
-                        
-                        <div className="text-center pt-4">
-                          <Link href="/submit">
-                            <Button variant="outline">Submit Another Poem</Button>
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="results" className="mt-6">
-                    {submissionsLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                        <p className="text-gray-500 mt-2">Loading results...</p>
-                      </div>
-                    ) : evaluatedSubmissions.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Award className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Yet</h3>
-                        <p className="text-gray-500 mb-4">
-                          Your submitted poems are being evaluated. Results will appear here once the AI analysis is complete.
-                        </p>
-                        <Link href="/submit">
-                          <Button>Submit a Poem</Button>
-                        </Link>
                       </div>
                     ) : (
+                      <div className="text-center py-8">
+                        <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                        <p className="text-gray-600">No submissions yet.</p>
+                        <Button className="mt-4" onClick={() => window.location.href = '/submit'}>
+                          Submit Your First Poem
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Results Tab */}
+              <TabsContent value="results" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Award className="mr-2" size={20} />
+                      AI Evaluation Results
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {submissions.filter(s => s.status === 'Evaluated').length > 0 ? (
                       <div className="space-y-4">
                         <div className="overflow-x-auto">
-                          <table className="w-full border-collapse border border-gray-200 rounded-lg">
+                          <table className="w-full">
                             <thead>
-                              <tr className="bg-gray-50">
-                                <th className="border border-gray-200 px-4 py-2 text-left font-medium">Poem Title</th>
-                                <th className="border border-gray-200 px-4 py-2 text-left font-medium">Status</th>
-                                <th className="border border-gray-200 px-4 py-2 text-left font-medium">Type</th>
-                                <th className="border border-gray-200 px-4 py-2 text-left font-medium">Score</th>
-                                <th className="border border-gray-200 px-4 py-2 text-left font-medium">Action</th>
+                              <tr className="border-b">
+                                <th className="text-left p-2">Poem Title</th>
+                                <th className="text-left p-2">Status</th>
+                                <th className="text-left p-2">Type</th>
+                                <th className="text-left p-2">Score</th>
+                                <th className="text-left p-2">Details</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {evaluatedSubmissions.map((submission: Submission) => (
-                                <tr key={submission.id} className="hover:bg-gray-50">
-                                  <td className="border border-gray-200 px-4 py-2 font-medium">
-                                    {submission.poemTitle}
-                                  </td>
-                                  <td className="border border-gray-200 px-4 py-2">
-                                    <Badge className={getStatusColor(submission.status || 'Evaluated')}>
-                                      {submission.status || 'Evaluated'}
+                              {submissions.filter(s => s.status === 'Evaluated').map((submission) => (
+                                <tr key={submission.id} className="border-b hover:bg-gray-50">
+                                  <td className="p-2 font-medium">{submission.poemTitle}</td>
+                                  <td className="p-2">
+                                    <Badge className={getStatusColor(submission.status || 'Pending')}>
+                                      {submission.status || 'Pending'}
                                     </Badge>
                                   </td>
-                                  <td className="border border-gray-200 px-4 py-2">
-                                    {submission.type ? (
-                                      <Badge className={getTypeColor(submission.type)}>
-                                        {submission.type}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
+                                  <td className="p-2">
+                                    <Badge className={getTypeColor(submission.type || 'Human')}>
+                                      {submission.type || 'Human'}
+                                    </Badge>
                                   </td>
-                                  <td className="border border-gray-200 px-4 py-2">
-                                    {submission.score !== undefined ? (
-                                      <span className={`font-bold text-lg ${getScoreColor(submission.score)}`}>
-                                        {submission.score}/100
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
+                                  <td className="p-2">
+                                    <span className="text-lg font-bold text-green-600">
+                                      {submission.score || 0}/100
+                                    </span>
                                   </td>
-                                  <td className="border border-gray-200 px-4 py-2">
-                                    {submission.scoreBreakdown ? (
-                                      <Dialog>
-                                        <DialogTrigger asChild>
-                                          <Button variant="outline" size="sm">
-                                            <TrendingUp size={14} className="mr-1" />
-                                            View Details
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-md">
-                                          <DialogHeader>
-                                            <DialogTitle className="flex items-center">
-                                              <Award className="mr-2" size={20} />
-                                              Score Breakdown
-                                            </DialogTitle>
-                                          </DialogHeader>
-                                          <div className="space-y-4">
-                                            <div className="text-center">
-                                              <h3 className="font-bold text-lg">{submission.poemTitle}</h3>
-                                              <p className={`text-3xl font-bold ${getScoreColor(submission.score || 0)}`}>
-                                                {submission.score}/100
-                                              </p>
-                                              {submission.type && (
-                                                <Badge className={getTypeColor(submission.type)} size="sm">
-                                                  {submission.type}
-                                                </Badge>
-                                              )}
+                                  <td className="p-2">
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          View Breakdown
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>{submission.poemTitle} - Score Breakdown</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                          <div className="text-center">
+                                            <div className="text-3xl font-bold text-green-600">
+                                              {submission.score || 0}/100
                                             </div>
-                                            
-                                            <div className="space-y-3">
-                                              <div className="flex justify-between items-center">
-                                                <span className="font-medium">Originality:</span>
-                                                <span className="font-bold text-blue-600">
-                                                  {submission.scoreBreakdown.originality}/25
-                                                </span>
-                                              </div>
-                                              <div className="flex justify-between items-center">
-                                                <span className="font-medium">Emotion:</span>
-                                                <span className="font-bold text-purple-600">
-                                                  {submission.scoreBreakdown.emotion}/25
-                                                </span>
-                                              </div>
-                                              <div className="flex justify-between items-center">
-                                                <span className="font-medium">Structure:</span>
-                                                <span className="font-bold text-green-600">
-                                                  {submission.scoreBreakdown.structure}/20
-                                                </span>
-                                              </div>
-                                              <div className="flex justify-between items-center">
-                                                <span className="font-medium">Language:</span>
-                                                <span className="font-bold text-orange-600">
-                                                  {submission.scoreBreakdown.language}/20
-                                                </span>
-                                              </div>
-                                              <div className="flex justify-between items-center">
-                                                <span className="font-medium">Theme:</span>
-                                                <span className="font-bold text-red-600">
-                                                  {submission.scoreBreakdown.theme}/10
-                                                </span>
-                                              </div>
+                                            <div className="text-gray-600">Overall Score</div>
+                                          </div>
+                                          <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                              <span>Originality:</span>
+                                              <span className="font-bold">
+                                                {submission.scoreBreakdown?.originality || 0}/25
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span>Emotion:</span>
+                                              <span className="font-bold">
+                                                {submission.scoreBreakdown?.emotion || 0}/25
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span>Structure:</span>
+                                              <span className="font-bold">
+                                                {submission.scoreBreakdown?.structure || 0}/20
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span>Language:</span>
+                                              <span className="font-bold">
+                                                {submission.scoreBreakdown?.language || 0}/20
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                              <span>Theme:</span>
+                                              <span className="font-bold">
+                                                {submission.scoreBreakdown?.theme || 0}/10
+                                              </span>
                                             </div>
                                           </div>
-                                        </DialogContent>
-                                      </Dialog>
-                                    ) : (
-                                      <span className="text-gray-400 text-sm">No details</span>
-                                    )}
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
                                   </td>
                                 </tr>
                               ))}
@@ -588,11 +443,19 @@ export default function UserProfilePage() {
                           </table>
                         </div>
                       </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Award className="mx-auto text-gray-400 mb-4" size={48} />
+                        <p className="text-gray-600 mb-2">No evaluation results yet.</p>
+                        <p className="text-sm text-gray-500">
+                          Your submitted poems will appear here once they've been evaluated by our AI system.
+                        </p>
+                      </div>
                     )}
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

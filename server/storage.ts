@@ -1,6 +1,6 @@
 import { db } from './db.js';
 import { users, submissions, contacts, type User, type InsertUser, type Submission, type InsertSubmission, type Contact, type InsertContact } from './schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, set } from 'drizzle-orm';
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -12,10 +12,22 @@ export interface IStorage {
   getWinningSubmissions(): Promise<Submission[]>;
   getAllSubmissions(): Promise<Submission[]>;
   createContact(contact: InsertContact): Promise<Contact>;
+  updateSubmissionEvaluation(id: number, evaluation: {
+    score: number;
+    type: string;
+    status: string;
+    scoreBreakdown: {
+      originality: number;
+      emotion: number;
+      structure: number;
+      language: number;
+      theme: number;
+    };
+  }): Promise<Submission | undefined>;
 }
 
 export class PostgreSQLStorage implements IStorage {
-  
+
   async getUser(id: number): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -111,6 +123,42 @@ export class PostgreSQLStorage implements IStorage {
     } catch (error) {
       console.error('❌ Error creating contact:', error);
       throw error;
+    }
+  }
+
+  async updateSubmissionEvaluation(id: number, evaluation: {
+    score: number;
+    type: string;
+    status: string;
+    scoreBreakdown: {
+      originality: number;
+      emotion: number;
+      structure: number;
+      language: number;
+      theme: number;
+    };
+  }): Promise<Submission | undefined> {
+    try {
+      const [submission] = await db.update(submissions)
+        .set({
+          score: evaluation.score,
+          type: evaluation.type,
+          status: evaluation.status,
+          scoreBreakdown: evaluation.scoreBreakdown,
+        })
+        .where(eq(submissions.id, id))
+        .returning();
+
+      if (!submission) {
+        console.log(`Submission with id ${id} not found`);
+        return undefined;
+      }
+
+      console.log(`✅ Updated submission evaluation for submission ID ${id}`);
+      return submission;
+    } catch (error) {
+      console.error('❌ Error updating submission evaluation:', error);
+      return undefined;
     }
   }
 }

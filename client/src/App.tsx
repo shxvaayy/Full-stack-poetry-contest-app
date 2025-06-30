@@ -15,9 +15,9 @@ import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
 import UserProfilePage from "@/pages/user-profile";
 import AdminUploadPage from "@/pages/admin-upload";
-import NotFoundPage from "@/pages/not-found";
-import TermsPage from "@/pages/terms";
-import PrivacyPage from "@/pages/privacy";
+import NotFoundPage from "./pages/not-found";
+import TermsPage from "./pages/terms";
+import PrivacyPage from "./pages/privacy";
 
 function AppContent() {
   return (
