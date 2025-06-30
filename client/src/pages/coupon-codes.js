@@ -1,3 +1,4 @@
+
 // Coupon codes configuration
 export const IS_FIRST_MONTH = false; // Change this to false for second month onwards
 
@@ -33,16 +34,16 @@ export const DISCOUNT_CODES = [
 ];
 
 // Used codes storage (in production, this should be stored in database)
-export const USED_CODES = new Set<string>();
+export const USED_CODES = new Set();
 
-export function validateCouponCode(code: string, tier: string): { valid: boolean; type?: 'free' | 'discount'; discount?: number; message?: string } {
+export function validateCouponCode(code, tier) {
   const upperCode = code.toUpperCase();
-
+  
   // Check if code was already used
   if (USED_CODES.has(upperCode)) {
     return { valid: false, message: 'This coupon code has already been used.' };
   }
-
+  
   // Check for 100% discount codes (only work on ₹50 tier)
   if (FREE_TIER_CODES.includes(upperCode)) {
     if (tier !== 'single') {
@@ -50,18 +51,15 @@ export function validateCouponCode(code: string, tier: string): { valid: boolean
     }
     return { valid: true, type: 'free', discount: 100, message: 'Valid 100% discount code! This tier is now free.' };
   }
-
+  
   // Check for 10% discount codes (work on all paid tiers)
   if (DISCOUNT_CODES.includes(upperCode)) {
-    if (tier === 'free') {
-      return { valid: false, message: 'Discount codes cannot be applied to free tier.' };
-    }
     return { valid: true, type: 'discount', discount: 10, message: 'Valid discount code! 10% discount applied.' };
   }
-
+  
   return { valid: false, message: 'Invalid coupon code.' };
 }
 
-export function markCodeAsUsed(code: string): void {
+export function markCodeAsUsed(code) {
   USED_CODES.add(code.toUpperCase());
 }

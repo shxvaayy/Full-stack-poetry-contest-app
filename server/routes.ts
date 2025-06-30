@@ -228,9 +228,6 @@ router.get('/api/test-email', async (req, res) => {
   }
 });
 
-// Keep track of used coupon codes (in-memory for simplicity)
-const USED_CODES = new Set<string>();
-
 router.post('/api/validate-coupon', async (req, res) => {
   try {
     const { code, tier, amount, userUid } = req.body;
@@ -242,50 +239,34 @@ router.post('/api/validate-coupon', async (req, res) => {
       });
     }
 
-    // Define valid coupon codes and their discounts
-    const validCoupons: Record<string, { discount: number; discountPercentage: number; validTiers?: string[]; maxUses?: number; usedCount?: number }> = {
-      'FREEPASS100': { discount: 50, discountPercentage: 100, validTiers: ['single'] }, // 100% off on ₹50 tier only
-      'WRITORYWINNER': { discount: 50, discountPercentage: 100, validTiers: ['single'] },
-      'WRITORYFREE1': { discount: 50, discountPercentage: 100, validTiers: ['single'] },
-      'WRITORYFREE2': { discount: 50, discountPercentage: 100, validTiers: ['single'] },
-      'WRITORYNEW': { discount: 25, discountPercentage: 50, validTiers: ['single', 'double'] },
-      'WRITORY2025': { discount: 10, discountPercentage: 20, validTiers: ['single', 'double', 'bulk'] },
-      'WRITORYWELCOM': { discount: 15, discountPercentage: 30, validTiers: ['single', 'double', 'bulk'] }
-    };
-
-    const coupon = validCoupons[code.toUpperCase()];
-
-    if (!coupon) {
+    // Import coupon validation from coupon-codes.ts
+    const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
+    
+    const validation = validateCouponCode(code, tier);
+    
+    if (!validation.valid) {
       return res.json({
         valid: false,
-        error: 'Invalid coupon code'
+        error: validation.message || 'Invalid coupon code'
       });
     }
 
-    // Check if coupon is valid for the selected tier
-    if (coupon.validTiers && !coupon.validTiers.includes(tier)) {
-      return res.json({
-        valid: false,
-        error: `This coupon is not valid for the ${tier} tier`
-      });
-    }
+    // Mark code as used if valid
+    markCodeAsUsed(code);
 
-    // Check if coupon has already been used
-    if (USED_CODES.has(code.toUpperCase())) {
-      return res.json({
-        valid: false,
-        error: 'This coupon code has already been used'
-      });
+    // Calculate discount amount based on percentage
+    let discountAmount = 0;
+    if (validation.discount === 100) {
+      discountAmount = amount; // 100% discount
+    } else {
+      discountAmount = Math.round((amount * validation.discount) / 100);
     }
-
-    // Check if user has already used this coupon (you can implement this based on your database)
-    // For now, we'll skip this check but you can add it later
 
     return res.json({
       valid: true,
-      discount: coupon.discount,
-      discountPercentage: coupon.discountPercentage,
-      message: `${coupon.discountPercentage}% discount applied!`
+      discount: discountAmount,
+      discountPercentage: validation.discount,
+      message: validation.message
     });
 
   } catch (error: any) {
@@ -627,8 +608,7 @@ router.post('/api/submit-poem', upload.fields([
       userUid,
       razorpay_order_id,
       razorpay_signature,
-      discountAmount,
-      couponCode
+      discountAmount
     } = req.body;
 
     // Validate required fields
@@ -815,12 +795,6 @@ router.post('/api/submit-poem', upload.fields([
         console.error('Error cleaning up photo file:', error);
       }
     }
-
-      // Mark coupon code as used if one was applied
-      if (couponCode) {
-        USED_CODES.add(couponCode.toUpperCase());
-        console.log(`✅ Marked coupon code "${couponCode}" as used`);
-      }
 
     // Return success response
     res.json({
