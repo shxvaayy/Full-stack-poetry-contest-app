@@ -161,6 +161,29 @@ export class PostgreSQLStorage implements IStorage {
       return undefined;
     }
   }
+
+  async updateSubmissionWinner(id: number, isWinner: boolean, position?: number): Promise<Submission | undefined> {
+    try {
+      const [submission] = await db.update(submissions)
+        .set({
+          isWinner: isWinner,
+          winnerPosition: position || null,
+        })
+        .where(eq(submissions.id, id))
+        .returning();
+
+      if (!submission) {
+        console.log(`Submission with id ${id} not found`);
+        return undefined;
+      }
+
+      console.log(`✅ Updated winner status for submission ID ${id}`);
+      return submission;
+    } catch (error) {
+      console.error('❌ Error updating winner status:', error);
+      return undefined;
+    }
+  }
 }
 
 export const storage = new PostgreSQLStorage();

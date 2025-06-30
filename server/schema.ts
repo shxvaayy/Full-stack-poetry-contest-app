@@ -1,5 +1,5 @@
 
-import { pgTable, serial, text, timestamp, boolean, integer, varchar, json, numeric } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, boolean, integer, varchar, json, decimal } from 'drizzle-orm/pg-core';
 
 // Users table
 export const users = pgTable('users', {
@@ -11,22 +11,22 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow()
 });
 
-// Submissions table - Updated to match application code
+// Submissions table - Updated with all required columns
 export const submissions = pgTable('submissions', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id),
-  firstName: text('first_name').notNull(),
-  lastName: text('last_name'),
-  email: text('email').notNull(),
-  phone: text('phone'),
-  age: text('age'),
-  poemTitle: text('poem_title').notNull(),
+  firstName: varchar('first_name', { length: 100 }).notNull(),
+  lastName: varchar('last_name', { length: 100 }),
+  email: varchar('email', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 20 }),
+  age: varchar('age', { length: 10 }),
+  poemTitle: varchar('poem_title', { length: 255 }).notNull(),
   tier: varchar('tier', { length: 50 }).notNull(),
-  price: numeric('price', { precision: 10, scale: 2 }).default('0'),
+  price: decimal('price', { precision: 10, scale: 2 }).default('0.00'),
   poemFileUrl: text('poem_file_url'),
   photoUrl: text('photo_url'),
-  paymentId: text('payment_id'),
-  paymentMethod: text('payment_method'),
+  paymentId: varchar('payment_id', { length: 255 }),
+  paymentMethod: varchar('payment_method', { length: 50 }),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   status: varchar('status', { length: 50 }).default('pending').notNull(),
   score: integer('score'),
