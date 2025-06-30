@@ -6,12 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2, Twitter, Facebook, Instagram, Linkedin } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH, ENABLE_FREE_TIER } from "./coupon-codes";
+import { IS_FIRST_MONTH } from "./coupon-codes";
 
 const TIERS = [
   { 
@@ -518,8 +518,8 @@ export default function SubmitPage() {
     }
   };
 
-  // Check for free tier availability - controlled by ENABLE_FREE_TIER and IS_FIRST_MONTH flags
-  const canUseFreeEntry = ENABLE_FREE_TIER && IS_FIRST_MONTH;
+  // Check for free tier availability - controlled by IS_FIRST_MONTH flag
+  const canUseFreeEntry = IS_FIRST_MONTH;
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
@@ -582,9 +582,7 @@ export default function SubmitPage() {
                   {tier.price === 0 ? "Free" : `₹${tier.price}`}
                 </div>
                 {isDisabled && (
-                  <p className="text-red-500 text-sm">
-                    {!ENABLE_FREE_TIER ? "Free tier is currently disabled" : "Already used this month"}
-                  </p>
+                  <p className="text-red-500 text-sm">Already used this month</p>
                 )}
               </CardContent>
             </Card>
@@ -946,50 +944,62 @@ export default function SubmitPage() {
               <span>Tier:</span>
               <span>{selectedTier?.name}</span>
             </div>
-            {((selectedTier?.price && selectedTier.price > 0) || discountedAmount > 0) && (
+            {selectedTier?.price && selectedTier.price > 0 && (
               <div className="flex justify-between">
                 <span>Amount Paid:</span>
-                <span>₹{discountedAmount || selectedTier?.price || 0}</span>
+                <span>₹{selectedTier.price}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Follow us section */}
-        <div className="bg-white p-4 rounded-lg border mb-6">
-          <h3 className="font-semibold mb-3">Follow us</h3>
-          <div className="flex justify-center space-x-4">
+        {/* Follow Us Section */}
+        <div className="bg-gray-50 p-6 rounded-lg border mb-6">
+          <h3 className="font-semibold mb-4 text-center">Follow Us</h3>
+          <div className="flex justify-center space-x-6">
             <a 
               href="https://x.com/writoryofficial" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-blue-400 transition-colors"
+              className="text-blue-500 hover:text-blue-600 transition-colors flex flex-col items-center"
             >
-              <Twitter size={24} />
+              <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              Twitter
             </a>
             <a 
               href="https://www.facebook.com/share/16hyCrZbE2/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-blue-600 transition-colors"
+              className="text-blue-600 hover:text-blue-700 transition-colors flex flex-col items-center"
             >
-              <Facebook size={24} />
+              <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Facebook
             </a>
             <a 
               href="https://www.instagram.com/writoryofficial/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-pink-600 transition-colors"
+              className="text-pink-500 hover:text-pink-600 transition-colors flex flex-col items-center"
             >
-              <Instagram size={24} />
+              <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.295C3.852 14.81 3.365 13.659 3.365 12.362c0-1.297.487-2.448 1.292-3.323.875-.805 2.026-1.295 3.323-1.295 1.297 0 2.448.49 3.323 1.295.805.875 1.295 2.026 1.295 3.323 0 1.297-.49 2.448-1.295 3.323-.875.805-2.026 1.295-3.323 1.295zm8.537-11.27c-.358 0-.656-.298-.656-.656s.298-.656.656-.656.656.298.656.656-.298.656-.656.656z"/>
+              </svg>
+              Instagram
             </a>
             <a 
               href="https://www.linkedin.com/company/writoryofficial/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-blue-700 transition-colors"
+              className="text-blue-700 hover:text-blue-800 transition-colors flex flex-col items-center"
             >
-              <Linkedin size={24} />
+              <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              LinkedIn
             </a>
           </div>
         </div>
