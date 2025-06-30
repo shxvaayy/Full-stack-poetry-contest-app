@@ -37,24 +37,24 @@ async function createTables() {
     `);
     console.log('✅ Users table created/verified');
 
-    // Create submissions table
+    // Create submissions table with all required columns
     await client.query(`
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
-        first_name TEXT NOT NULL,
-        last_name TEXT,
-        email TEXT NOT NULL,
-        phone TEXT,
-        age TEXT,
-        poem_title TEXT NOT NULL,
-        tier TEXT NOT NULL,
-        price INTEGER DEFAULT 0,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100),
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        age VARCHAR(10),
+        poem_title VARCHAR(255) NOT NULL,
+        tier VARCHAR(50) NOT NULL,
+        price DECIMAL(10,2) DEFAULT 0.00,
         poem_file_url TEXT,
         photo_url TEXT,
-        payment_id TEXT,
-        payment_method TEXT,
-        submitted_at TIMESTAMP DEFAULT NOW(),
+        payment_id VARCHAR(255),
+        payment_method VARCHAR(50),
+        submitted_at TIMESTAMP DEFAULT NOW() NOT NULL,
         status VARCHAR(50) DEFAULT 'pending' NOT NULL,
         score INTEGER,
         type VARCHAR(50),
