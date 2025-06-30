@@ -206,6 +206,23 @@ router.post('/api/migrate/link-submissions', async (req, res) => {
   }
 });
 
+// 🔧 DATABASE RESET: Reset database for troubleshooting
+router.post('/api/debug/reset-database', async (req, res) => {
+  try {
+    console.log('🔄 Resetting database...');
+    await (storage as any).resetDatabase();
+
+    res.json({
+      success: true,
+      message: 'Database reset successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('❌ Database reset error:', error);
+    res.status(500).json({ error: 'Database reset failed', details: error.message });
+  }
+});
+
 // Test email endpoint
 router.get('/api/test-email', async (req, res) => {
   try {

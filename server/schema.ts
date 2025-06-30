@@ -13,15 +13,26 @@ export const users = pgTable('users', {
 // Submissions table
 export const submissions = pgTable('submissions', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id).notNull(),
-  title: varchar('title', { length: 255 }).notNull(),
+  userId: integer('user_id').references(() => users.id),
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name'),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  age: text('age'),
+  poemTitle: text('poem_title').notNull(),
   tier: varchar('tier', { length: 50 }).notNull(),
-  pdfUrl: text('pdf_url').notNull(),
+  price: integer('price').default(0),
+  poemFileUrl: text('poem_file_url'),
+  photoUrl: text('photo_url'),
+  paymentId: text('payment_id'),
+  paymentMethod: text('payment_method'),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   status: varchar('status', { length: 50 }).default('pending').notNull(),
   score: integer('score'),
   type: varchar('type', { length: 50 }),
-  scoreBreakdown: json('score_breakdown')
+  scoreBreakdown: json('score_breakdown'),
+  isWinner: boolean('is_winner').default(false),
+  winnerPosition: integer('winner_position')
 });
 
 // Contacts table
