@@ -46,4 +46,4 @@ async function addStatusColumn() {
   }
 }
 
-addStatusColumn();
+addStatusColumn().catch(console.error);
