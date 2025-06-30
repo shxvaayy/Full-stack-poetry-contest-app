@@ -935,10 +935,10 @@ router.get('/api/submissions', async (req, res) => {
 router.get('/api/submission-count', async (req, res) => {
   try {
     const allSubmissions = await storage.getAllSubmissions();
-    console.log(`Returning ${allSubmissions.length} total submissions`);
+    console.log(`📊 Returning ${allSubmissions.length} total submissions`);
     res.json({ count: allSubmissions.length });
   } catch (error: any) {
-    console.error('❌ Error getting submission count:', error);
+    console.error('Error getting submission count:', error);
     res.status(500).json({ error: 'Failed to get submission count', details: error.message });
   }
 });
