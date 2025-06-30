@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2 } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
@@ -53,6 +52,7 @@ export default function UserProfile() {
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
   useEffect(() => {
     if (user?.uid) {
@@ -298,34 +298,67 @@ export default function UserProfile() {
                   </CardHeader>
                   <CardContent>
                     {submissions.length > 0 ? (
+                      
                       <div className="space-y-4">
                         {submissions.map((submission) => (
-                          <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-lg">{submission.poemTitle}</h3>
-                                <p className="text-gray-600 text-sm mb-2">
-                                  Submitted on {formatDate(submission.submittedAt)}
-                                </p>
-                                <div className="flex items-center space-x-2">
-                                  <Badge className={getTierColor(submission.tier)}>
-                                    {submission.tier}
+                          <Card key={submission.id}>
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <h3 className="font-semibold text-lg">{submission.poemTitle}</h3>
+                                  <p className="text-sm text-gray-600">
+                                    Submitted: {new Date(submission.submittedAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Badge variant={submission.tier === 'free' ? 'secondary' : 'default'}>
+                                  {submission.tier}
+                                </Badge>
+                              </div>
+
+                              <div className="flex justify-between items-center mb-3">
+                                <span className="text-sm text-gray-600">
+                                  Amount: ₹{submission.amount}
+                                </span>
+                                {submission.isWinner && (
+                                  <Badge variant="destructive" className="bg-yellow-500">
+                                    🏆 Winner #{submission.winnerPosition}
                                   </Badge>
-                                  {submission.isWinner && (
-                                    <Badge className="bg-yellow-100 text-yellow-800">
-                                      <Award className="mr-1" size={12} />
-                                      Winner #{submission.winnerPosition}
-                                    </Badge>
-                                  )}
-                                </div>
+                                )}
                               </div>
-                              <div className="text-right">
-                                <div className="text-lg font-bold text-green-600">
-                                  ₹{submission.amount}
+
+                              {/* Add evaluation status and score display */}
+                              <div className="border-t pt-3 mt-3">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium">Status:</span>
+                                  <Badge variant={submission.status === 'Evaluated' ? 'default' : 'secondary'}>
+                                    {submission.status || 'Pending'}
+                                  </Badge>
                                 </div>
+
+                                {submission.status === 'Evaluated' && submission.score > 0 && (
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-medium">Overall Score:</span>
+                                      <span className="text-lg font-bold text-green-600">
+                                        {submission.score}/100
+                                      </span>
+                                    </div>
+
+                                    {submission.scoreBreakdown && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSelectedSubmission(submission)}
+                                        className="w-full"
+                                      >
+                                        View Score Breakdown
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          </div>
+                            </CardContent>
+                          </Card>
                         ))}
                       </div>
                     ) : (
@@ -462,6 +495,55 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
+
+      {/* Score Breakdown Dialog */}
+      <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedSubmission?.poemTitle} - Score Breakdown</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">
+                {selectedSubmission?.score || 0}/100
+              </div>
+              <div className="text-gray-600">Overall Score</div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span>Originality:</span>
+                <span className="font-bold">
+                  {selectedSubmission?.scoreBreakdown?.originality || 0}/25
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Emotion:</span>
+                <span className="font-bold">
+                  {selectedSubmission?.scoreBreakdown?.emotion || 0}/25
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Structure:</span>
+                <span className="font-bold">
+                  {selectedSubmission?.scoreBreakdown?.structure || 0}/20
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Language:</span>
+                <span className="font-bold">
+                  {selectedSubmission?.scoreBreakdown?.language || 0}/20
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Theme:</span>
+                <span className="font-bold">
+                  {selectedSubmission?.scoreBreakdown?.theme || 0}/10
+                </span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
