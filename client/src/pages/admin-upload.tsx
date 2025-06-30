@@ -207,10 +207,10 @@ export default function AdminUpload() {
                 The CSV file should contain the following columns:
               </p>
               <code className="text-xs bg-blue-100 p-2 rounded block">
-                email,title,score,type,originality,emotion,structure,language,theme,status
+                email,poemtitle,score,type,originality,emotion,structure,language,theme,status
               </code>
               <p className="text-blue-700 text-xs mt-2">
-                Example: shivay@gmail.com,My Winter Poem,87,Human,23,24,17,18,5,Evaluated
+                Example: writorycontest@gmail.com,My Winter Poem,87,Human,23,24,17,18,5,Evaluated
               </p>
             </div>
 
