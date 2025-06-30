@@ -241,9 +241,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-    
+
     const validation = validateCouponCode(code, tier);
-    
+
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -1010,15 +1010,23 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     console.log('📄 CSV content loaded, length:', csvContent.length);
 
     // Parse CSV (simple parsing - in production you might want to use a library like csv-parser)
-    const lines = csvContent.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    
-    console.log('📊 CSV headers:', headers);
+    const lines = csvContent.trim().split('\n').filter(line => line.trim().length > 0);
 
-    // Validate headers
-    const expectedHeaders = ['email', 'title', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
-    const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
-    
+    if (lines.length < 2) {
+      return res.status(400).json({
+        error: 'Invalid CSV format',
+        details: 'CSV must contain at least a header row and one data row'
+      });
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+    console.log('📊 CSV headers (normalized):', headers);
+
+    // Validate headers (flexible checking - allow extra headers, case insensitive)
+    const requiredHeaders = ['email', 'title', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
+    const missingHeaders = requiredHeaders.filter(h => !headers.includes(h.toLowerCase()));
+
     if (missingHeaders.length > 0) {
       return res.status(400).json({
         error: 'Invalid CSV format',
@@ -1033,7 +1041,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = lines[i].split(',').map(v => v.trim());
-        
+
         if (values.length !== headers.length) {
           errors.push(`Row ${i + 1}: Invalid number of columns`);
           continue;
@@ -1107,7 +1115,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
 
   } catch (error: any) {
     console.error('❌ CSV upload error:', error);
-    
+
     // Clean up file if it exists
     if (req.file) {
       try {
