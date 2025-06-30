@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
+import { IS_FIRST_MONTH } from "./coupon-codes";
 
 const TIERS = [
   { 
@@ -142,7 +143,7 @@ export default function SubmitPage() {
   const verifyPayment = async (sessionId: string) => {
     try {
       console.log('🔍 Verifying payment session:', sessionId);
-
+      
       const response = await fetch('/api/verify-checkout-session', {
         method: 'POST',
         headers: {
@@ -155,11 +156,11 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Payment verified successfully:', data);
-
+        
         setSessionId(sessionId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
+        
         toast({
           title: "Payment Successful!",
           description: "Payment completed successfully. You can now submit your poem.",
@@ -187,7 +188,7 @@ export default function SubmitPage() {
   const verifyPayPalPayment = async (orderId: string) => {
     try {
       console.log('🔍 Verifying PayPal order:', orderId);
-
+      
       const response = await fetch('/api/verify-paypal-payment', {
         method: 'POST',
         headers: {
@@ -200,7 +201,7 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ PayPal payment verified successfully:', data);
-
+        
         setPaymentData({
           paypal_order_id: orderId,
           payment_method: 'paypal',
@@ -210,7 +211,7 @@ export default function SubmitPage() {
         setSessionId(orderId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
+        
         toast({
           title: "PayPal Payment Successful!",
           description: "Payment completed successfully. Submitting your poem now...",
@@ -318,18 +319,18 @@ export default function SubmitPage() {
 
   const handlePaymentSuccess = (data: any) => {
     console.log('✅ Payment successful, data received:', data);
-
+    
     // Ensure payment data is in the correct format
     const processedPaymentData = {
       ...data,
       payment_method: data.payment_method || 'razorpay',
       amount: selectedTier?.price || 0
     };
-
+    
     console.log('💾 Setting payment data:', processedPaymentData);
     setPaymentData(processedPaymentData);
     setPaymentCompleted(true);
-
+    
     toast({
       title: "Payment Successful!",
       description: "Processing your submission...",
@@ -397,7 +398,7 @@ export default function SubmitPage() {
 
       // Prepare form data for submission
       const submitFormData = new FormData();
-
+      
       // Add text fields
       submitFormData.append('firstName', formData.firstName);
       submitFormData.append('lastName', formData.lastName || '');
@@ -409,7 +410,7 @@ export default function SubmitPage() {
       submitFormData.append('amount', discountedAmount.toString());
       submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
       submitFormData.append('userUid', user?.uid || '');
-
+      
       // Add coupon information if applied
       if (couponApplied) {
         submitFormData.append('couponCode', couponCode.trim());
@@ -419,7 +420,7 @@ export default function SubmitPage() {
       // Add payment data if available
       if (actualPaymentData) {
         console.log('Adding payment information to submission:', actualPaymentData);
-
+        
         if (actualPaymentData.razorpay_payment_id) {
           submitFormData.append('paymentId', actualPaymentData.razorpay_payment_id);
           submitFormData.append('paymentMethod', 'razorpay');
@@ -499,7 +500,7 @@ export default function SubmitPage() {
       console.log('✅ Submission successful:', result);
 
       setCurrentStep("completed");
-
+      
       toast({
         title: "Submission Successful!",
         description: "Your poem has been submitted successfully. Good luck!",
@@ -517,8 +518,8 @@ export default function SubmitPage() {
     }
   };
 
-  // Check for free tier availability
-  const canUseFreeEntry = !submissionStatus?.freeSubmissionUsed;
+  // Check for free tier availability - controlled by IS_FIRST_MONTH flag
+  const canUseFreeEntry = IS_FIRST_MONTH;
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
@@ -562,7 +563,7 @@ export default function SubmitPage() {
         {TIERS.map((tier) => {
           const Icon = tier.icon;
           const isDisabled = tier.id === "free" && !canUseFreeEntry;
-
+          
           return (
             <Card
               key={tier.id}
@@ -604,11 +605,11 @@ export default function SubmitPage() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-2xl font-semibold mb-6">Poem Submission Details</h2>
-
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Personal Information</h3>
-
+                  
                   <div>
                     <Label htmlFor="firstName">First Name *</Label>
                     <Input
@@ -666,7 +667,7 @@ export default function SubmitPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Poem Details</h3>
-
+                  
                   <div>
                     <Label htmlFor="poemTitle">Poem Title *</Label>
                     <Input
@@ -729,7 +730,7 @@ export default function SubmitPage() {
                         <Gift className="w-4 h-4 mr-2 text-blue-600" />
                         Have a Coupon Code?
                       </h4>
-
+                      
                       {!couponApplied ? (
                         <div className="flex gap-2">
                           <Input
@@ -778,7 +779,7 @@ export default function SubmitPage() {
                           )}
                         </div>
                       )}
-
+                      
                       {couponError && (
                         <p className="text-red-600 text-sm mt-2">{couponError}</p>
                       )}
@@ -849,7 +850,7 @@ export default function SubmitPage() {
                     <h4 className="font-semibold mt-2">{selectedTier.name}</h4>
                     <p className="text-sm opacity-90">{selectedTier.description}</p>
                   </div>
-
+                  
                   <div className="text-center">
                     {couponApplied && selectedTier.price > 0 ? (
                       <div className="space-y-1">
@@ -881,7 +882,7 @@ export default function SubmitPage() {
                       Payment Required
                     </div>
                   )}
-
+                  
                   {discountedAmount === 0 && selectedTier.price > 0 && (
                     <div className="text-center text-green-600 text-sm">
                       <CheckCircle className="w-4 h-4 inline mr-1" />
@@ -923,7 +924,7 @@ export default function SubmitPage() {
         <p className="text-gray-600 mb-6">
           Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
         </p>
-
+        
         <div className="bg-white p-4 rounded-lg border mb-6">
           <h3 className="font-semibold mb-2">Submission Details</h3>
           <div className="text-left space-y-2 text-sm">
@@ -943,68 +944,12 @@ export default function SubmitPage() {
               <span>Tier:</span>
               <span>{selectedTier?.name}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Amount Paid:</span>
-              <span>
-                {discountedAmount === 0 ? (
-                  <span className="text-green-600 font-semibold">Free</span>
-                ) : (
-                  `₹${discountedAmount}`
-                )}
-              </span>
-            </div>
-            {couponApplied && selectedTier?.price && selectedTier.price > discountedAmount && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Original Price:</span>
-                <span className="line-through">₹{selectedTier.price}</span>
+            {selectedTier?.price && selectedTier.price > 0 && (
+              <div className="flex justify-between">
+                <span>Amount Paid:</span>
+                <span>₹{selectedTier.price}</span>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border mb-6">
-          <h3 className="font-semibold mb-4">Follow us on Social Media</h3>
-          <div className="flex justify-center space-x-6">
-            <a 
-              href="https://twitter.com/writory" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:text-blue-600 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://facebook.com/writory" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://instagram.com/writory" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-pink-500 hover:text-pink-600 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297L3.323 13.89l1.803-1.803 1.497 1.497c.49.49 1.095.735 1.826.735 1.297 0 2.353-1.056 2.353-2.353 0-.731-.245-1.336-.735-1.826L8.57 8.643l1.803-1.803 1.497 1.497c1.056 1.056 1.551 2.448 1.551 3.996 0 3.127-2.529 5.655-5.655 5.655h-.317zm7.868-7.378c-.98 0-1.826-.846-1.826-1.826s.846-1.826 1.826-1.826 1.826.846 1.826 1.826-.846 1.826-1.826 1.826z"/>
-              </svg>
-            </a>
-            <a 
-              href="https://linkedin.com/company/writory" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-700 hover:text-blue-800 transition-colors"
-            >
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
-            </a>
           </div>
         </div>
 
@@ -1030,7 +975,7 @@ export default function SubmitPage() {
           >
             Submit Another Poem
           </Button>
-
+          
           <Button
             variant="outline"
             onClick={() => window.location.href = "/"}
@@ -1047,7 +992,7 @@ export default function SubmitPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         {renderStepIndicator()}
-
+        
         {currentStep === "selection" && renderTierSelection()}
         {currentStep === "form" && renderForm()}
         {currentStep === "payment" && renderPayment()}
