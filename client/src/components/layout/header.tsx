@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, User } from "lucide-react";
+import { Menu, X, User, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
@@ -139,6 +139,18 @@ export default function Header() {
                     </span>
                   </button>
                 </Link>
+                {user?.email === 'shivaaymehra2@gmail.com' && (
+                  <Link to="/admin/upload"  onClick={() => setMobileMenuOpen(false)}>
+                    <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors">
+                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                        <Upload className="text-green-600" size={14} />
+                      </div>
+                      <span className="text-white text-sm font-medium">
+                        Admin Upload
+                      </span>
+                    </button>
+                  </Link>
+                )}
                 <Button
                   onClick={() => {
                     handleLogout();
