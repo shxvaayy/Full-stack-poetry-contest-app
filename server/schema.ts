@@ -1,4 +1,5 @@
-import { pgTable, serial, text, timestamp, boolean, integer, varchar, json } from 'drizzle-orm/pg-core';
+
+import { pgTable, serial, text, timestamp, boolean, integer, varchar, json, numeric } from 'drizzle-orm/pg-core';
 
 // Users table
 export const users = pgTable('users', {
@@ -10,7 +11,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow()
 });
 
-// Submissions table
+// Submissions table - Updated to match application code
 export const submissions = pgTable('submissions', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id),
@@ -21,7 +22,7 @@ export const submissions = pgTable('submissions', {
   age: text('age'),
   poemTitle: text('poem_title').notNull(),
   tier: varchar('tier', { length: 50 }).notNull(),
-  price: integer('price').default(0),
+  price: numeric('price', { precision: 10, scale: 2 }).default('0'),
   poemFileUrl: text('poem_file_url'),
   photoUrl: text('photo_url'),
   paymentId: text('payment_id'),

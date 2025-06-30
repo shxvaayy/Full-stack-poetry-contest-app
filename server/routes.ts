@@ -206,23 +206,6 @@ router.post('/api/migrate/link-submissions', async (req, res) => {
   }
 });
 
-// 🔧 DATABASE RESET: Reset database for troubleshooting
-router.post('/api/debug/reset-database', async (req, res) => {
-  try {
-    console.log('🔄 Resetting database...');
-    await (storage as any).resetDatabase();
-
-    res.json({
-      success: true,
-      message: 'Database reset successfully',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error('❌ Database reset error:', error);
-    res.status(500).json({ error: 'Database reset failed', details: error.message });
-  }
-});
-
 // Test email endpoint
 router.get('/api/test-email', async (req, res) => {
   try {
@@ -1057,7 +1040,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
     console.log('📊 CSV headers:', headers);
 
     // Validate headers - more flexible matching
-    const expectedHeaders = ['email', 'title', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
+    const expectedHeaders = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
     const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
     
     if (missingHeaders.length > 0) {
@@ -1108,11 +1091,11 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         // Find submission by title and user
         const userSubmissions = await storage.getSubmissionsByUser(user.id);
         const submission = userSubmissions.find((s: any) => 
-          s.poemTitle.toLowerCase() === rowData.title.toLowerCase()
+          s.poemTitle.toLowerCase() === rowData.poemtitle.toLowerCase()
         );
 
         if (!submission) {
-          errors.push(`Row ${i + 1}: Poem "${rowData.title}" not found for user ${rowData.email}`);
+          errors.push(`Row ${i + 1}: Poem "${rowData.poemtitle}" not found for user ${rowData.email}`);
           continue;
         }
 
