@@ -228,6 +228,9 @@ router.get('/api/test-email', async (req, res) => {
   }
 });
 
+// Keep track of used coupon codes (in-memory for simplicity)
+const USED_CODES = new Set<string>();
+
 router.post('/api/validate-coupon', async (req, res) => {
   try {
     const { code, tier, amount, userUid } = req.body;
@@ -264,6 +267,14 @@ router.post('/api/validate-coupon', async (req, res) => {
       return res.json({
         valid: false,
         error: `This coupon is not valid for the ${tier} tier`
+      });
+    }
+
+    // Check if coupon has already been used
+    if (USED_CODES.has(code.toUpperCase())) {
+      return res.json({
+        valid: false,
+        error: 'This coupon code has already been used'
       });
     }
 
@@ -616,7 +627,8 @@ router.post('/api/submit-poem', upload.fields([
       userUid,
       razorpay_order_id,
       razorpay_signature,
-      discountAmount
+      discountAmount,
+      couponCode
     } = req.body;
 
     // Validate required fields
@@ -803,6 +815,12 @@ router.post('/api/submit-poem', upload.fields([
         console.error('Error cleaning up photo file:', error);
       }
     }
+
+      // Mark coupon code as used if one was applied
+      if (couponCode) {
+        USED_CODES.add(couponCode.toUpperCase());
+        console.log(`✅ Marked coupon code "${couponCode}" as used`);
+      }
 
     // Return success response
     res.json({
