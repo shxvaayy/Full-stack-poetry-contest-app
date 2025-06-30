@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2, Tag } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -65,53 +65,6 @@ const TIERS = [
 
 type SubmissionStep = "selection" | "form" | "payment" | "completed";
 
-// Mock coupon validation function
-const validateCouponCode = (couponCode: string, selectedTier: string) => {
-  const currentTier = TIERS.find(t => t.id === selectedTier);
-
-  if (!currentTier) {
-    return { valid: false, message: "Please select a valid tier first." };
-  }
-  if (couponCode === "FREEPASS100" && currentTier.id === "single") {
-    return { valid: true, discount: 100, message: "Coupon applied! 100% off on ₹50 tier." };
-  }
-
-  if (couponCode === "WRITORYWINNER" && currentTier.id === "single") {
-    return { valid: true, discount: 100, message: "Coupon applied! 100% off on ₹50 tier." };
-  }
-
-  if (couponCode === "WRITORYFREE1" && currentTier.id === "single") {
-    return { valid: true, discount: 100, message: "Coupon applied! 100% off on ₹50 tier." };
-  }
-  if (couponCode === "WRITORYFREE2" && currentTier.id === "single") {
-    return { valid: true, discount: 100, message: "Coupon applied! 100% off on ₹50 tier." };
-  }
-  if (couponCode === "WRITORYNEW" && (currentTier.id === "single" || currentTier.id === "double")) {
-    return { valid: true, discount: 50, message: "Coupon applied! 50% off on ₹50 and ₹100 tiers." };
-  }
-  if (couponCode === "WRITORY2025") {
-    return { valid: true, discount: 20, message: "Coupon applied! 20% off on all paid tiers." };
-  }
-  if (couponCode === "WRITORYWELCOM") {
-    return { valid: true, discount: 30, message: "Coupon applied! 30% off on all paid tiers." };
-  }
-  if (couponCode === "TENOFF" ) {
-    return { valid: true, discount: 10, message: "Coupon applied! 10% off on all tiers." };
-  }
-    if (couponCode === "GET50FREE" && currentTier.id === "single") {
-    return { valid: true, discount: 100, message: "Coupon applied! Unlocked free tier!", unlocksFree: true };
-  }
-  return { valid: false, message: "This coupon is invalid." };
-};
-
-const markCouponAsUsed = (couponCode: string) => {
-  console.log(`Coupon ${couponCode} marked as used.`);
-  // In a real application, you would likely want to store this information
-  // in a database or other persistent storage.
-};
-
-const IS_FIRST_MONTH = true;
-
 export default function SubmitPage() {
   const { user, dbUser } = useAuth();
   const { toast } = useToast();
@@ -126,8 +79,11 @@ export default function SubmitPage() {
   const [qrPaymentData, setQrPaymentData] = useState<any>(null);
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; unlocksFree: boolean } | null>(null);
-  const [discountedPrice, setDiscountedPrice] = useState<number | null>(null);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [discountedAmount, setDiscountedAmount] = useState(0);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -186,7 +142,7 @@ export default function SubmitPage() {
   const verifyPayment = async (sessionId: string) => {
     try {
       console.log('🔍 Verifying payment session:', sessionId);
-
+      
       const response = await fetch('/api/verify-checkout-session', {
         method: 'POST',
         headers: {
@@ -199,11 +155,11 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Payment verified successfully:', data);
-
+        
         setSessionId(sessionId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
+        
         toast({
           title: "Payment Successful!",
           description: "Payment completed successfully. You can now submit your poem.",
@@ -231,7 +187,7 @@ export default function SubmitPage() {
   const verifyPayPalPayment = async (orderId: string) => {
     try {
       console.log('🔍 Verifying PayPal order:', orderId);
-
+      
       const response = await fetch('/api/verify-paypal-payment', {
         method: 'POST',
         headers: {
@@ -244,7 +200,7 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ PayPal payment verified successfully:', data);
-
+        
         setPaymentData({
           paypal_order_id: orderId,
           payment_method: 'paypal',
@@ -254,7 +210,7 @@ export default function SubmitPage() {
         setSessionId(orderId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
+        
         toast({
           title: "PayPal Payment Successful!",
           description: "Payment completed successfully. Submitting your poem now...",
@@ -287,7 +243,69 @@ export default function SubmitPage() {
 
   const handleTierSelection = (tier: typeof TIERS[0]) => {
     setSelectedTier(tier);
+    setDiscountedAmount(tier.price);
+    setCouponApplied(false);
+    setCouponDiscount(0);
+    setCouponCode("");
+    setCouponError("");
     setCurrentStep("form");
+  };
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    if (!selectedTier) {
+      setCouponError("Please select a tier first");
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    setCouponError("");
+
+    try {
+      const response = await fetch('/api/validate-coupon', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          tier: selectedTier.id,
+          amount: selectedTier.price,
+          userUid: user?.uid
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setCouponApplied(true);
+        setCouponDiscount(data.discount);
+        const newAmount = Math.max(0, selectedTier.price - data.discount);
+        setDiscountedAmount(newAmount);
+        toast({
+          title: "Coupon Applied!",
+          description: `${data.discountPercentage}% discount applied. ${newAmount === 0 ? "You can now submit for free!" : `New amount: ₹${newAmount}`}`,
+        });
+      } else {
+        setCouponError(data.error || "Invalid coupon code");
+      }
+    } catch (error: any) {
+      setCouponError("Failed to validate coupon. Please try again.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponApplied(false);
+    setCouponDiscount(0);
+    setCouponCode("");
+    setCouponError("");
+    setDiscountedAmount(selectedTier?.price || 0);
   };
 
   const handleFormData = (field: string, value: any) => {
@@ -300,18 +318,18 @@ export default function SubmitPage() {
 
   const handlePaymentSuccess = (data: any) => {
     console.log('✅ Payment successful, data received:', data);
-
+    
     // Ensure payment data is in the correct format
     const processedPaymentData = {
       ...data,
       payment_method: data.payment_method || 'razorpay',
       amount: selectedTier?.price || 0
     };
-
+    
     console.log('💾 Setting payment data:', processedPaymentData);
     setPaymentData(processedPaymentData);
     setPaymentCompleted(true);
-
+    
     toast({
       title: "Payment Successful!",
       description: "Processing your submission...",
@@ -352,44 +370,6 @@ export default function SubmitPage() {
     return await handleFormSubmitInternal(paymentData);
   };
 
-    const handleCouponValidation = () => {
-    if (!couponCode.trim()) {
-      toast({ title: "Please enter a coupon code", variant: "destructive" });
-      return;
-    }
-
-    if (!selectedTier) {
-      toast({ title: "Please select a tier first", variant: "destructive" });
-      return;
-    }
-
-    const validation = validateCouponCode(couponCode.trim(), selectedTier.id);
-
-    if (validation.valid) {
-      if (validation.unlocksFree) {
-        setAppliedCoupon({ code: couponCode.trim(), discount: 0, unlocksFree: true });
-        toast({ title: "Success!", description: "Free tier unlocked!" });
-      } else if (validation.discount) {
-        const currentTier = TIERS.find(t => t.id === selectedTier.id);
-        if (currentTier && currentTier.price > 0) {
-          const newPrice = Math.round(currentTier.price * (1 - validation.discount / 100));
-          setDiscountedPrice(newPrice);
-          setAppliedCoupon({ code: couponCode.trim(), discount: validation.discount, unlocksFree: false });
-          toast({ title: "Success!", description: validation.message });
-        }
-      }
-    } else {
-      toast({ title: "Invalid Coupon", description: validation.message, variant: "destructive" });
-    }
-  };
-
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setDiscountedPrice(null);
-    setCouponCode("");
-  };
-
-
   const handleFormSubmitInternal = async (actualPaymentData: any) => {
     try {
       setIsSubmitting(true);
@@ -408,19 +388,8 @@ export default function SubmitPage() {
         throw new Error('Please accept the terms and conditions');
       }
 
-       const finalPrice = getFinalPrice();
-       if (finalPrice === 0) {
-         // Free submission or 100% discount - mark coupon as used and skip payment
-         if (appliedCoupon) {
-           markCouponAsUsed(appliedCoupon.code);
-         }
-         setCurrentStep("completed");
-         return;
-       }
-
-
-      // For paid tiers, check if payment is completed
-      if (selectedTier?.price && selectedTier.price > 0 && !paymentCompleted && !actualPaymentData) {
+      // For paid tiers, check if payment is completed (unless discounted to 0)
+      if (selectedTier?.price && selectedTier.price > 0 && discountedAmount > 0 && !paymentCompleted && !actualPaymentData) {
         console.log('Payment required, redirecting to payment step');
         setCurrentStep("payment");
         return;
@@ -428,7 +397,7 @@ export default function SubmitPage() {
 
       // Prepare form data for submission
       const submitFormData = new FormData();
-
+      
       // Add text fields
       submitFormData.append('firstName', formData.firstName);
       submitFormData.append('lastName', formData.lastName || '');
@@ -437,13 +406,20 @@ export default function SubmitPage() {
       submitFormData.append('age', formData.age || '');
       submitFormData.append('poemTitle', formData.poemTitle);
       submitFormData.append('tier', selectedTier?.id || 'free');
-      submitFormData.append('amount', selectedTier?.price?.toString() || '0');
+      submitFormData.append('amount', discountedAmount.toString());
+      submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
       submitFormData.append('userUid', user?.uid || '');
+      
+      // Add coupon information if applied
+      if (couponApplied) {
+        submitFormData.append('couponCode', couponCode.trim());
+        submitFormData.append('couponDiscount', couponDiscount.toString());
+      }
 
       // Add payment data if available
       if (actualPaymentData) {
         console.log('Adding payment information to submission:', actualPaymentData);
-
+        
         if (actualPaymentData.razorpay_payment_id) {
           submitFormData.append('paymentId', actualPaymentData.razorpay_payment_id);
           submitFormData.append('paymentMethod', 'razorpay');
@@ -470,11 +446,11 @@ export default function SubmitPage() {
           submitFormData.append('paymentId', 'free_entry');
           console.log('✅ Added free entry data');
         }
-      } else if (selectedTier?.id === 'free') {
-        submitFormData.append('paymentMethod', 'free');
-        submitFormData.append('paymentId', 'free_entry');
-        console.log('✅ Free tier submission');
-      } else if (selectedTier?.price && selectedTier.price > 0) {
+      } else if (selectedTier?.id === 'free' || discountedAmount === 0) {
+        submitFormData.append('paymentMethod', discountedAmount === 0 ? 'coupon_free' : 'free');
+        submitFormData.append('paymentId', discountedAmount === 0 ? 'coupon_free_entry' : 'free_entry');
+        console.log('✅ Free tier submission or coupon made it free');
+      } else if (selectedTier?.price && selectedTier.price > 0 && discountedAmount > 0) {
         // This should not happen - payment is required for paid tiers
         console.error('❌ Missing payment data for paid tier');
         throw new Error('Payment information is missing for paid tier');
@@ -523,7 +499,7 @@ export default function SubmitPage() {
       console.log('✅ Submission successful:', result);
 
       setCurrentStep("completed");
-
+      
       toast({
         title: "Submission Successful!",
         description: "Your poem has been submitted successfully. Good luck!",
@@ -542,9 +518,7 @@ export default function SubmitPage() {
   };
 
   // Check for free tier availability
-  const canUseFreeEntry = IS_FIRST_MONTH || 
-    submissionStatus?.freeSubmissionUsed === false || 
-    (appliedCoupon?.unlocksFree === true);
+  const canUseFreeEntry = !submissionStatus?.freeSubmissionUsed;
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
@@ -588,7 +562,7 @@ export default function SubmitPage() {
         {TIERS.map((tier) => {
           const Icon = tier.icon;
           const isDisabled = tier.id === "free" && !canUseFreeEntry;
-
+          
           return (
             <Card
               key={tier.id}
@@ -623,12 +597,6 @@ export default function SubmitPage() {
     </div>
   );
 
-  const getFinalPrice = () => {
-    const tier = TIERS.find(t => t.id === selectedTier?.id);
-    const basePrice = tier?.price || 0;
-    return discountedPrice !== null ? discountedPrice : basePrice;
-  };
-
   const renderForm = () => (
     <div className="max-w-4xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -636,11 +604,11 @@ export default function SubmitPage() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-2xl font-semibold mb-6">Poem Submission Details</h2>
-
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Personal Information</h3>
-
+                  
                   <div>
                     <Label htmlFor="firstName">First Name *</Label>
                     <Input
@@ -698,7 +666,7 @@ export default function SubmitPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Poem Details</h3>
-
+                  
                   <div>
                     <Label htmlFor="poemTitle">Poem Title *</Label>
                     <Input
@@ -754,6 +722,69 @@ export default function SubmitPage() {
                     </div>
                   </div>
 
+                  {/* Coupon Code Section - Only show for paid tiers */}
+                  {selectedTier && selectedTier.price > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-medium mb-3 flex items-center">
+                        <Gift className="w-4 h-4 mr-2 text-blue-600" />
+                        Have a Coupon Code?
+                      </h4>
+                      
+                      {!couponApplied ? (
+                        <div className="flex gap-2">
+                          <Input
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            placeholder="Enter coupon code"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            onClick={applyCoupon}
+                            disabled={isApplyingCoupon || !couponCode.trim()}
+                            variant="outline"
+                          >
+                            {isApplyingCoupon ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Apply"
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-2 bg-green-100 rounded border border-green-300">
+                            <span className="text-green-700 font-medium">
+                              ✅ Coupon "{couponCode}" applied successfully!
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={removeCoupon}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                          {discountedAmount === 0 ? (
+                            <p className="text-green-600 text-sm font-medium">
+                              🎉 You can now submit for free!
+                            </p>
+                          ) : (
+                            <p className="text-blue-600 text-sm">
+                              New amount: ₹{discountedAmount} (was ₹{selectedTier.price})
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      
+                      {couponError && (
+                        <p className="text-red-600 text-sm mt-2">{couponError}</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2">Submission Guidelines</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
@@ -764,61 +795,6 @@ export default function SubmitPage() {
                     </ul>
                   </div>
                 </div>
-              </div>
-              {/* Coupon Code Section */}
-              <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <Tag className="w-4 h-4" />
-                  Have a Coupon Code?
-                </Label>
-
-                {appliedCoupon ? (
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="text-green-800 font-medium">{appliedCoupon.code}</span>
-                      {appliedCoupon.unlocksFree && (
-                        <span className="text-green-600 text-sm">(Free tier unlocked!)</span>
-                      )}
-                      {appliedCoupon.discount > 0 && (
-                        <span className="text-green-600 text-sm">({appliedCoupon.discount}% off)</span>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={removeCoupon}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter coupon code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCouponValidation}
-                      disabled={!couponCode.trim()}
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                )}
-
-                {/* Show discounted price */}
-                {discountedPrice !== null && (
-                  <div className="text-sm text-green-600 font-medium">
-                    Original: ₹{TIERS.find(t => t.id === selectedTier?.id)?.price} →
-                    Discounted: ₹{discountedPrice}
-                  </div>
-                )}
               </div>
 
               <div className="mt-6 flex items-center space-x-2">
@@ -865,19 +841,31 @@ export default function SubmitPage() {
               <h3 className="text-lg font-semibold mb-4">Selected Tier</h3>
               {selectedTier && (
                 <div className="space-y-3">
-                  <div className={`p-4 rounded-lg ${TIERS.find(t => t.id === selectedTier.id)?.bgClass} text-white`}>
+                  <div className={`p-4 rounded-lg ${selectedTier.bgClass} text-white`}>
                     <div className="flex items-center justify-between">
-                      <Gift className="w-6 h-6" />
+                      <selectedTier.icon className="w-6 h-6" />
                       {paymentCompleted && <CheckCircle className="w-6 h-6" />}
                     </div>
-                    <h4 className="font-semibold mt-2">{TIERS.find(t => t.id === selectedTier.id)?.name}</h4>
-                    <p className="text-sm opacity-90">{TIERS.find(t => t.id === selectedTier.id)?.description}</p>
+                    <h4 className="font-semibold mt-2">{selectedTier.name}</h4>
+                    <p className="text-sm opacity-90">{selectedTier.description}</p>
                   </div>
-
+                  
                   <div className="text-center">
-                    <span className="text-2xl font-bold">
-                      {getFinalPrice() === 0 ? "Free" : `₹${getFinalPrice()}`}
-                    </span>
+                    {couponApplied && selectedTier.price > 0 ? (
+                      <div className="space-y-1">
+                        <span className="text-lg text-gray-500 line-through">
+                          ₹{selectedTier.price}
+                        </span>
+                        <span className="text-2xl font-bold text-green-600">
+                          {discountedAmount === 0 ? "Free" : `₹${discountedAmount}`}
+                        </span>
+                        <p className="text-xs text-green-600">After coupon discount</p>
+                      </div>
+                    ) : (
+                      <span className="text-2xl font-bold">
+                        {selectedTier.price === 0 ? "Free" : `₹${selectedTier.price}`}
+                      </span>
+                    )}
                   </div>
 
                   {paymentCompleted && (
@@ -887,10 +875,17 @@ export default function SubmitPage() {
                     </div>
                   )}
 
-                  {getFinalPrice() > 0 && !paymentCompleted && (
+                  {selectedTier.price > 0 && discountedAmount > 0 && !paymentCompleted && (
                     <div className="text-center text-yellow-600 text-sm">
                       <AlertTriangle className="w-4 h-4 inline mr-1" />
                       Payment Required
+                    </div>
+                  )}
+                  
+                  {discountedAmount === 0 && selectedTier.price > 0 && (
+                    <div className="text-center text-green-600 text-sm">
+                      <CheckCircle className="w-4 h-4 inline mr-1" />
+                      Free with Coupon
                     </div>
                   )}
                 </div>
@@ -913,7 +908,7 @@ export default function SubmitPage() {
 
       <PaymentForm
         selectedTier={selectedTier?.id || ""}
-        amount={getFinalPrice() || 0}
+        amount={discountedAmount}
         onPaymentSuccess={handlePaymentSuccess}
         onPaymentError={handlePaymentError}
       />
@@ -928,7 +923,7 @@ export default function SubmitPage() {
         <p className="text-gray-600 mb-6">
           Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
         </p>
-
+        
         <div className="bg-white p-4 rounded-lg border mb-6">
           <h3 className="font-semibold mb-2">Submission Details</h3>
           <div className="text-left space-y-2 text-sm">
@@ -946,12 +941,12 @@ export default function SubmitPage() {
             </div>
             <div className="flex justify-between">
               <span>Tier:</span>
-              <span>{TIERS.find(t => t.id === selectedTier?.id)?.name}</span>
+              <span>{selectedTier?.name}</span>
             </div>
-            {getFinalPrice() > 0 && (
+            {selectedTier?.price && selectedTier.price > 0 && (
               <div className="flex justify-between">
                 <span>Amount Paid:</span>
-                <span>₹{getFinalPrice()}</span>
+                <span>₹{selectedTier.price}</span>
               </div>
             )}
           </div>
@@ -979,7 +974,7 @@ export default function SubmitPage() {
           >
             Submit Another Poem
           </Button>
-
+          
           <Button
             variant="outline"
             onClick={() => window.location.href = "/"}
@@ -996,7 +991,7 @@ export default function SubmitPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         {renderStepIndicator()}
-
+        
         {currentStep === "selection" && renderTierSelection()}
         {currentStep === "form" && renderForm()}
         {currentStep === "payment" && renderPayment()}
