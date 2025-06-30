@@ -1,4 +1,3 @@
-
 import { pgTable, serial, text, timestamp, boolean, integer, varchar, json, decimal } from 'drizzle-orm/pg-core';
 
 // Users table
