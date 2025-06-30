@@ -55,9 +55,9 @@ async function createTables() {
         payment_id TEXT,
         payment_method TEXT,
         submitted_at TIMESTAMP DEFAULT NOW(),
-        status TEXT DEFAULT 'pending',
+        status VARCHAR(50) DEFAULT 'pending' NOT NULL,
         score INTEGER,
-        type TEXT,
+        type VARCHAR(50),
         score_breakdown JSON,
         is_winner BOOLEAN DEFAULT FALSE,
         winner_position INTEGER
@@ -68,14 +68,14 @@ async function createTables() {
     // Check and add missing columns to existing submissions table
     console.log('🔍 Checking for missing columns in submissions table...');
     
-    const columnsToAdd = [
-      { name: 'status', type: 'TEXT DEFAULT \'pending\'', description: 'submission status' },
-      { name: 'score', type: 'INTEGER', description: 'evaluation score' },
-      { name: 'type', type: 'TEXT', description: 'evaluation type' },
-      { name: 'score_breakdown', type: 'JSON', description: 'detailed score breakdown' }
+    const missingColumns = [
+      { name: 'status', type: 'VARCHAR(50) DEFAULT \'pending\' NOT NULL' },
+      { name: 'score', type: 'INTEGER' },
+      { name: 'type', type: 'VARCHAR(50)' },
+      { name: 'score_breakdown', type: 'JSON' }
     ];
 
-    for (const column of columnsToAdd) {
+    for (const column of missingColumns) {
       try {
         const columnExists = await client.query(`
           SELECT column_name 
@@ -87,13 +87,25 @@ async function createTables() {
         if (columnExists.rows.length === 0) {
           console.log(`➕ Adding missing column: ${column.name}`);
           await client.query(`ALTER TABLE submissions ADD COLUMN ${column.name} ${column.type}`);
-          console.log(`✅ Added ${column.description} column`);
+          console.log(`✅ Added ${column.name} column`);
         } else {
           console.log(`✅ Column ${column.name} already exists`);
         }
       } catch (error) {
         console.error(`❌ Error checking/adding column ${column.name}:`, error);
       }
+    }
+
+    // Ensure all existing submissions have a status
+    try {
+      const updateResult = await client.query(`
+        UPDATE submissions 
+        SET status = 'pending' 
+        WHERE status IS NULL OR status = ''
+      `);
+      console.log(`✅ Updated ${updateResult.rowCount} submissions with pending status`);
+    } catch (error) {
+      console.log('Note: Status update skipped (expected if column was just added)');
     }
 
     // Create contacts table
