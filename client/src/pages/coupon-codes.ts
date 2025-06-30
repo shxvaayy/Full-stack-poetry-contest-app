@@ -2,89 +2,64 @@
 // Coupon codes configuration
 export const IS_FIRST_MONTH = true; // Change this to false for second month onwards
 
-// Free tier unlock codes (top 50) - these unlock the Free Entry form
+// Free tier unlock codes (now work as 100% discount on ₹50 tier only)
 export const FREE_TIER_CODES = [
-  "FREEPASS100", "WRITORYWINNER", "WRITORYFREE1", "WRITORYFREE2", "WRITORYNEW",
-  "WRITORY2025", "WRITORYWELCOME", "POETRYFREE", "WINNERFREE", "WRITORVIP",
-  "FREEENTRY1", "FREEENTRY2", "FREEENTRY3", "FREEENTRY4", "FREEENTRY5",
-  "UNLOCKFREE", "FREECODE1", "FREECODE2", "FREECODE3", "FREECODE4",
-  "WRITORYFREE5", "WRITORYFREE6", "WRITORYFREE7", "WRITORYFREE8", "WRITORYFREE9",
-  "POETRYWIN1", "POETRYWIN2", "POETRYWIN3", "POETRYWIN4", "POETRYWIN5",
-  "CHAMPION1", "CHAMPION2", "CHAMPION3", "CHAMPION4", "CHAMPION5",
-  "WINNER2025", "FREEVIP1", "FREEVIP2", "FREEVIP3", "FREEVIP4",
-  "UNLOCK1", "UNLOCK2", "UNLOCK3", "UNLOCK4", "UNLOCK5",
-  "WRITORYFREE10", "WRITORYFREE11", "WRITORYFREE12", "WRITORYFREE13", "WRITORYFREE14",
-  "WRITORYFREE15", "WRITORYFREE16", "WRITORYFREE17", "WRITORYFREE18", "WRITORYFREE19"
+  'FREEPASS100', 'WRITORYWINNER', 'WRITORYFREE1', 'WRITORYFREE2', 'WRITORYNEW',
+  'WRITORY2025', 'WRITORYWELCOM', 'WRITORYFIRST', 'WRITORYSTART', 'FREEENTRY1',
+  'FREEENTRY2', 'FREEENTRY3', 'FREEENTRY4', 'FREEENTRY5', 'WRITORYFREE6',
+  'WRITORYFREE7', 'WRITORYFREE8', 'WRITORYFREE9', 'WRITORYFREE10', 'WRITORYFREE11',
+  'WRITORYFREE12', 'WRITORYFREE13', 'WRITORYFREE14', 'WRITORYFREE15', 'WRITORYFREE16',
+  'WRITORYFREE17', 'WRITORYFREE18', 'WRITORYFREE19', 'WRITORYFREE20', 'WRITORYFREE21',
+  'WRITORYFREE22', 'WRITORYFREE23', 'WRITORYFREE24', 'WRITORYFREE25', 'WRITORYFREE26',
+  'WRITORYFREE27', 'WRITORYFREE28', 'WRITORYFREE29', 'WRITORYFREE30', 'WRITORYFREE31',
+  'WRITORYFREE32', 'WRITORYFREE33', 'WRITORYFREE34', 'WRITORYFREE35', 'WRITORYFREE36',
+  'WRITORYFREE37', 'WRITORYFREE38', 'WRITORYFREE39', 'WRITORYFREE40', 'WRITORYFREE41',
+  'WRITORYFREE42', 'WRITORYFREE43', 'WRITORYFREE44', 'WRITORYFREE45', 'WRITORYFREE46',
+  'WRITORYFREE47', 'WRITORYFREE48', 'WRITORYFREE49', 'WRITORYFREE50'
 ];
 
-// Discount codes (bottom 50) - these provide 10% discount on paid tiers
+// 10% discount codes for all paid tiers
 export const DISCOUNT_CODES = [
-  "POEMDEAL50", "DISCOUNT10", "SAVE10", "POETRY10", "WRITORY10",
-  "DEAL2025", "OFFER10", "SPECIAL10", "SAVE2025", "DISCOUNT1",
-  "DISCOUNT2", "DISCOUNT3", "DISCOUNT4", "DISCOUNT5", "DISCOUNT6",
-  "DEAL1", "DEAL2", "DEAL3", "DEAL4", "DEAL5",
-  "OFFER1", "OFFER2", "OFFER3", "OFFER4", "OFFER5",
-  "SAVE1", "SAVE2", "SAVE3", "SAVE4", "SAVE5",
-  "POETRY1", "POETRY2", "POETRY3", "POETRY4", "POETRY5",
-  "WRITORY1", "WRITORY2", "WRITORY3", "WRITORY4", "WRITORY5",
-  "SPECIAL1", "SPECIAL2", "SPECIAL3", "SPECIAL4", "SPECIAL5",
-  "CODE10A", "CODE10B", "CODE10C", "CODE10D", "CODE10E",
-  "SAVE10A", "SAVE10B", "SAVE10C", "SAVE10D", "SAVE10E"
+  'POEMDEAL50', 'POETRY10', 'WRITER10', 'VERSE10', 'RHYME10',
+  'DISCOUNT1', 'DISCOUNT2', 'DISCOUNT3', 'DISCOUNT4', 'DISCOUNT5',
+  'DISCOUNT6', 'DISCOUNT7', 'DISCOUNT8', 'DISCOUNT9', 'DISCOUNT10',
+  'DISCOUNT11', 'DISCOUNT12', 'DISCOUNT13', 'DISCOUNT14', 'DISCOUNT15',
+  'DISCOUNT16', 'DISCOUNT17', 'DISCOUNT18', 'DISCOUNT19', 'DISCOUNT20',
+  'DISCOUNT21', 'DISCOUNT22', 'DISCOUNT23', 'DISCOUNT24', 'DISCOUNT25',
+  'DISCOUNT26', 'DISCOUNT27', 'DISCOUNT28', 'DISCOUNT29', 'DISCOUNT30',
+  'DISCOUNT31', 'DISCOUNT32', 'DISCOUNT33', 'DISCOUNT34', 'DISCOUNT35',
+  'DISCOUNT36', 'DISCOUNT37', 'DISCOUNT38', 'DISCOUNT39', 'DISCOUNT40',
+  'DISCOUNT41', 'DISCOUNT42', 'DISCOUNT43', 'DISCOUNT44', 'DISCOUNT45',
+  'DISCOUNT46', 'DISCOUNT47', 'DISCOUNT48', 'DISCOUNT49', 'DISCOUNT50'
 ];
 
-// Used codes storage (in real app, this should be stored in database)
-let usedCodes: string[] = [];
+// Used codes storage (in production, this should be stored in database)
+export const USED_CODES = new Set<string>();
 
-export function validateCouponCode(code: string): { 
-  isValid: boolean; 
-  type: 'free' | 'discount' | null; 
-  discount?: number;
-  message: string;
-} {
+export function validateCouponCode(code: string, tier: string): { valid: boolean; type?: 'free' | 'discount'; discount?: number; message?: string } {
   const upperCode = code.toUpperCase();
   
-  // Check if code is already used
-  if (usedCodes.includes(upperCode)) {
-    return {
-      isValid: false,
-      type: null,
-      message: "This coupon code has already been used."
-    };
+  // Check if code was already used
+  if (USED_CODES.has(upperCode)) {
+    return { valid: false, message: 'This coupon code has already been used.' };
   }
   
-  // Check free tier codes
+  // Check for 100% discount codes (only work on ₹50 tier)
   if (FREE_TIER_CODES.includes(upperCode)) {
-    return {
-      isValid: true,
-      type: 'free',
-      message: "Valid free tier unlock code! You can now submit for free."
-    };
+    if (tier !== 'single') {
+      return { valid: false, message: '100% discount codes only work on the ₹50 tier.' };
+    }
+    return { valid: true, type: 'free', discount: 100, message: 'Valid 100% discount code! This tier is now free.' };
   }
   
-  // Check discount codes
+  // Check for 10% discount codes (work on all paid tiers)
   if (DISCOUNT_CODES.includes(upperCode)) {
-    return {
-      isValid: true,
-      type: 'discount',
-      discount: 10,
-      message: "Valid discount code! 10% discount applied."
-    };
+    return { valid: true, type: 'discount', discount: 10, message: 'Valid discount code! 10% discount applied.' };
   }
   
-  return {
-    isValid: false,
-    type: null,
-    message: "Invalid coupon code. Please check and try again."
-  };
+  return { valid: false, message: 'Invalid coupon code.' };
 }
 
 export function markCodeAsUsed(code: string): void {
-  const upperCode = code.toUpperCase();
-  if (!usedCodes.includes(upperCode)) {
-    usedCodes.push(upperCode);
-  }
-}
-
-export function getUsedCodes(): string[] {
-  return [...usedCodes];
+  USED_CODES.add(code.toUpperCase());
 }
