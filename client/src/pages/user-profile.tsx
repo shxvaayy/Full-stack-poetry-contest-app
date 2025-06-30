@@ -351,7 +351,7 @@ export default function UserProfile() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {submissions.filter(s => s.status === 'Evaluated').length > 0 ? (
+                    {submissions.length > 0 ? (
                       <div className="space-y-4">
                         <div className="overflow-x-auto">
                           <table className="w-full">
@@ -365,7 +365,7 @@ export default function UserProfile() {
                               </tr>
                             </thead>
                             <tbody>
-                              {submissions.filter(s => s.status === 'Evaluated').map((submission) => (
+                              {submissions.map((submission) => (
                                 <tr key={submission.id} className="border-b hover:bg-gray-50">
                                   <td className="p-2 font-medium">{submission.poemTitle}</td>
                                   <td className="p-2">
@@ -446,10 +446,13 @@ export default function UserProfile() {
                     ) : (
                       <div className="text-center py-8">
                         <Award className="mx-auto text-gray-400 mb-4" size={48} />
-                        <p className="text-gray-600 mb-2">No evaluation results yet.</p>
+                        <p className="text-gray-600 mb-2">No submissions yet.</p>
                         <p className="text-sm text-gray-500">
-                          Your submitted poems will appear here once they've been evaluated by our AI system.
+                          Submit your first poem to see evaluation results here.
                         </p>
+                        <Button className="mt-4" onClick={() => window.location.href = '/submit'}>
+                          Submit Your First Poem
+                        </Button>
                       </div>
                     )}
                   </CardContent>

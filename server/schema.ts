@@ -18,21 +18,27 @@ export const submissions = pgTable('submissions', {
   lastName: varchar('last_name', { length: 100 }),
   email: varchar('email', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 20 }),
-  age: varchar('age', { length: 10 }),
+  age: varchar('age', { length: 3 }),
   poemTitle: varchar('poem_title', { length: 255 }).notNull(),
   tier: varchar('tier', { length: 50 }).notNull(),
-  price: decimal('price', { precision: 10, scale: 2 }).default('0.00'),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
   poemFileUrl: text('poem_file_url'),
   photoUrl: text('photo_url'),
   paymentId: varchar('payment_id', { length: 255 }),
   paymentMethod: varchar('payment_method', { length: 50 }),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
-  status: varchar('status', { length: 50 }).default('pending').notNull(),
-  score: integer('score'),
-  type: varchar('type', { length: 50 }),
-  scoreBreakdown: json('score_breakdown'),
   isWinner: boolean('is_winner').default(false),
-  winnerPosition: integer('winner_position')
+  winnerPosition: integer('winner_position'),
+  score: integer('score').default(0),
+  type: varchar('type', { length: 50 }).default('Human'),
+  status: varchar('status', { length: 50 }).default('Pending'),
+  scoreBreakdown: json('score_breakdown').$type<{
+    originality: number;
+    emotion: number;
+    structure: number;
+    language: number;
+    theme: number;
+  }>(),
 });
 
 // Contacts table
