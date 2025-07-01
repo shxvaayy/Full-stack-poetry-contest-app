@@ -516,9 +516,9 @@ export default function SubmitPage() {
 
     } catch (error: any) {
       console.error('❌ Form submission error:', error);
-
+      
       let errorMessage = error.message;
-
+      
       // Handle specific error types
       if (error.message.includes('<!DOCTYPE')) {
         errorMessage = 'Server error: Received HTML instead of JSON. Please try again or contact support.';
@@ -527,7 +527,7 @@ export default function SubmitPage() {
       } else if (error.message.includes('Not Found')) {
         errorMessage = 'API endpoint not found. Please contact support.';
       }
-
+      
       toast({
         title: "Submission Failed",
         description: errorMessage,
@@ -697,7 +697,7 @@ At Writory, every voice is gold.
 
           <div className="text-center mt-8">
             <p className="text-gray-600">
-              Need help choosing? Contact us at{" "}
+              Remember! The more poems you submit, the greater your chances of winning!
               <a href="mailto:support@writory.com" className="text-purple-600 hover:underline">
                 support@writory.com
               </a>
@@ -909,7 +909,7 @@ At Writory, every voice is gold.
                       disabled={isSubmitting || !isFormValid()}
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
-                      {isSubmitting ?```text
+                      {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin mr-2" />
                           Submitting...
@@ -1062,31 +1062,98 @@ At Writory, every voice is gold.
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-800 mb-4">Submission Successful!</h1>
               <p className="text-gray-600 mb-6">
-                Thank you for submitting your {getPoemCount(selectedTier?.id || 'free') > 1 ? 'poems' : 'poem'} to the Writory Poetry Contest. 
-                You will receive a confirmation email shortly.
+                Your poem has been submitted successfully for the contest. You will get a
+                Confirmation mail shortly.
               </p>
 
-              <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                <h3 className="font-semibold text-blue-800 mb-2">What's Next?</h3>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Your {getPoemCount(selectedTier?.id || 'free') > 1 ? 'poems are' : 'poem is'} now under review</li>
-                  <li>• Winners will be announced at the end of the month</li>
-                  <li>• Check your email for updates</li>
-                  <li>• Follow us on social media for announcements</li>
-                </ul>
+              {/* Submission Details */}
+              <div className="bg-gray-50 p-6 rounded-lg mb-6 text-left">
+                <h3 className="font-semibold text-gray-800 mb-4 text-center">Submission Details</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Name:</span>
+                    <span className="text-gray-800">{formData.firstName} {formData.lastName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Email:</span>
+                    <span className="text-gray-800">{formData.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Poem Title:</span>
+                    <span className="text-gray-800">{formData.poemTitle}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tier:</span>
+                    <span className="text-gray-800">{selectedTier?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Amount Paid:</span>
+                    <span className="text-gray-800">₹{discountedAmount}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-4">
-                <Button onClick={() => window.location.href = '/'} className="flex-1">
-                  Return Home
+              {/* Social Media Section */}
+              <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                <h3 className="font-semibold text-gray-800 mb-4">Follow us on Social Media</h3>
+                <div className="flex justify-center space-x-6">
+                  <a 
+                    href="https://x.com/writoryofficial" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                  </a>
+                  <a 
+                    href="https://www.facebook.com/share/16hyCrZbE2/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </a>
+                  <a 
+                    href="https://www.instagram.com/writoryofficial/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-pink-600 hover:text-pink-800 transition-colors"
+                  >
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.987 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.648.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.297-3.323C5.901 8.198 7.052 7.708 8.349 7.708s2.448.49 3.323 1.297c.875.875 1.365 2.026 1.365 3.323s-.49 2.448-1.365 3.323c-.875.875-2.026 1.365-3.323 1.365zm7.718 0c-1.297 0-2.448-.49-3.323-1.297c-.875-.875-1.365-2.026-1.365-3.323s.49-2.448 1.365-3.323c.875-.875 2.026-1.365 3.323-1.365s2.448.49 3.323 1.365c.875.875 1.365 2.026 1.365 3.323s-.49 2.448-1.365 3.323c-.875.875-2.026 1.365-3.323 1.365z"/>
+                    </svg>
+                  </a>
+                  <a 
+                    href="https://www.linkedin.com/company/writoryofficial/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-700 hover:text-blue-900 transition-colors"
+                  >
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <Button 
+                  onClick={() => window.location.href = '/submit'} 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Submit Another Poem
                 </Button>
                 <Button 
-                        variant="outline" 
-                        onClick={() => window.location.href = '/profile'}
-                        className="flex-1"
-                      >
-                        View Status
-                      </Button>
+                  onClick={() => window.location.href = '/'} 
+                  variant="outline" 
+                  className="w-full"
+                >
+                  Back to Home
+                </Button>
               </div>
             </CardContent>
           </Card>
