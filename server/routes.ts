@@ -926,7 +926,6 @@ router.post('/api/submit', upload.fields([
         await addPoemSubmissionToSheet({
           name: `${firstName} ${lastName}`,
           email,
-```text
           phone,
           age,
           poemTitle: poemTitle || 'Untitled',
