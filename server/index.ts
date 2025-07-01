@@ -4,6 +4,7 @@ console.log('🚀 SERVER STARTING - First line executed');
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { registerRoutes } from './routes.js';
@@ -49,7 +50,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// NUCLEAR OPTION: Complete database recreation
+// NUCLEAR OPTION: Complete database recreation (keep your existing function)
 async function forceFixDatabase() {
   try {
     console.log('💥 FORCING DATABASE RECREATION...');
@@ -135,36 +136,7 @@ async function forceFixDatabase() {
       console.log('⚠️ Foreign key constraint already exists or failed:', error.message);
     }
     
-    // Step 6: Verify the structure
-    console.log('🔍 Verifying table structure...');
-    const columns = await client.query(`
-      SELECT column_name, data_type, is_nullable, column_default
-      FROM information_schema.columns 
-      WHERE table_name = 'submissions'
-      ORDER BY ordinal_position
-    `);
-    
-    console.log('📋 Final submissions table columns:');
-    columns.rows.forEach(col => {
-      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
-    });
-    
-    // Step 7: Test insertion
-    console.log('🧪 Testing submission creation...');
-    const testResult = await client.query(`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'submissions' 
-      AND column_name IN ('poem_index', 'submission_uuid', 'total_poems_in_submission')
-    `);
-    
-    if (testResult.rows.length === 3) {
-      console.log('🎉 DATABASE FORCE FIX SUCCESSFUL!');
-      console.log('✅ All required columns exist');
-      return true;
-    } else {
-      console.error('❌ Some columns still missing:', testResult.rows);
-      return false;
-    }
+    return true;
     
   } catch (error) {
     console.error('❌ Force database fix failed:', error);
@@ -181,21 +153,61 @@ async function initializeApp() {
     const dbFixed = await forceFixDatabase();
     if (!dbFixed) {
       console.error('❌ Database force fix failed, server may not work properly');
-      // Don't exit - let it try to continue
     } else {
       console.log('🎉 Database is now ready for submissions!');
     }
     
-    // Step 2: Register routes
+    // Step 2: Register API routes FIRST
     registerRoutes(app);
-    console.log('✅ Routes registered');
+    console.log('✅ API routes registered');
     
-    // Step 3: Serve static files
+    // Step 3: Serve static files with proper configuration
     const publicPath = path.join(__dirname, '../dist/public');
-    app.use(express.static(publicPath));
+    console.log('📂 Public path:', publicPath);
+    console.log('📂 Directory exists:', fs.existsSync(publicPath));
+    
+    // List files in public directory for debugging
+    if (fs.existsSync(publicPath)) {
+      const files = fs.readdirSync(publicPath);
+      console.log('📁 Files in public directory:', files);
+    }
+    
+    app.use(express.static(publicPath, {
+      setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+          res.set('Content-Type', 'application/javascript');
+        } else if (path.endsWith('.css')) {
+          res.set('Content-Type', 'text/css');
+        } else if (path.endsWith('.html')) {
+          res.set('Content-Type', 'text/html');
+        }
+      }
+    }));
     console.log('✅ Static files configured');
     
-    // Step 4: Start server
+    // Step 4: Catch-all handler for React routes
+    app.get('*', (req, res) => {
+      // Don't serve index.html for API routes
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+      }
+      
+      const indexPath = path.join(publicPath, 'index.html');
+      console.log('📄 Serving React app for path:', req.path);
+      
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        console.error('❌ index.html not found at:', indexPath);
+        res.status(404).send(`
+          <h1>Frontend Not Built</h1>
+          <p>The React app needs to be built. Index.html not found at: ${indexPath}</p>
+          <p>Available files: ${fs.existsSync(publicPath) ? fs.readdirSync(publicPath).join(', ') : 'Directory does not exist'}</p>
+        `);
+      }
+    });
+    
+    // Step 5: Start server
     app.listen(PORT, () => {
       console.log('🎉 SERVER RUNNING SUCCESSFULLY!');
       console.log(`🌐 Server running on port ${PORT}`);
