@@ -99,18 +99,34 @@ export default function SubmitPage() {
     photo: null as File | null,
   });
   
-  // Multiple poems state
-  const [multiplePoems, setMultiplePoems] = useState<{
-    titles: string[];
-    files: (File | null)[];
-  }>({
-    titles: ['', '', '', '', ''], // Support up to 5 poems
-    files: [null, null, null, null, null]
-  });
+  // State for multiple poems
+  const [multiplePoems, setMultiplePoems] = useState<Array<{
+    title: string;
+    file: File | null;
+  }>>([]);
+
+  // Initialize multiple poems when tier changes
+  useEffect(() => {
+    if (selectedTier?.id === 'double') {
+      setMultiplePoems([
+        { title: "", file: null },
+        { title: "", file: null }
+      ]);
+    } else if (selectedTier?.id === 'bulk') {
+      setMultiplePoems([
+        { title: "", file: null },
+        { title: "", file: null },
+        { title: "", file: null },
+        { title: "", file: null },
+        { title: "", file: null }
+      ]);
+    } else {
+      setMultiplePoems([]);
+    }
+  }, [selectedTier]);
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
-  const multiplePoemRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null, null]);
 
   // Check URL parameters for payment status
   useEffect(() => {
@@ -327,18 +343,16 @@ export default function SubmitPage() {
     setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
-  const handleMultiplePoemTitle = (index: number, title: string) => {
-    setMultiplePoems(prev => ({
-      ...prev,
-      titles: prev.titles.map((t, i) => i === index ? title : t)
-    }));
+  const handleMultiplePoemTitleChange = (index: number, title: string) => {
+    setMultiplePoems(prev => prev.map((poem, i) => 
+      i === index ? { ...poem, title } : poem
+    ));
   };
 
-  const handleMultiplePoemFile = (index: number, file: File | null) => {
-    setMultiplePoems(prev => ({
-      ...prev,
-      files: prev.files.map((f, i) => i === index ? file : f)
-    }));
+  const handleMultiplePoemFileChange = (index: number, file: File | null) => {
+    setMultiplePoems(prev => prev.map((poem, i) => 
+      i === index ? { ...poem, file } : poem
+    ));
   };
 
   const handlePaymentSuccess = (data: any) => {
@@ -405,24 +419,8 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email) {
+      if (!formData.firstName || !formData.email || !formData.poemTitle) {
         throw new Error('Please fill in all required fields');
-      }
-
-      // Validate poem titles based on tier
-      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
-        if (!formData.poemTitle) {
-          throw new Error('Please enter a poem title');
-        }
-      } else if (selectedTier?.id === 'double') {
-        if (!multiplePoems.titles[0] || !multiplePoems.titles[1]) {
-          throw new Error('Please enter titles for both poems');
-        }
-      } else if (selectedTier?.id === 'bulk') {
-        const filledTitles = multiplePoems.titles.filter(title => title.trim());
-        if (filledTitles.length === 0) {
-          throw new Error('Please enter at least one poem title');
-        }
       }
 
       if (!formData.termsAccepted) {
@@ -445,21 +443,7 @@ export default function SubmitPage() {
       submitFormData.append('email', formData.email);
       submitFormData.append('phone', formData.phone || '');
       submitFormData.append('age', formData.age || '');
-      
-      // Handle poem titles based on tier
-      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
-        submitFormData.append('poemTitle', formData.poemTitle);
-      } else if (selectedTier?.id === 'double') {
-        submitFormData.append('poemTitle', multiplePoems.titles[0]);
-        submitFormData.append('poemTitle2', multiplePoems.titles[1]);
-      } else if (selectedTier?.id === 'bulk') {
-        multiplePoems.titles.forEach((title, index) => {
-          if (title.trim()) {
-            submitFormData.append(`poemTitle${index + 1}`, title);
-          }
-        });
-      }
-      
+      submitFormData.append('poemTitle', formData.poemTitle);
       submitFormData.append('tier', selectedTier?.id || 'free');
       submitFormData.append('amount', discountedAmount.toString());
       submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
@@ -511,28 +495,11 @@ export default function SubmitPage() {
         throw new Error('Payment information is missing for paid tier');
       }
 
-      // Add files based on tier
-      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
-        if (files.poem) {
-          submitFormData.append('poem', files.poem);
-          console.log('Added poem file:', files.poem.name);
-        }
-      } else if (selectedTier?.id === 'double') {
-        multiplePoems.files.slice(0, 2).forEach((file, index) => {
-          if (file) {
-            submitFormData.append(`poem${index + 1}`, file);
-            console.log(`Added poem ${index + 1} file:`, file.name);
-          }
-        });
-      } else if (selectedTier?.id === 'bulk') {
-        multiplePoems.files.forEach((file, index) => {
-          if (file) {
-            submitFormData.append(`poem${index + 1}`, file);
-            console.log(`Added poem ${index + 1} file:`, file.name);
-          }
-        });
+      // Add files
+      if (files.poem) {
+        submitFormData.append('poem', files.poem);
+        console.log('Added poem file:', files.poem.name);
       }
-      
       if (files.photo) {
         submitFormData.append('photo', files.photo);
         console.log('Added photo file:', files.photo.name);
