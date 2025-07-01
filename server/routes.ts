@@ -927,8 +927,7 @@ router.post('/api/submit', upload.fields([
           name: `${firstName} ${lastName}`,
           email,
           phone,
-          age,
-          poemTitle: poemTitle || 'Untitled',
+          age,          poemTitle: poemTitle || 'Untitled',
           tier,
           amount: actualAmount.toString(),
           poemFile: poemUrls[0] || '',
@@ -1087,22 +1086,6 @@ router.get('/api/submissions', async (req, res) => {
     console.error('❌ Error getting submissions:', error);
     res.status(500).json({ error: 'Failed to get submissions', details: error.message });
   }
-});
-
-// Add this error handling middleware to routes
-router.use((err: any, req: any, res: any, next: any) => {
-  console.error('❌ API Error:', err);
-
-  // Ensure we always return JSON for API routes
-  if (req.path.startsWith('/api/')) {
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-    });
-  }
-
-  next(err);
 });
 
 export function registerRoutes(app: any) {

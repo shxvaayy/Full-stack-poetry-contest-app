@@ -44,8 +44,10 @@ console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://writory.onrender.com'] 
-    : ['http://localhost:5173', 'http://localhost:3000'],
-  credentials: true
+    : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json({ limit: '50mb' }));
@@ -202,47 +204,17 @@ async function initializeApp() {
     registerRoutes(app);
     console.log('✅ Step 3 completed: Routes registered successfully');
 
-    // API-specific error handling middleware
-    app.use('/api/*', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('❌ API Error:', err);
+    // Error handling middleware
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error('❌ Unhandled error:', err);
       res.status(500).json({
-        success: false,
         error: 'Internal server error',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
       });
     });
 
-    // General error handling middleware
-    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('❌ Unhandled error:', err);
-      if (req.path.startsWith('/api/')) {
-        return res.status(500).json({
-          success: false,
-          error: 'Internal server error',
-          message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-        });
-      }
-      res.status(500).send('Internal Server Error');
-    });
-
-    // API fallback - catch any unmatched API routes
-    app.use('/api/*', (req, res) => {
-      console.log('❌ API route not found:', req.path);
-      res.status(404).json({
-        success: false,
-        error: 'API endpoint not found',
-        path: req.path
-      });
-    });
-
-    // SPA fallback - only for non-API routes
+    // SPA fallback
     app.get('*', (req, res) => {
-      if (req.path.startsWith('/api/')) {
-        return res.status(404).json({
-          success: false,
-          error: 'API endpoint not found'
-        });
-      }
       const indexPath = path.join(publicPath, 'index.html');
       res.sendFile(indexPath);
     });
