@@ -18,23 +18,6 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// JSON Error Handler Middleware
-const jsonErrorHandler = (err: any, req: any, res: any, next: any) => {
-  console.error('❌ API Error:', err);
-  
-  // Always return JSON, never HTML
-  res.setHeader('Content-Type', 'application/json');
-  
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal Server Error',
-    details: isDevelopment ? err.stack : undefined,
-    timestamp: new Date().toISOString()
-  });
-};
-
 // Configure multer for multiple file uploads
 const upload = multer({ 
   dest: 'uploads/',
@@ -934,37 +917,6 @@ router.get('/api/winners', asyncHandler(async (req: any, res: any) => {
   });
 }));
 
-// Update submission status (admin)
-router.put('/api/submission/:id/status', asyncHandler(async (req: any, res: any) => {
-  const { id } = req.params;
-  const { status, score, isWinner, winnerPosition } = req.body;
-
-  if (!id || isNaN(parseInt(id))) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid submission ID'
-    });
-  }
-
-  if (!status) {
-    return res.status(400).json({
-      success: false,
-      error: 'Status is required'
-    });
-  }
-
-  // For now, we'll just return success since we don't have updateSubmissionStatus in storage
-  res.json({
-    success: true,
-    message: 'Submission status updated',
-    submissionId: parseInt(id),
-    status,
-    score,
-    isWinner,
-    winnerPosition
-  });
-}));
-
 // Get submission count from Google Sheets
 router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
   console.log('📊 Getting submission count from Google Sheets...');
@@ -978,53 +930,26 @@ router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
   });
 }));
 
-// Health check specific for API
-router.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100,
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 100) / 100
-    }
-  });
-});
-
-// Apply error handling middleware
-router.use(jsonErrorHandler);
-
-// Export router registration function
-export function registerRoutes(app: any) {
+// Export router for registration
+export const registerRoutes = (app: any) => {
   app.use('/', router);
   
-  // Global error handler for any unhandled routes
-  app.use('*', (req: any, res: any) => {
-    res.status(404).json({
-      success: false,
-      error: 'Route not found',
-      path: req.originalUrl,
-      method: req.method,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  // Final error handler
+  // Add error handling middleware at the end
   app.use((err: any, req: any, res: any, next: any) => {
-    console.error('❌ Unhandled error:', err);
+    console.error('❌ Unhandled API Error:', err);
     
-    if (res.headersSent) {
-      return next(err);
-    }
+    // Always return JSON, never HTML
+    res.setHeader('Content-Type', 'application/json');
     
-    res.status(500).json({
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    res.status(err.status || 500).json({
       success: false,
-      error: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      error: err.message || 'Internal Server Error',
+      details: isDevelopment ? err.stack : undefined,
       timestamp: new Date().toISOString()
     });
   });
-}
+};
 
 export default router;
