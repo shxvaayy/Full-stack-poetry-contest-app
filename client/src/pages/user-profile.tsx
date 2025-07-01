@@ -22,8 +22,7 @@ interface Submission {
   name: string;
   poemTitle: string;
   tier: string;
-  price: number;
-  amount?: number; // Keep for backward compatibility
+  amount: number;
   submittedAt: string;
   isWinner: boolean;
   winnerPosition: number | null;
@@ -37,6 +36,9 @@ interface Submission {
     language: number;
     theme: number;
   };
+  submissionUuid?: string;
+  poemIndex?: number;
+  totalPoemsInSubmission?: number;
 }
 
 interface SubmissionStatus {
@@ -345,9 +347,21 @@ export default function UserProfile() {
                           <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <h3 className="font-semibold text-lg">{submission.poemTitle}</h3>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <h3 className="font-semibold text-lg">{submission.poemTitle}</h3>
+                                  {submission.poemIndex && submission.totalPoemsInSubmission && submission.totalPoemsInSubmission > 1 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Poem {submission.poemIndex} of {submission.totalPoemsInSubmission}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-gray-600 text-sm mb-2">
                                   Submitted on {formatDate(submission.submittedAt)}
+                                  {submission.submissionUuid && submission.totalPoemsInSubmission > 1 && (
+                                    <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
+                                      Bulk Submission ID: {submission.submissionUuid.slice(-8)}
+                                    </span>
+                                  )}
                                 </p>
                                 <div className="flex items-center space-x-2 flex-wrap gap-2">
                                   <Badge className={getTierColor(submission.tier)}>
@@ -372,8 +386,13 @@ export default function UserProfile() {
                               </div>
                               <div className="text-right">
                                 <p className="text-lg font-semibold text-green-600">
-                                  ₹{submission.price || submission.amount || 0}
+                                  ₹{submission.amount}
                                 </p>
+                                {submission.poemIndex === 1 && submission.totalPoemsInSubmission > 1 && (
+                                  <p className="text-xs text-gray-500">
+                                    (Payment for {submission.totalPoemsInSubmission} poems)
+                                  </p>
+                                )}
                               </div>
                             </div>
                             

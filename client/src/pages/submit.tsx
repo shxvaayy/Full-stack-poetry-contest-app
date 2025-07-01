@@ -452,9 +452,11 @@ export default function SubmitPage() {
 
       // Add tier and payment data
       formDataToSend.append('tier', selectedTier.id);
+      formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
       formDataToSend.append('userUid', user?.uid || '');
       if (actualPaymentData) {
-        formDataToSend.append('paymentData', JSON.stringify(actualPaymentData));
+        formDataToSend.append('paymentId', actualPaymentData.razorpay_payment_id || actualPaymentData.paypal_order_id || '');
+        formDataToSend.append('paymentMethod', actualPaymentData.payment_method || 'razorpay');
       }
 
       // Add multiple poem titles
@@ -1132,4 +1134,4 @@ At Writory, every voice is gold.
   }
 
   return null;
-}
+};
