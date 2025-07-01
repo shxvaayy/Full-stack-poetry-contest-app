@@ -27,9 +27,9 @@ export const submissions = pgTable('submissions', {
   paymentId: varchar('payment_id', { length: 255 }),
   paymentMethod: varchar('payment_method', { length: 50 }),
   // ✅ NEW: Fields for multiple poems support
-  submissionUuid: varchar('submission_uuid', { length: 255 }).notNull().default(''), // Groups related poems
+  submissionUuid: varchar('submission_uuid', { length: 255 }).notNull(), // Groups related poems
   poemIndex: integer('poem_index').default(0).notNull(), // 0, 1, 2, 3, 4 for poem position
-  totalPoemsInSubmission: integer('total_poems').default(1).notNull(), // Total poems in this submission
+  totalPoemsInSubmission: integer('total_poems_in_submission').default(1).notNull(), // Total poems in this submission
   // ✅ EXISTING: Keep all current fields
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   isWinner: boolean('is_winner').default(false),

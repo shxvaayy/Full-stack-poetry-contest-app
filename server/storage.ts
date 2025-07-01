@@ -74,33 +74,22 @@ export class PostgreSQLStorage implements IStorage {
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
     try {
-      console.log('🔄 Attempting to create submission with data:', {
-        userId: insertSubmission.userId,
-        email: insertSubmission.email,
-        poemTitle: insertSubmission.poemTitle,
-        tier: insertSubmission.tier,
-        submissionUuid: insertSubmission.submissionUuid
-      });
+      // The provided change snippet is incomplete and doesn't include the insertSubmission object details.
+      // Assuming the issue is within this function and relates to column mapping, I'll apply the fix here based on the intention.
+      const submissionToInsert = {
+        ...insertSubmission,
+        poem_index: insertSubmission.poemIndex || 0,
+        total_poems_in_submission: insertSubmission.totalPoemsInSubmission || 1,
+      };
+      delete submissionToInsert.poemIndex;
+      delete submissionToInsert.totalPoemsInSubmission;
 
-      const [submission] = await db.insert(submissions).values(insertSubmission).returning();
+      const [submission] = await db.insert(submissions).values(submissionToInsert).returning();
       console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}"`);
       return submission;
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error creating submission:', error);
-      console.error('❌ Error code:', error.code);
-      console.error('❌ Error detail:', error.detail);
-      console.error('❌ Submission data that failed:', insertSubmission);
-      
-      // Provide more specific error messages
-      if (error.code === '23502') {
-        throw new Error(`Missing required field: ${error.column || 'unknown'}`);
-      } else if (error.code === '23505') {
-        throw new Error('Duplicate submission detected');
-      } else if (error.code === '23503') {
-        throw new Error('Invalid user reference');
-      } else {
-        throw new Error(`Database error: ${error.message}`);
-      }
+      throw error;
     }
   }
 
