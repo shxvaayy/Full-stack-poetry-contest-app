@@ -97,6 +97,66 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
     console.error('❌ Razorpay not configured');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
+
+
+// Test submission creation (debug)
+router.post('/api/test-submission', asyncHandler(async (req: any, res: any) => {
+  console.log('🧪 Testing submission creation...');
+  
+  res.setHeader('Content-Type', 'application/json');
+
+  try {
+    // Create a test user first
+    let testUser = await storage.getUserByEmail('test@example.com');
+    if (!testUser) {
+      testUser = await storage.createUser({
+        uid: `test_user_${Date.now()}`,
+        email: 'test@example.com',
+        name: 'Test User',
+        phone: null
+      });
+    }
+
+    // Create a test submission
+    const testSubmission = await storage.createSubmission({
+      userId: testUser.id,
+      firstName: 'Test',
+      lastName: 'User',
+      email: 'test@example.com',
+      phone: null,
+      age: null,
+      poemTitle: 'Test Poem',
+      tier: 'single',
+      price: 50,
+      poemFileUrl: 'https://test.com/poem.pdf',
+      photoUrl: 'https://test.com/photo.jpg',
+      paymentId: null,
+      paymentMethod: 'test',
+      submissionUuid: `test_${Date.now()}`,
+      poemIndex: 0,
+      totalPoemsInSubmission: 1
+    });
+
+    res.json({
+      success: true,
+      message: 'Test submission created successfully',
+      submission: {
+        id: testSubmission.id,
+        poemTitle: testSubmission.poemTitle,
+        tier: testSubmission.tier
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Test submission failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: error.stack
+    });
+  }
+}));
+
     });
   }
 
@@ -559,73 +619,69 @@ router.post('/api/submit-poem', upload.fields([
   // Create submissions for each poem
   const submissionUuid = `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const submissions = [];
-  const submissionErrors = [];
 
   // Parse payment data safely
   let parsedPaymentData = null;
-  try {
-    parsedPaymentData = paymentData ? JSON.parse(paymentData) : null;
-  } catch (parseError) {
-    console.error('❌ Payment data parsing error:', parseError);
+  if (paymentData) {
+    try {
+      parsedPaymentData = JSON.parse(paymentData);
+    } catch (e) {
+      console.error('❌ Failed to parse payment data:', e);
+    }
   }
 
   for (let i = 0; i < multiplePoemTitles.length; i++) {
     try {
-      console.log(`📝 Creating submission ${i + 1}/${multiplePoemTitles.length} for poem: ${multiplePoemTitles[i]}`);
-      
       const submissionData = {
         userId: user.id,
         firstName,
         lastName: lastName || null,
         email,
         phone: phone || null,
-        age: age ? parseInt(age) : null,
+        age: age || null,
         poemTitle: multiplePoemTitles[i],
         tier,
         price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
         poemFileUrl: poemFileUrls[i],
         photoUrl,
-        paymentId: parsedPaymentData?.payment_id || parsedPaymentData?.razorpay_payment_id || null,
-        paymentMethod: parsedPaymentData?.payment_method || 'unknown',
+        paymentId: parsedPaymentData?.payment_id || null,
+        paymentMethod: parsedPaymentData?.payment_method || 'razorpay',
         submissionUuid,
         poemIndex: i,
         totalPoemsInSubmission: multiplePoemTitles.length
       };
 
-      console.log('📋 Submission data:', submissionData);
-      
+      console.log(`📝 Creating submission ${i + 1}/${multiplePoemTitles.length}:`, {
+        poemTitle: submissionData.poemTitle,
+        tier: submissionData.tier,
+        userId: submissionData.userId
+      });
+
       const submission = await storage.createSubmission(submissionData);
       submissions.push(submission);
-      console.log(`✅ Successfully created submission ${i + 1}: ${submission.id}`);
       
-    } catch (submissionError: any) {
+      console.log(`✅ Successfully created submission ${submission.id} for poem: ${submission.poemTitle}`);
+    } catch (submissionError) {
       console.error('❌ Submission creation error for poem', i, ':', submissionError);
-      console.error('❌ Error stack:', submissionError.stack);
-      submissionErrors.push({
-        poemIndex: i,
+      console.error('❌ Submission data that failed:', {
         poemTitle: multiplePoemTitles[i],
-        error: submissionError.message
+        tier,
+        userId: user.id
+      });
+      
+      // Return error immediately instead of continuing
+      return res.status(500).json({
+        success: false,
+        error: `Failed to create submission for poem "${multiplePoemTitles[i]}": ${submissionError.message}`
       });
     }
   }
 
   if (submissions.length === 0) {
-    console.error('❌ No submissions created. Errors:', submissionErrors);
     return res.status(500).json({
       success: false,
-      error: 'Failed to create any submissions',
-      details: submissionErrors,
-      debugInfo: {
-        userId: user.id,
-        poemCount: multiplePoemTitles.length,
-        tier,
-        hasPaymentData: !!paymentData
-      }
+      error: 'Failed to create any submissions - no submissions were processed'
     });
-  }
-
-  if (submissionErrors.length > 0) {
-    console.warn('⚠️ Some submissions failed:', submissionErrors);
   }
 
   // Add to Google Sheets (non-critical)
@@ -793,43 +849,41 @@ router.post('/api/submit', upload.fields([
   // Create submission
   let submission;
   try {
-    console.log('📝 Creating single poem submission...');
-    
     const submissionData = {
       userId: user.id,
       firstName,
       lastName: lastName || null,
       email,
       phone: phone || null,
-      age: age ? parseInt(age) : null,
+      age: age || null,
       poemTitle,
       tier,
       price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
       poemFileUrl,
       photoUrl: photoUrl || null,
       paymentId: paymentId || null,
-      paymentMethod: paymentMethod || null,
+      paymentMethod: paymentMethod || 'razorpay',
       submissionUuid: `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       poemIndex: 0,
       totalPoemsInSubmission: 1
     };
 
-    console.log('📋 Single submission data:', submissionData);
-    
+    console.log('📝 Creating single submission:', {
+      poemTitle: submissionData.poemTitle,
+      tier: submissionData.tier,
+      userId: submissionData.userId,
+      email: submissionData.email
+    });
+
     submission = await storage.createSubmission(submissionData);
-    console.log('✅ Successfully created submission:', submission.id);
     
-  } catch (submissionError: any) {
+    console.log(`✅ Successfully created submission ${submission.id} for poem: ${submission.poemTitle}`);
+  } catch (submissionError) {
     console.error('❌ Submission creation error:', submissionError);
-    console.error('❌ Error stack:', submissionError.stack);
+    console.error('❌ Full error details:', submissionError.stack);
     return res.status(500).json({
-      error: 'Failed to create submission',
-      details: submissionError.message,
-      debugInfo: {
-        userId: user.id,
-        poemTitle,
-        tier
-      }
+      success: false,
+      error: `Failed to create submission: ${submissionError.message}`
     });
   }
 

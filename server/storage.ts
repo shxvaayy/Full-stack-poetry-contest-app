@@ -74,12 +74,33 @@ export class PostgreSQLStorage implements IStorage {
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
     try {
+      console.log('🔄 Attempting to create submission with data:', {
+        userId: insertSubmission.userId,
+        email: insertSubmission.email,
+        poemTitle: insertSubmission.poemTitle,
+        tier: insertSubmission.tier,
+        submissionUuid: insertSubmission.submissionUuid
+      });
+
       const [submission] = await db.insert(submissions).values(insertSubmission).returning();
       console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}"`);
       return submission;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating submission:', error);
-      throw error;
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error detail:', error.detail);
+      console.error('❌ Submission data that failed:', insertSubmission);
+      
+      // Provide more specific error messages
+      if (error.code === '23502') {
+        throw new Error(`Missing required field: ${error.column || 'unknown'}`);
+      } else if (error.code === '23505') {
+        throw new Error('Duplicate submission detected');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid user reference');
+      } else {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
   }
 
