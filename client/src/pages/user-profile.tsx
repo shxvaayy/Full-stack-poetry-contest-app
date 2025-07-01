@@ -148,7 +148,7 @@ export default function UserProfile() {
   };
 
   // ✅ Check if results are announced (only show results if there are winners or evaluated poems)
-  const hasAnnouncedResults = submissions.some(s => s.isWinner || s.status === 'Evaluated');
+  const hasAnnouncedResults = submissions.some(s => s.status === 'Evaluated' || s.score !== undefined);
 
   if (loading) {
     return (
@@ -246,14 +246,11 @@ export default function UserProfile() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${hasAnnouncedResults ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="submissions">My Submissions</TabsTrigger>
-                {/* ✅ Only show Results tab if results are announced */}
-                {hasAnnouncedResults && (
-                  <TabsTrigger value="results">Results</TabsTrigger>
-                )}
-              </TabsList>
+              <TabsList className="grid w-full grid-cols-3">
+  <TabsTrigger value="overview">Overview</TabsTrigger>
+  <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+  <TabsTrigger value="results">Results</TabsTrigger>
+</TabsList>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">

@@ -663,7 +663,9 @@ export default function SubmitPage() {
             {IS_FIRST_MONTH && (
               <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">
                 <p className="text-yellow-800 font-semibold">
-                  🎉 Launch Month Special! Use code LAUNCH50 for 50% off any tier!
+                  No rules, just heart — let your truth unfold,
+Your words are flames, fierce and bold.
+At Writory, every voice is gold.
                 </p>
               </div>
             )}
