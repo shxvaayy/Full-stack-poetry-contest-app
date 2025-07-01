@@ -53,7 +53,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     });
   };
 
-  // Handle Razorpay Payment with detailed logging
+  // Handle Razorpay Payment with comprehensive error handling
   const handleRazorpayPayment = async () => {
     try {
       setIsProcessingRazorpay(true);
@@ -61,95 +61,122 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       console.log('💰 Amount:', amount);
       console.log('🎯 Tier:', tier);
 
+      // Validate inputs
+      if (!amount || amount <= 0) {
+        throw new Error('Invalid payment amount');
+      }
+
+      if (!tier) {
+        throw new Error('Payment tier not specified');
+      }
+
       // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay script. Please check your internet connection.');
+        throw new Error('Failed to load Razorpay payment system. Please check your internet connection and try again.');
       }
 
-      // Create order with detailed logging
-      console.log('📞 Calling /api/create-order...');
-      const orderResponse = await fetch('/api/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: amount,
-          currency: 'INR',
-          receipt: `receipt_${Date.now()}_${tier}`
-        }),
-      });
-
-      console.log('📡 Response status:', orderResponse.status);
-      console.log('📡 Response ok:', orderResponse.ok);
-
-      // Check if response is ok
-      if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        console.error('❌ Order creation failed:', {
-          status: orderResponse.status,
-          statusText: orderResponse.statusText,
-          body: errorText
+      // Create order with detailed logging and error handling
+      console.log('📞 Creating Razorpay order...');
+      
+      let orderResponse;
+      try {
+        orderResponse = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            amount: Math.round(amount * 100), // Convert to paise
+            currency: 'INR',
+            receipt: `receipt_${Date.now()}_${tier}`,
+            tier: tier
+          }),
         });
-        throw new Error(`Order creation failed: ${orderResponse.status} - ${errorText}`);
+      } catch (networkError) {
+        console.error('❌ Network error during order creation:', networkError);
+        throw new Error('Network error. Please check your connection and try again.');
       }
 
-      // Parse response
-      const responseText = await orderResponse.text();
-      console.log('📄 Raw response:', responseText);
+      console.log('📡 Order response status:', orderResponse.status);
+      console.log('📡 Order response ok:', orderResponse.ok);
 
+      // Handle non-ok responses
+      if (!orderResponse.ok) {
+        let errorMessage = `Order creation failed (${orderResponse.status})`;
+        
+        try {
+          const errorData = await orderResponse.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          console.error('❌ Order creation error details:', errorData);
+        } catch (parseError) {
+          const errorText = await orderResponse.text();
+          console.error('❌ Order creation failed with text response:', errorText);
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Parse successful response
       let orderData;
       try {
-        orderData = JSON.parse(responseText);
-        console.log('✅ Order data parsed:', orderData);
+        orderData = await orderResponse.json();
+        console.log('✅ Order data received:', orderData);
       } catch (parseError) {
-        console.error('❌ Failed to parse JSON:', parseError);
-        throw new Error('Invalid response from server');
+        console.error('❌ Failed to parse order response:', parseError);
+        throw new Error('Invalid response from payment server. Please try again.');
       }
 
       // Validate order data
-      if (!orderData.id) {
-        console.error('❌ No order ID in response:', orderData);
-        throw new Error('Invalid order data - missing order ID');
+      if (!orderData || !orderData.id) {
+        console.error('❌ Invalid order data:', orderData);
+        throw new Error('Invalid order data received from server. Please try again.');
       }
 
-      console.log('🎬 Initializing Razorpay with order:', orderData.id);
+      console.log('🎬 Initializing Razorpay checkout with order:', orderData.id);
 
-      // Initialize Razorpay
-      const options = {
-        key: 'rzp_test_KmhJU8QZfO04Pu',
+      // Initialize Razorpay with comprehensive options
+      const razorpayOptions = {
+        key: 'rzp_test_KmhJU8QZfO04Pu', // Your test key
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         name: 'Writory Poetry Contest',
-        description: `${tier} tier submission`,
+        description: `${tier} tier submission (₹${amount})`,
         order_id: orderData.id,
-        handler: async (response: any) => {
-          console.log('🎉 Payment successful:', response);
+        handler: async (paymentResponse: any) => {
+          console.log('🎉 Payment successful:', paymentResponse);
           
           try {
             console.log('🔍 Verifying payment...');
+            
             const verifyResponse = await fetch('/api/verify-payment', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+                amount: amount,
+                tier: tier
               }),
             });
 
             if (verifyResponse.ok) {
-              console.log('✅ Payment verified');
-              const paymentData = {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
+              const verificationData = await verifyResponse.json();
+              console.log('✅ Payment verified successfully:', verificationData);
+              
+              const finalPaymentData = {
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
                 payment_method: 'razorpay',
                 amount: amount,
-                payment_status: 'completed'
+                tier: tier,
+                payment_status: 'completed',
+                verified: true
               };
               
               toast({
@@ -157,17 +184,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 description: "Your payment has been processed successfully.",
               });
               
-              onSuccess(paymentData);
+              setIsProcessingRazorpay(false);
+              onSuccess(finalPaymentData);
             } else {
-              const errorText = await verifyResponse.text();
-              console.error('❌ Payment verification failed:', errorText);
-              throw new Error('Payment verification failed');
+              const errorData = await verifyResponse.json();
+              console.error('❌ Payment verification failed:', errorData);
+              throw new Error(errorData.error || 'Payment verification failed');
             }
           } catch (verifyError: any) {
             console.error('❌ Verification error:', verifyError);
+            setIsProcessingRazorpay(false);
             toast({
               title: "Payment Verification Failed",
-              description: "Please contact support.",
+              description: "Payment completed but verification failed. Please contact support with your payment ID.",
               variant: "destructive"
             });
             onError('Payment verification failed: ' + verifyError.message);
@@ -175,49 +204,68 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         },
         modal: {
           ondismiss: () => {
-            console.log('💔 Payment modal dismissed');
+            console.log('💔 Payment modal dismissed by user');
             setIsProcessingRazorpay(false);
             toast({
               title: "Payment Cancelled",
-              description: "Payment was cancelled by user.",
+              description: "Payment was cancelled.",
               variant: "destructive"
             });
           }
         },
         theme: {
           color: '#8B5CF6'
+        },
+        prefill: {
+          name: '',
+          email: '',
+          contact: ''
+        },
+        notes: {
+          tier: tier,
+          amount: amount.toString()
         }
       };
 
       console.log('🎭 Opening Razorpay modal...');
-      const rzp = new window.Razorpay(options);
+      const rzp = new window.Razorpay(razorpayOptions);
       
+      // Handle payment failures
       rzp.on('payment.failed', function (response: any) {
         console.error('💥 Payment failed:', response.error);
+        setIsProcessingRazorpay(false);
+        
+        const errorMessage = response.error?.description || 
+                            response.error?.reason || 
+                            'Payment failed. Please try again.';
+        
         toast({
           title: "Payment Failed",
-          description: response.error.description || 'Payment failed',
+          description: errorMessage,
           variant: "destructive"
         });
-        onError('Payment failed: ' + (response.error.description || 'Unknown error'));
-        setIsProcessingRazorpay(false);
+        onError('Payment failed: ' + errorMessage);
       });
 
+      // Open Razorpay modal
       rzp.open();
 
     } catch (error: any) {
       console.error('💥 Payment error:', error);
+      setIsProcessingRazorpay(false);
+      
+      const userFriendlyMessage = error.message || 'Payment failed. Please try again.';
+      
       toast({
         title: "Payment Error",
-        description: error.message || 'Payment failed',
+        description: userFriendlyMessage,
         variant: "destructive"
       });
-      onError(error.message || 'Payment failed');
-      setIsProcessingRazorpay(false);
+      onError(userFriendlyMessage);
     }
   };
 
-  // Handle PayPal Payment
+  // Handle PayPal Payment (existing implementation)
   const handlePayPalPayment = async () => {
     try {
       setIsProcessingPayPal(true);
@@ -230,19 +278,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         },
         body: JSON.stringify({
           amount: amount,
+          tier: tier,
           currency: 'USD'
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`PayPal order creation failed: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `PayPal order creation failed: ${response.status}`);
       }
 
       const data = await response.json();
       console.log('✅ PayPal order created:', data);
 
-      if (data.approval_url) {
-        window.location.href = data.approval_url;
+      if (data.approvalUrl || data.approval_url) {
+        window.location.href = data.approvalUrl || data.approval_url;
       } else {
         throw new Error('No PayPal approval URL received');
       }
@@ -320,7 +370,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 <Button
                   onClick={handleRazorpayPayment}
                   disabled={isProcessingRazorpay || isProcessingPayPal}
-                  className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {isProcessingRazorpay ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -334,7 +384,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 <Button
                   onClick={handlePayPalPayment}
                   disabled={isProcessingRazorpay || isProcessingPayPal}
-                  className="w-full h-12 bg-yellow-500 hover:bg-yellow-600 text-black"
+                  className="w-full h-12 bg-yellow-500 hover:bg-yellow-600 text-black disabled:bg-gray-400"
                 >
                   {isProcessingPayPal ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
