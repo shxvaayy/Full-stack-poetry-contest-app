@@ -1,10 +1,6 @@
-// Add these methods to your existing storage.ts file
-
-import { db } from './db';
-import { users, submissions } from './schema';
+import { db } from './db.js';
+import { users, submissions } from './schema.js';
 import { eq, and, desc } from 'drizzle-orm';
-
-// ✅ MISSING METHODS - Add these to your storage.ts
 
 export async function getUserByUid(uid: string) {
   try {
@@ -94,12 +90,14 @@ export async function updateSubmissionEvaluation(submissionId: number, evaluatio
         scoreBreakdown: evaluationData.scoreBreakdown,
         isWinner: evaluationData.isWinner,
         winnerPosition: evaluationData.winnerPosition,
+        evaluatedAt: new Date(),
         updatedAt: new Date()
       })
-      .where(eq(submissions.id, submissionId));
+      .where(eq(submissions.id, submissionId))
+      .returning();
     
     console.log('✅ Submission evaluation updated:', submissionId);
-    return result;
+    return result[0];
   } catch (error) {
     console.error('❌ Error updating submission evaluation:', error);
     throw error;
@@ -120,13 +118,52 @@ export async function createUser(userData: {
       email: userData.email,
       name: userData.name,
       phone: userData.phone,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: new Date()
     }).returning();
     
     console.log('✅ User created:', result[0].email);
     return result[0];
   } catch (error) {
     console.error('❌ Error creating user:', error);
+    throw error;
+  }
+}
+
+export async function createSubmission(submissionData: any) {
+  try {
+    console.log('🔄 Creating new submission:', submissionData.poemTitle);
+    
+    const result = await db.insert(submissions).values({
+      ...submissionData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    
+    console.log('✅ Submission created:', result[0].id);
+    return result[0];
+  } catch (error) {
+    console.error('❌ Error creating submission:', error);
+    throw error;
+  }
+}
+
+export async function updateUser(uid: string, userData: any) {
+  try {
+    console.log('🔄 Updating user:', uid);
+    
+    const result = await db.update(users)
+      .set({
+        ...userData,
+        updatedAt: new Date()
+      })
+      .where(eq(users.uid, uid))
+      .returning();
+    
+    console.log('✅ User updated:', uid);
+    return result[0];
+  } catch (error) {
+    console.error('❌ Error updating user:', error);
     throw error;
   }
 }
@@ -138,5 +175,6 @@ export const storage = {
   getSubmissionByEmailAndTitle,
   updateSubmissionEvaluation,
   createUser,
-  // ... your existing methods
+  createSubmission,
+  updateUser
 };
