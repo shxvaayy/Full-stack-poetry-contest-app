@@ -481,7 +481,7 @@ export default function SubmitPage() {
       
       console.log('📤 Sending form data to API...');
       
-      const response = await fetch('/api/submit-poem', {
+      const response = await fetch('/api/submit', {
         method: 'POST',
         body: formDataToSend,
         credentials: 'same-origin',
