@@ -305,7 +305,7 @@ export default function SubmitPage() {
           code: couponCode.trim(),
           tier: selectedTier.id,
           amount: selectedTier.price,
-          userUid: user?.uid
+          uid: user?.uid
         }),
       });
 
