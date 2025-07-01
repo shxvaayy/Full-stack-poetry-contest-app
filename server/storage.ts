@@ -74,8 +74,14 @@ export class PostgreSQLStorage implements IStorage {
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
     try {
-      const [submission] = await db.insert(submissions).values(insertSubmission).returning();
-      console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}"`);
+      // Ensure we have a unique submission UUID
+      const submissionData = {
+        ...insertSubmission,
+        submissionUuid: insertSubmission.submissionUuid || crypto.randomUUID()
+      };
+      
+      const [submission] = await db.insert(submissions).values(submissionData).returning();
+      console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}" (UUID: ${submission.submissionUuid})`);
       return submission;
     } catch (error) {
       console.error('❌ Error creating submission:', error);
@@ -139,8 +145,6 @@ export class PostgreSQLStorage implements IStorage {
     };
   }): Promise<Submission | undefined> {
     try {
-      console.log(`🔄 Updating submission ${id} with evaluation:`, evaluation);
-      
       const [submission] = await db.update(submissions)
         .set({
           score: evaluation.score,
@@ -152,19 +156,14 @@ export class PostgreSQLStorage implements IStorage {
         .returning();
 
       if (!submission) {
-        console.log(`❌ Submission with id ${id} not found`);
+        console.log(`Submission with id ${id} not found`);
         return undefined;
       }
 
-      console.log(`✅ Successfully updated submission evaluation for ID ${id}:`, {
-        score: submission.score,
-        type: submission.type,
-        status: submission.status
-      });
+      console.log(`✅ Updated submission evaluation for submission ID ${id}`);
       return submission;
     } catch (error) {
       console.error('❌ Error updating submission evaluation:', error);
-      console.error('❌ Error details:', error);
       return undefined;
     }
   }

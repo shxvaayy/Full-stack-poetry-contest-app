@@ -91,13 +91,12 @@ export default function SubmitPage() {
     email: user?.email || "",
     phone: "",
     age: "",
-    poemTitle: "",
     termsAccepted: false,
   });
-  const [files, setFiles] = useState({
-    poem: null as File | null,
-    photo: null as File | null,
-  });
+  const [poems, setPoems] = useState([
+    { title: "", file: null as File | null }
+  ]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
@@ -249,6 +248,14 @@ export default function SubmitPage() {
     setCouponDiscount(0);
     setCouponCode("");
     setCouponError("");
+    
+    // Initialize poems array based on tier
+    const poemCount = tier.id === "free" ? 1 : 
+                     tier.id === "single" ? 1 :
+                     tier.id === "double" ? 2 : 5;
+    
+    setPoems(Array(poemCount).fill(null).map(() => ({ title: "", file: null })));
+    
     setCurrentStep("form");
   };
 
@@ -313,8 +320,14 @@ export default function SubmitPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (fileType: 'poem' | 'photo', file: File | null) => {
-    setFiles(prev => ({ ...prev, [fileType]: file }));
+  const handlePoemChange = (index: number, field: 'title' | 'file', value: string | File | null) => {
+    setPoems(prev => prev.map((poem, i) => 
+      i === index ? { ...poem, [field]: value } : poem
+    ));
+  };
+
+  const handlePhotoChange = (file: File | null) => {
+    setPhotoFile(file);
   };
 
   const handlePaymentSuccess = (data: any) => {
@@ -381,8 +394,14 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email || !formData.poemTitle) {
+      if (!formData.firstName || !formData.email) {
         throw new Error('Please fill in all required fields');
+      }
+
+      // Validate all poems have titles
+      const emptyTitles = poems.some(poem => !poem.title.trim());
+      if (emptyTitles) {
+        throw new Error('Please provide titles for all poems');
       }
 
       if (!formData.termsAccepted) {
@@ -405,11 +424,17 @@ export default function SubmitPage() {
       submitFormData.append('email', formData.email);
       submitFormData.append('phone', formData.phone || '');
       submitFormData.append('age', formData.age || '');
-      submitFormData.append('poemTitle', formData.poemTitle);
       submitFormData.append('tier', selectedTier?.id || 'free');
       submitFormData.append('amount', discountedAmount.toString());
       submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
       submitFormData.append('userUid', user?.uid || '');
+      submitFormData.append('submissionId', crypto.randomUUID()); // Unique submission ID
+      
+      // Add poem count and titles
+      submitFormData.append('poemCount', poems.length.toString());
+      poems.forEach((poem, index) => {
+        submitFormData.append(`poemTitle_${index}`, poem.title);
+      });
       
       // Add coupon information if applied
       if (couponApplied) {
@@ -457,14 +482,18 @@ export default function SubmitPage() {
         throw new Error('Payment information is missing for paid tier');
       }
 
-      // Add files
-      if (files.poem) {
-        submitFormData.append('poem', files.poem);
-        console.log('Added poem file:', files.poem.name);
-      }
-      if (files.photo) {
-        submitFormData.append('photo', files.photo);
-        console.log('Added photo file:', files.photo.name);
+      // Add poem files
+      poems.forEach((poem, index) => {
+        if (poem.file) {
+          submitFormData.append(`poem_${index}`, poem.file);
+          console.log(`Added poem file ${index}:`, poem.file.name);
+        }
+      });
+
+      // Add photo file
+      if (photoFile) {
+        submitFormData.append('photo', photoFile);
+        console.log('Added photo file:', photoFile.name);
       }
 
       console.log('📤 Sending submission to server...');
@@ -668,57 +697,65 @@ export default function SubmitPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Poem Details</h3>
                   
-                  <div>
-                    <Label htmlFor="poemTitle">Poem Title *</Label>
-                    <Input
-                      id="poemTitle"
-                      value={formData.poemTitle}
-                      onChange={(e) => handleFormData("poemTitle", e.target.value)}
-                      placeholder="Enter your poem title"
-                      required
-                    />
-                  </div>
+                  {poems.map((poem, index) => (
+                    <div key={index} className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                      <h4 className="font-medium">
+                        Poem {index + 1} {poems.length > 1 && <span className="text-gray-500">of {poems.length}</span>}
+                      </h4>
+                      
+                      <div>
+                        <Label htmlFor={`poemTitle_${index}`}>Poem Title *</Label>
+                        <Input
+                          id={`poemTitle_${index}`}
+                          value={poem.title}
+                          onChange={(e) => handlePoemChange(index, "title", e.target.value)}
+                          placeholder={`Enter title for poem ${index + 1}`}
+                          required
+                        />
+                      </div>
 
-                  <div>
-                    <Label htmlFor="poemFile">Upload Poem (PDF, DOC, DOCX)</Label>
-                    <div className="mt-2">
-                      <input
-                        ref={poemFileRef}
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => handleFileChange("poem", e.target.files?.[0] || null)}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => poemFileRef.current?.click()}
-                        className="w-full"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {files.poem ? files.poem.name : "Choose File"}
-                      </Button>
+                      <div>
+                        <Label htmlFor={`poemFile_${index}`}>Upload Poem (PDF, DOC, DOCX)</Label>
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={(e) => handlePoemChange(index, "file", e.target.files?.[0] || null)}
+                            className="hidden"
+                            id={`poemFile_${index}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById(`poemFile_${index}`)?.click()}
+                            className="w-full"
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            {poem.file ? poem.file.name : `Choose File for Poem ${index + 1}`}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
 
                   <div>
                     <Label htmlFor="photoFile">Upload Your Photo (JPG, PNG)</Label>
                     <div className="mt-2">
                       <input
-                        ref={photoFileRef}
                         type="file"
                         accept=".jpg,.jpeg,.png"
-                        onChange={(e) => handleFileChange("photo", e.target.files?.[0] || null)}
+                        onChange={(e) => handlePhotoChange(e.target.files?.[0] || null)}
                         className="hidden"
+                        id="photoFile"
                       />
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => photoFileRef.current?.click()}
+                        onClick={() => document.getElementById("photoFile")?.click()}
                         className="w-full"
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        {files.photo ? files.photo.name : "Choose File"}
+                        {photoFile ? photoFile.name : "Choose File"}
                       </Button>
                     </div>
                   </div>
@@ -1017,10 +1054,10 @@ export default function SubmitPage() {
                 email: user?.email || "",
                 phone: "",
                 age: "",
-                poemTitle: "",
                 termsAccepted: false,
               });
-              setFiles({ poem: null, photo: null });
+              setPoems([{ title: "", file: null }]);
+              setPhotoFile(null);
             }}
             className="w-full bg-green-600 hover:bg-green-700"
           >

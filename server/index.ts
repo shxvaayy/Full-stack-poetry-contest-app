@@ -92,7 +92,9 @@ async function fixDatabaseSchema() {
       { name: 'author_bio', type: 'TEXT' },
       { name: 'contest_month', type: 'TEXT DEFAULT \'current\'' },
       { name: 'payment_screenshot_url', type: 'TEXT' },
-      { name: 'payment_method', type: 'VARCHAR(50)' }
+      { name: 'payment_method', type: 'VARCHAR(50)' },
+      { name: 'processed_at', type: 'TIMESTAMP' },
+      { name: 'admin_notes', type: 'TEXT' }
     ];
     
     console.log('📋 Adding/verifying columns...');

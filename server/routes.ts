@@ -414,7 +414,7 @@ router.get('/api/users/:uid/submissions', async (req, res) => {
 
     const submissions = await storage.getSubmissionsByUser(user.id);
 
-    // Format submissions for frontend with complete evaluation data
+    // Format submissions for frontend
     const formattedSubmissions = submissions.map(sub => ({
       id: sub.id,
       name: `${sub.firstName}${sub.lastName ? ' ' + sub.lastName : ''}`,
@@ -423,17 +423,7 @@ router.get('/api/users/:uid/submissions', async (req, res) => {
       amount: sub.price,
       submittedAt: sub.submittedAt.toISOString(),
       isWinner: sub.isWinner,
-      winnerPosition: sub.winnerPosition,
-      score: sub.score || 0,
-      type: sub.type || 'Human',
-      status: sub.status || 'Pending',
-      scoreBreakdown: sub.scoreBreakdown || {
-        originality: 0,
-        emotion: 0,
-        structure: 0,
-        language: 0,
-        theme: 0
-      }
+      winnerPosition: sub.winnerPosition
     }));
 
     console.log(`✅ Returning ${formattedSubmissions.length} submissions for user ${user.id}`);
@@ -595,10 +585,7 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
 });
 
 // Submit poem with email confirmation - FIXED GOOGLE SHEETS INTEGRATION
-router.post('/api/submit-poem', upload.fields([
-  { name: 'poem', maxCount: 1 },
-  { name: 'photo', maxCount: 1 }
-]), async (req, res) => {
+router.post('/api/submit-poem', upload.any(), async (req, res) => {
   try {
     console.log('📝 Poem submission request received');
     console.log('Form data:', req.body);
@@ -609,7 +596,6 @@ router.post('/api/submit-poem', upload.fields([
       email,
       phone,
       age,
-      poemTitle,
       tier,
       amount,
       paymentId,
@@ -617,16 +603,39 @@ router.post('/api/submit-poem', upload.fields([
       userUid,
       razorpay_order_id,
       razorpay_signature,
-      discountAmount
+      discountAmount,
+      poemCount,
+      submissionId
     } = req.body;
 
     // Validate required fields
-    if (!firstName || !email || !poemTitle || !tier) {
+    if (!firstName || !email || !tier || !poemCount) {
       console.error('Missing required fields');
       return res.status(400).json({
         error: 'Missing required fields',
-        details: 'First name, email, poem title, and tier are required'
+        details: 'First name, email, tier, and poem count are required'
       });
+    }
+
+    const numPoems = parseInt(poemCount);
+    if (isNaN(numPoems) || numPoems < 1) {
+      return res.status(400).json({
+        error: 'Invalid poem count',
+        details: 'Poem count must be a positive number'
+      });
+    }
+
+    // Extract poem titles
+    const poemTitles = [];
+    for (let i = 0; i < numPoems; i++) {
+      const title = req.body[`poemTitle_${i}`];
+      if (!title || !title.trim()) {
+        return res.status(400).json({
+          error: 'Missing poem title',
+          details: `Title for poem ${i + 1} is required`
+        });
+      }
+      poemTitles.push(title);
     }
 
     // If discount amount brings the amount to 0, bypass payment verification
@@ -682,51 +691,69 @@ router.post('/api/submit-poem', upload.fields([
     }
 
     // Handle file uploads
-    let poemFileUrl = null;
+    const files = req.files as Express.Multer.File[];
     let photoUrl = null;
+    const poemFileUrls: (string | null)[] = [];
 
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
-    if (files?.poem?.[0]) {
-      console.log('🔵 Uploading poem file...');
-      try {
-        const poemBuffer = fs.readFileSync(files.poem[0].path);
-        poemFileUrl = await uploadPoemFile(poemBuffer, email, files.poem[0].originalname);
-        console.log('✅ Poem file uploaded:', poemFileUrl);
-      } catch (error) {
-        console.error('❌ Poem file upload failed:', error);
-      }
-    }
-
-    if (files?.photo?.[0]) {
+    // Find photo file
+    const photoFile = files.find(file => file.fieldname === 'photo');
+    if (photoFile) {
       console.log('🔵 Uploading photo file...');
       try {
-        const photoBuffer = fs.readFileSync(files.photo[0].path);
-        photoUrl = await uploadPhotoFile(photoBuffer, email, files.photo[0].originalname);
+        const photoBuffer = fs.readFileSync(photoFile.path);
+        photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
         console.log('✅ Photo file uploaded:', photoUrl);
       } catch (error) {
         console.error('❌ Photo file upload failed:', error);
       }
     }
 
-    // Create submission with proper user linking
-    const submission = await storage.createSubmission({
-      userId: user?.id || null, // 🚀 CRITICAL: Link to user ID
-      firstName,
-      lastName: lastName || null,
-      email,
-      phone: phone || null,
-      age: age || null,
-      poemTitle,
-      tier,
-      price: parseFloat(amount) || 0,
-      poemFileUrl,
-      photoUrl,
-      paymentId: paymentId || null,
-      paymentMethod: paymentMethod || null
-    });
+    // Upload poem files
+    for (let i = 0; i < numPoems; i++) {
+      const poemFile = files.find(file => file.fieldname === `poem_${i}`);
+      let poemFileUrl = null;
+      
+      if (poemFile) {
+        console.log(`🔵 Uploading poem file ${i + 1}...`);
+        try {
+          const poemBuffer = fs.readFileSync(poemFile.path);
+          poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname);
+          console.log(`✅ Poem file ${i + 1} uploaded:`, poemFileUrl);
+        } catch (error) {
+          console.error(`❌ Poem file ${i + 1} upload failed:`, error);
+        }
+      }
+      
+      poemFileUrls.push(poemFileUrl);
+    }
 
-    console.log('✅ Submission created:', submission);
+    // Create separate submission for each poem with unique tracking
+    const submissions = [];
+    const baseSubmissionId = submissionId || crypto.randomUUID();
+    
+    for (let i = 0; i < numPoems; i++) {
+      const uniqueSubmissionId = numPoems === 1 ? baseSubmissionId : `${baseSubmissionId}_poem_${i + 1}`;
+      
+      const submission = await storage.createSubmission({
+        userId: user?.id || null,
+        firstName,
+        lastName: lastName || null,
+        email,
+        phone: phone || null,
+        age: age || null,
+        poemTitle: poemTitles[i],
+        tier: numPoems === 1 ? tier : `${tier}_poem_${i + 1}`,
+        price: parseFloat(amount) || 0,
+        poemFileUrl: poemFileUrls[i],
+        photoUrl: photoUrl,
+        paymentId: paymentId || null,
+        paymentMethod: paymentMethod || null,
+        submissionUuid: uniqueSubmissionId // Add unique submission UUID
+      });
+
+      submissions.push(submission);
+      console.log(`✅ Submission ${i + 1} created:`, submission);
+    }
 
     // Mark coupon code as used only after successful submission
     const { couponCode } = req.body;
@@ -740,40 +767,34 @@ router.post('/api/submit-poem', upload.fields([
       }
     }
 
-    // FIXED: Add to Google Sheets with EXTENSIVE DEBUGGING
+    // FIXED: Add to Google Sheets with EXTENSIVE DEBUGGING - Multiple Poems
     try {
-      console.log('🟡 STARTING Google Sheets integration...');
-      console.log('🟡 poemFileUrl:', poemFileUrl);
-      console.log('🟡 photoUrl:', photoUrl);
-      console.log('🟡 firstName:', firstName);
-      console.log('🟡 lastName:', lastName);
-      console.log('🟡 email:', email);
-
-      // Combine first and last name
+      console.log('🟡 STARTING Google Sheets integration for multiple poems...');
+      
       const fullName = `${firstName}${lastName ? ' ' + lastName : ''}`.trim();
-      console.log('🟡 Combined fullName:', fullName);
+      
+      // Add each poem as separate entry in Google Sheets
+      for (let i = 0; i < submissions.length; i++) {
+        const submission = submissions[i];
+        
+        const sheetsData = {
+          name: fullName,
+          email: email,
+          phone: phone || '',
+          age: age || '',
+          poemTitle: poemTitles[i],
+          tier: submission.tier,
+          amount: (parseFloat(amount) || 0).toString(),
+          poemFile: poemFileUrls[i] || '',
+          photo: photoUrl || '',
+          timestamp: new Date().toISOString(),
+          submissionUuid: submission.submissionUuid || '' // Add unique identifier
+        };
 
-      const sheetsData = {
-        name: fullName,                           // Combined name
-        email: email,
-        phone: phone || '',
-        age: age || '',
-        poemTitle: poemTitle,
-        tier: tier,
-        amount: (parseFloat(amount) || 0).toString(),  // Convert to string
-        poemFile: poemFileUrl || '',              // Google Drive link
-        photo: photoUrl || '',                    // Google Drive link
-        timestamp: new Date().toISOString()       // Current timestamp
-      };
-
-      console.log('🟡 COMPLETE sheetsData object:', JSON.stringify(sheetsData, null, 2));
-
-      // Check if the function exists
-      console.log('🟡 addPoemSubmissionToSheet function exists:', typeof addPoemSubmissionToSheet);
-
-      console.log('🟡 CALLING addPoemSubmissionToSheet...');
-      await addPoemSubmissionToSheet(sheetsData);
-      console.log('🟢 Google Sheets call completed successfully!');
+        console.log(`🟡 Adding poem ${i + 1} to Google Sheets:`, sheetsData);
+        await addPoemSubmissionToSheet(sheetsData);
+        console.log(`🟢 Poem ${i + 1} added to Google Sheets successfully!`);
+      }
     } catch (sheetsError) {
       console.error('🔴 GOOGLE SHEETS ERROR:', sheetsError);
       console.error('🔴 Error message:', sheetsError?.message);
@@ -787,8 +808,9 @@ router.post('/api/submit-poem', upload.fields([
       const emailSent = await sendSubmissionConfirmation({
         name: firstName + (lastName ? ' ' + lastName : ''),
         email: email,
-        poemTitle: poemTitle,
-        tier: tier
+        poemTitle: numPoems === 1 ? poemTitles[0] : `${numPoems} poems: ${poemTitles.join(', ')}`,
+        tier: tier,
+        poemCount: numPoems
       });
 
       if (emailSent) {
@@ -801,32 +823,26 @@ router.post('/api/submit-poem', upload.fields([
     }
 
     // Clean up uploaded files
-    if (files?.poem?.[0]) {
+    files.forEach(file => {
       try {
-        fs.unlinkSync(files.poem[0].path);
+        fs.unlinkSync(file.path);
       } catch (error) {
-        console.error('Error cleaning up poem file:', error);
+        console.error('Error cleaning up file:', file.originalname, error);
       }
-    }
-
-    if (files?.photo?.[0]) {
-      try {
-        fs.unlinkSync(files.photo[0].path);
-      } catch (error) {
-        console.error('Error cleaning up photo file:', error);
-      }
-    }
+    });
 
     // Return success response
     res.json({
       success: true,
-      message: 'Poem submitted successfully!',
-      submission: {
-        id: submission.id,
-        poemTitle: submission.poemTitle,
-        tier: submission.tier,
-        submittedAt: submission.submittedAt
-      }
+      message: `${numPoems} poem${numPoems > 1 ? 's' : ''} submitted successfully!`,
+      submissions: submissions.map(sub => ({
+        id: sub.id,
+        poemTitle: sub.poemTitle,
+        tier: sub.tier,
+        submittedAt: sub.submittedAt,
+        submissionUuid: sub.submissionUuid
+      })),
+      submissionCount: numPoems
     });
 
   } catch (error: any) {
@@ -1131,12 +1147,8 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
           continue;
         }
 
-        console.log(`✅ Found user: ${user.email} (ID: ${user.id})`);
-
         // Find submission by title and user
         const userSubmissions = await storage.getSubmissionsByUser(user.id);
-        console.log(`📄 User has ${userSubmissions.length} submissions`);
-        
         const submission = userSubmissions.find((s: any) => 
           s.poemTitle.toLowerCase().trim() === rowData.poemtitle.toLowerCase().trim()
         );
@@ -1144,12 +1156,8 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         if (!submission) {
           errors.push(`Row ${i + 1}: Poem "${rowData.poemtitle}" not found for user ${rowData.email}`);
           console.log(`❌ Submission not found: "${rowData.poemtitle}" for ${rowData.email}`);
-          console.log(`Available poems for user:`, userSubmissions.map(s => s.poemTitle));
           continue;
         }
-
-        console.log(`✅ Found submission: ${submission.poemTitle} (ID: ${submission.id})`);
-        console.log(`📊 Current submission status: ${submission.status}, score: ${submission.score}`);
 
         // Parse numeric values safely
         const score = parseInt(rowData.score) || 0;
@@ -1162,7 +1170,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), async (req, res) 
         // Update submission with evaluation results
         await storage.updateSubmissionEvaluation(submission.id, {
           score: score,
-          type: rowData.type || 'Human',
+          type: rowData.type || 'AI',
           status: rowData.status || 'Evaluated',
           scoreBreakdown: {
             originality,

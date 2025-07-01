@@ -26,6 +26,7 @@ export const submissions = pgTable('submissions', {
   photoUrl: text('photo_url'),
   paymentId: varchar('payment_id', { length: 255 }),
   paymentMethod: varchar('payment_method', { length: 50 }),
+  submissionUuid: varchar('submission_uuid', { length: 255 }).unique(),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   isWinner: boolean('is_winner').default(false),
   winnerPosition: integer('winner_position'),
