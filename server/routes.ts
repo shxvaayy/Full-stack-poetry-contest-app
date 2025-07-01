@@ -9,7 +9,7 @@ import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFr
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
-import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
+import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES, VALID_TIERS } from './schema.js';
 
 const router = Router();
 
@@ -780,8 +780,8 @@ router.post('/api/submit', upload.fields([
     }
 
     // Validate tier
-    if (!validateTierPoemCount(tier, 1)) {
-      console.error('❌ Invalid tier:', tier);
+    if (!VALID_TIERS.includes(tier as any)) {
+      console.error('❌ Invalid tier:', tier, 'Valid tiers:', VALID_TIERS);
       return res.status(400).json({ error: 'Invalid tier selected' });
     }
 
