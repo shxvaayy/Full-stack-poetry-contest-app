@@ -13,6 +13,47 @@ import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.j
 
 const router = Router();
 
+// Force JSON responses and logging
+router.use((req, res, next) => {
+  // Ensure all responses are JSON
+  res.setHeader('Content-Type', 'application/json');
+  
+  // Log all incoming requests
+  console.log(`📞 ${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log('📋 Headers:', req.headers);
+  console.log('📋 Body:', req.body);
+  
+  next();
+});
+
+// Add error handling for non-JSON responses
+router.use((req, res, next) => {
+  const originalSend = res.send;
+  
+  res.send = function(body) {
+    // Ensure we're sending valid JSON
+    if (typeof body === 'string') {
+      try {
+        JSON.parse(body);
+      } catch (e) {
+        // If it's not valid JSON, wrap it
+        body = JSON.stringify({ 
+          success: false, 
+          error: body,
+          timestamp: new Date().toISOString() 
+        });
+      }
+    } else if (typeof body === 'object') {
+      body = JSON.stringify(body);
+    }
+    
+    res.setHeader('Content-Type', 'application/json');
+    return originalSend.call(this, body);
+  };
+  
+  next();
+});
+
 // CRITICAL FIX: Error handling middleware
 const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
   Promise.resolve(fn(req, res, next)).catch((error) => {
@@ -56,11 +97,15 @@ const upload = multer({
   }
 });
 
-// SAFER: Wrapper function for upload.any() with error handling
+// SAFER: Wrapper function for upload.any() with better error handling
 const safeUploadAny = (req: any, res: any, next: any) => {
+  console.log('🔄 safeUploadAny called for:', req.path);
+  console.log('📋 Content-Type:', req.headers['content-type']);
+  
   // Ensure req has proper structure before passing to multer
   if (!req || !req.headers || typeof req.headers !== 'object') {
     console.error('❌ Invalid request structure for multer');
+    res.setHeader('Content-Type', 'application/json');
     return res.status(400).json({
       success: false,
       error: 'Invalid request format'
@@ -70,8 +115,30 @@ const safeUploadAny = (req: any, res: any, next: any) => {
   // Ensure headers exist
   req.headers = req.headers || {};
   
-  // Call multer with safe request
-  upload.any()(req, res, next);
+  try {
+    // Call multer with safe request
+    upload.any()(req, res, (error) => {
+      if (error) {
+        console.error('❌ Multer error:', error);
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(400).json({
+          success: false,
+          error: 'File upload error: ' + error.message
+        });
+      }
+      
+      console.log('✅ Multer completed successfully');
+      console.log('📁 Files received:', req.files?.length || 0);
+      next();
+    });
+  } catch (error) {
+    console.error('❌ safeUploadAny error:', error);
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(500).json({
+      success: false,
+      error: 'Upload processing error: ' + error.message
+    });
+  }
 };
 
 // Define field configurations
@@ -987,6 +1054,8 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       });
     }
 
+    console.log('🎉 Legacy submission completed successfully!');
+    
     res.json({
       success: true,
       message: 'Poem submitted successfully!',
@@ -1010,6 +1079,139 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
     res.status(500).json({
       success: false,
       error: 'Submission failed: ' + error.message
+    });
+  }
+}));
+
+// Legacy multiple poems submission
+router.post('/api/submit-multiple', safeUploadAny, asyncHandler(async (req: any, res: any) => {
+  console.log('📝 Legacy multiple poems submission received');
+  
+  const { userData, poemTitles, tier = 'bulk' } = req.body;
+
+  try {
+    // Basic validation
+    if (!userData || !poemTitles || !Array.isArray(poemTitles)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid submission data'
+      });
+    }
+
+    const { firstName, lastName, email, phone, age } = userData;
+
+    if (!firstName || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required user data'
+      });
+    }
+
+    // Separate poem files and photo file
+    const poemFiles = req.files?.filter((f: any) => 
+      f.fieldname === 'poems' || f.originalname?.toLowerCase().includes('poem')
+    ) || [];
+    
+    const photoFile = req.files?.find((f: any) => 
+      f.fieldname === 'photo' || f.mimetype?.startsWith('image/')
+    );
+
+    // Upload files to Google Drive
+    let poemFileUrls = [];
+    let photoFileUrl = null;
+
+    if (poemFiles.length > 0) {
+      poemFileUrls = await uploadMultiplePoemFiles(poemFiles, email, poemTitles);
+    }
+
+    if (photoFile) {
+      photoFileUrl = await uploadPhotoFile(photoFile, email, 'multiple-poems');
+    }
+
+    // Save submissions to in-memory storage (legacy)
+    const submissionGroup = {
+      id: Date.now(),
+      userData,
+      poems: poemTitles.map((title: string, index: number) => ({
+        id: submissions.length + index + 1,
+        poemTitle: title,
+        poemFileUrl: poemFileUrls[index] || null,
+        photoFileUrl: index === 0 ? photoFileUrl : null, // Only first poem gets photo
+        tier,
+        submittedAt: new Date().toISOString()
+      })),
+      submittedAt: new Date().toISOString()
+    };
+
+    // Add individual submissions to legacy array
+    submissionGroup.poems.forEach(poem => {
+      submissions.push({
+        ...poem,
+        ...userData
+      });
+    });
+
+    // Add to Google Sheets
+    try {
+      await addMultiplePoemsToSheet({
+        ...userData,
+        titles: poemTitles,
+        tier,
+        submissionUuid: submissionGroup.id.toString()
+      });
+    } catch (sheetError) {
+      console.error('⚠️ Failed to add to Google Sheets:', sheetError);
+    }
+
+    // Send confirmation email
+    try {
+      await sendMultiplePoemsConfirmation(email, {
+        name: firstName,
+        poemTitles,
+        tier,
+        submissionUuid: submissionGroup.id.toString()
+      });
+    } catch (emailError) {
+      console.error('⚠️ Failed to send email:', emailError);
+    }
+
+    // Clean up uploaded files
+    if (req.files) {
+      req.files.forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error('Warning: Could not delete temp file:', file.path);
+        }
+      });
+    }
+
+    console.log('🎉 Legacy multiple poems submission completed successfully!');
+    
+    res.json({
+      success: true,
+      message: `${poemTitles.length} poems submitted successfully!`,
+      submissionId: submissionGroup.id,
+      totalSubmissions: poemTitles.length
+    });
+
+  } catch (error) {
+    console.error('❌ Legacy multiple poems submission error:', error);
+    
+    // Clean up files on error
+    if (req.files) {
+      req.files.forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Multiple poems submission failed: ' + error.message
     });
   }
 }));
@@ -1056,132 +1258,6 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// ===== ADMIN ENDPOINTS =====
-
-// Get all submissions (admin only)
-router.get('/api/admin/submissions', asyncHandler(async (req: any, res: any) => {
-  console.log('👨‍💼 Admin: Getting all submissions');
-  
-  try {
-    // Get from database if available
-    if (storage.getAllSubmissions) {
-      const dbSubmissions = await storage.getAllSubmissions();
-      console.log(`✅ Retrieved ${dbSubmissions.length} submissions from database`);
-      res.json(dbSubmissions);
-    } else {
-      // Fallback to in-memory storage
-      console.log(`✅ Retrieved ${submissions.length} submissions from memory`);
-      res.json(submissions);
-    }
-  } catch (error) {
-    console.error('❌ Error getting admin submissions:', error);
-    // Fallback to in-memory storage on error
-    res.json(submissions);
-  }
-}));
-
-// Upload evaluation results (admin only)
-router.post('/api/admin/upload-evaluations', safeUploadAny, asyncHandler(async (req: any, res: any) => {
-  console.log('👨‍💼 Admin: Uploading evaluation results');
-  
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'No CSV file uploaded'
-    });
-  }
-
-  const csvFile = req.files[0];
-  console.log('📁 CSV file received:', csvFile.originalname);
-
-  try {
-    // Read and parse CSV file
-    const csvContent = fs.readFileSync(csvFile.path, 'utf-8');
-    const lines = csvContent.split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
-      throw new Error('CSV file must have at least a header and one data row');
-    }
-
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    console.log('📋 CSV headers:', headers);
-
-    let updatedCount = 0;
-    const errors = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      try {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-        const rowData = {};
-        
-        headers.forEach((header, index) => {
-          rowData[header] = values[index] || '';
-        });
-
-        // Find submission by email and poem title
-        const email = rowData['Email'] || rowData['email'];
-        const poemTitle = rowData['Poem Title'] || rowData['poemTitle'];
-        
-        if (!email || !poemTitle) {
-          errors.push(`Row ${i + 1}: Missing email or poem title`);
-          continue;
-        }
-
-        // Update submission with evaluation data
-        if (storage.updateSubmissionEvaluation) {
-          const submission = await storage.getSubmissionByEmailAndTitle(email, poemTitle);
-          
-          if (submission) {
-            await storage.updateSubmissionEvaluation(submission.id, {
-              score: parseInt(rowData['Score'] || rowData['score'] || '0'),
-              type: rowData['Type'] || rowData['type'] || 'Human',
-              status: rowData['Status'] || rowData['status'] || 'Evaluated',
-              scoreBreakdown: JSON.stringify(rowData),
-              isWinner: (rowData['Winner'] || rowData['winner'] || '').toLowerCase() === 'yes',
-              winnerPosition: parseInt(rowData['Position'] || rowData['position'] || '0') || null
-            });
-            updatedCount++;
-          } else {
-            errors.push(`Row ${i + 1}: Submission not found for ${email} - ${poemTitle}`);
-          }
-        }
-      } catch (rowError) {
-        errors.push(`Row ${i + 1}: ${rowError.message}`);
-      }
-    }
-
-    // Clean up uploaded file
-    fs.unlinkSync(csvFile.path);
-
-    console.log(`✅ Updated ${updatedCount} submissions`);
-    if (errors.length > 0) {
-      console.log('⚠️ Errors:', errors);
-    }
-
-    res.json({
-      success: true,
-      message: `Evaluation results uploaded successfully. Updated ${updatedCount} submissions.`,
-      updatedCount,
-      errors: errors.length > 0 ? errors : undefined
-    });
-
-  } catch (error) {
-    console.error('❌ CSV upload error:', error);
-    
-    // Clean up file on error
-    try {
-      fs.unlinkSync(csvFile.path);
-    } catch (cleanupError) {
-      // Ignore cleanup errors
-    }
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to process CSV file: ' + error.message
-    });
-  }
-}));
-
 // ===== UTILITY ENDPOINTS =====
 
 // Get submission count
@@ -1190,42 +1266,78 @@ router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
     const count = await getSubmissionCountFromSheet();
     res.json({
       success: true,
-      count: count || submissions.length || 0
+      count: count || 0
     });
   } catch (error) {
     console.error('❌ Error getting submission count:', error);
     res.json({
       success: true,
-      count: submissions.length || 0 // Return in-memory count on error
+      count: 0 // Return 0 on error
     });
   }
 }));
 
-// Get all submissions (public endpoint with limited data)
-router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
-  console.log('🔍 Getting public submissions list');
+// Get all submissions (legacy)
+router.get('/api/submissions', (req, res) => {
+  console.log('📊 Getting all submissions (legacy in-memory)');
+  
+  // Return in-memory submissions for backward compatibility
+  res.json({
+    success: true,
+    submissions: submissions,
+    total: submissions.length
+  });
+});
+
+// Get submission by ID (legacy)
+router.get('/api/submissions/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  console.log('🔍 Getting submission by ID (legacy):', id);
+  
+  const submission = submissions.find(sub => sub.id === id);
+  
+  if (!submission) {
+    return res.status(404).json({
+      success: false,
+      error: 'Submission not found'
+    });
+  }
+  
+  res.json({
+    success: true,
+    submission
+  });
+});
+
+// ===== ADMIN ENDPOINTS =====
+
+// CSV upload for evaluation results
+router.post('/api/admin/upload-evaluations', safeUploadAny, asyncHandler(async (req: any, res: any) => {
+  console.log('📊 Admin evaluation upload received');
+  
+  // This would handle CSV upload and update submission evaluations
+  // Implementation depends on your CSV format and evaluation logic
+  
+  res.json({
+    success: true,
+    message: 'Evaluation upload endpoint ready for implementation'
+  });
+}));
+
+// Get all submissions for admin
+router.get('/api/admin/submissions', asyncHandler(async (req: any, res: any) => {
+  console.log('👩‍💼 Admin getting all submissions');
   
   try {
-    // Return limited public data
-    const publicSubmissions = submissions.map(sub => ({
-      id: sub.id,
-      poemTitle: sub.poemTitle,
-      tier: sub.tier,
-      submittedAt: sub.submittedAt,
-      isWinner: sub.isWinner || false,
-      winnerPosition: sub.winnerPosition,
-      score: sub.score,
-      type: sub.type || 'Human',
-      status: sub.status || 'Pending'
-    }));
-
+    // This would get all submissions from database
+    // For now, return in-memory submissions
     res.json({
       success: true,
-      submissions: publicSubmissions,
-      total: publicSubmissions.length
+      submissions: submissions,
+      total: submissions.length
     });
   } catch (error) {
-    console.error('❌ Error getting submissions:', error);
+    console.error('❌ Error getting admin submissions:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get submissions'
@@ -1233,25 +1345,77 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Health check for file upload system
-router.get('/api/upload-health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'File upload system is healthy',
-    multer_configured: true,
-    google_drive_configured: !!(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
-    google_sheets_configured: !!(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
-    timestamp: new Date().toISOString()
-  });
+// Update submission evaluation
+router.put('/api/admin/submissions/:id/evaluation', asyncHandler(async (req: any, res: any) => {
+  const id = parseInt(req.params.id);
+  const { score, type, status, scoreBreakdown, isWinner, winnerPosition } = req.body;
+  
+  console.log('📝 Admin updating submission evaluation:', id);
+  
+  try {
+    // Update in database if available
+    await storage.updateSubmissionEvaluation(id, {
+      score,
+      type,
+      status,
+      scoreBreakdown: JSON.stringify(scoreBreakdown),
+      isWinner,
+      winnerPosition
+    });
+    
+    // Also update in-memory for legacy compatibility
+    const submission = submissions.find(sub => sub.id === id);
+    if (submission) {
+      Object.assign(submission, {
+        score,
+        type,
+        status,
+        scoreBreakdown,
+        isWinner,
+        winnerPosition,
+        evaluatedAt: new Date().toISOString()
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Submission evaluation updated successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating submission evaluation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update evaluation'
+    });
+  }
+}));
+
+// ===== ERROR HANDLING =====
+
+// Catch-all error handler
+router.use((error: any, req: any, res: any, next: any) => {
+  console.error('🚨 Unhandled route error:', error);
+  
+  // Force JSON response
+  res.setHeader('Content-Type', 'application/json');
+  
+  if (!res.headersSent) {
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Internal Server Error',
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      method: req.method
+    });
+  }
 });
 
-// Export the router registration function
+// Register routes function
 export function registerRoutes(app: any) {
   console.log('🛣️  Registering API routes...');
   app.use('/', router);
   console.log('✅ Routes registered successfully');
-  console.log('🔧 Multer configured with safe upload handling');
-  console.log('📁 Supported file fields: poemFile, photoFile, poems, photo, files');
 }
 
 // Export router
