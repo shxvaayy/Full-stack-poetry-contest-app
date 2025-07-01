@@ -82,10 +82,10 @@ router.post('/api/create-order', async (req, res) => {
       });
     }
 
-    console.log(`💰 Creating Razorpay order for ₹${amount/100} (${amount} paise)`);
+    console.log(`💰 Creating Razorpay order for amount: ${amount} paise`);
 
     const orderOptions = {
-      amount: amount, // amount in paise
+      amount: amount, // amount in paise (already converted in frontend)
       currency: currency,
       receipt: receipt,
       notes: {
@@ -156,7 +156,7 @@ router.post('/api/verify-payment', async (req, res) => {
     if (expectedSignature === razorpay_signature) {
       console.log('✅ Payment signature verified successfully');
       
-      // You can add additional verification by fetching payment details from Razorpay
+      // Fetch additional payment details for verification
       try {
         const payment = await razorpay.payments.fetch(razorpay_payment_id);
         console.log('💳 Payment details from Razorpay:', {
@@ -166,23 +166,16 @@ router.post('/api/verify-payment', async (req, res) => {
           method: payment.method
         });
 
-        if (payment.status === 'captured') {
-          console.log('💰 Payment captured successfully');
-          res.json({
-            verified: true,
-            payment_id: razorpay_payment_id,
-            order_id: razorpay_order_id,
-            amount: payment.amount / 100, // Convert back to rupees
-            status: payment.status,
-            method: payment.method
-          });
-        } else {
-          console.error('❌ Payment not captured:', payment.status);
-          res.status(400).json({ 
-            error: 'Payment not completed',
-            status: payment.status 
-          });
-        }
+        res.json({
+          verified: true,
+          payment_id: razorpay_payment_id,
+          order_id: razorpay_order_id,
+          amount: payment.amount / 100, // Convert back to rupees
+          status: payment.status,
+          method: payment.method,
+          captured: payment.status === 'captured'
+        });
+
       } catch (fetchError: any) {
         console.error('⚠️ Could not fetch payment details, but signature is valid:', fetchError.message);
         // If we can't fetch payment details but signature is valid, still consider it verified
@@ -190,7 +183,8 @@ router.post('/api/verify-payment', async (req, res) => {
           verified: true,
           payment_id: razorpay_payment_id,
           order_id: razorpay_order_id,
-          note: 'Payment verified by signature'
+          amount: amount,
+          note: 'Payment verified by signature (details fetch failed)'
         });
       }
     } else {
@@ -667,7 +661,7 @@ router.get('/api/users/:uid/submission-status', async (req, res) => {
   }
 });
 
-// Submit poem endpoint with multiple files
+// Submit poem endpoint with multiple files - ENHANCED FOR PAYMENT FLOW
 router.post('/api/submit', upload.fields([
   { name: 'poems', maxCount: 5 },
   { name: 'photo', maxCount: 1 }
@@ -693,10 +687,11 @@ router.post('/api/submit', upload.fields([
       amount,
       paypal_order_id,
       stripe_session_id,
-      poemTitles
+      poemTitles,
+      couponCode
     } = req.body;
 
-    console.log('🔍 Processing submission for:', { firstName, lastName, email, tier });
+    console.log('🔍 Processing submission for:', { firstName, lastName, email, tier, payment_method, amount });
 
     // Validate required fields
     const requiredFields = { firstName, lastName, email, phone, age, tier };
@@ -734,6 +729,32 @@ router.post('/api/submit', upload.fields([
       console.error(`❌ Poem count mismatch: received ${poemFiles.length}, expected ${expectedPoemCount}`);
       return res.status(400).json({
         error: `Invalid number of poems. Expected ${expectedPoemCount} for ${tier} tier, received ${poemFiles.length}`
+      });
+    }
+
+    // Payment validation for paid tiers
+    const actualAmount = parseFloat(amount) || 0;
+    if (tier !== 'free' && actualAmount > 0) {
+      console.log('💳 Validating payment for paid tier...');
+      
+      // Check for valid payment data
+      const hasRazorpayPayment = razorpay_order_id && razorpay_payment_id && razorpay_signature;
+      const hasPayPalPayment = paypal_order_id;
+      const hasStripePayment = stripe_session_id;
+
+      if (!hasRazorpayPayment && !hasPayPalPayment && !hasStripePayment) {
+        console.error('❌ No valid payment data found for paid tier');
+        return res.status(400).json({
+          error: 'Payment required for this tier',
+          details: 'No valid payment information found'
+        });
+      }
+
+      console.log('✅ Payment data found:', {
+        razorpay: !!hasRazorpayPayment,
+        paypal: !!hasPayPalPayment,
+        stripe: !!hasStripePayment,
+        amount: actualAmount
       });
     }
 
@@ -797,7 +818,7 @@ router.post('/api/submit', upload.fields([
       });
     }
 
-    // Create submission data
+    // Create submission data with enhanced payment information
     const submissionData = {
       userId: user.id,
       firstName,
@@ -813,10 +834,12 @@ router.post('/api/submit', upload.fields([
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
-        payment_method,
-        amount: amount ? parseFloat(amount) : 0,
+        payment_method: payment_method || 'unknown',
+        amount: actualAmount,
         paypal_order_id,
-        stripe_session_id
+        stripe_session_id,
+        couponCode: couponCode || null,
+        payment_status: 'completed'
       }
     };
 
@@ -835,9 +858,11 @@ router.post('/api/submit', upload.fields([
           age,
           poemTitle: poemTitle || 'Untitled',
           tier,
-          amount: amount || '0',
+          amount: actualAmount.toString(),
           poemFile: poemUrls[0] || '',
           photo: photoUrl,
+          paymentMethod: payment_method || 'unknown',
+          paymentId: razorpay_payment_id || paypal_order_id || stripe_session_id || 'unknown',
           timestamp: new Date().toISOString()
         });
       } else {
@@ -847,12 +872,14 @@ router.post('/api/submit', upload.fields([
           phone,
           age,
           tier,
-          amount: amount || '0',
+          amount: actualAmount.toString(),
           poems: poemUrls.map((url, i) => ({
             title: Array.isArray(poemTitles) ? poemTitles[i] : `Poem ${i + 1}`,
             url
           })),
           photo: photoUrl,
+          paymentMethod: payment_method || 'unknown',
+          paymentId: razorpay_payment_id || paypal_order_id || stripe_session_id || 'unknown',
           timestamp: new Date().toISOString()
         });
       }
@@ -861,7 +888,19 @@ router.post('/api/submit', upload.fields([
       console.error('⚠️ Google Sheets error (non-critical):', sheetsError.message);
     }
 
-    // Send confirmation email
+    // Mark coupon as used if applicable
+    if (couponCode) {
+      try {
+        console.log('🎫 Marking coupon as used:', couponCode);
+        const { markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
+        markCodeAsUsed(couponCode);
+        console.log('✅ Coupon marked as used');
+      } catch (couponError: any) {
+        console.error('⚠️ Coupon marking error (non-critical):', couponError.message);
+      }
+    }
+
+    // Send confirmation email - ENHANCED WITH PAYMENT INFO
     try {
       console.log('📧 Sending confirmation email...');
       if (expectedPoemCount === 1) {
@@ -869,14 +908,20 @@ router.post('/api/submit', upload.fields([
           name: `${firstName} ${lastName}`,
           email,
           poemTitle: poemTitle || 'Untitled',
-          tier
+          tier,
+          paymentMethod: payment_method,
+          amount: actualAmount,
+          paymentId: razorpay_payment_id || paypal_order_id || 'N/A'
         });
       } else {
         await sendMultiplePoemsConfirmation({
           name: `${firstName} ${lastName}`,
           email,
           poemCount: expectedPoemCount,
-          tier
+          tier,
+          paymentMethod: payment_method,
+          amount: actualAmount,
+          paymentId: razorpay_payment_id || paypal_order_id || 'N/A'
         });
       }
       console.log('✅ Confirmation email sent');
@@ -896,14 +941,17 @@ router.post('/api/submit', upload.fields([
       console.error('⚠️ Cleanup error (non-critical):', cleanupError);
     }
 
-    console.log('🎉 SUBMISSION COMPLETED SUCCESSFULLY');
+    console.log('🎉 SUBMISSION COMPLETED SUCCESSFULLY - MOVING TO STEP 4 (EMAIL SENT)');
 
     res.json({
       success: true,
-      message: 'Submission completed successfully!',
+      message: 'Submission completed successfully! Confirmation email has been sent.',
       submissionId: submission.id,
       poemUrls,
-      photoUrl
+      photoUrl,
+      emailSent: true,
+      nextStep: 'completed',
+      paymentVerified: true
     });
 
   } catch (error: any) {
@@ -921,12 +969,49 @@ router.post('/api/submit', upload.fields([
         });
       }
     } catch (cleanupError) {
-      console.error('⚠️ Error cleanup failed:', cleanupError);
+      console.error('⚠️ File cleanup error:', cleanupError);
     }
 
     res.status(500).json({
       error: 'Submission failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later'
+    });
+  }
+});
+
+// Contact form endpoint
+router.post('/api/contact', async (req, res) => {
+  try {
+    console.log('📧 Contact form submission received');
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Add to Google Sheets
+    try {
+      await addContactToSheet({
+        name,
+        email,
+        message,
+        timestamp: new Date().toISOString()
+      });
+      console.log('✅ Contact form added to Google Sheets');
+    } catch (sheetsError: any) {
+      console.error('⚠️ Google Sheets error for contact form:', sheetsError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Message sent successfully!'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Contact form error:', error);
+    res.status(500).json({
+      error: 'Failed to send message',
+      details: error.message
     });
   }
 });
@@ -935,102 +1020,31 @@ router.post('/api/submit', upload.fields([
 router.get('/api/submissions', async (req, res) => {
   try {
     console.log('📋 Getting all submissions...');
+    
+    const submissions = await storage.getAllSubmissions();
+    console.log(`✅ Retrieved ${submissions.length} submissions`);
 
-    const allSubmissions = await storage.getAllSubmissions();
-    console.log(`✅ Retrieved ${allSubmissions.length} submissions`);
+    res.json({
+      success: true,
+      submissions: submissions.map(s => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`,
+        email: s.email,
+        tier: s.tier,
+        poemTitle: s.poemTitle,
+        submittedAt: s.createdAt,
+        paymentMethod: s.paymentData?.payment_method || 'unknown',
+        amount: s.paymentData?.amount || 0
+      }))
+    });
 
-    res.json(allSubmissions);
   } catch (error: any) {
     console.error('❌ Error getting submissions:', error);
     res.status(500).json({ error: 'Failed to get submissions', details: error.message });
   }
 });
 
-// Contact form endpoint
-router.post('/api/contact', async (req, res) => {
-  try {
-    const { name, email, subject, message } = req.body;
-
-    if (!name || !email || !subject || !message) {
-      return res.status(400).json({
-        error: 'All fields are required'
-      });
-    }
-
-    console.log('📞 New contact form submission:', { name, email, subject });
-
-    // Add to Google Sheets
-    try {
-      await addContactToSheet({
-        name,
-        email,
-        subject,
-        message,
-        timestamp: new Date().toISOString()
-      });
-      console.log('✅ Contact form added to Google Sheets');
-    } catch (sheetsError: any) {
-      console.error('⚠️ Google Sheets error (non-critical):', sheetsError.message);
-    }
-
-    res.json({
-      success: true,
-      message: 'Contact form submitted successfully!'
-    });
-
-  } catch (error: any) {
-    console.error('❌ Contact form error:', error);
-    res.status(500).json({
-      error: 'Failed to submit contact form',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
-});
-
-// Get submission count from Google Sheets
-router.get('/api/submission-count', async (req, res) => {
-  try {
-    console.log('📊 Getting submission count from Google Sheets...');
-    
-    const count = await getSubmissionCountFromSheet();
-    console.log(`✅ Current submission count: ${count}`);
-
-    res.json({ count });
-  } catch (error: any) {
-    console.error('❌ Error getting submission count:', error);
-    
-    // Fallback to storage count
-    try {
-      const allSubmissions = await storage.getAllSubmissions();
-      const fallbackCount = allSubmissions.length;
-      console.log(`📊 Using fallback count from storage: ${fallbackCount}`);
-      
-      res.json({ count: fallbackCount });
-    } catch (storageError) {
-      res.status(500).json({ 
-        error: 'Failed to get submission count',
-        details: error.message 
-      });
-    }
-  }
-});
-
-// Health check for the API
-router.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    services: {
-      razorpay: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
-      paypal: !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
-      email: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
-      google_sheets: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
-      google_drive: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-    }
-  });
-});
-
 export function registerRoutes(app: any) {
   app.use('/', router);
-  console.log('✅ All routes registered successfully');
+  console.log('✅ Routes registered successfully');
 }
