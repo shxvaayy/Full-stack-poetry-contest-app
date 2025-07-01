@@ -212,7 +212,7 @@ router.post('/api/verify-payment', async (req, res) => {
 
     // Create signature verification string
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    
+
     // Generate expected signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -227,7 +227,7 @@ router.post('/api/verify-payment', async (req, res) => {
 
     if (expectedSignature === razorpay_signature) {
       console.log('✅ Payment signature verified successfully');
-      
+
       // Fetch additional payment details for verification
       try {
         const payment = await razorpay.payments.fetch(razorpay_payment_id);
@@ -520,9 +520,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-    
+
     const validation = validateCouponCode(code, tier);
-    
+
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -779,21 +779,10 @@ router.post('/api/submit', upload.fields([
       });
     }
 
-    // Validate tier exists
-    if (!tier || typeof tier !== 'string') {
-      console.error('❌ Missing or invalid tier:', tier);
-      return res.status(400).json({ error: 'Tier is required and must be a valid string' });
-    }
-
-    // Check if tier is valid
-    const validTiers = Object.keys(TIER_POEM_COUNTS);
-    if (!validTiers.includes(tier)) {
-      console.error('❌ Invalid tier selected:', tier, 'Valid tiers:', validTiers);
-      return res.status(400).json({ 
-        error: 'Invalid tier selected',
-        validTiers: validTiers,
-        receivedTier: tier
-      });
+    // Validate tier
+    if (!validateTierPoemCount(tier, 1)) {
+      console.error('❌ Invalid tier:', tier);
+      return res.status(400).json({ error: 'Invalid tier selected' });
     }
 
     // Get expected poem count for tier
@@ -809,12 +798,9 @@ router.post('/api/submit', upload.fields([
 
     // Validate poem count matches tier
     if (poemFiles.length !== expectedPoemCount) {
-      console.error(`❌ Poem count mismatch: received ${poemFiles.length}, expected ${expectedPoemCount} for tier ${tier}`);
+      console.error(`❌ Poem count mismatch: received ${poemFiles.length}, expected ${expectedPoemCount}`);
       return res.status(400).json({
-        error: `Invalid number of poems. Expected ${expectedPoemCount} for ${tier} tier, received ${poemFiles.length}`,
-        expectedCount: expectedPoemCount,
-        receivedCount: poemFiles.length,
-        tier: tier
+        error: `Invalid number of poems. Expected ${expectedPoemCount} for ${tier} tier, received ${poemFiles.length}`
       });
     }
 
@@ -822,7 +808,7 @@ router.post('/api/submit', upload.fields([
     const actualAmount = parseFloat(amount) || 0;
     if (tier !== 'free' && actualAmount > 0) {
       console.log('💳 Validating payment for paid tier...');
-      
+
       // Check for valid payment data
       const hasRazorpayPayment = razorpay_order_id && razorpay_payment_id && razorpay_signature;
       const hasPayPalPayment = paypal_order_id;
@@ -886,7 +872,7 @@ router.post('/api/submit', upload.fields([
         const titles = Array.isArray(poemTitles) ? poemTitles : 
                       typeof poemTitles === 'string' ? JSON.parse(poemTitles) : 
                       poemFiles.map((_, i) => `Poem ${i + 1}`);
-        
+
         poemUrls = await uploadMultiplePoemFiles(poemFiles, titles);
         console.log('✅ Multiple poems uploaded:', poemUrls.length);
       }
@@ -1101,6 +1087,22 @@ router.get('/api/submissions', async (req, res) => {
     console.error('❌ Error getting submissions:', error);
     res.status(500).json({ error: 'Failed to get submissions', details: error.message });
   }
+});
+
+// Add this error handling middleware to routes
+router.use((err: any, req: any, res: any, next: any) => {
+  console.error('❌ API Error:', err);
+
+  // Ensure we always return JSON for API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    });
+  }
+
+  next(err);
 });
 
 export function registerRoutes(app: any) {
