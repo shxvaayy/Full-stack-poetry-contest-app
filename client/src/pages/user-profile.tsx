@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -6,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2 } from 'lucide-react';
+import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
 interface BackendUser {
@@ -105,7 +104,6 @@ export default function UserProfile() {
     });
   };
 
-  // Force refresh data
   const refreshData = async () => {
     if (user?.uid) {
       await fetchUserData();
@@ -116,7 +114,8 @@ export default function UserProfile() {
     switch (tier) {
       case 'free': return 'bg-green-100 text-green-800';
       case 'single': return 'bg-blue-100 text-blue-800';
-      case 'multiple': return 'bg-purple-100 text-purple-800';
+      case 'double': return 'bg-purple-100 text-purple-800';
+      case 'bulk': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -130,6 +129,15 @@ export default function UserProfile() {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Evaluated': return <CheckCircle className="text-green-600" size={16} />;
+      case 'Pending': return <Clock className="text-yellow-600" size={16} />;
+      case 'Rejected': return <XCircle className="text-red-600" size={16} />;
+      default: return <Clock className="text-gray-600" size={16} />;
+    }
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'Human': return 'bg-green-100 text-green-800';
@@ -138,6 +146,9 @@ export default function UserProfile() {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // ✅ Check if results are announced (only show results if there are winners or evaluated poems)
+  const hasAnnouncedResults = submissions.some(s => s.isWinner || s.status === 'Evaluated');
 
   if (loading) {
     return (
@@ -186,6 +197,14 @@ export default function UserProfile() {
                     Joined {backendUser ? formatDate(backendUser.createdAt) : 'Recently'}
                   </span>
                 </div>
+                <Button 
+                  onClick={refreshData} 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                >
+                  Refresh Data
+                </Button>
               </CardContent>
             </Card>
 
@@ -199,7 +218,7 @@ export default function UserProfile() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Total Submissions</span>
+                  <span className="text-sm font-medium">This Month</span>
                   <span className="text-2xl font-bold text-green-600">
                     {submissionStatus?.totalSubmissions || 0}
                   </span>
@@ -227,10 +246,13 @@ export default function UserProfile() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${hasAnnouncedResults ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="submissions">Submissions</TabsTrigger>
-                <TabsTrigger value="results">Results</TabsTrigger>
+                <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+                {/* ✅ Only show Results tab if results are announced */}
+                {hasAnnouncedResults && (
+                  <TabsTrigger value="results">Results</TabsTrigger>
+                )}
               </TabsList>
 
               {/* Overview Tab */}
@@ -281,14 +303,29 @@ export default function UserProfile() {
                                 {formatDate(submission.submittedAt)}
                               </div>
                             </div>
-                            <Badge className={getTierColor(submission.tier)}>
-                              {submission.tier}
-                            </Badge>
+                            <div className="flex items-center space-x-2">
+                              <Badge className={getTierColor(submission.tier)}>
+                                {submission.tier}
+                              </Badge>
+                              <Badge className={getStatusColor(submission.status || 'Pending')}>
+                                {getStatusIcon(submission.status || 'Pending')}
+                                <span className="ml-1">{submission.status || 'Pending'}</span>
+                              </Badge>
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-600">No submissions yet.</p>
+                      <div className="text-center py-8">
+                        <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                        <p className="text-gray-600">No submissions yet.</p>
+                        <Button 
+                          className="mt-4"
+                          onClick={() => window.location.href = '/submit'}
+                        >
+                          Submit Your First Poem
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -300,7 +337,7 @@ export default function UserProfile() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <FileText className="mr-2" size={20} />
-                      My Submissions
+                      My Submissions ({submissions.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -314,9 +351,13 @@ export default function UserProfile() {
                                 <p className="text-gray-600 text-sm mb-2">
                                   Submitted on {formatDate(submission.submittedAt)}
                                 </p>
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-2 flex-wrap gap-2">
                                   <Badge className={getTierColor(submission.tier)}>
                                     {submission.tier}
+                                  </Badge>
+                                  <Badge className={getStatusColor(submission.status || 'Pending')}>
+                                    {getStatusIcon(submission.status || 'Pending')}
+                                    <span className="ml-1">{submission.status || 'Pending'}</span>
                                   </Badge>
                                   {submission.isWinner && (
                                     <Badge className="bg-yellow-100 text-yellow-800">
@@ -324,14 +365,48 @@ export default function UserProfile() {
                                       Winner #{submission.winnerPosition}
                                     </Badge>
                                   )}
+                                  {submission.score && (
+                                    <Badge variant="outline">
+                                      Score: {submission.score}
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-lg font-bold text-green-600">
+                                <p className="text-lg font-semibold text-green-600">
                                   ₹{submission.amount}
-                                </div>
+                                </p>
                               </div>
                             </div>
+                            
+                            {/* ✅ Show score breakdown only if evaluated */}
+                            {submission.scoreBreakdown && submission.status === 'Evaluated' && (
+                              <div className="mt-4 pt-4 border-t">
+                                <h4 className="font-medium mb-2">Score Breakdown:</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                                  <div className="text-center p-2 bg-blue-50 rounded">
+                                    <div className="font-semibold">{submission.scoreBreakdown.originality}</div>
+                                    <div className="text-xs text-gray-600">Originality</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-red-50 rounded">
+                                    <div className="font-semibold">{submission.scoreBreakdown.emotion}</div>
+                                    <div className="text-xs text-gray-600">Emotion</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-green-50 rounded">
+                                    <div className="font-semibold">{submission.scoreBreakdown.structure}</div>
+                                    <div className="text-xs text-gray-600">Structure</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-purple-50 rounded">
+                                    <div className="font-semibold">{submission.scoreBreakdown.language}</div>
+                                    <div className="text-xs text-gray-600">Language</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-yellow-50 rounded">
+                                    <div className="font-semibold">{submission.scoreBreakdown.theme}</div>
+                                    <div className="text-xs text-gray-600">Theme</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -339,7 +414,10 @@ export default function UserProfile() {
                       <div className="text-center py-8">
                         <FileText className="mx-auto text-gray-400 mb-4" size={48} />
                         <p className="text-gray-600">No submissions yet.</p>
-                        <Button className="mt-4" onClick={() => window.location.href = '/submit'}>
+                        <Button 
+                          className="mt-4"
+                          onClick={() => window.location.href = '/submit'}
+                        >
                           Submit Your First Poem
                         </Button>
                       </div>
@@ -348,134 +426,79 @@ export default function UserProfile() {
                 </Card>
               </TabsContent>
 
-              {/* Results Tab */}
-              <TabsContent value="results" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Award className="mr-2" size={20} />
-                        Results
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={refreshData}
-                        disabled={loading}
-                      >
-                        {loading ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
-                        Refresh
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {submissions.length > 0 ? (
-                      <div className="space-y-4">
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left p-2">Poem Title</th>
-                                <th className="text-left p-2">Status</th>
-                                <th className="text-left p-2">Type</th>
-                                <th className="text-left p-2">Score</th>
-                                <th className="text-left p-2">Details</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {submissions.map((submission) => (
-                                <tr key={submission.id} className="border-b hover:bg-gray-50">
-                                  <td className="p-2 font-medium">{submission.poemTitle}</td>
-                                  <td className="p-2">
-                                    <Badge className={getStatusColor(submission.status || 'Pending')}>
-                                      {submission.status || 'Pending'}
-                                    </Badge>
-                                  </td>
-                                  <td className="p-2">
-                                    <Badge className={getTypeColor(submission.type || 'Human')}>
-                                      {submission.type || 'Human'}
-                                    </Badge>
-                                  </td>
-                                  <td className="p-2">
-                                    <span className="text-lg font-bold text-green-600">
-                                      {submission.score || 0}/100
-                                    </span>
-                                  </td>
-                                  <td className="p-2">
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          View Breakdown
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>{submission.poemTitle} - Score Breakdown</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-4">
-                                          <div className="text-center">
-                                            <div className="text-3xl font-bold text-green-600">
-                                              {submission.score || 0}/100
-                                            </div>
-                                            <div className="text-gray-600">Overall Score</div>
-                                          </div>
-                                          <div className="space-y-3">
-                                            <div className="flex justify-between items-center">
-                                              <span>Originality:</span>
-                                              <span className="font-bold">
-                                                {submission.scoreBreakdown?.originality || 0}/25
-                                              </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                              <span>Emotion:</span>
-                                              <span className="font-bold">
-                                                {submission.scoreBreakdown?.emotion || 0}/25
-                                              </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                              <span>Structure:</span>
-                                              <span className="font-bold">
-                                                {submission.scoreBreakdown?.structure || 0}/20
-                                              </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                              <span>Language:</span>
-                                              <span className="font-bold">
-                                                {submission.scoreBreakdown?.language || 0}/20
-                                              </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                              <span>Theme:</span>
-                                              <span className="font-bold">
-                                                {submission.scoreBreakdown?.theme || 0}/10
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </DialogContent>
-                                    </Dialog>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+              {/* ✅ Results Tab - Only shown if results are announced */}
+              {hasAnnouncedResults && (
+                <TabsContent value="results" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Trophy className="mr-2 text-yellow-500" size={20} />
+                        Contest Results
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Winners */}
+                      {submissions.filter(s => s.isWinner).length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="font-semibold text-lg mb-3">🏆 Your Winning Poems</h3>
+                          <div className="space-y-3">
+                            {submissions.filter(s => s.isWinner).map((winner) => (
+                              <div key={winner.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h4 className="font-semibold">{winner.poemTitle}</h4>
+                                    <p className="text-sm text-gray-600">Position #{winner.winnerPosition}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    {winner.score && (
+                                      <div className="text-lg font-bold text-yellow-600">
+                                        Score: {winner.score}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Award className="mx-auto text-gray-400 mb-4" size={48} />
-                        <p className="text-gray-600 mb-2">No submissions yet.</p>
-                        <p className="text-sm text-gray-500">
-                          Submit your first poem to see evaluation results here.
-                        </p>
-                        <Button className="mt-4" onClick={() => window.location.href = '/submit'}>
-                          Submit Your First Poem
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                      )}
+
+                      {/* Evaluated Poems */}
+                      {submissions.filter(s => s.status === 'Evaluated' && !s.isWinner).length > 0 && (
+                        <div>
+                          <h3 className="font-semibold text-lg mb-3">📊 Evaluated Poems</h3>
+                          <div className="space-y-3">
+                            {submissions.filter(s => s.status === 'Evaluated' && !s.isWinner).map((poem) => (
+                              <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h4 className="font-semibold">{poem.poemTitle}</h4>
+                                    <p className="text-sm text-gray-600">Evaluated</p>
+                                  </div>
+                                  <div className="text-right">
+                                    {poem.score && (
+                                      <div className="text-lg font-bold text-blue-600">
+                                        Score: {poem.score}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {submissions.filter(s => s.isWinner || s.status === 'Evaluated').length === 0 && (
+                        <div className="text-center py-8">
+                          <Clock className="mx-auto text-gray-400 mb-4" size={48} />
+                          <p className="text-gray-600">Results not yet available for your submissions.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>

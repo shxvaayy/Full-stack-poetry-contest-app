@@ -1079,7 +1079,7 @@ export default function SubmitPage() {
                   Return Home
                 </Button>
                 <Button onClick={() => window.location.href = '/results'} variant="outline" className="flex-1">
-                  View Results
+                  View Status
                 </Button>
               </div>
             </CardContent>
