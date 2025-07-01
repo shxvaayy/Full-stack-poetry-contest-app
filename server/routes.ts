@@ -1254,5 +1254,13 @@ export function registerRoutes(app: any) {
   console.log('📁 Supported file fields: poemFile, photoFile, poems, photo, files');
 }
 
+
+
+
+// Register routes function
+export function registerRoutes(app: any) {
+  app.use(router);
+}
+
 // Export router
 export { router };
