@@ -914,5 +914,10 @@ router.post('/api/verify-payment', async (req, res) => {
   }
 });
 
-// Export router
+// ✅ ADD THIS: Export function for index.ts compatibility
+export function registerRoutes(app: any) {
+  app.use(router);
+  console.log('✅ All routes registered successfully');
+}
+// ✅ ALSO: Export the router as default for backward compatibility
 export default router;
