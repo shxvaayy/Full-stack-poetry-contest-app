@@ -485,9 +485,21 @@ export default function SubmitPage() {
         method: 'POST',
         body: formDataToSend,
         credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+        }
       });
 
       console.log('📥 API response status:', response.status);
+      console.log('📥 API response headers:', Object.fromEntries(response.headers.entries()));
+
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('❌ Non-JSON response received:', responseText);
+        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}...`);
+      }
 
       const result = await response.json();
       console.log('📥 API response data:', result);
@@ -504,9 +516,21 @@ export default function SubmitPage() {
 
     } catch (error: any) {
       console.error('❌ Form submission error:', error);
+      
+      let errorMessage = error.message;
+      
+      // Handle specific error types
+      if (error.message.includes('<!DOCTYPE')) {
+        errorMessage = 'Server error: Received HTML instead of JSON. Please try again or contact support.';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Network error: Please check your internet connection and try again.';
+      } else if (error.message.includes('Not Found')) {
+        errorMessage = 'API endpoint not found. Please contact support.';
+      }
+      
       toast({
         title: "Submission Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
