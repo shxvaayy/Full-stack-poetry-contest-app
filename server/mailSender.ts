@@ -9,8 +9,8 @@ console.log('- Email User:', EMAIL_USER);
 console.log('- Email Pass exists:', !!EMAIL_PASS);
 console.log('- Email Pass length:', EMAIL_PASS.length);
 
-// Create transporter for Gmail with improved configuration
-const transporter = nodemailer.createTransporter({
+// ✅ FIX: Change createTransporter to createTransport (no 'er' at the end)
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   host: 'smtp.gmail.com',
   port: 587,
