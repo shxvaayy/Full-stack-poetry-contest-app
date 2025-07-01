@@ -698,9 +698,6 @@ At Writory, every voice is gold.
           <div className="text-center mt-8">
             <p className="text-gray-600">
               Remember! The more poems you submit, the greater your chances of winning!
-              <a href="mailto:support@writory.com" className="text-purple-600 hover:underline">
-                support@writory.com
-              </a>
             </p>
           </div>
         </div>

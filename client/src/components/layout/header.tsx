@@ -31,10 +31,10 @@ export default function Header() {
   return (
     <header className="bg-primary text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center py-4 gap-4">
           {/* Logo Section - Left */}
-          <Link href="/" className="flex items-center flex-shrink-0">
-            <div className="w-12 h-12 mr-3">
+          <Link href="/" className="flex items-center flex-shrink-0 mr-6">
+            <div className="w-12 h-12 mr-4">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
@@ -48,13 +48,13 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation - Center */}
-          <nav className="hidden lg:flex items-center flex-1 justify-center">
-            <div className="flex items-center space-x-6">
+          <nav className="hidden lg:flex items-center flex-1 justify-center px-8">
+            <div className="flex items-center space-x-8">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm ${
+                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm px-2 py-1 ${
                     location === item.href ? "border-b-2 border-white pb-1" : ""
                   }`}
                 >
@@ -65,13 +65,13 @@ export default function Header() {
           </nav>
 
           {/* User Section - Right */}
-          <div className="flex items-center space-x-4 flex-shrink-0">
+          <div className="flex items-center space-x-6 flex-shrink-0 ml-4">
             {user ? (
               <div className="hidden lg:flex items-center space-x-4">
                 <Link href="/profile">
-                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
-                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={14} />
+                  <button className="flex items-center space-x-3 bg-green-700 rounded-lg px-4 py-2 hover:bg-green-600 transition-colors">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <User className="text-green-600" size={16} />
                     </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
@@ -82,7 +82,7 @@ export default function Header() {
                   onClick={handleLogout}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white data-[hover]:bg-transparent data-[hover]:text-white"
+                  className="text-white border-white data-[hover]:bg-transparent data-[hover]:text-white px-4 py-2"
                 >
                   Logout
                 </Button>
@@ -93,7 +93,7 @@ export default function Header() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-white border-white hover:bg-white hover:text-primary"
+                    className="text-white border-white hover:bg-white hover:text-primary px-4 py-2"
                   >
                     Login
                   </Button>

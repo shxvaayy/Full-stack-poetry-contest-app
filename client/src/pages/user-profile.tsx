@@ -22,7 +22,8 @@ interface Submission {
   name: string;
   poemTitle: string;
   tier: string;
-  amount: number;
+  price: number;
+  amount?: number; // Keep for backward compatibility
   submittedAt: string;
   isWinner: boolean;
   winnerPosition: number | null;
@@ -246,11 +247,11 @@ export default function UserProfile() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${hasAnnouncedResults ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="submissions">My Submissions</TabsTrigger>
-                {hasAnnouncedResults && <TabsTrigger value="results">Results</TabsTrigger>}
-              </TabsList>
+              <TabsList className="grid w-full grid-cols-3">
+  <TabsTrigger value="overview">Overview</TabsTrigger>
+  <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+  <TabsTrigger value="results">Results</TabsTrigger>
+</TabsList>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
@@ -371,7 +372,7 @@ export default function UserProfile() {
                               </div>
                               <div className="text-right">
                                 <p className="text-lg font-semibold text-green-600">
-                                  ₹{submission.amount}
+                                  ₹{submission.price || submission.amount || 0}
                                 </p>
                               </div>
                             </div>

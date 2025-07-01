@@ -46,13 +46,13 @@ const upload = multer({
       console.error('❌ Invalid request object in multer');
       return cb(new Error('Invalid request'), false);
     }
-    
+
     console.log('📁 Multer receiving file:', {
       fieldname: file.fieldname,
       originalname: file.originalname,
       mimetype: file.mimetype
     });
-    
+
     // Accept all file types
     cb(null, true);
   }
@@ -114,7 +114,7 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
   console.log('🧪 Test upload endpoint hit');
   console.log('📋 Request body:', req.body);
   console.log('📁 Files received:', req.files);
-  
+
   res.json({
     success: true,
     message: 'Upload test successful',
@@ -134,15 +134,15 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
 router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting user by UID:', uid);
-  
+
   try {
     const user = await storage.getUserByUid(uid);
-    
+
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     console.log('✅ User found:', user.email);
     res.json(user);
   } catch (error) {
@@ -155,20 +155,20 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submissions for UID:', uid);
-  
+
   try {
     const user = await storage.getUserByUid(uid);
-    
+
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     console.log('✅ User found:', user.email, 'User ID:', user.id);
-    
+
     const submissions = await storage.getSubmissionsByUser(user.id);
     console.log(`✅ Found ${submissions.length} submissions for user ${user.email}`);
-    
+
     // Log the raw submissions for debugging
     console.log('📋 Raw submissions:', submissions.map(s => ({
       id: s.id,
@@ -177,7 +177,7 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       userId: s.userId,
       submittedAt: s.submittedAt
     })));
-    
+
     // Transform submissions to match frontend expectations
     const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
@@ -196,7 +196,7 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       poemIndex: sub.poemIndex,
       totalPoemsInSubmission: sub.totalPoemsInSubmission
     }));
-    
+
     console.log('✅ Transformed submissions:', transformedSubmissions.length);
     res.json(transformedSubmissions);
   } catch (error) {
@@ -209,33 +209,33 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
 router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submission status for UID:', uid);
-  
+
   try {
     const user = await storage.getUserByUid(uid);
-    
+
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     const submissions = await storage.getSubmissionsByUser(user.id);
-    
+
     // Check if user has used free submission
     const freeSubmissionUsed = submissions.some(sub => sub.tier === 'free');
-    
+
     // Get current month submissions
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
     const currentMonthSubmissions = submissions.filter(sub => 
       sub.submittedAt && sub.submittedAt.toISOString().slice(0, 7) === currentMonth
     );
-    
+
     const statusData = {
       freeSubmissionUsed,
       totalSubmissions: currentMonthSubmissions.length,
       contestMonth: currentMonth,
       allTimeSubmissions: submissions.length
     };
-    
+
     console.log('✅ Submission status:', statusData);
     res.json(statusData);
   } catch (error) {
@@ -248,10 +248,10 @@ router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, re
 router.post('/api/users', asyncHandler(async (req: any, res: any) => {
   const { uid, email, name, phone } = req.body;
   console.log('🔍 Creating/updating user:', { uid, email, name });
-  
+
   try {
     let user = await storage.getUserByUid(uid);
-    
+
     if (user) {
       console.log('✅ User already exists:', user.email);
       res.json(user);
@@ -553,7 +553,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         f.fieldname === 'poems' || 
         f.originalname?.toLowerCase().includes('poem')
       );
-      
+
       photoFile = req.files.find((f: any) => 
         f.fieldname === 'photoFile' || 
         f.fieldname === 'photo' || 
@@ -573,10 +573,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     if (poemFile) {
       console.log('☁️ Uploading poem file to Google Drive...');
-      
+
       // Convert multer file to buffer
       const poemBuffer = fs.readFileSync(poemFile.path);
-      
+
       poemFileUrl = await uploadPoemFile(
         poemBuffer, 
         email, 
@@ -587,10 +587,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     if (photoFile) {
       console.log('☁️ Uploading photo file to Google Drive...');
-      
+
       // Convert multer file to buffer
       const photoBuffer = fs.readFileSync(photoFile.path);
-      
+
       photoFileUrl = await uploadPhotoFile(
         photoBuffer, 
         email, 
@@ -691,7 +691,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     console.log('🎉 Submission completed successfully!');
-    
+
     res.json({
       success: true,
       message: 'Poem submitted successfully!',
@@ -701,7 +701,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
   } catch (error) {
     console.error('❌ Submission error:', error);
-    
+
     // Clean up files on error
     if (req.files) {
       req.files.forEach((file: any) => {
@@ -776,7 +776,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     const poemFiles = req.files?.filter((f: any) => 
       f.fieldname === 'poems' || f.originalname?.toLowerCase().includes('poem')
     ) || [];
-    
+
     const photoFile = req.files?.find((f: any) => 
       f.fieldname === 'photo' || 
       f.fieldname === 'photoFile' ||
@@ -794,11 +794,11 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     if (poemFiles.length > 0) {
       console.log('☁️ Uploading poem files to Google Drive...');
-      
+
       // Convert multer files to buffers
       const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
       const originalFileNames = poemFiles.map(file => file.originalname);
-      
+
       poemFileUrls = await uploadMultiplePoemFiles(
         poemBuffers, 
         email, 
@@ -810,10 +810,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     if (photoFile) {
       console.log('☁️ Uploading photo file to Google Drive...');
-      
+
       // Convert multer file to buffer
       const photoBuffer = fs.readFileSync(photoFile.path);
-      
+
       photoFileUrl = await uploadPhotoFile(
         photoBuffer, 
         email, 
@@ -926,7 +926,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     }
 
     console.log('🎉 Multiple poems submission completed successfully!');
-    
+
     res.json({
       success: true,
       message: `${titles.length} poems submitted successfully!`,
@@ -937,7 +937,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
   } catch (error) {
     console.error('❌ Multiple poems submission error:', error);
-    
+
     // Clean up files on error
     if (req.files) {
       req.files.forEach((file: any) => {
@@ -961,7 +961,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 // Legacy single poem submission
 router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📝 Legacy single poem submission received (redirecting to new endpoint)');
-  
+
   // Just redirect to the new endpoint logic
   const {
     firstName,
@@ -977,7 +977,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
 
   try {
     // Basic validation
-    if (!firstName || !email || !poemTitle) {
+    if (!firstName || !!email || !poemTitle) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: firstName, email, poemTitle'
@@ -994,7 +994,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
         f.fieldname === 'poems' || 
         f.originalname?.toLowerCase().includes('poem')
       );
-      
+
       photoFile = req.files.find((f: any) => 
         f.fieldname === 'photoFile' || 
         f.fieldname === 'photo' || 
@@ -1073,7 +1073,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
 
   } catch (error) {
     console.error('❌ Legacy submission error:', error);
-    
+
     // Clean up files on error
     if (req.files) {
       req.files.forEach((file: any) => {
@@ -1099,7 +1099,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   try {
     const submissions = await storage.getAllSubmissions();
     console.log(`✅ Retrieved ${submissions.length} total submissions`);
-    
+
     // Transform submissions
     const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
@@ -1116,7 +1116,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
       status: sub.status || 'Pending',
       scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
     }));
-    
+
     res.json(transformedSubmissions);
   } catch (error) {
     console.error('❌ Error getting all submissions:', error);
@@ -1149,7 +1149,7 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   try {
     // Add to Google Sheets
     await addContactToSheet({ name, email, message });
-    
+
     res.json({
       success: true,
       message: 'Contact form submitted successfully'
@@ -1167,146 +1167,6 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
 router.get('/api/legacy-submissions', (req, res) => {
   res.json(submissions);
 });
-
-// ===== ADMIN CSV UPLOAD ENDPOINT =====
-
-// Admin CSV upload endpoint
-router.post('/api/admin/upload-csv', safeUploadAny, asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Admin CSV upload received');
-  
-  try {
-    // Find the CSV file in uploaded files
-    const csvFile = req.files?.find((f: any) => 
-      f.fieldname === 'csvFile' || 
-      f.originalname?.toLowerCase().endsWith('.csv') ||
-      f.mimetype === 'text/csv'
-    );
-
-    if (!csvFile) {
-      return res.status(400).json({
-        success: false,
-        error: 'No CSV file found in upload'
-      });
-    }
-
-    console.log('📁 Processing CSV file:', csvFile.originalname);
-
-    // Read and parse CSV file
-    const csvContent = fs.readFileSync(csvFile.path, 'utf-8');
-    const lines = csvContent.split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
-      return res.status(400).json({
-        success: false,
-        error: 'CSV file must contain at least a header and one data row'
-      });
-    }
-
-    // Parse header
-    const header = lines[0].split(',').map(h => h.trim());
-    console.log('📋 CSV Header:', header);
-
-    // Expected columns: email,poemtitle,score,type,originality,emotion,structure,language,theme,status
-    const requiredColumns = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
-    const missingColumns = requiredColumns.filter(col => !header.includes(col));
-    
-    if (missingColumns.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: `Missing required columns: ${missingColumns.join(', ')}`
-      });
-    }
-
-    let processed = 0;
-    const errors = [];
-
-    // Process each data row
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      
-      if (values.length !== header.length) {
-        errors.push(`Row ${i + 1}: Column count mismatch`);
-        continue;
-      }
-
-      const rowData = {};
-      header.forEach((col, index) => {
-        rowData[col] = values[index];
-      });
-
-      try {
-        // Find submission by email and poem title
-        const submission = await storage.getSubmissionByEmailAndTitle(rowData.email, rowData.poemtitle);
-        
-        if (!submission) {
-          errors.push(`Row ${i + 1}: No submission found for ${rowData.email} - ${rowData.poemtitle}`);
-          continue;
-        }
-
-        // Prepare score breakdown
-        const scoreBreakdown = {
-          originality: parseInt(rowData.originality) || 0,
-          emotion: parseInt(rowData.emotion) || 0,
-          structure: parseInt(rowData.structure) || 0,
-          language: parseInt(rowData.language) || 0,
-          theme: parseInt(rowData.theme) || 0
-        };
-
-        // Update submission with evaluation data
-        await storage.updateSubmissionEvaluation(submission.id, {
-          score: parseInt(rowData.score) || 0,
-          type: rowData.type || 'Human',
-          status: rowData.status || 'Evaluated',
-          scoreBreakdown: JSON.stringify(scoreBreakdown),
-          isWinner: false, // Set based on your logic
-          winnerPosition: null
-        });
-
-        processed++;
-        console.log(`✅ Updated submission ${submission.id}: ${rowData.poemtitle}`);
-        
-      } catch (updateError) {
-        console.error(`❌ Error updating row ${i + 1}:`, updateError);
-        errors.push(`Row ${i + 1}: ${updateError.message}`);
-      }
-    }
-
-    // Clean up uploaded file
-    try {
-      fs.unlinkSync(csvFile.path);
-    } catch (err) {
-      console.error('Warning: Could not delete temp CSV file:', csvFile.path);
-    }
-
-    console.log(`🎉 CSV processing completed: ${processed} processed, ${errors.length} errors`);
-
-    res.json({
-      success: true,
-      message: `Successfully processed ${processed} records`,
-      processed,
-      errors: errors.slice(0, 10) // Limit error list
-    });
-
-  } catch (error) {
-    console.error('❌ CSV upload error:', error);
-    
-    // Clean up files on error
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          // Ignore cleanup errors
-        }
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      error: 'CSV processing failed: ' + error.message
-    });
-  }
-}));
 
 // Final error handler
 router.use((error: any, req: any, res: any, next: any) => {
