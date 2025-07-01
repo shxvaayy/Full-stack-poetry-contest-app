@@ -34,27 +34,54 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`]);
   };
 
-  // Load Razorpay script
+  // Load Razorpay script with better error handling
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
-      if (window.Razorpay) {
-        addDebugInfo('✅ Razorpay already loaded');
-        resolve(true);
-        return;
+      // Remove existing script if any
+      const existingScript = document.querySelector('script[src*="checkout.razorpay.com"]');
+      if (existingScript) {
+        existingScript.remove();
+        addDebugInfo('🔄 Removed existing Razorpay script');
       }
 
-      addDebugInfo('🔄 Loading Razorpay script...');
+      if (window.Razorpay) {
+        delete window.Razorpay;
+        addDebugInfo('🔄 Cleared existing Razorpay object');
+      }
+
+      addDebugInfo('🔄 Loading fresh Razorpay script...');
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      
       script.onload = () => {
-        addDebugInfo('✅ Razorpay script loaded');
-        resolve(true);
+        addDebugInfo('✅ Razorpay script loaded successfully');
+        // Wait a bit for script to initialize
+        setTimeout(() => {
+          if (window.Razorpay) {
+            addDebugInfo('✅ Razorpay object available');
+            resolve(true);
+          } else {
+            addDebugInfo('❌ Razorpay object not available after loading');
+            resolve(false);
+          }
+        }, 500);
       };
-      script.onerror = () => {
-        addDebugInfo('❌ Razorpay script failed to load');
+      
+      script.onerror = (error) => {
+        addDebugInfo('❌ Razorpay script failed to load: ' + error);
         resolve(false);
       };
-      document.body.appendChild(script);
+      
+      document.head.appendChild(script);
+
+      // Timeout fallback
+      setTimeout(() => {
+        if (!window.Razorpay) {
+          addDebugInfo('❌ Razorpay script loading timeout');
+          resolve(false);
+        }
+      }, 10000);
     });
   };
 
@@ -73,7 +100,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
-  // Handle Razorpay Payment with fixed order creation
+  // Handle Razorpay Payment with enhanced modal handling
   const handleRazorpayPayment = async () => {
     try {
       setIsProcessingRazorpay(true);
@@ -86,17 +113,18 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       // Test API first
       await testAPIConnectivity();
 
-      // Load Razorpay script
+      // Load Razorpay script with better handling
+      addDebugInfo('🔄 Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay payment system.');
+        throw new Error('Failed to load Razorpay payment system. Please refresh and try again.');
       }
 
-      // Create order with proper error handling
+      // Create order
       addDebugInfo('📞 Creating Razorpay order...');
       
       const orderRequestData = {
-        amount: Math.round(amount * 100), // Convert to paise
+        amount: Math.round(amount * 100),
         currency: 'INR',
         receipt: `receipt_${Date.now()}_${tier}`,
         tier: tier
@@ -104,67 +132,37 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
       addDebugInfo(`📋 Sending order data: ${JSON.stringify(orderRequestData)}`);
 
-      let orderResponse;
-      try {
-        orderResponse = await fetch('/api/create-order', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(orderRequestData),
-        });
-        
-        addDebugInfo(`📡 Order response status: ${orderResponse.status}`);
-        addDebugInfo(`📡 Order response headers: ${JSON.stringify(Object.fromEntries(orderResponse.headers))}`);
-        
-      } catch (fetchError: any) {
-        addDebugInfo(`❌ Network error during order creation: ${fetchError.message}`);
-        throw new Error(`Network error: ${fetchError.message}`);
-      }
+      const orderResponse = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(orderRequestData),
+      });
 
-      // Handle response
-      let responseText;
-      try {
-        responseText = await orderResponse.text();
-        addDebugInfo(`📄 Raw response: ${responseText}`);
-      } catch (textError) {
-        addDebugInfo(`❌ Failed to read response text: ${textError}`);
-        throw new Error('Failed to read server response');
-      }
+      addDebugInfo(`📡 Order response status: ${orderResponse.status}`);
 
       if (!orderResponse.ok) {
-        addDebugInfo(`❌ Order creation failed with status: ${orderResponse.status}`);
-        let errorMessage = `Server error: ${orderResponse.status}`;
-        
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          addDebugInfo(`❌ Error details: ${JSON.stringify(errorData)}`);
-        } catch (parseError) {
-          addDebugInfo(`❌ Could not parse error response: ${responseText}`);
-        }
-        
-        throw new Error(errorMessage);
+        const errorText = await orderResponse.text();
+        throw new Error(`Order creation failed: ${errorText}`);
       }
 
-      // Parse successful response
-      let orderData;
-      try {
-        orderData = JSON.parse(responseText);
-        addDebugInfo(`✅ Order created successfully: ${JSON.stringify(orderData)}`);
-      } catch (parseError) {
-        addDebugInfo(`❌ Failed to parse order response: ${responseText}`);
-        throw new Error('Invalid response format from server');
-      }
+      const orderData = await orderResponse.json();
+      addDebugInfo(`✅ Order created: ${orderData.id}`);
 
       if (!orderData.id) {
-        addDebugInfo(`❌ No order ID in response: ${JSON.stringify(orderData)}`);
         throw new Error('Invalid order data - missing order ID');
       }
 
-      // Initialize Razorpay
+      // Enhanced Razorpay initialization
       addDebugInfo('🎬 Initializing Razorpay checkout...');
+
+      // Test Razorpay constructor
+      if (typeof window.Razorpay !== 'function') {
+        addDebugInfo('❌ Razorpay constructor not available');
+        throw new Error('Razorpay payment system not properly loaded');
+      }
 
       const razorpayOptions = {
         key: 'rzp_test_KmhJU8QZfO04Pu',
@@ -172,32 +170,30 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         currency: orderData.currency || 'INR',
         name: 'Writory Poetry Contest',
         description: `${tier} tier submission (₹${amount})`,
+        image: '', // Add your logo URL here if needed
         order_id: orderData.id,
         handler: async (paymentResponse: any) => {
-          addDebugInfo('🎉 Payment successful!');
-          addDebugInfo(`Payment ID: ${paymentResponse.razorpay_payment_id}`);
+          addDebugInfo('🎉 Payment completed successfully!');
+          addDebugInfo(`💳 Payment ID: ${paymentResponse.razorpay_payment_id}`);
           
           try {
-            addDebugInfo('🔍 Verifying payment...');
+            addDebugInfo('🔍 Verifying payment with server...');
             
-            const verifyData = {
-              razorpay_order_id: paymentResponse.razorpay_order_id,
-              razorpay_payment_id: paymentResponse.razorpay_payment_id,
-              razorpay_signature: paymentResponse.razorpay_signature,
-              amount: amount,
-              tier: tier
-            };
-
             const verifyResponse = await fetch('/api/verify-payment', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify(verifyData),
+              body: JSON.stringify({
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+                amount: amount,
+                tier: tier
+              }),
             });
 
             if (verifyResponse.ok) {
-              const verificationResult = await verifyResponse.json();
               addDebugInfo('✅ Payment verified successfully');
               
               const finalPaymentData = {
@@ -212,12 +208,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               };
               
               toast({
-                title: "Payment Successful!",
-                description: "Your payment has been processed successfully.",
+                title: "Payment Successful! 🎉",
+                description: "Your payment has been processed. Proceeding to submit your poems...",
+                duration: 3000
               });
               
               setIsProcessingRazorpay(false);
+              
+              // Call onSuccess to proceed to next step
               onSuccess(finalPaymentData);
+              
             } else {
               const errorText = await verifyResponse.text();
               addDebugInfo(`❌ Payment verification failed: ${errorText}`);
@@ -228,31 +228,58 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             setIsProcessingRazorpay(false);
             toast({
               title: "Payment Verification Failed",
-              description: "Payment completed but verification failed. Please contact support.",
-              variant: "destructive"
+              description: "Payment completed but verification failed. Please contact support with your payment ID.",
+              variant: "destructive",
+              duration: 5000
             });
             onError('Payment verification failed: ' + verifyError.message);
           }
-        },
-        modal: {
-          ondismiss: () => {
-            addDebugInfo('💔 Payment modal dismissed by user');
-            setIsProcessingRazorpay(false);
-          }
-        },
-        theme: {
-          color: '#8B5CF6'
         },
         prefill: {
           name: '',
           email: '',
           contact: ''
+        },
+        notes: {
+          tier: tier,
+          amount: amount.toString()
+        },
+        theme: {
+          color: '#8B5CF6',
+          backdrop_color: 'rgba(0,0,0,0.5)'
+        },
+        modal: {
+          ondismiss: () => {
+            addDebugInfo('💔 Payment modal dismissed by user');
+            setIsProcessingRazorpay(false);
+            toast({
+              title: "Payment Cancelled",
+              description: "Payment was cancelled. You can try again.",
+              variant: "destructive"
+            });
+          },
+          escape: true,
+          backdropclose: false
+        },
+        retry: {
+          enabled: true,
+          max_count: 3
         }
       };
 
-      addDebugInfo('🎭 Opening Razorpay modal...');
-      const rzp = new window.Razorpay(razorpayOptions);
+      addDebugInfo('🔧 Razorpay options configured');
+      addDebugInfo(`🔧 Options: ${JSON.stringify(razorpayOptions, null, 2)}`);
+
+      let rzp;
+      try {
+        rzp = new window.Razorpay(razorpayOptions);
+        addDebugInfo('✅ Razorpay instance created successfully');
+      } catch (constructorError: any) {
+        addDebugInfo(`❌ Razorpay constructor error: ${constructorError.message}`);
+        throw new Error('Failed to initialize Razorpay: ' + constructorError.message);
+      }
       
+      // Add event listeners before opening
       rzp.on('payment.failed', function (response: any) {
         addDebugInfo(`💥 Payment failed: ${JSON.stringify(response.error)}`);
         setIsProcessingRazorpay(false);
@@ -264,21 +291,31 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         toast({
           title: "Payment Failed",
           description: errorMessage,
-          variant: "destructive"
+          variant: "destructive",
+          duration: 5000
         });
         onError('Payment failed: ' + errorMessage);
       });
 
-      rzp.open();
+      // Try to open the modal with error handling
+      try {
+        addDebugInfo('🎭 Opening Razorpay modal...');
+        rzp.open();
+        addDebugInfo('✅ Modal opened successfully');
+      } catch (openError: any) {
+        addDebugInfo(`❌ Modal open error: ${openError.message}`);
+        throw new Error('Failed to open payment modal: ' + openError.message);
+      }
 
     } catch (error: any) {
-      addDebugInfo(`💥 Payment error: ${error.message}`);
+      addDebugInfo(`💥 Payment process error: ${error.message}`);
       setIsProcessingRazorpay(false);
       
       toast({
         title: "Payment Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 5000
       });
       onError(error.message);
     }
@@ -295,8 +332,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Payment Debug Mode</h1>
-          <p className="text-lg text-gray-600">Complete your payment to submit your poems</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Payment</h1>
+          <p className="text-lg text-gray-600">Secure payment to submit your poems</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -326,28 +363,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 <Button
                   onClick={handleRazorpayPayment}
                   disabled={isProcessingRazorpay}
-                  className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
                   {isProcessingRazorpay ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
                     <CreditCard className="w-4 h-4 mr-2" />
                   )}
-                  {isProcessingRazorpay ? 'Processing...' : `Pay with Razorpay (₹${amount})`}
+                  {isProcessingRazorpay ? 'Processing Payment...' : `Pay ₹${amount} with Razorpay`}
                 </Button>
 
-                <Button
-                  onClick={testAPIConnectivity}
-                  variant="outline"
-                  className="w-full"
-                >
-                  🔍 Test API Connection
-                </Button>
+                <div className="text-xs text-gray-500 text-center">
+                  🔒 Secure payment powered by Razorpay
+                </div>
 
                 <Button
                   onClick={onBack}
                   variant="outline"
                   className="w-full"
+                  disabled={isProcessingRazorpay}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Form
@@ -359,10 +393,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           {/* Debug Information */}
           <Card className="shadow-xl">
             <CardContent className="p-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Debug Information</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Payment Progress</h2>
               <div className="bg-gray-100 p-4 rounded-lg max-h-96 overflow-y-auto">
                 {debugInfo.length === 0 ? (
-                  <p className="text-gray-500">Click "Pay with Razorpay" to see debug information...</p>
+                  <p className="text-gray-500">Click "Pay with Razorpay" to start payment process...</p>
                 ) : (
                   <div className="space-y-1">
                     {debugInfo.map((info, index) => (
@@ -373,6 +407,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                   </div>
                 )}
               </div>
+              
+              {isProcessingRazorpay && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    <span className="text-sm text-blue-800">Processing your payment...</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
