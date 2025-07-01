@@ -1062,77 +1062,56 @@ At Writory, every voice is gold.
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-800 mb-4">Submission Successful!</h1>
               <p className="text-gray-600 mb-6">
-                Your poem has been submitted successfully for the contest. You will get a
-                Confirmation mail shortly.
+                Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
               </p>
 
               {/* Submission Details */}
               <div className="bg-gray-50 p-6 rounded-lg mb-6 text-left">
-                <h3 className="font-semibold text-gray-800 mb-4 text-center">Submission Details</h3>
-                <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Submission Details</h3>
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
-                    <span className="text-gray-800">{formData.firstName} {formData.lastName}</span>
+                    <span>Name:</span>
+                    <span>{formData.firstName} {formData.lastName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Email:</span>
-                    <span className="text-gray-800">{formData.email}</span>
+                    <span>Email:</span>
+                    <span>{formData.email}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Poem Title:</span>
-                    <span className="text-gray-800">{formData.poemTitle}</span>
+                    <span>Poem Title:</span>
+                    <span>{formData.poemTitle}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Tier:</span>
-                    <span className="text-gray-800">{selectedTier?.name}</span>
+                    <span>Tier:</span>
+                    <span>{selectedTier?.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Amount Paid:</span>
-                    <span className="text-gray-800">₹{discountedAmount}</span>
+                    <span>Amount Paid:</span>
+                    <span>₹{discountedAmount}</span>
                   </div>
                 </div>
               </div>
 
               {/* Social Media Section */}
               <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                <h3 className="font-semibold text-gray-800 mb-4">Follow us on Social Media</h3>
-                <div className="flex justify-center space-x-6">
-                  <a 
-                    href="https://x.com/writoryofficial" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-800 transition-colors"
-                  >
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Follow us on Social Media</h3>
+                <div className="flex justify-center gap-4">
+                  <a href="https://twitter.com/writory" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-blue-500 transition-colors">
                     <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                     </svg>
                   </a>
-                  <a 
-                    href="https://www.facebook.com/share/16hyCrZbE2/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 transition-colors"
-                  >
+                  <a href="https://facebook.com/writory" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-blue-600 transition-colors">
                     <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                     </svg>
                   </a>
-                  <a 
-                    href="https://www.instagram.com/writoryofficial/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-pink-600 hover:text-pink-800 transition-colors"
-                  >
+                  <a href="https://instagram.com/writory" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-pink-600 transition-colors">
                     <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.987 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.648.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.297-3.323C5.901 8.198 7.052 7.708 8.349 7.708s2.448.49 3.323 1.297c.875.875 1.365 2.026 1.365 3.323s-.49 2.448-1.365 3.323c-.875.875-2.026 1.365-3.323 1.365zm7.718 0c-1.297 0-2.448-.49-3.323-1.297c-.875-.875-1.365-2.026-1.365-3.323s.49-2.448 1.365-3.323c.875-.875 2.026-1.365 3.323-1.365s2.448.49 3.323 1.365c.875.875 1.365 2.026 1.365 3.323s-.49 2.448-1.365 3.323c-.875.875-2.026 1.365-3.323 1.365z"/>
+                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.327-1.297C4.198 14.895 3.72 13.70 3.72 12.37c0-1.341.478-2.535 1.402-3.431.924-.895 2.075-1.385 3.327-1.385 1.297 0 2.448.49 3.327 1.385.924.896 1.402 2.09 1.402 3.431 0 1.34-.478 2.525-1.402 3.321-.879.807-2.03 1.297-3.327 1.297zm8.953-8.207c-.315 0-.578-.263-.578-.578s.263-.578.578-.578.578.263.578.578-.263.578-.578.578zm-4.985 6.572c-1.297 0-2.353-1.056-2.353-2.353s1.056-2.353 2.353-2.353 2.353 1.056 2.353 2.353-1.056 2.353-2.353 2.353z"/>
                     </svg>
                   </a>
-                  <a 
-                    href="https://www.linkedin.com/company/writoryofficial/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-700 hover:text-blue-900 transition-colors"
-                  >
+                  <a href="https://linkedin.com/company/writory" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-blue-700 transition-colors">
                     <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                     </svg>
@@ -1141,17 +1120,10 @@ At Writory, every voice is gold.
               </div>
 
               <div className="flex flex-col gap-4">
-                <Button 
-                  onClick={() => window.location.href = '/submit'} 
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
-                >
+                <Button onClick={() => setCurrentStep("selection")} className="w-full bg-green-600 hover:bg-green-700">
                   Submit Another Poem
                 </Button>
-                <Button 
-                  onClick={() => window.location.href = '/'} 
-                  variant="outline" 
-                  className="w-full"
-                >
+                <Button onClick={() => window.location.href = '/'} variant="outline" className="w-full">
                   Back to Home
                 </Button>
               </div>
