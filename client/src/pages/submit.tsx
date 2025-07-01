@@ -94,6 +94,13 @@ export default function SubmitPage() {
     poemTitle: "",
     termsAccepted: false,
   });
+  const [multiPoemData, setMultiPoemData] = useState({
+    poem1: { title: "", file: null as File | null },
+    poem2: { title: "", file: null as File | null },
+    poem3: { title: "", file: null as File | null },
+    poem4: { title: "", file: null as File | null },
+    poem5: { title: "", file: null as File | null },
+  });
   const [files, setFiles] = useState({
     poem: null as File | null,
     photo: null as File | null,
@@ -101,6 +108,11 @@ export default function SubmitPage() {
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+  const poem1FileRef = useRef<HTMLInputElement>(null);
+  const poem2FileRef = useRef<HTMLInputElement>(null);
+  const poem3FileRef = useRef<HTMLInputElement>(null);
+  const poem4FileRef = useRef<HTMLInputElement>(null);
+  const poem5FileRef = useRef<HTMLInputElement>(null);
 
   // Check URL parameters for payment status
   useEffect(() => {
@@ -317,6 +329,16 @@ export default function SubmitPage() {
     setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
+  const handleMultiPoemData = (poemNumber: string, field: 'title' | 'file', value: any) => {
+    setMultiPoemData(prev => ({
+      ...prev,
+      [poemNumber]: {
+        ...prev[poemNumber as keyof typeof prev],
+        [field]: value
+      }
+    }));
+  };
+
   const handlePaymentSuccess = (data: any) => {
     console.log('✅ Payment successful, data received:', data);
     
@@ -381,8 +403,30 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email || !formData.poemTitle) {
+      if (!formData.firstName || !formData.email) {
         throw new Error('Please fill in all required fields');
+      }
+
+      // Validate poem titles based on tier
+      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
+        if (!formData.poemTitle) {
+          throw new Error('Please enter poem title');
+        }
+      } else if (selectedTier?.id === 'double') {
+        if (!multiPoemData.poem1.title || !multiPoemData.poem2.title) {
+          throw new Error('Please enter titles for both poems');
+        }
+      } else if (selectedTier?.id === 'bulk') {
+        const emptyTitles = [];
+        for (let i = 1; i <= 5; i++) {
+          const poemKey = `poem${i}` as keyof typeof multiPoemData;
+          if (!multiPoemData[poemKey].title) {
+            emptyTitles.push(i);
+          }
+        }
+        if (emptyTitles.length > 0) {
+          throw new Error(`Please enter titles for poems: ${emptyTitles.join(', ')}`);
+        }
       }
 
       if (!formData.termsAccepted) {
@@ -405,7 +449,20 @@ export default function SubmitPage() {
       submitFormData.append('email', formData.email);
       submitFormData.append('phone', formData.phone || '');
       submitFormData.append('age', formData.age || '');
-      submitFormData.append('poemTitle', formData.poemTitle);
+      
+      // Handle poem titles based on tier
+      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
+        submitFormData.append('poemTitle', formData.poemTitle);
+      } else if (selectedTier?.id === 'double') {
+        submitFormData.append('poemTitle1', multiPoemData.poem1.title);
+        submitFormData.append('poemTitle2', multiPoemData.poem2.title);
+      } else if (selectedTier?.id === 'bulk') {
+        for (let i = 1; i <= 5; i++) {
+          const poemKey = `poem${i}` as keyof typeof multiPoemData;
+          submitFormData.append(`poemTitle${i}`, multiPoemData[poemKey].title);
+        }
+      }
+      
       submitFormData.append('tier', selectedTier?.id || 'free');
       submitFormData.append('amount', discountedAmount.toString());
       submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
@@ -457,11 +514,31 @@ export default function SubmitPage() {
         throw new Error('Payment information is missing for paid tier');
       }
 
-      // Add files
-      if (files.poem) {
-        submitFormData.append('poem', files.poem);
-        console.log('Added poem file:', files.poem.name);
+      // Add files based on tier
+      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
+        if (files.poem) {
+          submitFormData.append('poem', files.poem);
+          console.log('Added poem file:', files.poem.name);
+        }
+      } else if (selectedTier?.id === 'double') {
+        if (multiPoemData.poem1.file) {
+          submitFormData.append('poem1', multiPoemData.poem1.file);
+          console.log('Added poem1 file:', multiPoemData.poem1.file.name);
+        }
+        if (multiPoemData.poem2.file) {
+          submitFormData.append('poem2', multiPoemData.poem2.file);
+          console.log('Added poem2 file:', multiPoemData.poem2.file.name);
+        }
+      } else if (selectedTier?.id === 'bulk') {
+        for (let i = 1; i <= 5; i++) {
+          const poemKey = `poem${i}` as keyof typeof multiPoemData;
+          if (multiPoemData[poemKey].file) {
+            submitFormData.append(`poem${i}`, multiPoemData[poemKey].file);
+            console.log(`Added poem${i} file:`, multiPoemData[poemKey].file!.name);
+          }
+        }
       }
+      
       if (files.photo) {
         submitFormData.append('photo', files.photo);
         console.log('Added photo file:', files.photo.name);
@@ -711,37 +788,52 @@ export default function SubmitPage() {
                   {/* For multiple poems - better grid layout */}
                   {(selectedTier?.id === 'double' || selectedTier?.id === 'bulk') && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Array.from({ length: selectedTier.id === 'double' ? 2 : 5 }, (_, index) => (
-                        <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                          <h4 className="font-medium text-green-600">Poem {index + 1} of {selectedTier.id === 'double' ? 2 : 5}</h4>
-                          
-                          <div>
-                            <Label htmlFor={`poemTitle${index + 1}`}>Poem Title *</Label>
-                            <Input
-                              id={`poemTitle${index + 1}`}
-                              value={index === 0 ? formData.poemTitle : ''}
-                              onChange={(e) => index === 0 ? handleFormData("poemTitle", e.target.value) : null}
-                              placeholder={`Enter title for poem ${index + 1}`}
-                              required
-                            />
-                          </div>
+                      {Array.from({ length: selectedTier.id === 'double' ? 2 : 5 }, (_, index) => {
+                        const poemKey = `poem${index + 1}` as keyof typeof multiPoemData;
+                        const fileRef = index === 0 ? poem1FileRef : 
+                                       index === 1 ? poem2FileRef :
+                                       index === 2 ? poem3FileRef :
+                                       index === 3 ? poem4FileRef : poem5FileRef;
+                        
+                        return (
+                          <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                            <h4 className="font-medium text-green-600">Poem {index + 1} of {selectedTier.id === 'double' ? 2 : 5}</h4>
+                            
+                            <div>
+                              <Label htmlFor={`poemTitle${index + 1}`}>Poem Title *</Label>
+                              <Input
+                                id={`poemTitle${index + 1}`}
+                                value={multiPoemData[poemKey].title}
+                                onChange={(e) => handleMultiPoemData(poemKey, 'title', e.target.value)}
+                                placeholder={`Enter title for poem ${index + 1}`}
+                                required
+                              />
+                            </div>
 
-                          <div>
-                            <Label htmlFor={`poemFile${index + 1}`}>Upload Poem (PDF, DOC, DOCX)</Label>
-                            <div className="mt-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => poemFileRef.current?.click()}
-                                className="w-full text-sm"
-                              >
-                                <Upload className="w-4 h-4 mr-2" />
-                                Choose File for Poem {index + 1}
-                              </Button>
+                            <div>
+                              <Label htmlFor={`poemFile${index + 1}`}>Upload Poem (PDF, DOC, DOCX)</Label>
+                              <div className="mt-2">
+                                <input
+                                  ref={fileRef}
+                                  type="file"
+                                  accept=".pdf,.doc,.docx"
+                                  onChange={(e) => handleMultiPoemData(poemKey, 'file', e.target.files?.[0] || null)}
+                                  className="hidden"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => fileRef.current?.click()}
+                                  className="w-full text-sm"
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  {multiPoemData[poemKey].file ? multiPoemData[poemKey].file!.name : `Choose File for Poem ${index + 1}`}
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1066,6 +1158,13 @@ export default function SubmitPage() {
                 age: "",
                 poemTitle: "",
                 termsAccepted: false,
+              });
+              setMultiPoemData({
+                poem1: { title: "", file: null },
+                poem2: { title: "", file: null },
+                poem3: { title: "", file: null },
+                poem4: { title: "", file: null },
+                poem5: { title: "", file: null },
               });
               setFiles({ poem: null, photo: null });
             }}
