@@ -68,6 +68,134 @@ router.get('/api/test', (req, res) => {
   });
 });
 
+// ===== USER API ENDPOINTS (MISSING) =====
+
+// Get user by UID
+router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
+  const { uid } = req.params;
+  console.log('🔍 Getting user by UID:', uid);
+  
+  try {
+    const user = await storage.getUserByUid(uid);
+    
+    if (!user) {
+      console.log('❌ User not found for UID:', uid);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('✅ User found:', user.email);
+    res.json(user);
+  } catch (error) {
+    console.error('❌ Error getting user:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+}));
+
+// Get user submissions
+router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any) => {
+  const { uid } = req.params;
+  console.log('🔍 Getting submissions for UID:', uid);
+  
+  try {
+    const user = await storage.getUserByUid(uid);
+    
+    if (!user) {
+      console.log('❌ User not found for UID:', uid);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const submissions = await storage.getSubmissionsByUser(user.id);
+    console.log(`✅ Found ${submissions.length} submissions for user ${user.email}`);
+    
+    // Transform submissions to match frontend expectations
+    const transformedSubmissions = submissions.map(sub => ({
+      id: sub.id,
+      name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      amount: parseFloat(sub.price?.toString() || '0'),
+      submittedAt: sub.submittedAt,
+      isWinner: sub.isWinner || false,
+      winnerPosition: sub.winnerPosition,
+      score: sub.score,
+      type: sub.type || 'Human',
+      status: sub.status || 'Pending',
+      scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
+    }));
+    
+    res.json(transformedSubmissions);
+  } catch (error) {
+    console.error('❌ Error getting user submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions' });
+  }
+}));
+
+// Get user submission status
+router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, res: any) => {
+  const { uid } = req.params;
+  console.log('🔍 Getting submission status for UID:', uid);
+  
+  try {
+    const user = await storage.getUserByUid(uid);
+    
+    if (!user) {
+      console.log('❌ User not found for UID:', uid);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const submissions = await storage.getSubmissionsByUser(user.id);
+    
+    // Check if user has used free submission
+    const freeSubmissionUsed = submissions.some(sub => sub.tier === 'free');
+    
+    // Get current month submissions
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+    const currentMonthSubmissions = submissions.filter(sub => 
+      sub.submittedAt && sub.submittedAt.toISOString().slice(0, 7) === currentMonth
+    );
+    
+    const statusData = {
+      freeSubmissionUsed,
+      totalSubmissions: currentMonthSubmissions.length,
+      contestMonth: currentMonth,
+      allTimeSubmissions: submissions.length
+    };
+    
+    console.log('✅ Submission status:', statusData);
+    res.json(statusData);
+  } catch (error) {
+    console.error('❌ Error getting submission status:', error);
+    res.status(500).json({ error: 'Failed to get submission status' });
+  }
+}));
+
+// Create/update user
+router.post('/api/users', asyncHandler(async (req: any, res: any) => {
+  const { uid, email, name, phone } = req.body;
+  console.log('🔍 Creating/updating user:', { uid, email, name });
+  
+  try {
+    let user = await storage.getUserByUid(uid);
+    
+    if (user) {
+      console.log('✅ User already exists:', user.email);
+      res.json(user);
+    } else {
+      const newUser = await storage.createUser({
+        uid,
+        email,
+        name: name || null,
+        phone: phone || null
+      });
+      console.log('✅ Created new user:', newUser.email);
+      res.json(newUser);
+    }
+  } catch (error) {
+    console.error('❌ Error creating/updating user:', error);
+    res.status(500).json({ error: 'Failed to create/update user' });
+  }
+}));
+
 // ===== RAZORPAY PAYMENT ENDPOINTS =====
 
 // Create Razorpay order - WORKING VERSION FROM BACKUP
@@ -295,7 +423,169 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   });
 }));
 
-// ===== END RAZORPAY ENDPOINTS =====
+// ===== STRIPE ENDPOINTS =====
+
+// Verify Stripe checkout session
+router.post('/api/verify-checkout-session', asyncHandler(async (req: any, res: any) => {
+  console.log('🔍 Stripe session verification request received');
+  const { sessionId } = req.body;
+
+  if (!sessionId) {
+    return res.status(400).json({ error: 'Session ID is required' });
+  }
+
+  try {
+    // For now, we'll just return success - implement Stripe verification if needed
+    console.log('✅ Stripe session verified (mock):', sessionId);
+    
+    res.json({
+      verified: true,
+      session_id: sessionId,
+      payment_status: 'paid',
+      amount: 50 // Mock amount
+    });
+  } catch (error: any) {
+    console.error('❌ Stripe verification error:', error);
+    res.status(500).json({ error: 'Session verification failed' });
+  }
+}));
+
+// ===== PAYPAL ENDPOINTS =====
+
+// Verify PayPal payment
+router.post('/api/verify-paypal-payment', asyncHandler(async (req: any, res: any) => {
+  console.log('🔍 PayPal payment verification request received');
+  const { orderId } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ error: 'Order ID is required' });
+  }
+
+  try {
+    // For now, we'll just return success - implement PayPal verification if needed
+    console.log('✅ PayPal payment verified (mock):', orderId);
+    
+    res.json({
+      verified: true,
+      order_id: orderId,
+      payment_status: 'COMPLETED',
+      amount: 50 // Mock amount
+    });
+  } catch (error: any) {
+    console.error('❌ PayPal verification error:', error);
+    res.status(500).json({ error: 'Payment verification failed' });
+  }
+}));
+
+// ===== ADMIN ENDPOINTS =====
+
+// Admin CSV upload route
+router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
+  console.log('📤 Admin CSV upload started');
+  
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No CSV file provided' });
+    }
+
+    const csvData = req.file.buffer.toString('utf8');
+    const lines = csvData.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'CSV file must contain at least a header and one data row' });
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    console.log('📊 CSV Headers:', headers);
+
+    // Expected headers: email,poemtitle,score,type,originality,emotion,structure,language,theme,status
+    const requiredHeaders = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
+    const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+    
+    if (missingHeaders.length > 0) {
+      return res.status(400).json({ 
+        error: `Missing required headers: ${missingHeaders.join(', ')}` 
+      });
+    }
+
+    let processed = 0;
+    const errors = [];
+
+    // Process each data row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      try {
+        const values = line.split(',').map(v => v.trim());
+        
+        if (values.length !== headers.length) {
+          errors.push(`Row ${i + 1}: Column count mismatch`);
+          continue;
+        }
+
+        const rowData: any = {};
+        headers.forEach((header, index) => {
+          rowData[header] = values[index];
+        });
+
+        // Find submission by email and poem title
+        const submission = await storage.getSubmissionByEmailAndTitle(
+          rowData.email, 
+          rowData.poemtitle
+        );
+
+        if (!submission) {
+          errors.push(`Row ${i + 1}: Submission not found for ${rowData.email} - ${rowData.poemtitle}`);
+          continue;
+        }
+
+        // Update submission with evaluation data
+        const scoreBreakdown = {
+          originality: parseInt(rowData.originality) || 0,
+          emotion: parseInt(rowData.emotion) || 0,
+          structure: parseInt(rowData.structure) || 0,
+          language: parseInt(rowData.language) || 0,
+          theme: parseInt(rowData.theme) || 0
+        };
+
+        await storage.updateSubmissionEvaluation(submission.id, {
+          score: parseInt(rowData.score) || 0,
+          type: rowData.type || 'Human',
+          status: rowData.status || 'Evaluated',
+          scoreBreakdown: JSON.stringify(scoreBreakdown),
+          isWinner: false, // Set via separate winner upload
+          winnerPosition: null
+        });
+
+        processed++;
+        console.log(`✅ Updated submission ${submission.id}: ${rowData.email} - ${rowData.poemtitle}`);
+
+      } catch (error: any) {
+        console.error(`❌ Error processing row ${i + 1}:`, error);
+        errors.push(`Row ${i + 1}: ${error.message}`);
+      }
+    }
+
+    console.log(`✅ CSV upload completed: ${processed} processed, ${errors.length} errors`);
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${processed} submissions`,
+      processed,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error: any) {
+    console.error('❌ CSV upload error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process CSV file',
+      details: error.message 
+    });
+  }
+}));
+
+// ===== GOOGLE SERVICES ENDPOINTS =====
 
 // Check Google Sheets environment
 router.get('/api/debug-google-env', (req, res) => {
@@ -335,7 +625,7 @@ router.get('/api/test-sheets-simple', asyncHandler(async (req: any, res: any) =>
   res.json({ success: true, message: 'Simple test completed' });
 }));
 
-// 🧪 Test Google Sheets connection
+// Test Google Sheets connection
 router.get('/api/test-sheets-connection', asyncHandler(async (req: any, res: any) => {
   console.log('🧪 Testing Google Sheets connection...');
 
@@ -359,7 +649,9 @@ router.get('/api/test-sheets-connection', asyncHandler(async (req: any, res: any
   res.json({ success: true, message: 'Test data sent to sheets' });
 }));
 
-// 🔍 DEBUG: Check storage state
+// ===== DEBUG ENDPOINTS =====
+
+// DEBUG: Check storage state
 router.get('/api/debug/storage', asyncHandler(async (req: any, res: any) => {
   // Check if data.json exists
   const fs = await import('fs/promises');
@@ -386,7 +678,7 @@ router.get('/api/debug/storage', asyncHandler(async (req: any, res: any) => {
   });
 }));
 
-// 🔍 DEBUG: Check all environment variables
+// DEBUG: Check all environment variables
 router.get('/api/debug/env', (req, res) => {
   const envVars = {
     NODE_ENV: process.env.NODE_ENV,
@@ -408,281 +700,120 @@ router.get('/api/debug/env', (req, res) => {
   });
 });
 
-// 📊 Get submission statistics
+// Get submission statistics
 router.get('/api/stats', asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Fetching submission statistics...');
+  console.log('📊 Getting submission statistics...');
 
-  const allSubmissions = await storage.getAllSubmissions();
+  try {
+    // Get all submissions from storage
+    const allSubmissions = await storage.getAllSubmissions();
+    
+    // Calculate statistics
+    const stats = {
+      total_submissions: allSubmissions.length,
+      by_tier: {
+        free: allSubmissions.filter(s => s.tier === 'free').length,
+        single: allSubmissions.filter(s => s.tier === 'single').length,
+        double: allSubmissions.filter(s => s.tier === 'double').length,
+        bulk: allSubmissions.filter(s => s.tier === 'bulk').length
+      },
+      by_status: {
+        pending: allSubmissions.filter(s => (s.status || 'Pending') === 'Pending').length,
+        evaluated: allSubmissions.filter(s => s.status === 'Evaluated').length,
+        rejected: allSubmissions.filter(s => s.status === 'Rejected').length
+      },
+      winners: allSubmissions.filter(s => s.isWinner).length,
+      total_revenue: allSubmissions.reduce((sum, s) => sum + (parseFloat(s.price?.toString() || '0')), 0),
+      last_updated: new Date().toISOString()
+    };
 
-  const stats = {
-    total_submissions: allSubmissions.length,
-    by_tier: {
-      free: allSubmissions.filter(s => s.tier === 'free').length,
-      single: allSubmissions.filter(s => s.tier === 'single').length,
-      double: allSubmissions.filter(s => s.tier === 'double').length,
-      bulk: allSubmissions.filter(s => s.tier === 'bulk').length
-    },
-    by_status: {
-      pending: allSubmissions.filter(s => s.status === 'pending').length,
-      approved: allSubmissions.filter(s => s.status === 'approved').length,
-      rejected: allSubmissions.filter(s => s.status === 'rejected').length
-    },
-    winners: allSubmissions.filter(s => s.isWinner).length,
-    recent_submissions: allSubmissions
-      .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
-      .slice(0, 5)
-      .map(s => ({
-        id: s.id,
-        name: s.firstName,
-        email: s.email,
-        tier: s.tier,
-        poem_title: s.poemTitle,
-        submitted_at: s.submittedAt
-      }))
-  };
-
-  res.json({
-    stats,
-    timestamp: new Date().toISOString()
-  });
+    console.log('✅ Statistics calculated:', stats);
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Error calculating statistics:', error);
+    res.status(500).json({ error: 'Failed to calculate statistics' });
+  }
 }));
 
-// 📝 SUBMISSION ENDPOINTS
+// ===== COUPON ENDPOINTS =====
 
-// New unified submit-poem endpoint with better error handling
+// Validate coupon code
+router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
+  console.log('🎫 Coupon validation request received');
+  const { code, tier, amount, userUid } = req.body;
+
+  if (!code || !tier || !amount) {
+    return res.status(400).json({ 
+      error: 'Code, tier, and amount are required' 
+    });
+  }
+
+  try {
+    // Simple coupon validation logic (you can enhance this)
+    const validCoupons = {
+      'FIRST10': { discount: 10, type: 'percentage', tiers: ['single', 'double', 'bulk'] },
+      'SAVE20': { discount: 20, type: 'percentage', tiers: ['double', 'bulk'] },
+      'WELCOME50': { discount: 50, type: 'fixed', tiers: ['single', 'double', 'bulk'] }
+    };
+
+    const coupon = validCoupons[code.toUpperCase() as keyof typeof validCoupons];
+
+    if (!coupon) {
+      return res.json({ valid: false, error: 'Invalid coupon code' });
+    }
+
+    if (!coupon.tiers.includes(tier)) {
+      return res.json({ valid: false, error: 'Coupon not valid for this tier' });
+    }
+
+    let discount = 0;
+    if (coupon.type === 'percentage') {
+      discount = Math.round((amount * coupon.discount) / 100);
+    } else {
+      discount = coupon.discount;
+    }
+
+    // Ensure discount doesn't exceed amount
+    discount = Math.min(discount, amount);
+
+    console.log('✅ Coupon validated:', { code, discount, type: coupon.type });
+
+    res.json({
+      valid: true,
+      discount,
+      discountPercentage: coupon.type === 'percentage' ? coupon.discount : Math.round((discount / amount) * 100),
+      finalAmount: amount - discount
+    });
+
+  } catch (error: any) {
+    console.error('❌ Coupon validation error:', error);
+    res.status(500).json({ error: 'Failed to validate coupon' });
+  }
+}));
+
+// ===== SUBMISSION ENDPOINTS =====
+
+// Single poem submission
 router.post('/api/submit-poem', upload.fields([
-  { name: 'poems', maxCount: 5 },
-  { name: 'photo', maxCount: 1 }
-]), asyncHandler(async (req: any, res: any) => {
-  console.log('📝 Unified poem submission received');
-  console.log('Body:', req.body);
-  console.log('Files:', req.files);
-
-  // Force JSON response header IMMEDIATELY
-  res.setHeader('Content-Type', 'application/json');
-
-  const {
-    firstName, lastName, email, phone, age, tier, userUid, paymentData
-  } = req.body;
-
-  // Parse multiple poem titles
-  let multiplePoemTitles: string[] = [];
-  try {
-    multiplePoemTitles = JSON.parse(req.body.multiplePoemTitles || '[]');
-  } catch (e) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid multiplePoemTitles format'
-    });
-  }
-
-  // Validate required fields
-  if (!firstName || !email || !tier || !multiplePoemTitles.length) {
-    return res.status(400).json({
-      success: false,
-      error: 'Missing required fields: firstName, email, tier, poem titles'
-    });
-  }
-
-  // Validate tier
-  if (!['free', 'single', 'double', 'bulk'].includes(tier)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid tier. Must be one of: free, single, double, bulk'
-    });
-  }
-
-  // Get uploaded files
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  const poemFiles = files?.poems || [];
-  const photoFile = files?.photo?.[0];
-
-  if (poemFiles.length !== multiplePoemTitles.length) {
-    return res.status(400).json({
-      success: false,
-      error: `Poem files count (${poemFiles.length}) doesn't match titles count (${multiplePoemTitles.length})`
-    });
-  }
-
-  if (!photoFile) {
-    return res.status(400).json({
-      success: false,
-      error: 'Photo file is required'
-    });
-  }
-
-  let poemFileUrls: string[] = [];
-  let photoUrl = '';
-
-  try {
-    // Upload poem files to Google Drive
-    const poemBuffers = await Promise.all(
-      poemFiles.map(file => fs.promises.readFile(file.path))
-    );
-    const originalFileNames = poemFiles.map(file => file.originalname);
-
-    if (poemFiles.length === 1) {
-      // Single poem upload
-      poemFileUrls = [await uploadPoemFile(poemBuffers[0], email, originalFileNames[0])];
-    } else {
-      // Multiple poems upload
-      poemFileUrls = await uploadMultiplePoemFiles(poemBuffers, email, originalFileNames, multiplePoemTitles);
-    }
-
-    // Upload photo
-    const photoBuffer = await fs.promises.readFile(photoFile.path);
-    photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
-
-    // Clean up temporary files
-    await Promise.all(poemFiles.map(file => fs.promises.unlink(file.path)));
-    await fs.promises.unlink(photoFile.path);
-
-  } catch (uploadError) {
-    console.error('❌ File upload error:', uploadError);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to upload files'
-    });
-  }
-
-  // Create user if doesn't exist
-  let user = await storage.getUserByEmail(email);
-  if (!user) {
-    user = await storage.createUser({
-      uid: userUid || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      email,
-      name: `${firstName} ${lastName || ''}`.trim(),
-      phone: phone || null
-    });
-  }
-
-  // Create submissions for each poem
-  const submissionUuid = `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const submissions = [];
-
-  for (let i = 0; i < multiplePoemTitles.length; i++) {
-    try {
-      const submission = await storage.createSubmission({
-        userId: user.id,
-        firstName,
-        lastName: lastName || null,
-        email,
-        phone: phone || null,
-        age: age || null,
-        poemTitle: multiplePoemTitles[i],
-        tier,
-        price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
-        poemFileUrl: poemFileUrls[i],
-        photoUrl,
-        paymentId: paymentData ? JSON.parse(paymentData).payment_id || null : null,
-        paymentMethod: paymentData ? JSON.parse(paymentData).payment_method || null : null,
-        submissionUuid,
-        poemIndex: i,
-        totalPoemsInSubmission: multiplePoemTitles.length
-      });
-      submissions.push(submission);
-    } catch (submissionError) {
-      console.error('❌ Submission creation error for poem', i, ':', submissionError);
-      // Continue with other poems even if one fails
-    }
-  }
-
-  if (submissions.length === 0) {
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create any submissions'
-    });
-  }
-
-  // Add to Google Sheets (non-critical)
-  try {
-    if (multiplePoemTitles.length === 1) {
-      await addPoemSubmissionToSheet({
-        name: `${firstName} ${lastName || ''}`.trim(),
-        email,
-        phone: phone || '',
-        age: age || '',
-        poemTitle: multiplePoemTitles[0],
-        tier,
-        amount: TIER_PRICES[tier as keyof typeof TIER_PRICES].toString(),
-        poemFile: poemFileUrls[0],
-        photo: photoUrl,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      await addMultiplePoemsToSheet({
-        name: `${firstName} ${lastName || ''}`.trim(),
-        email,
-        phone: phone || '',
-        age: age || '',
-        tier,
-        amount: TIER_PRICES[tier as keyof typeof TIER_PRICES].toString(),
-        photo: photoUrl,
-        timestamp: new Date().toISOString(),
-        submissionUuid,
-        poems: multiplePoemTitles.map((title, index) => ({
-          title,
-          fileUrl: poemFileUrls[index],
-          index
-        }))
-      });
-    }
-  } catch (sheetsError) {
-    console.error('⚠️ Google Sheets error (non-critical):', sheetsError);
-  }
-
-  // Send confirmation email (non-critical)
-  try {
-    if (multiplePoemTitles.length === 1) {
-      await sendSubmissionConfirmation({
-        name: `${firstName} ${lastName || ''}`.trim(),
-        email,
-        poemTitle: multiplePoemTitles[0],
-        tier,
-        poemCount: 1
-      });
-    } else {
-      await sendMultiplePoemsConfirmation({
-        name: `${firstName} ${lastName || ''}`.trim(),
-        email,
-        poemTitle: multiplePoemTitles[0],
-        tier,
-        poemCount: multiplePoemTitles.length,
-        allPoemTitles: multiplePoemTitles
-      });
-    }
-  } catch (emailError) {
-    console.error('⚠️ Email error (non-critical):', emailError);
-  }
-
-  // SUCCESS RESPONSE
-  res.json({
-    success: true,
-    message: 'Submission successful',
-    submissions: submissions.map(s => ({
-      id: s.id,
-      poemTitle: s.poemTitle,
-      tier: s.tier,
-      submittedAt: s.submittedAt
-    })),
-    totalPoems: multiplePoemTitles.length
-  });
-}));
-
-// Submit single poem - CRITICAL: This is likely where the error is happening
-router.post('/api/submit', upload.fields([
   { name: 'poemFile', maxCount: 1 },
-  { name: 'photo', maxCount: 1 }
+  { name: 'photoFile', maxCount: 1 }
 ]), asyncHandler(async (req: any, res: any) => {
-  console.log('📝 Single poem submission received');
-  console.log('Body:', req.body);
-  console.log('Files:', req.files);
-
-  // Force JSON response header IMMEDIATELY
-  res.setHeader('Content-Type', 'application/json');
+  console.log('🎭 Single poem submission received');
+  console.log('📝 Form data:', req.body);
+  console.log('📁 Files:', req.files);
 
   const {
-    firstName, lastName, email, phone, age, poemTitle, tier, paymentId, paymentMethod, authorBio, contestMonth
+    firstName,
+    lastName,
+    email,
+    phone,
+    age,
+    poemTitle,
+    tier,
+    termsAccepted,
+    paymentData,
+    sessionId,
+    userUid
   } = req.body;
 
   // Validate required fields
@@ -692,629 +823,442 @@ router.post('/api/submit', upload.fields([
     });
   }
 
-  // Validate tier
-  if (!['free', 'single', 'double', 'bulk'].includes(tier)) {
+  if (!termsAccepted) {
     return res.status(400).json({
-      error: 'Invalid tier. Must be one of: free, single, double, bulk'
+      error: 'Terms and conditions must be accepted'
     });
   }
-
-  // Get uploaded files
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  const poemFile = files?.poemFile?.[0];
-  const photoFile = files?.photo?.[0];
-
-  if (!poemFile) {
-    return res.status(400).json({
-      error: 'Poem file is required'
-    });
-  }
-
-  let poemFileUrl = '';
-  let photoUrl = '';
 
   try {
-    // Upload poem file to Google Drive
-    const poemBuffer = await fs.promises.readFile(poemFile.path);
-    poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname);
-
-    // Upload photo if provided
-    if (photoFile) {
-      const photoBuffer = await fs.promises.readFile(photoFile.path);
-      photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
+    // Parse payment data if it's a string
+    let parsedPaymentData = null;
+    if (paymentData) {
+      parsedPaymentData = typeof paymentData === 'string' ? JSON.parse(paymentData) : paymentData;
     }
 
-    // Clean up temporary files
-    await fs.promises.unlink(poemFile.path);
-    if (photoFile) {
-      await fs.promises.unlink(photoFile.path);
+    // Upload files to Google Drive
+    const files = req.files as any;
+    let poemFileUrl = null;
+    let photoFileUrl = null;
+    let driveFileId = null;
+    let drivePhotoId = null;
+
+    if (files?.poemFile?.[0]) {
+      console.log('📁 Uploading poem file...');
+      const poemUpload = await uploadPoemFile(files.poemFile[0], poemTitle, email);
+      poemFileUrl = poemUpload.webViewLink;
+      driveFileId = poemUpload.id;
+      console.log('✅ Poem file uploaded:', poemFileUrl);
     }
 
-  } catch (uploadError) {
-    console.error('❌ File upload error:', uploadError);
-    return res.status(500).json({
-      error: 'Failed to upload files'
-    });
-  }
-
-  // Create user if doesn't exist
-  let user;
-  try {
-    user = await storage.getUserByEmail(email);
-    if (!user) {
-      user = await storage.createUser({
-        uid: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        email,
-        name: `${firstName} ${lastName || ''}`.trim(),
-        phone: phone || null
-      });
+    if (files?.photoFile?.[0]) {
+      console.log('📷 Uploading photo file...');
+      const photoUpload = await uploadPhotoFile(files.photoFile[0], firstName, email);
+      photoFileUrl = photoUpload.webViewLink;
+      drivePhotoId = photoUpload.id;
+      console.log('✅ Photo file uploaded:', photoFileUrl);
     }
-  } catch (userError) {
-    console.error('❌ User creation error:', userError);
-    return res.status(500).json({
-      error: 'Failed to create/find user'
-    });
-  }
 
-  // Create submission
-  let submission;
-  try {
-    submission = await storage.createSubmission({
-      userId: user.id,
+    // Create or get user
+    let user = null;
+    if (userUid) {
+      user = await storage.getUserByUid(userUid);
+      if (!user) {
+        user = await storage.createUser({
+          uid: userUid,
+          email,
+          name: `${firstName} ${lastName || ''}`.trim(),
+          phone
+        });
+      }
+    }
+
+    // Determine pricing
+    const price = tier === 'free' ? 0 : TIER_PRICES[tier as keyof typeof TIER_PRICES];
+
+    // Create submission
+    const submissionData = {
+      userId: user?.id || null,
       firstName,
-      lastName: lastName || null,
-      email,
-      phone: phone || null,
-      age: age || null,
-      poemTitle,
-      tier,
-      price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
-      poemFileUrl,
-      photoUrl: photoUrl || null,
-      paymentId: paymentId || null,
-      paymentMethod: paymentMethod || null,
-      submissionUuid: `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      poemIndex: 0,
-      totalPoemsInSubmission: 1
-    });
-  } catch (submissionError) {
-    console.error('❌ Submission creation error:', submissionError);
-    return res.status(500).json({
-      error: 'Failed to create submission'
-    });
-  }
-
-  // Add to Google Sheets (non-critical)
-  try {
-    await addPoemSubmissionToSheet({
-      name: `${firstName} ${lastName || ''}`.trim(),
+      lastName: lastName || '',
       email,
       phone: phone || '',
-      age: age || '',
+      age: age ? parseInt(age) : null,
       poemTitle,
       tier,
-      amount: TIER_PRICES[tier as keyof typeof TIER_PRICES].toString(),
-      poemFile: poemFileUrl,
-      photo: photoUrl,
-      timestamp: new Date().toISOString()
-    });
-  } catch (sheetsError) {
-    console.error('⚠️ Google Sheets error (non-critical):', sheetsError);
-    // Don't fail the whole submission for this
-  }
+      price,
+      paymentId: parsedPaymentData?.payment_id || parsedPaymentData?.razorpay_payment_id || sessionId,
+      paymentMethod: parsedPaymentData?.payment_method || 'razorpay',
+      paymentStatus: parsedPaymentData ? 'completed' : 'pending',
+      sessionId: sessionId || null,
+      termsAccepted: termsAccepted === 'true' || termsAccepted === true,
+      poemFileUrl,
+      photoFileUrl,
+      driveFileId,
+      drivePhotoId,
+      poemIndex: 1,
+      totalPoemsInSubmission: 1,
+      submissionUuid: crypto.randomUUID(),
+      contestMonth: new Date().toISOString().slice(0, 7),
+      contestYear: new Date().getFullYear()
+    };
 
-  // Send confirmation email (non-critical)
-  try {
-    await sendSubmissionConfirmation({
-      name: `${firstName} ${lastName || ''}`.trim(),
-      email,
-      poemTitle,
-      tier,
-      poemCount: 1
-    });
-  } catch (emailError) {
-    console.error('⚠️ Email error (non-critical):', emailError);
-    // Don't fail the whole submission for this
-  }
+    console.log('💾 Creating submission in database...');
+    const submission = await storage.createSubmission(submissionData);
+    console.log('✅ Submission created:', submission.id);
 
-  // SUCCESS RESPONSE
-  res.json({
-    success: true,
-    message: 'Submission successful',
-    submission: {
-      id: submission.id,
-      poemTitle: submission.poemTitle,
-      tier: submission.tier,
-      submittedAt: submission.submittedAt
+    // Add to Google Sheets for backup
+    try {
+      const sheetData = {
+        name: `${firstName} ${lastName || ''}`.trim(),
+        email,
+        phone: phone || '',
+        age: age || '',
+        poemTitle,
+        tier,
+        amount: price?.toString() || '0',
+        poemFile: poemFileUrl || '',
+        photo: photoFileUrl || '',
+        timestamp: new Date().toISOString()
+      };
+
+      await addPoemSubmissionToSheet(sheetData);
+      console.log('✅ Added to Google Sheets');
+    } catch (sheetError) {
+      console.error('⚠️ Google Sheets error (non-critical):', sheetError);
     }
-  });
+
+    // Send confirmation email
+    try {
+      await sendSubmissionConfirmation({
+        name: `${firstName} ${lastName || ''}`.trim(),
+        email,
+        poemTitle,
+        tier,
+        poemCount: 1
+      });
+      console.log('✅ Confirmation email sent');
+    } catch (emailError) {
+      console.error('⚠️ Email error (non-critical):', emailError);
+    }
+
+    // Clean up uploaded files
+    if (files?.poemFile?.[0]) {
+      fs.unlinkSync(files.poemFile[0].path);
+    }
+    if (files?.photoFile?.[0]) {
+      fs.unlinkSync(files.photoFile[0].path);
+    }
+
+    res.json({
+      success: true,
+      message: 'Poem submitted successfully',
+      submissionId: submission.id,
+      poemTitle,
+      tier,
+      amount: price
+    });
+
+  } catch (error: any) {
+    console.error('❌ Submission error:', error);
+    
+    // Clean up files on error
+    const files = req.files as any;
+    try {
+      if (files?.poemFile?.[0] && fs.existsSync(files.poemFile[0].path)) {
+        fs.unlinkSync(files.poemFile[0].path);
+      }
+      if (files?.photoFile?.[0] && fs.existsSync(files.photoFile[0].path)) {
+        fs.unlinkSync(files.photoFile[0].path);
+      }
+    } catch (cleanupError) {
+      console.error('⚠️ File cleanup error:', cleanupError);
+    }
+
+    res.status(500).json({
+      error: error.message || 'Failed to submit poem'
+    });
+  }
 }));
 
-// Submit multiple poems
-router.post('/api/submit-multiple', upload.fields([
-  { name: 'poemFiles', maxCount: 5 },
-  { name: 'photo', maxCount: 1 }
-]), asyncHandler(async (req: any, res: any) => {
-  console.log('📝 Multiple poems submission received');
-  console.log('Body:', req.body);
-  console.log('Files:', req.files);
-
-  // Force JSON response header IMMEDIATELY
-  res.setHeader('Content-Type', 'application/json');
+// Multiple poems submission
+router.post('/api/submit-multiple-poems', upload.array('files', 10), asyncHandler(async (req: any, res: any) => {
+  console.log('🎭 Multiple poems submission received');
+  console.log('📝 Form data:', req.body);
+  console.log('📁 Files count:', req.files?.length || 0);
 
   const {
-    firstName, lastName, email, phone, age, tier, paymentId, paymentMethod, authorBio, contestMonth
+    firstName,
+    lastName,
+    email,
+    phone,
+    age,
+    tier,
+    termsAccepted,
+    paymentData,
+    sessionId,
+    userUid,
+    poemTitles // JSON string of poem titles
   } = req.body;
 
-  // Parse poem titles (they come as JSON string)
-  let poemTitles: string[] = [];
-  try {
-    poemTitles = JSON.parse(req.body.poemTitles || '[]');
-  } catch (e) {
-    return res.status(400).json({
-      error: 'Invalid poemTitles format'
-    });
-  }
-
   // Validate required fields
-  if (!firstName || !email || !tier || !poemTitles.length) {
+  if (!firstName || !email || !tier || !poemTitles) {
     return res.status(400).json({
       error: 'Missing required fields: firstName, email, tier, poemTitles'
     });
   }
 
-  // Validate tier and poem count
-  if (!validateTierPoemCount(tier, poemTitles.length)) {
+  if (!termsAccepted) {
     return res.status(400).json({
-      error: `Invalid poem count for tier ${tier}. Expected: ${TIER_POEM_COUNTS[tier as keyof typeof TIER_POEM_COUNTS]}, got: ${poemTitles.length}`
+      error: 'Terms and conditions must be accepted'
     });
   }
-
-  // Get uploaded files
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  const poemFiles = files?.poemFiles || [];
-  const photoFile = files?.photo?.[0];
-
-  if (poemFiles.length !== poemTitles.length) {
-    return res.status(400).json({
-      error: `Poem files count (${poemFiles.length}) doesn't match poem titles count (${poemTitles.length})`
-    });
-  }
-
-  let poemFileUrls: string[] = [];
-  let photoUrl = '';
 
   try {
-    // Upload poem files to Google Drive
-    const poemBuffers = await Promise.all(
-      poemFiles.map(file => fs.promises.readFile(file.path))
+    // Parse poem titles
+    const titles = JSON.parse(poemTitles);
+    const poemCount = validateTierPoemCount(tier, titles.length);
+
+    if (!poemCount) {
+      return res.status(400).json({
+        error: `Invalid poem count for tier ${tier}`
+      });
+    }
+
+    // Parse payment data
+    let parsedPaymentData = null;
+    if (paymentData) {
+      parsedPaymentData = typeof paymentData === 'string' ? JSON.parse(paymentData) : paymentData;
+    }
+
+    // Upload files to Google Drive
+    const files = req.files as Express.Multer.File[];
+    const uploadResults = await uploadMultiplePoemFiles(
+      files,
+      titles,
+      email,
+      firstName
     );
-    const originalFileNames = poemFiles.map(file => file.originalname);
 
-    poemFileUrls = await uploadMultiplePoemFiles(poemBuffers, email, originalFileNames, poemTitles);
+    console.log('✅ Files uploaded:', uploadResults.length);
 
-    // Upload photo if provided
-    if (photoFile) {
-      const photoBuffer = await fs.promises.readFile(photoFile.path);
-      photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
+    // Create or get user
+    let user = null;
+    if (userUid) {
+      user = await storage.getUserByUid(userUid);
+      if (!user) {
+        user = await storage.createUser({
+          uid: userUid,
+          email,
+          name: `${firstName} ${lastName || ''}`.trim(),
+          phone
+        });
+      }
     }
 
-    // Clean up temporary files
-    await Promise.all(poemFiles.map(file => fs.promises.unlink(file.path)));
-    if (photoFile) {
-      await fs.promises.unlink(photoFile.path);
+    // Determine pricing
+    const price = tier === 'free' ? 0 : TIER_PRICES[tier as keyof typeof TIER_PRICES];
+    const submissionUuid = crypto.randomUUID();
+
+    // Create submissions for each poem
+    const submissions = [];
+    for (let i = 0; i < titles.length; i++) {
+      const uploadResult = uploadResults[i];
+      
+      const submissionData = {
+        userId: user?.id || null,
+        firstName,
+        lastName: lastName || '',
+        email,
+        phone: phone || '',
+        age: age ? parseInt(age) : null,
+        poemTitle: titles[i],
+        tier,
+        price: i === 0 ? price : 0, // Only charge for first poem
+        paymentId: parsedPaymentData?.payment_id || parsedPaymentData?.razorpay_payment_id || sessionId,
+        paymentMethod: parsedPaymentData?.payment_method || 'razorpay',
+        paymentStatus: parsedPaymentData ? 'completed' : 'pending',
+        sessionId: sessionId || null,
+        termsAccepted: termsAccepted === 'true' || termsAccepted === true,
+        poemFileUrl: uploadResult?.poem?.webViewLink || null,
+        photoFileUrl: uploadResult?.photo?.webViewLink || null,
+        driveFileId: uploadResult?.poem?.id || null,
+        drivePhotoId: uploadResult?.photo?.id || null,
+        poemIndex: i + 1,
+        totalPoemsInSubmission: titles.length,
+        submissionUuid,
+        contestMonth: new Date().toISOString().slice(0, 7),
+        contestYear: new Date().getFullYear()
+      };
+
+      const submission = await storage.createSubmission(submissionData);
+      submissions.push(submission);
+      console.log(`✅ Submission ${i + 1} created:`, submission.id);
     }
 
-  } catch (uploadError) {
-    console.error('❌ File upload error:', uploadError);
-    return res.status(500).json({
-      error: 'Failed to upload files'
+    // Add to Google Sheets for backup
+    try {
+      await addMultiplePoemsToSheet({
+        name: `${firstName} ${lastName || ''}`.trim(),
+        email,
+        phone: phone || '',
+        age: age || '',
+        tier,
+        amount: price?.toString() || '0',
+        poems: titles.map((title: string, index: number) => ({
+          title,
+          poemFile: uploadResults[index]?.poem?.webViewLink || '',
+          photo: uploadResults[index]?.photo?.webViewLink || ''
+        })),
+        timestamp: new Date().toISOString()
+      });
+      console.log('✅ Added to Google Sheets');
+    } catch (sheetError) {
+      console.error('⚠️ Google Sheets error (non-critical):', sheetError);
+    }
+
+    // Send confirmation email
+    try {
+      await sendMultiplePoemsConfirmation({
+        name: `${firstName} ${lastName || ''}`.trim(),
+        email,
+        tier,
+        poemCount: titles.length,
+        allPoemTitles: titles
+      });
+      console.log('✅ Confirmation email sent');
+    } catch (emailError) {
+      console.error('⚠️ Email error (non-critical):', emailError);
+    }
+
+    // Clean up uploaded files
+    files.forEach(file => {
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (cleanupError) {
+        console.error('⚠️ File cleanup error:', cleanupError);
+      }
     });
-  }
 
-  // Create user if doesn't exist
-  let user = await storage.getUserByEmail(email);
-  if (!user) {
-    user = await storage.createUser({
-      uid: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      email,
-      name: `${firstName} ${lastName || ''}`.trim(),
-      phone: phone || null
-    });
-  }
-
-  // Create submissions for each poem
-  const submissionUuid = `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const submissions = [];
-
-  for (let i = 0; i < poemTitles.length; i++) {
-    const submission = await storage.createSubmission({
-      userId: user.id,
-      firstName,
-      lastName: lastName || null,
-      email,
-      phone: phone || null,
-      age: age || null,
-      poemTitle: poemTitles[i],
+    res.json({
+      success: true,
+      message: `${titles.length} poems submitted successfully`,
+      submissionIds: submissions.map(s => s.id),
+      poemTitles: titles,
       tier,
-      price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
-      poemFileUrl: poemFileUrls[i],
-      photoUrl: photoUrl || null,
-      paymentId: paymentId || null,
-      paymentMethod: paymentMethod || null,
-      submissionUuid,
-      poemIndex: i,
-      totalPoemsInSubmission: poemTitles.length
+      amount: price,
+      submissionUuid
     });
-    submissions.push(submission);
-  }
 
-  // Add to Google Sheets (non-critical)
-  try {
-    await addMultiplePoemsToSheet({
-      name: `${firstName} ${lastName || ''}`.trim(),
-      email,
-      phone: phone || '',
-      age: age || '',
-      tier,
-      amount: TIER_PRICES[tier as keyof typeof TIER_PRICES].toString(),
-      photo: photoUrl,
-      timestamp: new Date().toISOString(),
-      submissionUuid,
-      poems: poemTitles.map((title, index) => ({
-        title,
-        fileUrl: poemFileUrls[index],
-        index
-      }))
+  } catch (error: any) {
+    console.error('❌ Multiple submission error:', error);
+    
+    // Clean up files on error
+    const files = req.files as Express.Multer.File[];
+    files?.forEach(file => {
+      try {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      } catch (cleanupError) {
+        console.error('⚠️ File cleanup error:', cleanupError);
+      }
     });
-  } catch (sheetsError) {
-    console.error('⚠️ Google Sheets error (non-critical):', sheetsError);
-  }
 
-  // Send confirmation email (non-critical)
-  try {
-    await sendMultiplePoemsConfirmation({
-      name: `${firstName} ${lastName || ''}`.trim(),
-      email,
-      poemTitle: poemTitles[0], // First poem title for compatibility
-      tier,
-      poemCount: poemTitles.length,
-      allPoemTitles: poemTitles
+    res.status(500).json({
+      error: error.message || 'Failed to submit poems'
     });
-  } catch (emailError) {
-    console.error('⚠️ Email error (non-critical):', emailError);
   }
-
-  res.json({
-    success: true,
-    message: 'Multiple poems submission successful',
-    submissions: submissions.map(s => ({
-      id: s.id,
-      poemTitle: s.poemTitle,
-      poemIndex: s.poemIndex
-    })),
-    totalPoems: poemTitles.length,
-    tier,
-    submissionUuid
-  });
 }));
 
-// Contact form endpoint
+// ===== CONTACT ENDPOINTS =====
+
+// Submit contact form
 router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   console.log('📧 Contact form submission received');
-  console.log('Body:', req.body);
-
-  // Force JSON response header IMMEDIATELY
-  res.setHeader('Content-Type', 'application/json');
-
-  const { name, email, phone, message, subject } = req.body;
+  const { name, email, subject, message } = req.body;
 
   // Validate required fields
   if (!name || !email || !message) {
     return res.status(400).json({
-      error: 'Missing required fields: name, email, message'
+      error: 'Name, email, and message are required'
     });
   }
 
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({
-      error: 'Invalid email format'
-    });
-  }
-
-  // Create contact entry
-  const contact = await storage.createContact({
-    name,
-    email,
-    phone: phone || null,
-    message,
-    subject: subject || null
-  });
-
-  // Add to Google Sheets (non-critical)
   try {
-    await addContactToSheet({
-      name,
-      email,
-      phone: phone || '',
-      message,
-      timestamp: new Date().toISOString()
-    });
-  } catch (sheetsError) {
-    console.error('⚠️ Google Sheets error (non-critical):', sheetsError);
-  }
-
-  res.json({
-    success: true,
-    message: 'Contact form submitted successfully',
-    contact: {
-      id: contact.id,
-      name: contact.name,
-      email: contact.email,
-      submittedAt: contact.submittedAt
+    // Save to database (if you have contacts table)
+    try {
+      await storage.createContact({
+        name,
+        email,
+        subject: subject || 'General Inquiry',
+        message,
+        status: 'new'
+      });
+      console.log('✅ Contact saved to database');
+    } catch (dbError) {
+      console.error('⚠️ Database save error (non-critical):', dbError);
     }
-  });
-}));
 
-// Get submission by ID
-router.get('/api/submission/:id', asyncHandler(async (req: any, res: any) => {
-  const { id } = req.params;
-
-  if (!id || isNaN(parseInt(id))) {
-    return res.status(400).json({
-      error: 'Invalid submission ID'
-    });
-  }
-
-  const allSubmissions = await storage.getAllSubmissions();
-  const submission = allSubmissions.find(s => s.id === parseInt(id));
-
-  if (!submission) {
-    return res.status(404).json({
-      error: 'Submission not found'
-    });
-  }
-
-  res.json({
-    submission: {
-      id: submission.id,
-      firstName: submission.firstName,
-      lastName: submission.lastName,
-      email: submission.email,
-      poemTitle: submission.poemTitle,
-      tier: submission.tier,
-      status: submission.status,
-      score: submission.score,
-      isWinner: submission.isWinner,
-      submittedAt: submission.submittedAt
-    }
-  });
-}));
-
-// Get all submissions (admin)
-router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Fetching all submissions...');
-
-  const allSubmissions = await storage.getAllSubmissions();
-
-  const submissions = allSubmissions.map(s => ({
-    id: s.id,
-    firstName: s.firstName,
-    lastName: s.lastName,
-    email: s.email,
-    poemTitle: s.poemTitle,
-    tier: s.tier,
-    status: s.status,
-    score: s.score,
-    isWinner: s.isWinner,
-    submittedAt: s.submittedAt,
-    poemIndex: s.poemIndex,
-    totalPoemsInSubmission: s.totalPoemsInSubmission,
-    submissionUuid: s.submissionUuid
-  }));
-
-  res.json({
-    submissions,
-    total: submissions.length,
-    timestamp: new Date().toISOString()
-  });
-}));
-
-// Get winners
-router.get('/api/winners', asyncHandler(async (req: any, res: any) => {
-  console.log('🏆 Fetching winners...');
-
-  const winners = await storage.getWinningSubmissions();
-
-  const winnersData = winners.map(w => ({
-    id: w.id,
-    firstName: w.firstName,
-    lastName: w.lastName,
-    email: w.email,
-    poemTitle: w.poemTitle,
-    tier: w.tier,
-    score: w.score,
-    winnerPosition: w.winnerPosition,
-    submittedAt: w.submittedAt
-  }));
-
-  res.json({
-    winners: winnersData,
-    total: winnersData.length,
-    timestamp: new Date().toISOString()
-  });
-}));
-
-// Update submission status (admin)
-router.put('/api/submission/:id/status', asyncHandler(async (req: any, res: any) => {
-  const { id } = req.params;
-  const { status, score, isWinner, winnerPosition } = req.body;
-
-  if (!id || isNaN(parseInt(id))) {
-    return res.status(400).json({
-      error: 'Invalid submission ID'
-    });
-  }
-
-  if (!status) {
-    return res.status(400).json({
-      error: 'Status is required'
-    });
-  }
-
-  // For now, we'll just return success since we don't have updateSubmissionStatus in storage
-  res.json({
-    message: 'Submission status updated',
-    submissionId: parseInt(id),
-    status,
-    score,
-    isWinner,
-    winnerPosition
-  });
-}));
-
-// Get submission count from Google Sheets
-router.get('/api/submission-count-sheets', asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Getting submission count from Google Sheets...');
-
-  const count = await getSubmissionCountFromSheet();
-
-  res.json({
-    count: count,
-    timestamp: new Date().toISOString()
-  });
-}));
-
-// Get all contacts (admin)
-router.get('/api/contacts', asyncHandler(async (req: any, res: any) => {
-  console.log('📧 Fetching all contacts...');
-
-  const allContacts = await storage.getAllContacts();
-
-  const contacts = allContacts.map(c => ({
-    id: c.id,
-    name: c.name,
-    email: c.email,
-    phone: c.phone,
-    message: c.message,
-    subject: c.subject,
-    submittedAt: c.submittedAt
-  }));
-
-  res.json({
-    contacts,
-    total: contacts.length,
-    timestamp: new Date().toISOString()
-  });
-}));
-
-// Delete submission (admin)
-router.delete('/api/submission/:id', asyncHandler(async (req: any, res: any) => {
-  const { id } = req.params;
-
-  if (!id || isNaN(parseInt(id))) {
-    return res.status(400).json({
-      error: 'Invalid submission ID'
-    });
-  }
-
-  // For now, we'll just return success since we don't have deleteSubmission in storage
-  res.json({
-    message: 'Submission deleted',
-    submissionId: parseInt(id)
-  });
-}));
-
-// Bulk update submissions (admin)
-router.post('/api/submissions/bulk-update', asyncHandler(async (req: any, res: any) => {
-  const { submissionIds, updates } = req.body;
-
-  if (!submissionIds || !Array.isArray(submissionIds) || submissionIds.length === 0) {
-    return res.status(400).json({
-      error: 'Valid submissionIds array is required'
-    });
-  }
-
-  if (!updates || typeof updates !== 'object') {
-    return res.status(400).json({
-      error: 'Updates object is required'
-    });
-  }
-
-  // For now, we'll just return success since we don't have bulk update in storage
-  res.json({
-    message: 'Bulk update completed',
-    updatedSubmissions: submissionIds.length,
-    updates
-  });
-}));
-
-// Export submissions as CSV (admin)
-router.get('/api/submissions/export', asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Exporting submissions as CSV...');
-
-  const allSubmissions = await storage.getAllSubmissions();
-
-  // Create CSV header
-  const csvHeader = 'ID,First Name,Last Name,Email,Phone,Age,Poem Title,Tier,Status,Score,Is Winner,Submitted At,Payment ID,Payment Method\n';
-
-  // Create CSV rows
-  const csvRows = allSubmissions.map(s => {
-    return [
-      s.id,
-      s.firstName || '',
-      s.lastName || '',
-      s.email || '',
-      s.phone || '',
-      s.age || '',
-      s.poemTitle || '',
-      s.tier || '',
-      s.status || '',
-      s.score || '',
-      s.isWinner || false,
-      s.submittedAt || '',
-      s.paymentId || '',
-      s.paymentMethod || ''
-    ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(',');
-  }).join('\n');
-
-  const csvContent = csvHeader + csvRows;
-
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="submissions.csv"');
-  res.send(csvContent);
-}));
-
-// CRITICAL: THIS IS THE FUNCTION YOUR INDEX.TS IS LOOKING FOR
-export function registerRoutes(app: any) {
-  console.log('🛣️ Registering all routes...');
-
-  // Add global error handling middleware FIRST
-  app.use((req: any, res: any, next: any) => {
-    res.setHeader('Content-Type', 'application/json');
-    next();
-  });
-
-  // Register all routes
-  app.use('/', router);
-
-  // Add final error handler
-  app.use((error: any, req: any, res: any, next: any) => {
-    console.error('❌ Global error handler:', error);
-
-    if (!res.headersSent) {
-      res.setHeader('Content-Type', 'application/json');
-      res.status(500).json({
-        success: false,
-        error: error.message || 'Internal Server Error',
+    // Add to Google Sheets for backup
+    try {
+      await addContactToSheet({
+        name,
+        email,
+        subject: subject || 'General Inquiry',
+        message,
         timestamp: new Date().toISOString()
       });
+      console.log('✅ Contact added to Google Sheets');
+    } catch (sheetError) {
+      console.error('⚠️ Google Sheets error (non-critical):', sheetError);
     }
-  });
 
-  console.log('✅ All routes registered successfully');
-}
+    res.json({
+      success: true,
+      message: 'Contact form submitted successfully'
+    });
 
-export default router;
+  } catch (error: any) {
+    console.error('❌ Contact form error:', error);
+    res.status(500).json({
+      error: 'Failed to submit contact form'
+    });
+  }
+}));
+
+// ===== GET ALL SUBMISSIONS FOR RESULTS =====
+
+// Get all submissions (for results page)
+router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
+  console.log('📊 Getting all submissions...');
+
+  try {
+    const submissions = await storage.getAllSubmissions();
+    
+    // Transform submissions for frontend
+    const transformedSubmissions = submissions.map(sub => ({
+      id: sub.id,
+      name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      submittedAt: sub.submittedAt,
+      isWinner: sub.isWinner || false,
+      winnerPosition: sub.winnerPosition,
+      score: sub.score,
+      type: sub.type || 'Human',
+      status: sub.status || 'Pending'
+    }));
+
+    console.log(`✅ Retrieved ${transformedSubmissions.length} submissions`);
+    res.json(transformedSubmissions);
+  } catch (error) {
+    console.error('❌ Error getting submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions' });
+  }
+}));
+
+// Export router
+export { router };

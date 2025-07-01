@@ -1,6 +1,27 @@
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, decimal, json } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
+// ✅ TIER CONFIGURATIONS - Add these exports
+export const TIER_POEM_COUNTS = {
+  free: 1,
+  single: 1,
+  double: 2,
+  bulk: 5
+} as const;
+
+export const TIER_PRICES = {
+  free: 0,
+  single: 50,
+  double: 100,
+  bulk: 480
+} as const;
+
+// ✅ VALIDATION FUNCTION
+export function validateTierPoemCount(tier: string, poemCount: number): boolean {
+  const expectedCount = TIER_POEM_COUNTS[tier as keyof typeof TIER_POEM_COUNTS];
+  return expectedCount === poemCount;
+}
+
 // ✅ Users table
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -17,7 +38,7 @@ export const submissions = pgTable('submissions', {
   id: serial('id').primaryKey(),
   
   // User relationship
-  userId: integer('user_id').references(() => users.id).notNull(),
+  userId: integer('user_id').references(() => users.id),
   
   // Basic submission info
   firstName: varchar('first_name', { length: 255 }).notNull(),
