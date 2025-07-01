@@ -17,10 +17,10 @@ const router = Router();
 const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
   Promise.resolve(fn(req, res, next)).catch((error) => {
     console.error('❌ Async Handler Error:', error);
-    
+
     // Force JSON response
     res.setHeader('Content-Type', 'application/json');
-    
+
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
@@ -97,66 +97,6 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
     console.error('❌ Razorpay not configured');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
-
-
-// Test submission creation (debug)
-router.post('/api/test-submission', asyncHandler(async (req: any, res: any) => {
-  console.log('🧪 Testing submission creation...');
-  
-  res.setHeader('Content-Type', 'application/json');
-
-  try {
-    // Create a test user first
-    let testUser = await storage.getUserByEmail('test@example.com');
-    if (!testUser) {
-      testUser = await storage.createUser({
-        uid: `test_user_${Date.now()}`,
-        email: 'test@example.com',
-        name: 'Test User',
-        phone: null
-      });
-    }
-
-    // Create a test submission
-    const testSubmission = await storage.createSubmission({
-      userId: testUser.id,
-      firstName: 'Test',
-      lastName: 'User',
-      email: 'test@example.com',
-      phone: null,
-      age: null,
-      poemTitle: 'Test Poem',
-      tier: 'single',
-      price: 50,
-      poemFileUrl: 'https://test.com/poem.pdf',
-      photoUrl: 'https://test.com/photo.jpg',
-      paymentId: null,
-      paymentMethod: 'test',
-      submissionUuid: `test_${Date.now()}`,
-      poemIndex: 0,
-      totalPoemsInSubmission: 1
-    });
-
-    res.json({
-      success: true,
-      message: 'Test submission created successfully',
-      submission: {
-        id: testSubmission.id,
-        poemTitle: testSubmission.poemTitle,
-        tier: testSubmission.tier
-      }
-    });
-
-  } catch (error: any) {
-    console.error('❌ Test submission failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      details: error.stack
-    });
-  }
-}));
-
     });
   }
 
@@ -473,7 +413,7 @@ router.get('/api/stats', asyncHandler(async (req: any, res: any) => {
   console.log('📊 Fetching submission statistics...');
 
   const allSubmissions = await storage.getAllSubmissions();
-  
+
   const stats = {
     total_submissions: allSubmissions.length,
     by_tier: {
@@ -580,7 +520,7 @@ router.post('/api/submit-poem', upload.fields([
       poemFiles.map(file => fs.promises.readFile(file.path))
     );
     const originalFileNames = poemFiles.map(file => file.originalname);
-    
+
     if (poemFiles.length === 1) {
       // Single poem upload
       poemFileUrls = [await uploadPoemFile(poemBuffers[0], email, originalFileNames[0])];
@@ -620,19 +560,9 @@ router.post('/api/submit-poem', upload.fields([
   const submissionUuid = `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const submissions = [];
 
-  // Parse payment data safely
-  let parsedPaymentData = null;
-  if (paymentData) {
-    try {
-      parsedPaymentData = JSON.parse(paymentData);
-    } catch (e) {
-      console.error('❌ Failed to parse payment data:', e);
-    }
-  }
-
   for (let i = 0; i < multiplePoemTitles.length; i++) {
     try {
-      const submissionData = {
+      const submission = await storage.createSubmission({
         userId: user.id,
         firstName,
         lastName: lastName || null,
@@ -644,43 +574,23 @@ router.post('/api/submit-poem', upload.fields([
         price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
         poemFileUrl: poemFileUrls[i],
         photoUrl,
-        paymentId: parsedPaymentData?.payment_id || null,
-        paymentMethod: parsedPaymentData?.payment_method || 'razorpay',
+        paymentId: paymentData ? JSON.parse(paymentData).payment_id || null : null,
+        paymentMethod: paymentData ? JSON.parse(paymentData).payment_method || null : null,
         submissionUuid,
         poemIndex: i,
         totalPoemsInSubmission: multiplePoemTitles.length
-      };
-
-      console.log(`📝 Creating submission ${i + 1}/${multiplePoemTitles.length}:`, {
-        poemTitle: submissionData.poemTitle,
-        tier: submissionData.tier,
-        userId: submissionData.userId
       });
-
-      const submission = await storage.createSubmission(submissionData);
       submissions.push(submission);
-      
-      console.log(`✅ Successfully created submission ${submission.id} for poem: ${submission.poemTitle}`);
     } catch (submissionError) {
       console.error('❌ Submission creation error for poem', i, ':', submissionError);
-      console.error('❌ Submission data that failed:', {
-        poemTitle: multiplePoemTitles[i],
-        tier,
-        userId: user.id
-      });
-      
-      // Return error immediately instead of continuing
-      return res.status(500).json({
-        success: false,
-        error: `Failed to create submission for poem "${multiplePoemTitles[i]}": ${submissionError.message}`
-      });
+      // Continue with other poems even if one fails
     }
   }
 
   if (submissions.length === 0) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to create any submissions - no submissions were processed'
+      error: 'Failed to create any submissions'
     });
   }
 
@@ -849,7 +759,7 @@ router.post('/api/submit', upload.fields([
   // Create submission
   let submission;
   try {
-    const submissionData = {
+    submission = await storage.createSubmission({
       userId: user.id,
       firstName,
       lastName: lastName || null,
@@ -862,28 +772,15 @@ router.post('/api/submit', upload.fields([
       poemFileUrl,
       photoUrl: photoUrl || null,
       paymentId: paymentId || null,
-      paymentMethod: paymentMethod || 'razorpay',
+      paymentMethod: paymentMethod || null,
       submissionUuid: `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       poemIndex: 0,
       totalPoemsInSubmission: 1
-    };
-
-    console.log('📝 Creating single submission:', {
-      poemTitle: submissionData.poemTitle,
-      tier: submissionData.tier,
-      userId: submissionData.userId,
-      email: submissionData.email
     });
-
-    submission = await storage.createSubmission(submissionData);
-    
-    console.log(`✅ Successfully created submission ${submission.id} for poem: ${submission.poemTitle}`);
   } catch (submissionError) {
     console.error('❌ Submission creation error:', submissionError);
-    console.error('❌ Full error details:', submissionError.stack);
     return res.status(500).json({
-      success: false,
-      error: `Failed to create submission: ${submissionError.message}`
+      error: 'Failed to create submission'
     });
   }
 
@@ -993,7 +890,7 @@ router.post('/api/submit-multiple', upload.fields([
       poemFiles.map(file => fs.promises.readFile(file.path))
     );
     const originalFileNames = poemFiles.map(file => file.originalname);
-    
+
     poemFileUrls = await uploadMultiplePoemFiles(poemBuffers, email, originalFileNames, poemTitles);
 
     // Upload photo if provided
@@ -1164,7 +1061,7 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
 // Get submission by ID
 router.get('/api/submission/:id', asyncHandler(async (req: any, res: any) => {
   const { id } = req.params;
-  
+
   if (!id || isNaN(parseInt(id))) {
     return res.status(400).json({
       error: 'Invalid submission ID'
@@ -1201,7 +1098,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   console.log('📊 Fetching all submissions...');
 
   const allSubmissions = await storage.getAllSubmissions();
-  
+
   const submissions = allSubmissions.map(s => ({
     id: s.id,
     firstName: s.firstName,
@@ -1230,7 +1127,7 @@ router.get('/api/winners', asyncHandler(async (req: any, res: any) => {
   console.log('🏆 Fetching winners...');
 
   const winners = await storage.getWinningSubmissions();
-  
+
   const winnersData = winners.map(w => ({
     id: w.id,
     firstName: w.firstName,
@@ -1283,7 +1180,7 @@ router.get('/api/submission-count-sheets', asyncHandler(async (req: any, res: an
   console.log('📊 Getting submission count from Google Sheets...');
 
   const count = await getSubmissionCountFromSheet();
-  
+
   res.json({
     count: count,
     timestamp: new Date().toISOString()
@@ -1295,7 +1192,7 @@ router.get('/api/contacts', asyncHandler(async (req: any, res: any) => {
   console.log('📧 Fetching all contacts...');
 
   const allContacts = await storage.getAllContacts();
-  
+
   const contacts = allContacts.map(c => ({
     id: c.id,
     name: c.name,
@@ -1359,10 +1256,10 @@ router.get('/api/submissions/export', asyncHandler(async (req: any, res: any) =>
   console.log('📊 Exporting submissions as CSV...');
 
   const allSubmissions = await storage.getAllSubmissions();
-  
+
   // Create CSV header
   const csvHeader = 'ID,First Name,Last Name,Email,Phone,Age,Poem Title,Tier,Status,Score,Is Winner,Submitted At,Payment ID,Payment Method\n';
-  
+
   // Create CSV rows
   const csvRows = allSubmissions.map(s => {
     return [
@@ -1393,7 +1290,7 @@ router.get('/api/submissions/export', asyncHandler(async (req: any, res: any) =>
 // CRITICAL: THIS IS THE FUNCTION YOUR INDEX.TS IS LOOKING FOR
 export function registerRoutes(app: any) {
   console.log('🛣️ Registering all routes...');
-  
+
   // Add global error handling middleware FIRST
   app.use((req: any, res: any, next: any) => {
     res.setHeader('Content-Type', 'application/json');
@@ -1402,11 +1299,11 @@ export function registerRoutes(app: any) {
 
   // Register all routes
   app.use('/', router);
-  
+
   // Add final error handler
   app.use((error: any, req: any, res: any, next: any) => {
     console.error('❌ Global error handler:', error);
-    
+
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'application/json');
       res.status(500).json({
@@ -1416,7 +1313,7 @@ export function registerRoutes(app: any) {
       });
     }
   });
-  
+
   console.log('✅ All routes registered successfully');
 }
 
