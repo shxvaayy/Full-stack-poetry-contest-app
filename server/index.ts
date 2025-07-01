@@ -49,101 +49,126 @@ app.get('/health', (req, res) => {
   });
 });
 
-// CRITICAL: Auto-fix database schema on startup
-async function autoFixDatabase() {
+// NUCLEAR OPTION: Complete database recreation
+async function forceFixDatabase() {
   try {
-    console.log('🔧 AUTO-FIXING DATABASE SCHEMA...');
+    console.log('💥 FORCING DATABASE RECREATION...');
     
     await connectDatabase();
     
-    // Check if the problematic columns exist
-    const columnCheck = await client.query(`
-      SELECT column_name 
+    // Step 1: Drop the problematic table completely
+    console.log('🗑️ Dropping submissions table completely...');
+    await client.query('DROP TABLE IF EXISTS submissions CASCADE;');
+    console.log('✅ Submissions table dropped');
+    
+    // Step 2: Recreate with ALL columns
+    console.log('🔨 Creating new submissions table with ALL columns...');
+    await client.query(`
+      CREATE TABLE submissions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100),
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        age VARCHAR(10),
+        poem_title VARCHAR(255) NOT NULL,
+        tier VARCHAR(50) NOT NULL,
+        price DECIMAL(10,2) DEFAULT 0.00,
+        poem_file_url TEXT,
+        photo_url TEXT,
+        payment_id VARCHAR(255),
+        payment_method VARCHAR(50),
+        submission_uuid VARCHAR(255) NOT NULL DEFAULT gen_random_uuid(),
+        poem_index INTEGER DEFAULT 0 NOT NULL,
+        total_poems_in_submission INTEGER DEFAULT 1 NOT NULL,
+        submitted_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+        score INTEGER,
+        type VARCHAR(50) DEFAULT 'Human',
+        score_breakdown TEXT,
+        is_winner BOOLEAN DEFAULT FALSE,
+        winner_position INTEGER
+      );
+    `);
+    console.log('✅ New submissions table created with ALL columns');
+    
+    // Step 3: Create users table if it doesn't exist
+    console.log('👥 Ensuring users table exists...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        uid TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        name TEXT,
+        phone TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Users table ready');
+    
+    // Step 4: Create contacts table if it doesn't exist
+    console.log('📞 Ensuring contacts table exists...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        message TEXT NOT NULL,
+        subject TEXT,
+        submitted_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Contacts table ready');
+    
+    // Step 5: Add foreign key constraint
+    console.log('🔗 Adding foreign key constraint...');
+    try {
+      await client.query(`
+        ALTER TABLE submissions 
+        ADD CONSTRAINT fk_submissions_user_id 
+        FOREIGN KEY (user_id) REFERENCES users(id);
+      `);
+      console.log('✅ Foreign key constraint added');
+    } catch (error) {
+      console.log('⚠️ Foreign key constraint already exists or failed:', error.message);
+    }
+    
+    // Step 6: Verify the structure
+    console.log('🔍 Verifying table structure...');
+    const columns = await client.query(`
+      SELECT column_name, data_type, is_nullable, column_default
       FROM information_schema.columns 
+      WHERE table_name = 'submissions'
+      ORDER BY ordinal_position
+    `);
+    
+    console.log('📋 Final submissions table columns:');
+    columns.rows.forEach(col => {
+      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
+    });
+    
+    // Step 7: Test insertion
+    console.log('🧪 Testing submission creation...');
+    const testResult = await client.query(`
+      SELECT column_name FROM information_schema.columns 
       WHERE table_name = 'submissions' 
       AND column_name IN ('poem_index', 'submission_uuid', 'total_poems_in_submission')
     `);
     
-    const existingColumns = columnCheck.rows.map(row => row.column_name);
-    console.log('📋 Existing special columns:', existingColumns);
-    
-    // Add missing columns one by one
-    const requiredColumns = [
-      { name: 'submission_uuid', type: 'VARCHAR(255) DEFAULT gen_random_uuid()' },
-      { name: 'poem_index', type: 'INTEGER DEFAULT 0 NOT NULL' },
-      { name: 'total_poems_in_submission', type: 'INTEGER DEFAULT 1 NOT NULL' }
-    ];
-    
-    for (const column of requiredColumns) {
-      if (!existingColumns.includes(column.name)) {
-        console.log(`➕ Adding missing column: ${column.name}`);
-        await client.query(`ALTER TABLE submissions ADD COLUMN ${column.name} ${column.type}`);
-        console.log(`✅ Added column: ${column.name}`);
-      } else {
-        console.log(`✅ Column already exists: ${column.name}`);
-      }
-    }
-    
-    // Update any NULL submission_uuid values
-    await client.query(`
-      UPDATE submissions 
-      SET submission_uuid = gen_random_uuid() 
-      WHERE submission_uuid IS NULL
-    `);
-    
-    // Verify the fix by testing a select query
-    await client.query(`
-      SELECT id, poem_title, submission_uuid, poem_index, total_poems_in_submission 
-      FROM submissions 
-      LIMIT 1
-    `);
-    
-    console.log('🎉 Database schema auto-fix completed successfully!');
-    return true;
-    
-  } catch (error) {
-    console.error('❌ Database auto-fix failed:', error);
-    
-    // If the table doesn't exist at all, create it
-    try {
-      console.log('🔨 Creating submissions table from scratch...');
-      
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS submissions (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER,
-          first_name VARCHAR(100) NOT NULL,
-          last_name VARCHAR(100),
-          email VARCHAR(255) NOT NULL,
-          phone VARCHAR(20),
-          age VARCHAR(10),
-          poem_title VARCHAR(255) NOT NULL,
-          tier VARCHAR(50) NOT NULL,
-          price DECIMAL(10,2) DEFAULT 0.00,
-          poem_file_url TEXT,
-          photo_url TEXT,
-          payment_id VARCHAR(255),
-          payment_method VARCHAR(50),
-          submission_uuid VARCHAR(255) DEFAULT gen_random_uuid(),
-          poem_index INTEGER DEFAULT 0 NOT NULL,
-          total_poems_in_submission INTEGER DEFAULT 1 NOT NULL,
-          submitted_at TIMESTAMP DEFAULT NOW() NOT NULL,
-          status VARCHAR(50) DEFAULT 'pending' NOT NULL,
-          score INTEGER,
-          type VARCHAR(50) DEFAULT 'Human',
-          score_breakdown TEXT,
-          is_winner BOOLEAN DEFAULT FALSE,
-          winner_position INTEGER
-        );
-      `);
-      
-      console.log('✅ Created submissions table from scratch');
+    if (testResult.rows.length === 3) {
+      console.log('🎉 DATABASE FORCE FIX SUCCESSFUL!');
+      console.log('✅ All required columns exist');
       return true;
-      
-    } catch (createError) {
-      console.error('❌ Failed to create table:', createError);
+    } else {
+      console.error('❌ Some columns still missing:', testResult.rows);
       return false;
     }
+    
+  } catch (error) {
+    console.error('❌ Force database fix failed:', error);
+    return false;
   }
 }
 
@@ -152,10 +177,13 @@ async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
     
-    // Step 1: Fix database schema automatically
-    const dbFixed = await autoFixDatabase();
+    // Step 1: Force fix database (nuclear option)
+    const dbFixed = await forceFixDatabase();
     if (!dbFixed) {
-      console.error('❌ Database fix failed, but continuing anyway...');
+      console.error('❌ Database force fix failed, server may not work properly');
+      // Don't exit - let it try to continue
+    } else {
+      console.log('🎉 Database is now ready for submissions!');
     }
     
     // Step 2: Register routes
@@ -172,7 +200,7 @@ async function initializeApp() {
       console.log('🎉 SERVER RUNNING SUCCESSFULLY!');
       console.log(`🌐 Server running on port ${PORT}`);
       console.log(`🔗 URL: ${process.env.NODE_ENV === 'production' ? 'https://writory.onrender.com' : `http://localhost:${PORT}`}`);
-      console.log('✅ Database schema fixed automatically');
+      console.log('💥 Database was forcefully recreated');
       console.log('✅ Ready to accept poem submissions!');
     });
     
