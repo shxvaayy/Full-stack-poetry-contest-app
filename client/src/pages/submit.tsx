@@ -98,9 +98,19 @@ export default function SubmitPage() {
     poem: null as File | null,
     photo: null as File | null,
   });
+  
+  // Multiple poems state
+  const [multiplePoems, setMultiplePoems] = useState<{
+    titles: string[];
+    files: (File | null)[];
+  }>({
+    titles: ['', '', '', '', ''], // Support up to 5 poems
+    files: [null, null, null, null, null]
+  });
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+  const multiplePoemRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null, null]);
 
   // Check URL parameters for payment status
   useEffect(() => {
@@ -143,7 +153,7 @@ export default function SubmitPage() {
   const verifyPayment = async (sessionId: string) => {
     try {
       console.log('🔍 Verifying payment session:', sessionId);
-
+      
       const response = await fetch('/api/verify-checkout-session', {
         method: 'POST',
         headers: {
@@ -156,11 +166,11 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Payment verified successfully:', data);
-
+        
         setSessionId(sessionId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
+        
         toast({
           title: "Payment Successful!",
           description: "Payment completed successfully. You can now submit your poem.",
@@ -188,7 +198,7 @@ export default function SubmitPage() {
   const verifyPayPalPayment = async (orderId: string) => {
     try {
       console.log('🔍 Verifying PayPal order:', orderId);
-
+      
       const response = await fetch('/api/verify-paypal-payment', {
         method: 'POST',
         headers: {
@@ -201,7 +211,7 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ PayPal payment verified successfully:', data);
-
+        
         setPaymentData({
           paypal_order_id: orderId,
           payment_method: 'paypal',
@@ -211,7 +221,7 @@ export default function SubmitPage() {
         setSessionId(orderId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
+        
         toast({
           title: "PayPal Payment Successful!",
           description: "Payment completed successfully. Submitting your poem now...",
@@ -317,20 +327,34 @@ export default function SubmitPage() {
     setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
+  const handleMultiplePoemTitle = (index: number, title: string) => {
+    setMultiplePoems(prev => ({
+      ...prev,
+      titles: prev.titles.map((t, i) => i === index ? title : t)
+    }));
+  };
+
+  const handleMultiplePoemFile = (index: number, file: File | null) => {
+    setMultiplePoems(prev => ({
+      ...prev,
+      files: prev.files.map((f, i) => i === index ? file : f)
+    }));
+  };
+
   const handlePaymentSuccess = (data: any) => {
     console.log('✅ Payment successful, data received:', data);
-
+    
     // Ensure payment data is in the correct format
     const processedPaymentData = {
       ...data,
       payment_method: data.payment_method || 'razorpay',
       amount: selectedTier?.price || 0
     };
-
+    
     console.log('💾 Setting payment data:', processedPaymentData);
     setPaymentData(processedPaymentData);
     setPaymentCompleted(true);
-
+    
     toast({
       title: "Payment Successful!",
       description: "Processing your submission...",
@@ -381,8 +405,24 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email || !formData.poemTitle) {
+      if (!formData.firstName || !formData.email) {
         throw new Error('Please fill in all required fields');
+      }
+
+      // Validate poem titles based on tier
+      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
+        if (!formData.poemTitle) {
+          throw new Error('Please enter a poem title');
+        }
+      } else if (selectedTier?.id === 'double') {
+        if (!multiplePoems.titles[0] || !multiplePoems.titles[1]) {
+          throw new Error('Please enter titles for both poems');
+        }
+      } else if (selectedTier?.id === 'bulk') {
+        const filledTitles = multiplePoems.titles.filter(title => title.trim());
+        if (filledTitles.length === 0) {
+          throw new Error('Please enter at least one poem title');
+        }
       }
 
       if (!formData.termsAccepted) {
@@ -398,19 +438,33 @@ export default function SubmitPage() {
 
       // Prepare form data for submission
       const submitFormData = new FormData();
-
+      
       // Add text fields
       submitFormData.append('firstName', formData.firstName);
       submitFormData.append('lastName', formData.lastName || '');
       submitFormData.append('email', formData.email);
       submitFormData.append('phone', formData.phone || '');
       submitFormData.append('age', formData.age || '');
-      submitFormData.append('poemTitle', formData.poemTitle);
+      
+      // Handle poem titles based on tier
+      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
+        submitFormData.append('poemTitle', formData.poemTitle);
+      } else if (selectedTier?.id === 'double') {
+        submitFormData.append('poemTitle', multiplePoems.titles[0]);
+        submitFormData.append('poemTitle2', multiplePoems.titles[1]);
+      } else if (selectedTier?.id === 'bulk') {
+        multiplePoems.titles.forEach((title, index) => {
+          if (title.trim()) {
+            submitFormData.append(`poemTitle${index + 1}`, title);
+          }
+        });
+      }
+      
       submitFormData.append('tier', selectedTier?.id || 'free');
       submitFormData.append('amount', discountedAmount.toString());
       submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
       submitFormData.append('userUid', user?.uid || '');
-
+      
       // Add coupon information if applied
       if (couponApplied) {
         submitFormData.append('couponCode', couponCode.trim());
@@ -420,7 +474,7 @@ export default function SubmitPage() {
       // Add payment data if available
       if (actualPaymentData) {
         console.log('Adding payment information to submission:', actualPaymentData);
-
+        
         if (actualPaymentData.razorpay_payment_id) {
           submitFormData.append('paymentId', actualPaymentData.razorpay_payment_id);
           submitFormData.append('paymentMethod', 'razorpay');
@@ -457,11 +511,28 @@ export default function SubmitPage() {
         throw new Error('Payment information is missing for paid tier');
       }
 
-      // Add files
-      if (files.poem) {
-        submitFormData.append('poem', files.poem);
-        console.log('Added poem file:', files.poem.name);
+      // Add files based on tier
+      if (selectedTier?.id === 'free' || selectedTier?.id === 'single') {
+        if (files.poem) {
+          submitFormData.append('poem', files.poem);
+          console.log('Added poem file:', files.poem.name);
+        }
+      } else if (selectedTier?.id === 'double') {
+        multiplePoems.files.slice(0, 2).forEach((file, index) => {
+          if (file) {
+            submitFormData.append(`poem${index + 1}`, file);
+            console.log(`Added poem ${index + 1} file:`, file.name);
+          }
+        });
+      } else if (selectedTier?.id === 'bulk') {
+        multiplePoems.files.forEach((file, index) => {
+          if (file) {
+            submitFormData.append(`poem${index + 1}`, file);
+            console.log(`Added poem ${index + 1} file:`, file.name);
+          }
+        });
       }
+      
       if (files.photo) {
         submitFormData.append('photo', files.photo);
         console.log('Added photo file:', files.photo.name);
@@ -500,7 +571,7 @@ export default function SubmitPage() {
       console.log('✅ Submission successful:', result);
 
       setCurrentStep("completed");
-
+      
       toast({
         title: "Submission Successful!",
         description: "Your poem has been submitted successfully. Good luck!",
@@ -563,7 +634,7 @@ export default function SubmitPage() {
         {TIERS.map((tier) => {
           const Icon = tier.icon;
           const isDisabled = tier.id === "free" && !canUseFreeEntry;
-
+          
           return (
             <Card
               key={tier.id}
@@ -605,7 +676,7 @@ export default function SubmitPage() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-2xl font-semibold mb-6">Poem Submission Details</h2>
-
+              
               {/* Personal Information Section */}
                 <div className="mb-8">
                   <h3 className="text-lg font-medium mb-4">Personal Information</h3>
@@ -669,7 +740,7 @@ export default function SubmitPage() {
                 {/* Dynamic Poem Sections */}
                 <div className="mb-8">
                   <h3 className="text-lg font-medium mb-4">Poem Details</h3>
-
+                  
                   {/* For single poem or free tier */}
                   {(selectedTier?.id === 'free' || selectedTier?.id === 'single') && (
                     <div className="space-y-4">
@@ -714,7 +785,7 @@ export default function SubmitPage() {
                       {Array.from({ length: selectedTier.id === 'double' ? 2 : 5 }, (_, index) => (
                         <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
                           <h4 className="font-medium text-green-600">Poem {index + 1} of {selectedTier.id === 'double' ? 2 : 5}</h4>
-
+                          
                           <div>
                             <Label htmlFor={`poemTitle${index + 1}`}>Poem Title *</Label>
                             <Input
@@ -778,7 +849,7 @@ export default function SubmitPage() {
                       <Gift className="w-4 h-4 mr-2 text-blue-600" />
                       Have a Coupon Code?
                     </h4>
-
+                    
                     {!couponApplied ? (
                       <div className="flex gap-2">
                         <Input
@@ -827,7 +898,7 @@ export default function SubmitPage() {
                         )}
                       </div>
                     )}
-
+                    
                     {couponError && (
                       <p className="text-red-600 text-sm mt-2">{couponError}</p>
                     )}
@@ -897,7 +968,7 @@ export default function SubmitPage() {
                     <h4 className="font-semibold mt-2">{selectedTier.name}</h4>
                     <p className="text-sm opacity-90">{selectedTier.description}</p>
                   </div>
-
+                  
                   <div className="text-center">
                     {couponApplied && selectedTier.price > 0 ? (
                       <div className="space-y-1">
@@ -929,7 +1000,7 @@ export default function SubmitPage() {
                       Payment Required
                     </div>
                   )}
-
+                  
                   {discountedAmount === 0 && selectedTier.price > 0 && (
                     <div className="text-center text-green-600 text-sm">
                       <CheckCircle className="w-4 h-4 inline mr-1" />
@@ -971,7 +1042,7 @@ export default function SubmitPage() {
         <p className="text-gray-600 mb-6">
           Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
         </p>
-
+        
         <div className="bg-white p-4 rounded-lg border mb-6">
           <h3 className="font-semibold mb-2">Submission Details</h3>
           <div className="text-left space-y-2 text-sm">
@@ -1073,7 +1144,7 @@ export default function SubmitPage() {
           >
             Submit Another Poem
           </Button>
-
+          
           <Button
             variant="outline"
             onClick={() => window.location.href = "/"}
@@ -1090,7 +1161,7 @@ export default function SubmitPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         {renderStepIndicator()}
-
+        
         {currentStep === "selection" && renderTierSelection()}
         {currentStep === "form" && renderForm()}
         {currentStep === "payment" && renderPayment()}
