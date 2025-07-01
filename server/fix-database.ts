@@ -48,7 +48,14 @@ async function quickFix() {
         photo_url TEXT,
         payment_id TEXT,
         payment_method TEXT,
+        submission_uuid TEXT,
+        poem_index INTEGER DEFAULT 0,
+        total_poems_in_submission INTEGER DEFAULT 1,
         submitted_at TIMESTAMP DEFAULT NOW(),
+        status TEXT DEFAULT 'pending',
+        score INTEGER,
+        is_winner BOOLEAN DEFAULT FALSE,
+        winner_position INTEGERTAMP DEFAULT NOW(),
         is_winner BOOLEAN DEFAULT FALSE,
         winner_position INTEGER
       );

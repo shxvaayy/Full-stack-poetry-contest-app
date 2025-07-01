@@ -17,24 +17,16 @@ const router = Router();
 const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
   Promise.resolve(fn(req, res, next)).catch((error) => {
     console.error('❌ Async Handler Error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request URL:', req.url);
-    console.error('Request method:', req.method);
     
-    // Force JSON response headers
+    // Force JSON response
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
     
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
         error: error.message || 'Internal Server Error',
-        timestamp: new Date().toISOString(),
-        url: req.url,
-        method: req.method
+        timestamp: new Date().toISOString()
       });
-    } else {
-      console.error('❌ Headers already sent, cannot send error response');
     }
   });
 };
@@ -457,66 +449,45 @@ router.get('/api/stats', asyncHandler(async (req: any, res: any) => {
 
 // 📝 SUBMISSION ENDPOINTS
 
-// Submit single poem - Fixed endpoint name to match frontend
+// New unified submit-poem endpoint with better error handling
 router.post('/api/submit-poem', upload.fields([
   { name: 'poems', maxCount: 5 },
   { name: 'photo', maxCount: 1 }
 ]), asyncHandler(async (req: any, res: any) => {
-  console.log('📝 Single poem submission received');
+  console.log('📝 Unified poem submission received');
   console.log('Body:', req.body);
   console.log('Files:', req.files);
 
   // Force JSON response header IMMEDIATELY
   res.setHeader('Content-Type', 'application/json');
 
-  console.log('📝 Request body:', req.body);
-  console.log('📝 Request files:', req.files);
-
   const {
-    firstName, lastName, email, phone, age, poemTitle, tier, userUid, paymentData, multiplePoemTitles
+    firstName, lastName, email, phone, age, tier, userUid, paymentData
   } = req.body;
 
-  // Parse payment data if it exists
-  let parsedPaymentData = null;
-  if (paymentData) {
-    try {
-      parsedPaymentData = JSON.parse(paymentData);
-    } catch (e) {
-      console.log('⚠️ Could not parse payment data:', paymentData);
-    }
-  }
-
   // Parse multiple poem titles
-  let poemTitles = [];
-  if (multiplePoemTitles) {
-    try {
-      poemTitles = JSON.parse(multiplePoemTitles);
-    } catch (e) {
-      console.log('⚠️ Could not parse poem titles, using single title');
-      poemTitles = [poemTitle];
-    }
-  } else {
-    poemTitles = [poemTitle];
-  }
-
-  console.log('📝 Parsed poem titles:', poemTitles);
-
-  // Validate required fields
-  if (!firstName || !email || !tier) {
+  let multiplePoemTitles: string[] = [];
+  try {
+    multiplePoemTitles = JSON.parse(req.body.multiplePoemTitles || '[]');
+  } catch (e) {
     return res.status(400).json({
-      error: 'Missing required fields: firstName, email, tier'
+      success: false,
+      error: 'Invalid multiplePoemTitles format'
     });
   }
 
-  if (poemTitles.length === 0 || !poemTitles[0]) {
+  // Validate required fields
+  if (!firstName || !email || !tier || !multiplePoemTitles.length) {
     return res.status(400).json({
-      error: 'At least one poem title is required'
+      success: false,
+      error: 'Missing required fields: firstName, email, tier, poem titles'
     });
   }
 
   // Validate tier
   if (!['free', 'single', 'double', 'bulk'].includes(tier)) {
     return res.status(400).json({
+      success: false,
       error: 'Invalid tier. Must be one of: free, single, double, bulk'
     });
   }
@@ -526,15 +497,17 @@ router.post('/api/submit-poem', upload.fields([
   const poemFiles = files?.poems || [];
   const photoFile = files?.photo?.[0];
 
-  if (poemFiles.length === 0) {
+  if (poemFiles.length !== multiplePoemTitles.length) {
     return res.status(400).json({
-      error: 'At least one poem file is required'
+      success: false,
+      error: `Poem files count (${poemFiles.length}) doesn't match titles count (${multiplePoemTitles.length})`
     });
   }
 
-  if (poemFiles.length !== poemTitles.length) {
+  if (!photoFile) {
     return res.status(400).json({
-      error: `Number of poem files (${poemFiles.length}) must match number of titles (${poemTitles.length})`
+      success: false,
+      error: 'Photo file is required'
     });
   }
 
@@ -543,74 +516,52 @@ router.post('/api/submit-poem', upload.fields([
 
   try {
     // Upload poem files to Google Drive
-    console.log(`📤 Uploading ${poemFiles.length} poem files...`);
-    for (let i = 0; i < poemFiles.length; i++) {
-      const poemFile = poemFiles[i];
-      const poemBuffer = await fs.promises.readFile(poemFile.path);
-      const fileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname);
-      poemFileUrls.push(fileUrl);
-      console.log(`✅ Uploaded poem ${i + 1}: ${fileUrl}`);
+    const poemBuffers = await Promise.all(
+      poemFiles.map(file => fs.promises.readFile(file.path))
+    );
+    const originalFileNames = poemFiles.map(file => file.originalname);
+    
+    if (poemFiles.length === 1) {
+      // Single poem upload
+      poemFileUrls = [await uploadPoemFile(poemBuffers[0], email, originalFileNames[0])];
+    } else {
+      // Multiple poems upload
+      poemFileUrls = await uploadMultiplePoemFiles(poemBuffers, email, originalFileNames, multiplePoemTitles);
     }
 
-    // Upload photo if provided
-    if (photoFile) {
-      console.log('📤 Uploading photo...');
-      const photoBuffer = await fs.promises.readFile(photoFile.path);
-      photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
-      console.log('✅ Uploaded photo:', photoUrl);
-    }
+    // Upload photo
+    const photoBuffer = await fs.promises.readFile(photoFile.path);
+    photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
 
     // Clean up temporary files
-    console.log('🧹 Cleaning up temporary files...');
-    for (const poemFile of poemFiles) {
-      await fs.promises.unlink(poemFile.path).catch(e => console.log('⚠️ Could not delete:', poemFile.path));
-    }
-    if (photoFile) {
-      await fs.promises.unlink(photoFile.path).catch(e => console.log('⚠️ Could not delete:', photoFile.path));
-    }
+    await Promise.all(poemFiles.map(file => fs.promises.unlink(file.path)));
+    await fs.promises.unlink(photoFile.path);
 
   } catch (uploadError) {
     console.error('❌ File upload error:', uploadError);
-    
-    // Clean up temporary files even on error
-    for (const poemFile of poemFiles) {
-      await fs.promises.unlink(poemFile.path).catch(() => {});
-    }
-    if (photoFile) {
-      await fs.promises.unlink(photoFile.path).catch(() => {});
-    }
-    
     return res.status(500).json({
-      error: 'Failed to upload files: ' + uploadError.message
+      success: false,
+      error: 'Failed to upload files'
     });
   }
 
   // Create user if doesn't exist
-  let user;
-  try {
-    user = await storage.getUserByEmail(email);
-    if (!user) {
-      user = await storage.createUser({
-        uid: userUid || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        email,
-        name: `${firstName} ${lastName || ''}`.trim(),
-        phone: phone || null
-      });
-    }
-    console.log('✅ User found/created:', user.id);
-  } catch (userError) {
-    console.error('❌ User creation error:', userError);
-    return res.status(500).json({
-      error: 'Failed to create/find user: ' + userError.message
+  let user = await storage.getUserByEmail(email);
+  if (!user) {
+    user = await storage.createUser({
+      uid: userUid || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email,
+      name: `${firstName} ${lastName || ''}`.trim(),
+      phone: phone || null
     });
   }
 
   // Create submissions for each poem
-  const submissions = [];
   const submissionUuid = `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  try {
-    for (let i = 0; i < poemTitles.length; i++) {
+  const submissions = [];
+
+  for (let i = 0; i < multiplePoemTitles.length; i++) {
+    try {
       const submission = await storage.createSubmission({
         userId: user.id,
         firstName,
@@ -618,36 +569,40 @@ router.post('/api/submit-poem', upload.fields([
         email,
         phone: phone || null,
         age: age || null,
-        poemTitle: poemTitles[i],
+        poemTitle: multiplePoemTitles[i],
         tier,
         price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
         poemFileUrl: poemFileUrls[i],
-        photoUrl: photoUrl || null,
-        paymentId: parsedPaymentData?.razorpay_payment_id || parsedPaymentData?.paypal_order_id || null,
-        paymentMethod: parsedPaymentData?.payment_method || 'free',
+        photoUrl,
+        paymentId: paymentData ? JSON.parse(paymentData).payment_id || null : null,
+        paymentMethod: paymentData ? JSON.parse(paymentData).payment_method || null : null,
         submissionUuid,
         poemIndex: i,
-        totalPoemsInSubmission: poemTitles.length
+        totalPoemsInSubmission: multiplePoemTitles.length
       });
       submissions.push(submission);
-      console.log(`✅ Created submission ${i + 1}:`, submission.id);
+    } catch (submissionError) {
+      console.error('❌ Submission creation error for poem', i, ':', submissionError);
+      // Continue with other poems even if one fails
     }
-  } catch (submissionError) {
-    console.error('❌ Submission creation error:', submissionError);
+  }
+
+  if (submissions.length === 0) {
     return res.status(500).json({
-      error: 'Failed to create submissions: ' + submissionError.message
+      success: false,
+      error: 'Failed to create any submissions'
     });
   }
 
   // Add to Google Sheets (non-critical)
   try {
-    if (poemTitles.length === 1) {
+    if (multiplePoemTitles.length === 1) {
       await addPoemSubmissionToSheet({
         name: `${firstName} ${lastName || ''}`.trim(),
         email,
         phone: phone || '',
         age: age || '',
-        poemTitle: poemTitles[0],
+        poemTitle: multiplePoemTitles[0],
         tier,
         amount: TIER_PRICES[tier as keyof typeof TIER_PRICES].toString(),
         poemFile: poemFileUrls[0],
@@ -665,7 +620,7 @@ router.post('/api/submit-poem', upload.fields([
         photo: photoUrl,
         timestamp: new Date().toISOString(),
         submissionUuid,
-        poems: poemTitles.map((title, index) => ({
+        poems: multiplePoemTitles.map((title, index) => ({
           title,
           fileUrl: poemFileUrls[index],
           index
@@ -674,16 +629,15 @@ router.post('/api/submit-poem', upload.fields([
     }
   } catch (sheetsError) {
     console.error('⚠️ Google Sheets error (non-critical):', sheetsError);
-    // Don't fail the whole submission for this
   }
 
   // Send confirmation email (non-critical)
   try {
-    if (poemTitles.length === 1) {
+    if (multiplePoemTitles.length === 1) {
       await sendSubmissionConfirmation({
         name: `${firstName} ${lastName || ''}`.trim(),
         email,
-        poemTitle: poemTitles[0],
+        poemTitle: multiplePoemTitles[0],
         tier,
         poemCount: 1
       });
@@ -691,31 +645,188 @@ router.post('/api/submit-poem', upload.fields([
       await sendMultiplePoemsConfirmation({
         name: `${firstName} ${lastName || ''}`.trim(),
         email,
-        poemTitle: poemTitles[0],
+        poemTitle: multiplePoemTitles[0],
         tier,
-        poemCount: poemTitles.length,
-        allPoemTitles: poemTitles
+        poemCount: multiplePoemTitles.length,
+        allPoemTitles: multiplePoemTitles
       });
     }
+  } catch (emailError) {
+    console.error('⚠️ Email error (non-critical):', emailError);
+  }
+
+  // SUCCESS RESPONSE
+  res.json({
+    success: true,
+    message: 'Submission successful',
+    submissions: submissions.map(s => ({
+      id: s.id,
+      poemTitle: s.poemTitle,
+      tier: s.tier,
+      submittedAt: s.submittedAt
+    })),
+    totalPoems: multiplePoemTitles.length
+  });
+}));
+
+// Submit single poem - CRITICAL: This is likely where the error is happening
+router.post('/api/submit', upload.fields([
+  { name: 'poemFile', maxCount: 1 },
+  { name: 'photo', maxCount: 1 }
+]), asyncHandler(async (req: any, res: any) => {
+  console.log('📝 Single poem submission received');
+  console.log('Body:', req.body);
+  console.log('Files:', req.files);
+
+  // Force JSON response header IMMEDIATELY
+  res.setHeader('Content-Type', 'application/json');
+
+  const {
+    firstName, lastName, email, phone, age, poemTitle, tier, paymentId, paymentMethod, authorBio, contestMonth
+  } = req.body;
+
+  // Validate required fields
+  if (!firstName || !email || !poemTitle || !tier) {
+    return res.status(400).json({
+      error: 'Missing required fields: firstName, email, poemTitle, tier'
+    });
+  }
+
+  // Validate tier
+  if (!['free', 'single', 'double', 'bulk'].includes(tier)) {
+    return res.status(400).json({
+      error: 'Invalid tier. Must be one of: free, single, double, bulk'
+    });
+  }
+
+  // Get uploaded files
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+  const poemFile = files?.poemFile?.[0];
+  const photoFile = files?.photo?.[0];
+
+  if (!poemFile) {
+    return res.status(400).json({
+      error: 'Poem file is required'
+    });
+  }
+
+  let poemFileUrl = '';
+  let photoUrl = '';
+
+  try {
+    // Upload poem file to Google Drive
+    const poemBuffer = await fs.promises.readFile(poemFile.path);
+    poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname);
+
+    // Upload photo if provided
+    if (photoFile) {
+      const photoBuffer = await fs.promises.readFile(photoFile.path);
+      photoUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
+    }
+
+    // Clean up temporary files
+    await fs.promises.unlink(poemFile.path);
+    if (photoFile) {
+      await fs.promises.unlink(photoFile.path);
+    }
+
+  } catch (uploadError) {
+    console.error('❌ File upload error:', uploadError);
+    return res.status(500).json({
+      error: 'Failed to upload files'
+    });
+  }
+
+  // Create user if doesn't exist
+  let user;
+  try {
+    user = await storage.getUserByEmail(email);
+    if (!user) {
+      user = await storage.createUser({
+        uid: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        email,
+        name: `${firstName} ${lastName || ''}`.trim(),
+        phone: phone || null
+      });
+    }
+  } catch (userError) {
+    console.error('❌ User creation error:', userError);
+    return res.status(500).json({
+      error: 'Failed to create/find user'
+    });
+  }
+
+  // Create submission
+  let submission;
+  try {
+    submission = await storage.createSubmission({
+      userId: user.id,
+      firstName,
+      lastName: lastName || null,
+      email,
+      phone: phone || null,
+      age: age || null,
+      poemTitle,
+      tier,
+      price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
+      poemFileUrl,
+      photoUrl: photoUrl || null,
+      paymentId: paymentId || null,
+      paymentMethod: paymentMethod || null,
+      submissionUuid: `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      poemIndex: 0,
+      totalPoemsInSubmission: 1
+    });
+  } catch (submissionError) {
+    console.error('❌ Submission creation error:', submissionError);
+    return res.status(500).json({
+      error: 'Failed to create submission'
+    });
+  }
+
+  // Add to Google Sheets (non-critical)
+  try {
+    await addPoemSubmissionToSheet({
+      name: `${firstName} ${lastName || ''}`.trim(),
+      email,
+      phone: phone || '',
+      age: age || '',
+      poemTitle,
+      tier,
+      amount: TIER_PRICES[tier as keyof typeof TIER_PRICES].toString(),
+      poemFile: poemFileUrl,
+      photo: photoUrl,
+      timestamp: new Date().toISOString()
+    });
+  } catch (sheetsError) {
+    console.error('⚠️ Google Sheets error (non-critical):', sheetsError);
+    // Don't fail the whole submission for this
+  }
+
+  // Send confirmation email (non-critical)
+  try {
+    await sendSubmissionConfirmation({
+      name: `${firstName} ${lastName || ''}`.trim(),
+      email,
+      poemTitle,
+      tier,
+      poemCount: 1
+    });
   } catch (emailError) {
     console.error('⚠️ Email error (non-critical):', emailError);
     // Don't fail the whole submission for this
   }
 
   // SUCCESS RESPONSE
-  console.log('✅ Submission process completed successfully');
   res.json({
     success: true,
-    message: `Successfully submitted ${poemTitles.length} poem(s)`,
-    submissions: submissions.map(s => ({
-      id: s.id,
-      poemTitle: s.poemTitle,
-      tier: s.tier,
-      submittedAt: s.submittedAt,
-      poemIndex: s.poemIndex
-    })),
-    totalPoems: poemTitles.length,
-    submissionUuid
+    message: 'Submission successful',
+    submission: {
+      id: submission.id,
+      poemTitle: submission.poemTitle,
+      tier: submission.tier,
+      submittedAt: submission.submittedAt
+    }
   });
 }));
 
@@ -1180,48 +1291,25 @@ router.get('/api/submissions/export', asyncHandler(async (req: any, res: any) =>
 export function registerRoutes(app: any) {
   console.log('🛣️ Registering all routes...');
   
-  // Add CORS headers middleware FIRST
+  // Add global error handling middleware FIRST
   app.use((req: any, res: any, next: any) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Content-Type', 'application/json');
-    
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-      res.status(200).end();
-      return;
-    }
-    
     next();
   });
 
   // Register all routes
   app.use('/', router);
   
-  // Add 404 handler for API routes
-  app.use('/api/*', (req: any, res: any) => {
-    console.log('❌ API endpoint not found:', req.path);
-    res.status(404).json({
-      success: false,
-      error: `API endpoint not found: ${req.path}`,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
   // Add final error handler
   app.use((error: any, req: any, res: any, next: any) => {
     console.error('❌ Global error handler:', error);
-    console.error('Error stack:', error.stack);
     
-    // Always ensure JSON response
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'application/json');
       res.status(500).json({
         success: false,
         error: error.message || 'Internal Server Error',
-        timestamp: new Date().toISOString(),
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        timestamp: new Date().toISOString()
       });
     }
   });
