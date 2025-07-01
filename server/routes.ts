@@ -9,7 +9,7 @@ import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFr
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
-import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES, VALID_TIERS } from './schema.js';
+import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
 
 const router = Router();
 
@@ -212,7 +212,7 @@ router.post('/api/verify-payment', async (req, res) => {
 
     // Create signature verification string
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    
+
     // Generate expected signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -227,7 +227,7 @@ router.post('/api/verify-payment', async (req, res) => {
 
     if (expectedSignature === razorpay_signature) {
       console.log('✅ Payment signature verified successfully');
-      
+
       // Fetch additional payment details for verification
       try {
         const payment = await razorpay.payments.fetch(razorpay_payment_id);
@@ -520,9 +520,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-    
+
     const validation = validateCouponCode(code, tier);
-    
+
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -780,8 +780,8 @@ router.post('/api/submit', upload.fields([
     }
 
     // Validate tier
-    if (!VALID_TIERS.includes(tier as any)) {
-      console.error('❌ Invalid tier:', tier, 'Valid tiers:', VALID_TIERS);
+    if (!validateTierPoemCount(tier, 1)) {
+      console.error('❌ Invalid tier:', tier);
       return res.status(400).json({ error: 'Invalid tier selected' });
     }
 
@@ -808,7 +808,7 @@ router.post('/api/submit', upload.fields([
     const actualAmount = parseFloat(amount) || 0;
     if (tier !== 'free' && actualAmount > 0) {
       console.log('💳 Validating payment for paid tier...');
-      
+
       // Check for valid payment data
       const hasRazorpayPayment = razorpay_order_id && razorpay_payment_id && razorpay_signature;
       const hasPayPalPayment = paypal_order_id;
@@ -872,7 +872,7 @@ router.post('/api/submit', upload.fields([
         const titles = Array.isArray(poemTitles) ? poemTitles : 
                       typeof poemTitles === 'string' ? JSON.parse(poemTitles) : 
                       poemFiles.map((_, i) => `Poem ${i + 1}`);
-        
+
         poemUrls = await uploadMultiplePoemFiles(poemFiles, titles);
         console.log('✅ Multiple poems uploaded:', poemUrls.length);
       }
@@ -926,6 +926,7 @@ router.post('/api/submit', upload.fields([
         await addPoemSubmissionToSheet({
           name: `${firstName} ${lastName}`,
           email,
+```text
           phone,
           age,
           poemTitle: poemTitle || 'Untitled',
