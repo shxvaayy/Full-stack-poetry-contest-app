@@ -94,22 +94,9 @@ export default function SubmitPage() {
     poemTitle: "",
     termsAccepted: false,
   });
-  const [files, setFiles] = useState<{
-    poem: File | null;
-    photo: File | null;
-    poem1: File | null;
-    poem2: File | null;
-    poem3: File | null;
-    poem4: File | null;
-    poem5: File | null;
-  }>({
-    poem: null,
-    photo: null,
-    poem1: null,
-    poem2: null,
-    poem3: null,
-    poem4: null,
-    poem5: null,
+  const [files, setFiles] = useState({
+    poem: null as File | null,
+    photo: null as File | null,
   });
 
   const poemFileRef = useRef<HTMLInputElement>(null);
@@ -326,11 +313,8 @@ export default function SubmitPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (type: 'poem' | 'photo' | 'poem1' | 'poem2' | 'poem3' | 'poem4' | 'poem5', file: File | null) => {
-    setFiles(prev => ({
-      ...prev,
-      [type]: file
-    }));
+  const handleFileChange = (fileType: 'poem' | 'photo', file: File | null) => {
+    setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
   const handlePaymentSuccess = (data: any) => {
@@ -397,7 +381,7 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email) {
+      if (!formData.firstName || !formData.email || !formData.poemTitle) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -727,49 +711,37 @@ export default function SubmitPage() {
                   {/* For multiple poems - better grid layout */}
                   {(selectedTier?.id === 'double' || selectedTier?.id === 'bulk') && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Array.from({ length: selectedTier.id === 'double' ? 2 : 5 }, (_, index) => {
-                        const poemNumber = index + 1;
-                        const fileKey = `poem${poemNumber}` as keyof typeof files;
+                      {Array.from({ length: selectedTier.id === 'double' ? 2 : 5 }, (_, index) => (
+                        <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <h4 className="font-medium text-green-600">Poem {index + 1} of {selectedTier.id === 'double' ? 2 : 5}</h4>
 
-                        return (
-                          <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                            <h4 className="font-medium text-green-600">Poem {poemNumber} of {selectedTier.id === 'double' ? 2 : 5}</h4>
+                          <div>
+                            <Label htmlFor={`poemTitle${index + 1}`}>Poem Title *</Label>
+                            <Input
+                              id={`poemTitle${index + 1}`}
+                              value={index === 0 ? formData.poemTitle : ''}
+                              onChange={(e) => index === 0 ? handleFormData("poemTitle", e.target.value) : null}
+                              placeholder={`Enter title for poem ${index + 1}`}
+                              required
+                            />
+                          </div>
 
-                            <div>
-                              <Label htmlFor={`poemTitle${poemNumber}`}>Poem Title *</Label>
-                              <Input
-                                id={`poemTitle${poemNumber}`}
-                                value={index === 0 ? formData.poemTitle : ''}
-                                onChange={(e) => index === 0 ? handleFormData("poemTitle", e.target.value) : null}
-                                placeholder={`Enter title for poem ${poemNumber}`}
-                                required
-                              />
-                            </div>
-
-                            <div>
-                              <Label htmlFor={`poemFile${poemNumber}`}>Upload Poem (PDF, DOC, DOCX)</Label>
-                              <div className="mt-2">
-                                <input
-                                  type="file"
-                                  accept=".pdf,.doc,.docx"
-                                  onChange={(e) => handleFileChange(fileKey, e.target.files?.[0] || null)}
-                                  className="hidden"
-                                  id={`poemFile${poemNumber}`}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => document.getElementById(`poemFile${poemNumber}`)?.click()}
-                                  className="w-full text-sm"
-                                >
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  {files[fileKey] ? files[fileKey]?.name : `Choose File for Poem ${poemNumber}`}
-                                </Button>
-                              </div>
+                          <div>
+                            <Label htmlFor={`poemFile${index + 1}`}>Upload Poem (PDF, DOC, DOCX)</Label>
+                            <div className="mt-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => poemFileRef.current?.click()}
+                                className="w-full text-sm"
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Choose File for Poem {index + 1}
+                              </Button>
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1095,7 +1067,7 @@ export default function SubmitPage() {
                 poemTitle: "",
                 termsAccepted: false,
               });
-              setFiles({ poem: null, photo: null, poem1: null, poem2: null, poem3: null, poem4: null, poem5: null });
+              setFiles({ poem: null, photo: null });
             }}
             className="w-full bg-green-600 hover:bg-green-700"
           >
