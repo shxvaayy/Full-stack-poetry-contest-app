@@ -28,127 +28,161 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const { toast } = useToast();
   const [isProcessingRazorpay, setIsProcessingRazorpay] = useState(false);
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+
+  // Debug function to track issues
+  const addDebugInfo = (info: string) => {
+    console.log('🔍 DEBUG:', info);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`]);
+  };
+
+  // Test API connectivity first
+  const testAPIConnectivity = async () => {
+    try {
+      addDebugInfo('Testing API connectivity...');
+      
+      // Test basic API
+      const testResponse = await fetch('/api/test');
+      if (testResponse.ok) {
+        const testData = await testResponse.json();
+        addDebugInfo(`✅ API test successful: ${testData.message}`);
+        addDebugInfo(`Razorpay configured: ${testData.razorpay_configured}`);
+        return true;
+      } else {
+        addDebugInfo(`❌ API test failed: ${testResponse.status}`);
+        return false;
+      }
+    } catch (error: any) {
+      addDebugInfo(`❌ API connectivity error: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Test Razorpay configuration
+  const testRazorpayConfig = async () => {
+    try {
+      addDebugInfo('Testing Razorpay configuration...');
+      
+      const response = await fetch('/api/test-razorpay');
+      if (response.ok) {
+        const data = await response.json();
+        addDebugInfo(`✅ Razorpay config: ${data.configured ? 'OK' : 'FAILED'}`);
+        if (!data.configured) {
+          addDebugInfo(`❌ Razorpay error: ${data.error}`);
+        }
+        return data.configured;
+      } else {
+        addDebugInfo(`❌ Razorpay config test failed: ${response.status}`);
+        return false;
+      }
+    } catch (error: any) {
+      addDebugInfo(`❌ Razorpay config error: ${error.message}`);
+      return false;
+    }
+  };
 
   // Load Razorpay script
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if (window.Razorpay) {
-        console.log('✅ Razorpay already loaded');
+        addDebugInfo('✅ Razorpay already loaded');
         resolve(true);
         return;
       }
 
-      console.log('🔄 Loading Razorpay script...');
+      addDebugInfo('🔄 Loading Razorpay script...');
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => {
-        console.log('✅ Razorpay script loaded');
+        addDebugInfo('✅ Razorpay script loaded');
         resolve(true);
       };
       script.onerror = () => {
-        console.error('❌ Razorpay script failed to load');
+        addDebugInfo('❌ Razorpay script failed to load');
         resolve(false);
       };
       document.body.appendChild(script);
     });
   };
 
-  // Handle Razorpay Payment with comprehensive error handling
+  // Handle Razorpay Payment with extensive debugging
   const handleRazorpayPayment = async () => {
     try {
       setIsProcessingRazorpay(true);
-      console.log('🚀 Starting Razorpay payment...');
-      console.log('💰 Amount:', amount);
-      console.log('🎯 Tier:', tier);
+      setDebugInfo([]); // Clear previous debug info
+      
+      addDebugInfo('🚀 Starting Razorpay payment process...');
+      addDebugInfo(`💰 Amount: ₹${amount}`);
+      addDebugInfo(`🎯 Tier: ${tier}`);
 
-      // Validate inputs
-      if (!amount || amount <= 0) {
-        throw new Error('Invalid payment amount');
+      // Step 1: Test API connectivity
+      const apiWorking = await testAPIConnectivity();
+      if (!apiWorking) {
+        throw new Error('Backend API is not accessible. Please check if server is running.');
       }
 
-      if (!tier) {
-        throw new Error('Payment tier not specified');
+      // Step 2: Test Razorpay configuration
+      const razorpayConfigured = await testRazorpayConfig();
+      if (!razorpayConfigured) {
+        throw new Error('Razorpay is not properly configured on the server.');
       }
 
-      // Load Razorpay script
+      // Step 3: Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay payment system. Please check your internet connection and try again.');
+        throw new Error('Failed to load Razorpay payment system.');
       }
 
-      // Create order with detailed logging and error handling
-      console.log('📞 Creating Razorpay order...');
+      // Step 4: Create order
+      addDebugInfo('📞 Creating Razorpay order...');
       
-      let orderResponse;
-      try {
-        orderResponse = await fetch('/api/create-order', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            amount: Math.round(amount * 100), // Convert to paise
-            currency: 'INR',
-            receipt: `receipt_${Date.now()}_${tier}`,
-            tier: tier
-          }),
-        });
-      } catch (networkError) {
-        console.error('❌ Network error during order creation:', networkError);
-        throw new Error('Network error. Please check your connection and try again.');
-      }
+      const orderData = {
+        amount: Math.round(amount * 100), // Convert to paise
+        currency: 'INR',
+        receipt: `receipt_${Date.now()}_${tier}`,
+        tier: tier
+      };
 
-      console.log('📡 Order response status:', orderResponse.status);
-      console.log('📡 Order response ok:', orderResponse.ok);
+      addDebugInfo(`📋 Order data: ${JSON.stringify(orderData)}`);
 
-      // Handle non-ok responses
+      const orderResponse = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      addDebugInfo(`📡 Order response status: ${orderResponse.status}`);
+
       if (!orderResponse.ok) {
-        let errorMessage = `Order creation failed (${orderResponse.status})`;
-        
-        try {
-          const errorData = await orderResponse.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          console.error('❌ Order creation error details:', errorData);
-        } catch (parseError) {
-          const errorText = await orderResponse.text();
-          console.error('❌ Order creation failed with text response:', errorText);
-          errorMessage = errorText || errorMessage;
-        }
-        
-        throw new Error(errorMessage);
+        const errorText = await orderResponse.text();
+        addDebugInfo(`❌ Order creation failed: ${errorText}`);
+        throw new Error(`Order creation failed: ${errorResponse.status} - ${errorText}`);
       }
 
-      // Parse successful response
-      let orderData;
-      try {
-        orderData = await orderResponse.json();
-        console.log('✅ Order data received:', orderData);
-      } catch (parseError) {
-        console.error('❌ Failed to parse order response:', parseError);
-        throw new Error('Invalid response from payment server. Please try again.');
+      const order = await orderResponse.json();
+      addDebugInfo(`✅ Order created: ${order.id}`);
+
+      if (!order.id) {
+        throw new Error('Invalid order data - missing order ID');
       }
 
-      // Validate order data
-      if (!orderData || !orderData.id) {
-        console.error('❌ Invalid order data:', orderData);
-        throw new Error('Invalid order data received from server. Please try again.');
-      }
+      // Step 5: Initialize Razorpay
+      addDebugInfo('🎬 Initializing Razorpay checkout...');
 
-      console.log('🎬 Initializing Razorpay checkout with order:', orderData.id);
-
-      // Initialize Razorpay with comprehensive options
       const razorpayOptions = {
-        key: 'rzp_test_KmhJU8QZfO04Pu', // Your test key
-        amount: orderData.amount,
-        currency: orderData.currency || 'INR',
+        key: 'rzp_test_KmhJU8QZfO04Pu',
+        amount: order.amount,
+        currency: order.currency || 'INR',
         name: 'Writory Poetry Contest',
         description: `${tier} tier submission (₹${amount})`,
-        order_id: orderData.id,
+        order_id: order.id,
         handler: async (paymentResponse: any) => {
-          console.log('🎉 Payment successful:', paymentResponse);
+          addDebugInfo('🎉 Payment successful!');
           
           try {
-            console.log('🔍 Verifying payment...');
+            addDebugInfo('🔍 Verifying payment...');
             
             const verifyResponse = await fetch('/api/verify-payment', {
               method: 'POST',
@@ -165,8 +199,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             });
 
             if (verifyResponse.ok) {
-              const verificationData = await verifyResponse.json();
-              console.log('✅ Payment verified successfully:', verificationData);
+              addDebugInfo('✅ Payment verified successfully');
               
               const finalPaymentData = {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
@@ -188,15 +221,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               onSuccess(finalPaymentData);
             } else {
               const errorData = await verifyResponse.json();
-              console.error('❌ Payment verification failed:', errorData);
+              addDebugInfo(`❌ Payment verification failed: ${errorData.error}`);
               throw new Error(errorData.error || 'Payment verification failed');
             }
           } catch (verifyError: any) {
-            console.error('❌ Verification error:', verifyError);
+            addDebugInfo(`❌ Verification error: ${verifyError.message}`);
             setIsProcessingRazorpay(false);
             toast({
               title: "Payment Verification Failed",
-              description: "Payment completed but verification failed. Please contact support with your payment ID.",
+              description: "Payment completed but verification failed. Please contact support.",
               variant: "destructive"
             });
             onError('Payment verification failed: ' + verifyError.message);
@@ -204,113 +237,54 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         },
         modal: {
           ondismiss: () => {
-            console.log('💔 Payment modal dismissed by user');
+            addDebugInfo('💔 Payment modal dismissed by user');
             setIsProcessingRazorpay(false);
-            toast({
-              title: "Payment Cancelled",
-              description: "Payment was cancelled.",
-              variant: "destructive"
-            });
           }
         },
         theme: {
           color: '#8B5CF6'
-        },
-        prefill: {
-          name: '',
-          email: '',
-          contact: ''
-        },
-        notes: {
-          tier: tier,
-          amount: amount.toString()
         }
       };
 
-      console.log('🎭 Opening Razorpay modal...');
       const rzp = new window.Razorpay(razorpayOptions);
       
-      // Handle payment failures
       rzp.on('payment.failed', function (response: any) {
-        console.error('💥 Payment failed:', response.error);
+        addDebugInfo(`💥 Payment failed: ${response.error?.description || 'Unknown error'}`);
         setIsProcessingRazorpay(false);
-        
-        const errorMessage = response.error?.description || 
-                            response.error?.reason || 
-                            'Payment failed. Please try again.';
         
         toast({
           title: "Payment Failed",
-          description: errorMessage,
+          description: response.error?.description || 'Payment failed',
           variant: "destructive"
         });
-        onError('Payment failed: ' + errorMessage);
+        onError('Payment failed: ' + (response.error?.description || 'Unknown error'));
       });
 
-      // Open Razorpay modal
+      addDebugInfo('🎭 Opening Razorpay modal...');
       rzp.open();
 
     } catch (error: any) {
-      console.error('💥 Payment error:', error);
+      addDebugInfo(`💥 Payment error: ${error.message}`);
       setIsProcessingRazorpay(false);
-      
-      const userFriendlyMessage = error.message || 'Payment failed. Please try again.';
       
       toast({
         title: "Payment Error",
-        description: userFriendlyMessage,
+        description: error.message,
         variant: "destructive"
       });
-      onError(userFriendlyMessage);
+      onError(error.message);
     }
   };
 
-  // Handle PayPal Payment (existing implementation)
+  // Handle PayPal Payment (simplified for now)
   const handlePayPalPayment = async () => {
-    try {
-      setIsProcessingPayPal(true);
-      console.log('🔧 Creating PayPal order...');
-
-      const response = await fetch('/api/create-paypal-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: amount,
-          tier: tier,
-          currency: 'USD'
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `PayPal order creation failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ PayPal order created:', data);
-
-      if (data.approvalUrl || data.approval_url) {
-        window.location.href = data.approvalUrl || data.approval_url;
-      } else {
-        throw new Error('No PayPal approval URL received');
-      }
-
-    } catch (error: any) {
-      console.error('❌ PayPal error:', error);
-      toast({
-        title: "PayPal Error",
-        description: error.message || 'PayPal payment failed',
-        variant: "destructive"
-      });
-      onError(error.message || 'PayPal payment failed');
-    } finally {
-      setIsProcessingPayPal(false);
-    }
+    toast({
+      title: "PayPal Temporarily Disabled",
+      description: "Please use Razorpay for now while we debug the payment system.",
+      variant: "destructive"
+    });
   };
 
-  // Get poem count for display
   const getPoemCount = (tier: string): number => {
     const counts = { 'free': 1, 'single': 1, 'double': 2, 'bulk': 5 };
     return counts[tier as keyof typeof counts] || 1;
@@ -320,57 +294,42 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-      <div className="container mx-auto px-4 max-w-md">
+      <div className="container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Payment</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Payment Debug Mode</h1>
           <p className="text-lg text-gray-600">Complete your payment to submit your poems</p>
         </div>
 
-        <Card className="shadow-xl">
-          <CardContent className="p-8">
-            {/* Order Summary */}
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Tier:</span>
-                  <span className="capitalize">{tier.replace('_', ' ')} Poems</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Poems:</span>
-                  <span>{poemCount}</span>
-                </div>
-                <hr className="my-3" />
-                <div className="flex justify-between text-xl font-bold">
-                  <span>Total:</span>
-                  <span>₹{amount}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Section */}
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">
-                  Complete Payment - ₹{amount}
-                </h3>
-                <p className="text-gray-600">Choose your payment method</p>
-              </div>
-
-              {/* PayPal Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-blue-600 text-sm">
-                  <strong>PayPal Note:</strong> PayPal charges in USD. ₹{amount} = ~${(amount * 0.012).toFixed(2)} USD (exchange rates may vary)
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Payment Form */}
+          <Card className="shadow-xl">
+            <CardContent className="p-8">
+              {/* Order Summary */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Tier:</span>
+                    <span className="capitalize">{tier.replace('_', ' ')} Poems</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Poems:</span>
+                    <span>{poemCount}</span>
+                  </div>
+                  <hr className="my-3" />
+                  <div className="flex justify-between text-xl font-bold">
+                    <span>Total:</span>
+                    <span>₹{amount}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Payment Buttons */}
               <div className="space-y-4">
-                {/* Razorpay Button */}
                 <Button
                   onClick={handleRazorpayPayment}
                   disabled={isProcessingRazorpay || isProcessingPayPal}
-                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700"
                 >
                   {isProcessingRazorpay ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -380,46 +339,70 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                   {isProcessingRazorpay ? 'Processing...' : `Pay with Razorpay (₹${amount})`}
                 </Button>
 
-                {/* PayPal Button */}
                 <Button
-                  onClick={handlePayPalPayment}
-                  disabled={isProcessingRazorpay || isProcessingPayPal}
-                  className="w-full h-12 bg-yellow-500 hover:bg-yellow-600 text-black disabled:bg-gray-400"
+                  onClick={() => testAPIConnectivity()}
+                  variant="outline"
+                  className="w-full"
+                  disabled={isProcessingRazorpay}
                 >
-                  {isProcessingPayPal ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <div className="flex items-center">
-                      <span className="mr-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">PP</span>
-                      PayPal
-                    </div>
-                  )}
-                  <span className="ml-auto">${(amount * 0.012).toFixed(2)} USD</span>
+                  🔍 Test API Connection
+                </Button>
+
+                <Button
+                  onClick={() => testRazorpayConfig()}
+                  variant="outline"
+                  className="w-full"
+                  disabled={isProcessingRazorpay}
+                >
+                  ⚙️ Test Razorpay Config
+                </Button>
+
+                <Button
+                  onClick={onBack}
+                  variant="outline"
+                  className="w-full"
+                  disabled={isProcessingRazorpay || isProcessingPayPal}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Form
                 </Button>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Back Button */}
-              <Button
-                onClick={onBack}
-                variant="outline"
-                className="w-full"
-                disabled={isProcessingRazorpay || isProcessingPayPal}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Form
-              </Button>
-
-              {/* Payment Info */}
-              <div className="text-center text-sm text-gray-500">
-                <p>Secure payments powered by Razorpay & PayPal</p>
-                <p>Your payment information is encrypted and secure</p>
-                <p className="mt-2">
-                  <strong>Razorpay:</strong> Pay in INR (₹{amount}) • <strong>PayPal:</strong> Pay in USD (~${(amount * 0.012).toFixed(2)})
-                </p>
+          {/* Debug Information */}
+          <Card className="shadow-xl">
+            <CardContent className="p-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Debug Information</h2>
+              <div className="bg-gray-100 p-4 rounded-lg max-h-96 overflow-y-auto">
+                {debugInfo.length === 0 ? (
+                  <p className="text-gray-500">Click "Pay with Razorpay" to see debug information...</p>
+                ) : (
+                  <div className="space-y-1">
+                    {debugInfo.map((info, index) => (
+                      <div key={index} className="text-sm font-mono">
+                        {info}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              
+              <div className="mt-4 text-sm text-gray-600">
+                <p><strong>Expected Flow:</strong></p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Test API connectivity</li>
+                  <li>Test Razorpay configuration</li>
+                  <li>Load Razorpay script</li>
+                  <li>Create payment order</li>
+                  <li>Open Razorpay modal</li>
+                  <li>Process payment</li>
+                  <li>Verify payment</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
