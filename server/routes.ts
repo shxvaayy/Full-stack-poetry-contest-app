@@ -1260,5 +1260,10 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// Register routes function
+export function registerRoutes(app: any) {
+  app.use(router);
+}
+
 // Export router
 export { router };
