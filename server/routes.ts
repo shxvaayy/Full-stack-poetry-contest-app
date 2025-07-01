@@ -559,39 +559,73 @@ router.post('/api/submit-poem', upload.fields([
   // Create submissions for each poem
   const submissionUuid = `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const submissions = [];
+  const submissionErrors = [];
+
+  // Parse payment data safely
+  let parsedPaymentData = null;
+  try {
+    parsedPaymentData = paymentData ? JSON.parse(paymentData) : null;
+  } catch (parseError) {
+    console.error('❌ Payment data parsing error:', parseError);
+  }
 
   for (let i = 0; i < multiplePoemTitles.length; i++) {
     try {
-      const submission = await storage.createSubmission({
+      console.log(`📝 Creating submission ${i + 1}/${multiplePoemTitles.length} for poem: ${multiplePoemTitles[i]}`);
+      
+      const submissionData = {
         userId: user.id,
         firstName,
         lastName: lastName || null,
         email,
         phone: phone || null,
-        age: age || null,
+        age: age ? parseInt(age) : null,
         poemTitle: multiplePoemTitles[i],
         tier,
         price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
         poemFileUrl: poemFileUrls[i],
         photoUrl,
-        paymentId: paymentData ? JSON.parse(paymentData).payment_id || null : null,
-        paymentMethod: paymentData ? JSON.parse(paymentData).payment_method || null : null,
+        paymentId: parsedPaymentData?.payment_id || parsedPaymentData?.razorpay_payment_id || null,
+        paymentMethod: parsedPaymentData?.payment_method || 'unknown',
         submissionUuid,
         poemIndex: i,
         totalPoemsInSubmission: multiplePoemTitles.length
-      });
+      };
+
+      console.log('📋 Submission data:', submissionData);
+      
+      const submission = await storage.createSubmission(submissionData);
       submissions.push(submission);
-    } catch (submissionError) {
+      console.log(`✅ Successfully created submission ${i + 1}: ${submission.id}`);
+      
+    } catch (submissionError: any) {
       console.error('❌ Submission creation error for poem', i, ':', submissionError);
-      // Continue with other poems even if one fails
+      console.error('❌ Error stack:', submissionError.stack);
+      submissionErrors.push({
+        poemIndex: i,
+        poemTitle: multiplePoemTitles[i],
+        error: submissionError.message
+      });
     }
   }
 
   if (submissions.length === 0) {
+    console.error('❌ No submissions created. Errors:', submissionErrors);
     return res.status(500).json({
       success: false,
-      error: 'Failed to create any submissions'
+      error: 'Failed to create any submissions',
+      details: submissionErrors,
+      debugInfo: {
+        userId: user.id,
+        poemCount: multiplePoemTitles.length,
+        tier,
+        hasPaymentData: !!paymentData
+      }
     });
+  }
+
+  if (submissionErrors.length > 0) {
+    console.warn('⚠️ Some submissions failed:', submissionErrors);
   }
 
   // Add to Google Sheets (non-critical)
@@ -759,13 +793,15 @@ router.post('/api/submit', upload.fields([
   // Create submission
   let submission;
   try {
-    submission = await storage.createSubmission({
+    console.log('📝 Creating single poem submission...');
+    
+    const submissionData = {
       userId: user.id,
       firstName,
       lastName: lastName || null,
       email,
       phone: phone || null,
-      age: age || null,
+      age: age ? parseInt(age) : null,
       poemTitle,
       tier,
       price: TIER_PRICES[tier as keyof typeof TIER_PRICES],
@@ -776,11 +812,24 @@ router.post('/api/submit', upload.fields([
       submissionUuid: `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       poemIndex: 0,
       totalPoemsInSubmission: 1
-    });
-  } catch (submissionError) {
+    };
+
+    console.log('📋 Single submission data:', submissionData);
+    
+    submission = await storage.createSubmission(submissionData);
+    console.log('✅ Successfully created submission:', submission.id);
+    
+  } catch (submissionError: any) {
     console.error('❌ Submission creation error:', submissionError);
+    console.error('❌ Error stack:', submissionError.stack);
     return res.status(500).json({
-      error: 'Failed to create submission'
+      error: 'Failed to create submission',
+      details: submissionError.message,
+      debugInfo: {
+        userId: user.id,
+        poemTitle,
+        tier
+      }
     });
   }
 
