@@ -51,7 +51,79 @@ router.get('/api/test', (req, res) => {
 
 // ===== RAZORPAY PAYMENT ENDPOINTS =====
 
-// Create Razorpay order
+// Create Razorpay order - WORKING VERSION FROM BACKUP
+router.post('/api/create-razorpay-order', async (req, res) => {
+  try {
+    console.log('💳 Creating Razorpay order...');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+    const { amount, tier, metadata } = req.body;
+
+    // Validate inputs
+    if (!amount || amount <= 0) {
+      console.error('❌ Invalid amount:', amount);
+      return res.status(400).json({ 
+        error: 'Valid amount is required' 
+      });
+    }
+
+    if (!tier) {
+      console.error('❌ Missing tier');
+      return res.status(400).json({ 
+        error: 'Tier is required' 
+      });
+    }
+
+    // Check Razorpay configuration
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.error('❌ Razorpay not configured');
+      return res.status(500).json({ 
+        error: 'Payment system not configured' 
+      });
+    }
+
+    console.log(`💰 Creating Razorpay order for amount: ₹${amount}`);
+
+    const orderOptions = {
+      amount: amount * 100, // Convert to paise
+      currency: 'INR',
+      receipt: `receipt_${Date.now()}_${tier}`,
+      notes: {
+        tier: tier,
+        amount: amount.toString(),
+        timestamp: new Date().toISOString(),
+        ...metadata
+      }
+    };
+
+    console.log('🔄 Calling Razorpay create order with options:', orderOptions);
+
+    const order = await razorpay.orders.create(orderOptions);
+    console.log('✅ Razorpay order created successfully:', order.id);
+
+    // Return response in the format expected by the working PaymentForm
+    res.json({
+      success: true,
+      key: process.env.RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      orderId: order.id,
+      name: 'Writory Poetry Contest',
+      description: `Poetry Contest - ${tier}`,
+      receipt: order.receipt
+    });
+
+  } catch (error: any) {
+    console.error('❌ Razorpay order creation error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create payment order',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
+    });
+  }
+});
+
+// Keep the original create-order endpoint for backward compatibility
 router.post('/api/create-order', async (req, res) => {
   try {
     console.log('📞 Razorpay order creation request received');
@@ -900,7 +972,7 @@ router.post('/api/submit', upload.fields([
       }
     }
 
-    // Send confirmation email - ENHANCED WITH PAYMENT INFO
+    // Send confirmation email
     try {
       console.log('📧 Sending confirmation email...');
       if (expectedPoemCount === 1) {
@@ -908,25 +980,19 @@ router.post('/api/submit', upload.fields([
           name: `${firstName} ${lastName}`,
           email,
           poemTitle: poemTitle || 'Untitled',
-          tier,
-          paymentMethod: payment_method,
-          amount: actualAmount,
-          paymentId: razorpay_payment_id || paypal_order_id || 'N/A'
+          tier
         });
       } else {
         await sendMultiplePoemsConfirmation({
           name: `${firstName} ${lastName}`,
           email,
-          poemCount: expectedPoemCount,
           tier,
-          paymentMethod: payment_method,
-          amount: actualAmount,
-          paymentId: razorpay_payment_id || paypal_order_id || 'N/A'
+          poemCount: expectedPoemCount
         });
       }
-      console.log('✅ Confirmation email sent');
+      console.log('✅ Confirmation email sent successfully');
     } catch (emailError: any) {
-      console.error('⚠️ Email error (non-critical):', emailError.message);
+      console.error('⚠️ Email sending error (non-critical):', emailError.message);
     }
 
     // Clean up uploaded files
@@ -936,45 +1002,25 @@ router.post('/api/submit', upload.fields([
           fs.unlinkSync(file.path);
         }
       });
-      console.log('🗑️ Temporary files cleaned up');
-    } catch (cleanupError) {
-      console.error('⚠️ Cleanup error (non-critical):', cleanupError);
+      console.log('✅ Temporary files cleaned up');
+    } catch (cleanupError: any) {
+      console.error('⚠️ File cleanup error (non-critical):', cleanupError.message);
     }
 
-    console.log('🎉 SUBMISSION COMPLETED SUCCESSFULLY - MOVING TO STEP 4 (EMAIL SENT)');
-
+    console.log('🎉 SUBMISSION COMPLETED SUCCESSFULLY');
     res.json({
       success: true,
-      message: 'Submission completed successfully! Confirmation email has been sent.',
+      message: 'Submission completed successfully!',
       submissionId: submission.id,
       poemUrls,
-      photoUrl,
-      emailSent: true,
-      nextStep: 'completed',
-      paymentVerified: true
+      photoUrl
     });
 
   } catch (error: any) {
-    console.error('❌ SUBMISSION ERROR:', error);
-
-    // Clean up files on error
-    try {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files) {
-        const allFiles = [...(files.poems || []), ...(files.photo || [])];
-        allFiles.forEach(file => {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        });
-      }
-    } catch (cleanupError) {
-      console.error('⚠️ File cleanup error:', cleanupError);
-    }
-
+    console.error('💥 SUBMISSION ERROR:', error);
     res.status(500).json({
       error: 'Submission failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later'
+      details: error.message
     });
   }
 });
@@ -982,11 +1028,15 @@ router.post('/api/submit', upload.fields([
 // Contact form endpoint
 router.post('/api/contact', async (req, res) => {
   try {
-    console.log('📧 Contact form submission received');
-    const { name, email, message } = req.body;
+    console.log('📞 Contact form submission received');
+    const { name, email, phone, message } = req.body;
 
+    // Validate required fields
     if (!name || !email || !message) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['name', 'email', 'message']
+      });
     }
 
     // Add to Google Sheets
@@ -994,6 +1044,7 @@ router.post('/api/contact', async (req, res) => {
       await addContactToSheet({
         name,
         email,
+        phone: phone || '',
         message,
         timestamp: new Date().toISOString()
       });
@@ -1004,47 +1055,38 @@ router.post('/api/contact', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Message sent successfully!'
+      message: 'Contact form submitted successfully!'
     });
 
   } catch (error: any) {
     console.error('❌ Contact form error:', error);
     res.status(500).json({
-      error: 'Failed to send message',
+      error: 'Failed to submit contact form',
       details: error.message
     });
   }
 });
 
-// Get all submissions (admin endpoint)
+// Get submission count
+router.get('/api/submission-count', async (req, res) => {
+  try {
+    const count = await getSubmissionCountFromSheet();
+    res.json({ count });
+  } catch (error: any) {
+    console.error('❌ Error getting submission count:', error);
+    res.status(500).json({ error: 'Failed to get submission count', details: error.message });
+  }
+});
+
+// Get all submissions (for admin)
 router.get('/api/submissions', async (req, res) => {
   try {
-    console.log('📋 Getting all submissions...');
-    
     const submissions = await storage.getAllSubmissions();
-    console.log(`✅ Retrieved ${submissions.length} submissions`);
-
-    res.json({
-      success: true,
-      submissions: submissions.map(s => ({
-        id: s.id,
-        name: `${s.firstName} ${s.lastName}`,
-        email: s.email,
-        tier: s.tier,
-        poemTitle: s.poemTitle,
-        submittedAt: s.createdAt,
-        paymentMethod: s.paymentData?.payment_method || 'unknown',
-        amount: s.paymentData?.amount || 0
-      }))
-    });
-
+    res.json(submissions);
   } catch (error: any) {
     console.error('❌ Error getting submissions:', error);
     res.status(500).json({ error: 'Failed to get submissions', details: error.message });
   }
 });
 
-export function registerRoutes(app: any) {
-  app.use('/', router);
-  console.log('✅ Routes registered successfully');
-}
+export { router };
