@@ -50,7 +50,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// NUCLEAR OPTION: Complete database recreation (keep your existing function)
+// NUCLEAR OPTION: Complete database recreation
 async function forceFixDatabase() {
   try {
     console.log('💥 FORCING DATABASE RECREATION...');
@@ -136,7 +136,36 @@ async function forceFixDatabase() {
       console.log('⚠️ Foreign key constraint already exists or failed:', error.message);
     }
     
-    return true;
+    // Step 6: Verify the structure
+    console.log('🔍 Verifying table structure...');
+    const columns = await client.query(`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns 
+      WHERE table_name = 'submissions'
+      ORDER BY ordinal_position
+    `);
+    
+    console.log('📋 Final submissions table columns:');
+    columns.rows.forEach(col => {
+      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
+    });
+    
+    // Step 7: Test insertion
+    console.log('🧪 Testing submission creation...');
+    const testResult = await client.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'submissions' 
+      AND column_name IN ('poem_index', 'submission_uuid', 'total_poems_in_submission')
+    `);
+    
+    if (testResult.rows.length === 3) {
+      console.log('🎉 DATABASE FORCE FIX SUCCESSFUL!');
+      console.log('✅ All required columns exist');
+      return true;
+    } else {
+      console.error('❌ Some columns still missing:', testResult.rows);
+      return false;
+    }
     
   } catch (error) {
     console.error('❌ Force database fix failed:', error);
@@ -172,37 +201,85 @@ async function initializeApp() {
       console.log('📁 Files in public directory:', files);
     }
     
+    // Serve static files with proper MIME types and caching
     app.use(express.static(publicPath, {
-      setHeaders: (res, path) => {
-        if (path.endsWith('.js')) {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) {
           res.set('Content-Type', 'application/javascript');
-        } else if (path.endsWith('.css')) {
+          res.set('Cache-Control', 'public, max-age=31536000'); // 1 year for JS files
+        } else if (filePath.endsWith('.css')) {
           res.set('Content-Type', 'text/css');
-        } else if (path.endsWith('.html')) {
+          res.set('Cache-Control', 'public, max-age=31536000'); // 1 year for CSS files
+        } else if (filePath.endsWith('.html')) {
           res.set('Content-Type', 'text/html');
+          res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); // No cache for HTML
+        } else if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') || filePath.endsWith('.gif') || filePath.endsWith('.svg')) {
+          res.set('Cache-Control', 'public, max-age=31536000'); // 1 year for images
         }
       }
     }));
     console.log('✅ Static files configured');
     
-    // Step 4: Catch-all handler for React routes
+    // Step 4: Enhanced catch-all handler for React SPA routing
     app.get('*', (req, res) => {
       // Don't serve index.html for API routes
       if (req.path.startsWith('/api/')) {
+        console.log('🚫 API route not found:', req.path);
         return res.status(404).json({ error: 'API endpoint not found' });
       }
       
       const indexPath = path.join(publicPath, 'index.html');
       console.log('📄 Serving React app for path:', req.path);
+      console.log('📂 Index file path:', indexPath);
       
+      // Check if index.html exists
       if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
+        // Set proper headers for HTML to ensure fresh load
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        // Send the React app
+        res.sendFile(indexPath, (err) => {
+          if (err) {
+            console.error('❌ Error serving index.html:', err);
+            res.status(500).send('Error loading the application');
+          } else {
+            console.log('✅ Successfully served React app for:', req.path);
+          }
+        });
       } else {
         console.error('❌ index.html not found at:', indexPath);
+        
+        // Show debugging information
+        const publicExists = fs.existsSync(publicPath);
+        const files = publicExists ? fs.readdirSync(publicPath) : [];
+        
         res.status(404).send(`
-          <h1>Frontend Not Built</h1>
-          <p>The React app needs to be built. Index.html not found at: ${indexPath}</p>
-          <p>Available files: ${fs.existsSync(publicPath) ? fs.readdirSync(publicPath).join(', ') : 'Directory does not exist'}</p>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Frontend Not Found</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              .error { color: #d32f2f; }
+              .info { color: #1976d2; }
+              .files { background: #f5f5f5; padding: 10px; margin: 10px 0; }
+            </style>
+          </head>
+          <body>
+            <h1 class="error">Frontend Build Not Found</h1>
+            <p>The React app needs to be built properly.</p>
+            <div class="info">
+              <p><strong>Expected index.html at:</strong> ${indexPath}</p>
+              <p><strong>Public directory exists:</strong> ${publicExists}</p>
+              <p><strong>Available files:</strong></p>
+              <div class="files">${files.length > 0 ? files.join(', ') : 'No files found'}</div>
+            </div>
+            <p>Please check your build configuration and ensure the React app is built to the correct directory.</p>
+          </body>
+          </html>
         `);
       }
     });
@@ -214,6 +291,7 @@ async function initializeApp() {
       console.log(`🔗 URL: ${process.env.NODE_ENV === 'production' ? 'https://writory.onrender.com' : `http://localhost:${PORT}`}`);
       console.log('💥 Database was forcefully recreated');
       console.log('✅ Ready to accept poem submissions!');
+      console.log('🎯 React SPA routing configured');
     });
     
   } catch (error) {
