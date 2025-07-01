@@ -74,15 +74,15 @@ router.get('/api/test', (req, res) => {
 router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting user by UID:', uid);
-
+  
   try {
     const user = await storage.getUserByUid(uid);
-
+    
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-
+    
     console.log('✅ User found:', user.email);
     res.json(user);
   } catch (error) {
@@ -95,18 +95,18 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submissions for UID:', uid);
-
+  
   try {
     const user = await storage.getUserByUid(uid);
-
+    
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-
+    
     const submissions = await storage.getSubmissionsByUser(user.id);
     console.log(`✅ Found ${submissions.length} submissions for user ${user.email}`);
-
+    
     // Transform submissions to match frontend expectations
     const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
@@ -122,7 +122,7 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       status: sub.status || 'Pending',
       scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
     }));
-
+    
     res.json(transformedSubmissions);
   } catch (error) {
     console.error('❌ Error getting user submissions:', error);
@@ -134,33 +134,33 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
 router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submission status for UID:', uid);
-
+  
   try {
     const user = await storage.getUserByUid(uid);
-
+    
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-
+    
     const submissions = await storage.getSubmissionsByUser(user.id);
-
+    
     // Check if user has used free submission
     const freeSubmissionUsed = submissions.some(sub => sub.tier === 'free');
-
+    
     // Get current month submissions
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
     const currentMonthSubmissions = submissions.filter(sub => 
       sub.submittedAt && sub.submittedAt.toISOString().slice(0, 7) === currentMonth
     );
-
+    
     const statusData = {
       freeSubmissionUsed,
       totalSubmissions: currentMonthSubmissions.length,
       contestMonth: currentMonth,
       allTimeSubmissions: submissions.length
     };
-
+    
     console.log('✅ Submission status:', statusData);
     res.json(statusData);
   } catch (error) {
@@ -173,10 +173,10 @@ router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, re
 router.post('/api/users', asyncHandler(async (req: any, res: any) => {
   const { uid, email, name, phone } = req.body;
   console.log('🔍 Creating/updating user:', { uid, email, name });
-
+  
   try {
     let user = await storage.getUserByUid(uid);
-
+    
     if (user) {
       console.log('✅ User already exists:', user.email);
       res.json(user);
@@ -437,7 +437,7 @@ router.post('/api/verify-checkout-session', asyncHandler(async (req: any, res: a
   try {
     // For now, we'll just return success - implement Stripe verification if needed
     console.log('✅ Stripe session verified (mock):', sessionId);
-
+    
     res.json({
       verified: true,
       session_id: sessionId,
@@ -464,7 +464,7 @@ router.post('/api/verify-paypal-payment', asyncHandler(async (req: any, res: any
   try {
     // For now, we'll just return success - implement PayPal verification if needed
     console.log('✅ PayPal payment verified (mock):', orderId);
-
+    
     res.json({
       verified: true,
       order_id: orderId,
@@ -482,7 +482,7 @@ router.post('/api/verify-paypal-payment', asyncHandler(async (req: any, res: any
 // Admin CSV upload route
 router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
   console.log('📤 Admin CSV upload started');
-
+  
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No CSV file provided' });
@@ -490,7 +490,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
 
     const csvData = req.file.buffer.toString('utf8');
     const lines = csvData.split('\n').filter(line => line.trim());
-
+    
     if (lines.length < 2) {
       return res.status(400).json({ error: 'CSV file must contain at least a header and one data row' });
     }
@@ -501,7 +501,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
     // Expected headers: email,poemtitle,score,type,originality,emotion,structure,language,theme,status
     const requiredHeaders = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
     const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-
+    
     if (missingHeaders.length > 0) {
       return res.status(400).json({ 
         error: `Missing required headers: ${missingHeaders.join(', ')}` 
@@ -518,7 +518,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
 
       try {
         const values = line.split(',').map(v => v.trim());
-
+        
         if (values.length !== headers.length) {
           errors.push(`Row ${i + 1}: Column count mismatch`);
           continue;
@@ -707,7 +707,7 @@ router.get('/api/stats', asyncHandler(async (req: any, res: any) => {
   try {
     // Get all submissions from storage
     const allSubmissions = await storage.getAllSubmissions();
-
+    
     // Calculate statistics
     const stats = {
       total_submissions: allSubmissions.length,
@@ -961,7 +961,7 @@ router.post('/api/submit-poem', upload.fields([
 
   } catch (error: any) {
     console.error('❌ Submission error:', error);
-
+    
     // Clean up files on error
     const files = req.files as any;
     try {
@@ -1064,7 +1064,7 @@ router.post('/api/submit-multiple-poems', upload.array('files', 10), asyncHandle
     const submissions = [];
     for (let i = 0; i < titles.length; i++) {
       const uploadResult = uploadResults[i];
-
+      
       const submissionData = {
         userId: user?.id || null,
         firstName,
@@ -1154,7 +1154,7 @@ router.post('/api/submit-multiple-poems', upload.array('files', 10), asyncHandle
 
   } catch (error: any) {
     console.error('❌ Multiple submission error:', error);
-
+    
     // Clean up files on error
     const files = req.files as Express.Multer.File[];
     files?.forEach(file => {
@@ -1237,7 +1237,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
 
   try {
     const submissions = await storage.getAllSubmissions();
-
+    
     // Transform submissions for frontend
     const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
@@ -1262,13 +1262,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
 
 // Register routes function
 export function registerRoutes(app: any) {
-  // Ensure all API responses are JSON
-  app.use('/api', (req: any, res: any, next: any) => {
-    res.setHeader('Content-Type', 'application/json');
-    next();
-  });
-
-  app.use('/api', router);
+  app.use(router);
 }
 
 // Export router
