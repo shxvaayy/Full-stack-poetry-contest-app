@@ -151,7 +151,7 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Get user submissions
+// Get user submissions - FIXED VERSION
 router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submissions for UID:', uid);
@@ -164,8 +164,19 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       return res.status(404).json({ error: 'User not found' });
     }
     
+    console.log('✅ User found:', user.email, 'User ID:', user.id);
+    
     const submissions = await storage.getSubmissionsByUser(user.id);
     console.log(`✅ Found ${submissions.length} submissions for user ${user.email}`);
+    
+    // Log the raw submissions for debugging
+    console.log('📋 Raw submissions:', submissions.map(s => ({
+      id: s.id,
+      poemTitle: s.poemTitle,
+      tier: s.tier,
+      userId: s.userId,
+      submittedAt: s.submittedAt
+    })));
     
     // Transform submissions to match frontend expectations
     const transformedSubmissions = submissions.map(sub => ({
@@ -180,9 +191,13 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       score: sub.score,
       type: sub.type || 'Human',
       status: sub.status || 'Pending',
-      scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
+      scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null,
+      submissionUuid: sub.submissionUuid,
+      poemIndex: sub.poemIndex,
+      totalPoemsInSubmission: sub.totalPoemsInSubmission
     }));
     
+    console.log('✅ Transformed submissions:', transformedSubmissions.length);
     res.json(transformedSubmissions);
   } catch (error) {
     console.error('❌ Error getting user submissions:', error);
@@ -492,7 +507,7 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
 
 // ===== SUBMISSION ENDPOINTS =====
 
-// Single poem submission with proper file handling
+// Single poem submission with proper file handling - FIXED VERSION
 router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📝 Single poem submission received');
   console.log('📋 Body:', JSON.stringify(req.body, null, 2));
@@ -510,8 +525,12 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       price,
       paymentId,
       paymentMethod,
-      uid
+      uid,
+      userUid // Also accept userUid as fallback
     } = req.body;
+
+    // Use uid or userUid (frontend might send either)
+    const userId = uid || userUid;
 
     // Validate required fields
     if (!firstName || !email || !poemTitle || !tier) {
@@ -520,6 +539,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         error: 'Missing required fields: firstName, email, poemTitle, tier'
       });
     }
+
+    console.log('🔍 Processing submission for user UID:', userId);
+    console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitle, tier });
 
     // Find uploaded files
     let poemFile = null;
@@ -577,8 +599,30 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       console.log('✅ Photo file uploaded:', photoFileUrl);
     }
 
+    // Create or find user - FIXED VERSION
+    let user = null;
+    if (userId) {
+      console.log('🔍 Looking for user with UID:', userId);
+      user = await storage.getUserByUid(userId);
+      if (!user) {
+        console.log('🔄 Creating new user:', email);
+        user = await storage.createUser({
+          uid: userId,
+          email,
+          name: firstName + (lastName ? ` ${lastName}` : ''),
+          phone: phone || null
+        });
+        console.log('✅ User created:', user.email);
+      } else {
+        console.log('✅ User found:', user.email);
+      }
+    } else {
+      console.log('⚠️ No UID provided, creating submission without user link');
+    }
+
     // Create submission data
     const submissionData = {
+      userId: user?.id || null, // CRITICAL: Link to user
       firstName,
       lastName: lastName || '',
       email,
@@ -599,20 +643,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       type: 'Human'
     };
 
-    // Create or find user
-    let user = null;
-    if (uid) {
-      user = await storage.getUserByUid(uid);
-      if (!user) {
-        user = await storage.createUser({
-          uid,
-          email,
-          name: firstName + (lastName ? ` ${lastName}` : ''),
-          phone: phone || null
-        });
-      }
-      submissionData.userId = user.id;
-    }
+    console.log('🔗 Linking submission to user ID:', user?.id);
+    console.log('💾 Submission data:', submissionData);
 
     // Save to database
     console.log('💾 Saving submission to database...');
@@ -634,7 +666,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     // Send confirmation email
     try {
-      console.log('📧 Sending confirmation email...');
+      console.log('📧 Sending confirmation email to:', email);
       await sendSubmissionConfirmation(email, {
         name: firstName,
         poemTitle,
@@ -688,7 +720,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
   }
 }));
 
-// Multiple poems submission
+// Multiple poems submission - FIXED VERSION
 router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📝 Multiple poems submission received');
   console.log('📋 Body:', JSON.stringify(req.body, null, 2));
@@ -706,8 +738,12 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       paymentId,
       paymentMethod,
       uid,
+      userUid, // Also accept userUid as fallback
       poemTitles // This should be a JSON string array
     } = req.body;
+
+    // Use uid or userUid (frontend might send either)
+    const userId = uid || userUid;
 
     // Parse poem titles
     let titles = [];
@@ -786,18 +822,26 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       console.log('✅ Photo file uploaded:', photoFileUrl);
     }
 
-    // Create or find user
+    // Create or find user - FIXED VERSION
     let user = null;
-    if (uid) {
-      user = await storage.getUserByUid(uid);
+    if (userId) {
+      console.log('🔍 Looking for user with UID:', userId);
+      user = await storage.getUserByUid(userId);
       if (!user) {
+        console.log('🔄 Creating new user:', email);
         user = await storage.createUser({
-          uid,
+          uid: userId,
           email,
           name: firstName + (lastName ? ` ${lastName}` : ''),
           phone: phone || null
         });
+        console.log('✅ User created:', user.email);
+      } else {
+        console.log('✅ User found:', user.email);
       }
+      console.log('🔗 Will link all submissions to user ID:', user.id);
+    } else {
+      console.log('⚠️ No UID provided, creating submissions without user link');
     }
 
     // Create submissions for each poem
@@ -806,7 +850,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     for (let i = 0; i < titles.length; i++) {
       const submissionData = {
-        userId: user?.id || null,
+        userId: user?.id || null, // CRITICAL: Link to user
         firstName,
         lastName: lastName || '',
         email,
@@ -1048,190 +1092,80 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
   }
 }));
 
-// ===== ADMIN/MANAGEMENT ENDPOINTS =====
+// ===== ADMIN/RESULTS ENDPOINTS =====
 
-// Get all submissions (admin only)
-router.get('/api/admin/submissions', asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Admin: Getting all submissions');
-  
+// Get all submissions (admin)
+router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   try {
-    const allSubmissions = await storage.getAllSubmissions();
-    console.log(`✅ Retrieved ${allSubmissions.length} submissions`);
+    const submissions = await storage.getAllSubmissions();
+    console.log(`✅ Retrieved ${submissions.length} total submissions`);
     
-    // Transform for admin view
-    const adminSubmissions = allSubmissions.map(sub => ({
+    // Transform submissions
+    const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
       name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
       email: sub.email,
-      phone: sub.phone,
-      age: sub.age,
       poemTitle: sub.poemTitle,
       tier: sub.tier,
       price: parseFloat(sub.price?.toString() || '0'),
-      paymentId: sub.paymentId,
-      paymentMethod: sub.paymentMethod,
       submittedAt: sub.submittedAt,
-      status: sub.status || 'Pending',
+      isWinner: sub.isWinner || false,
+      winnerPosition: sub.winnerPosition,
+      score: sub.score,
       type: sub.type || 'Human',
-      poemFileUrl: sub.poemFileUrl,
-      photoFileUrl: sub.photoFileUrl,
-      submissionUuid: sub.submissionUuid,
-      poemIndex: sub.poemIndex,
-      totalPoemsInSubmission: sub.totalPoemsInSubmission
+      status: sub.status || 'Pending',
+      scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
     }));
     
-    res.json({
-      success: true,
-      submissions: adminSubmissions,
-      total: adminSubmissions.length
-    });
+    res.json(transformedSubmissions);
   } catch (error) {
     console.error('❌ Error getting all submissions:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to get submissions' 
-    });
+    res.status(500).json({ error: 'Failed to get submissions' });
   }
 }));
 
-// Get submission statistics
-router.get('/api/admin/stats', asyncHandler(async (req: any, res: any) => {
-  console.log('📈 Admin: Getting submission statistics');
-  
+// Get submission count from Google Sheets
+router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
   try {
-    const allSubmissions = await storage.getAllSubmissions();
-    
-    // Calculate statistics
-    const totalSubmissions = allSubmissions.length;
-    const totalRevenue = allSubmissions.reduce((sum, sub) => 
-      sum + parseFloat(sub.price?.toString() || '0'), 0
-    );
-    
-    const tierStats = allSubmissions.reduce((acc, sub) => {
-      acc[sub.tier] = (acc[sub.tier] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const paymentStats = allSubmissions.reduce((acc, sub) => {
-      const method = sub.paymentMethod || 'unknown';
-      acc[method] = (acc[method] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    // Current month stats
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const currentMonthSubmissions = allSubmissions.filter(sub => 
-      sub.submittedAt && sub.submittedAt.toISOString().slice(0, 7) === currentMonth
-    );
-    
-    const stats = {
-      totalSubmissions,
-      totalRevenue,
-      currentMonthSubmissions: currentMonthSubmissions.length,
-      currentMonthRevenue: currentMonthSubmissions.reduce((sum, sub) => 
-        sum + parseFloat(sub.price?.toString() || '0'), 0
-      ),
-      tierDistribution: tierStats,
-      paymentMethodDistribution: paymentStats,
-      averageSubmissionValue: totalSubmissions > 0 ? totalRevenue / totalSubmissions : 0
-    };
-    
-    console.log('✅ Statistics calculated:', stats);
-    res.json({
-      success: true,
-      stats
-    });
+    const count = await getSubmissionCountFromSheet();
+    res.json({ count });
   } catch (error) {
-    console.error('❌ Error calculating statistics:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to calculate statistics' 
-    });
+    console.error('❌ Error getting submission count:', error);
+    res.status(500).json({ error: 'Failed to get submission count' });
   }
 }));
 
-// Contact form endpoint
+// Contact form submission
 router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
-  console.log('📞 Contact form submission received');
-  const { name, email, subject, message } = req.body;
-  
-  // Validate required fields
+  const { name, email, message } = req.body;
+
   if (!name || !email || !message) {
     return res.status(400).json({
       success: false,
-      error: 'Missing required fields: name, email, message'
+      error: 'All fields are required'
     });
   }
-  
+
   try {
     // Add to Google Sheets
-    await addContactToSheet({
-      name,
-      email,
-      subject: subject || 'No subject',
-      message,
-      submittedAt: new Date().toISOString()
-    });
-    
-    console.log('✅ Contact form added to sheets');
+    await addContactToSheet({ name, email, message });
     
     res.json({
       success: true,
-      message: 'Your message has been sent successfully. We will get back to you soon!'
+      message: 'Contact form submitted successfully'
     });
   } catch (error) {
-    console.error('❌ Contact form error:', error);
+    console.error('❌ Contact form submission error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to send message. Please try again.'
+      error: 'Failed to submit contact form'
     });
   }
 }));
 
-// Get submission count (for display purposes)
-router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
-  try {
-    // Try to get from Google Sheets first
-    let count = 0;
-    try {
-      count = await getSubmissionCountFromSheet();
-    } catch (sheetError) {
-      console.warn('⚠️ Could not get count from sheets, using database');
-      const allSubmissions = await storage.getAllSubmissions();
-      count = allSubmissions.length;
-    }
-    
-    res.json({
-      success: true,
-      count: count
-    });
-  } catch (error) {
-    console.error('❌ Error getting submission count:', error);
-    res.json({
-      success: true,
-      count: 0 // Fallback to 0 if everything fails
-    });
-  }
-}));
-
-// Legacy submissions endpoint (backward compatibility)
-router.get('/api/submissions', (req, res) => {
-  res.json({
-    success: true,
-    submissions: submissions,
-    total: submissions.length
-  });
-});
-
-// Health check endpoint
-router.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    env: process.env.NODE_ENV || 'development'
-  });
+// Get in-memory submissions (legacy)
+router.get('/api/legacy-submissions', (req, res) => {
+  res.json(submissions);
 });
 
 // Final error handler
