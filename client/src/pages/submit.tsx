@@ -91,12 +91,13 @@ export default function SubmitPage() {
     email: user?.email || "",
     phone: "",
     age: "",
+    poemTitle: "",
     termsAccepted: false,
   });
-  const [poems, setPoems] = useState([
-    { title: "", file: null as File | null }
-  ]);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [files, setFiles] = useState({
+    poem: null as File | null,
+    photo: null as File | null,
+  });
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
@@ -248,14 +249,6 @@ export default function SubmitPage() {
     setCouponDiscount(0);
     setCouponCode("");
     setCouponError("");
-    
-    // Initialize poems array based on tier
-    const poemCount = tier.id === "free" ? 1 : 
-                     tier.id === "single" ? 1 :
-                     tier.id === "double" ? 2 : 5;
-    
-    setPoems(Array(poemCount).fill(null).map(() => ({ title: "", file: null })));
-    
     setCurrentStep("form");
   };
 
@@ -320,14 +313,8 @@ export default function SubmitPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handlePoemChange = (index: number, field: 'title' | 'file', value: string | File | null) => {
-    setPoems(prev => prev.map((poem, i) => 
-      i === index ? { ...poem, [field]: value } : poem
-    ));
-  };
-
-  const handlePhotoChange = (file: File | null) => {
-    setPhotoFile(file);
+  const handleFileChange = (fileType: 'poem' | 'photo', file: File | null) => {
+    setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
   const handlePaymentSuccess = (data: any) => {
@@ -394,14 +381,8 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email) {
+      if (!formData.firstName || !formData.email || !formData.poemTitle) {
         throw new Error('Please fill in all required fields');
-      }
-
-      // Validate all poems have titles
-      const emptyTitles = poems.some(poem => !poem.title.trim());
-      if (emptyTitles) {
-        throw new Error('Please provide titles for all poems');
       }
 
       if (!formData.termsAccepted) {
@@ -424,17 +405,11 @@ export default function SubmitPage() {
       submitFormData.append('email', formData.email);
       submitFormData.append('phone', formData.phone || '');
       submitFormData.append('age', formData.age || '');
+      submitFormData.append('poemTitle', formData.poemTitle);
       submitFormData.append('tier', selectedTier?.id || 'free');
       submitFormData.append('amount', discountedAmount.toString());
       submitFormData.append('originalAmount', selectedTier?.price?.toString() || '0');
       submitFormData.append('userUid', user?.uid || '');
-      submitFormData.append('submissionId', crypto.randomUUID()); // Unique submission ID
-      
-      // Add poem count and titles
-      submitFormData.append('poemCount', poems.length.toString());
-      poems.forEach((poem, index) => {
-        submitFormData.append(`poemTitle_${index}`, poem.title);
-      });
       
       // Add coupon information if applied
       if (couponApplied) {
@@ -482,18 +457,14 @@ export default function SubmitPage() {
         throw new Error('Payment information is missing for paid tier');
       }
 
-      // Add poem files
-      poems.forEach((poem, index) => {
-        if (poem.file) {
-          submitFormData.append(`poem_${index}`, poem.file);
-          console.log(`Added poem file ${index}:`, poem.file.name);
-        }
-      });
-
-      // Add photo file
-      if (photoFile) {
-        submitFormData.append('photo', photoFile);
-        console.log('Added photo file:', photoFile.name);
+      // Add files
+      if (files.poem) {
+        submitFormData.append('poem', files.poem);
+        console.log('Added poem file:', files.poem.name);
+      }
+      if (files.photo) {
+        submitFormData.append('photo', files.photo);
+        console.log('Added photo file:', files.photo.name);
       }
 
       console.log('📤 Sending submission to server...');
@@ -635,205 +606,244 @@ export default function SubmitPage() {
             <CardContent className="p-6">
               <h2 className="text-2xl font-semibold mb-6">Poem Submission Details</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Personal Information</h3>
-                  
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={formData.firstName}
-                      onChange={(e) => handleFormData("firstName", e.target.value)}
-                      placeholder="Enter your first name"
-                      required
-                    />
-                  </div>
+              {/* Personal Information Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium mb-4">Personal Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => handleFormData("firstName", e.target.value)}
+                        placeholder="Enter your first name"
+                        required
+                      />
+                    </div>
 
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={formData.lastName}
-                      onChange={(e) => handleFormData("lastName", e.target.value)}
-                      placeholder="Enter your last name"
-                    />
-                  </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => handleFormData("lastName", e.target.value)}
+                        placeholder="Enter your last name"
+                      />
+                    </div>
 
-                  <div>
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleFormData("email", e.target.value)}
-                      placeholder="Enter your email"
-                      required
-                    />
-                  </div>
+                    <div>
+                      <Label htmlFor="email">Email Address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleFormData("email", e.target.value)}
+                        placeholder="Enter your email"
+                        required
+                      />
+                    </div>
 
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => handleFormData("phone", e.target.value)}
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => handleFormData("phone", e.target.value)}
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
 
-                  <div>
-                    <Label htmlFor="age">Age</Label>
-                    <Input
-                      id="age"
-                      type="number"
-                      value={formData.age}
-                      onChange={(e) => handleFormData("age", e.target.value)}
-                      placeholder="Enter your age"
-                    />
+                    <div>
+                      <Label htmlFor="age">Age</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        value={formData.age}
+                        onChange={(e) => handleFormData("age", e.target.value)}
+                        placeholder="Enter your age"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Poem Details</h3>
+                {/* Dynamic Poem Sections */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium mb-4">Poem Details</h3>
                   
-                  {poems.map((poem, index) => (
-                    <div key={index} className="space-y-4 p-4 border rounded-lg bg-gray-50">
-                      <h4 className="font-medium">
-                        Poem {index + 1} {poems.length > 1 && <span className="text-gray-500">of {poems.length}</span>}
-                      </h4>
-                      
+                  {/* For single poem or free tier */}
+                  {(selectedTier?.id === 'free' || selectedTier?.id === 'single') && (
+                    <div className="space-y-4">
                       <div>
-                        <Label htmlFor={`poemTitle_${index}`}>Poem Title *</Label>
+                        <Label htmlFor="poemTitle">Poem Title *</Label>
                         <Input
-                          id={`poemTitle_${index}`}
-                          value={poem.title}
-                          onChange={(e) => handlePoemChange(index, "title", e.target.value)}
-                          placeholder={`Enter title for poem ${index + 1}`}
+                          id="poemTitle"
+                          value={formData.poemTitle}
+                          onChange={(e) => handleFormData("poemTitle", e.target.value)}
+                          placeholder="Enter your poem title"
                           required
                         />
                       </div>
 
                       <div>
-                        <Label htmlFor={`poemFile_${index}`}>Upload Poem (PDF, DOC, DOCX)</Label>
+                        <Label htmlFor="poemFile">Upload Poem (PDF, DOC, DOCX)</Label>
                         <div className="mt-2">
                           <input
+                            ref={poemFileRef}
                             type="file"
                             accept=".pdf,.doc,.docx"
-                            onChange={(e) => handlePoemChange(index, "file", e.target.files?.[0] || null)}
+                            onChange={(e) => handleFileChange("poem", e.target.files?.[0] || null)}
                             className="hidden"
-                            id={`poemFile_${index}`}
                           />
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => document.getElementById(`poemFile_${index}`)?.click()}
+                            onClick={() => poemFileRef.current?.click()}
                             className="w-full"
                           >
                             <Upload className="w-4 h-4 mr-2" />
-                            {poem.file ? poem.file.name : `Choose File for Poem ${index + 1}`}
+                            {files.poem ? files.poem.name : "Choose File"}
                           </Button>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )}
 
+                  {/* For multiple poems - better grid layout */}
+                  {(selectedTier?.id === 'double' || selectedTier?.id === 'bulk') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {Array.from({ length: selectedTier.id === 'double' ? 2 : 5 }, (_, index) => (
+                        <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <h4 className="font-medium text-green-600">Poem {index + 1} of {selectedTier.id === 'double' ? 2 : 5}</h4>
+                          
+                          <div>
+                            <Label htmlFor={`poemTitle${index + 1}`}>Poem Title *</Label>
+                            <Input
+                              id={`poemTitle${index + 1}`}
+                              value={index === 0 ? formData.poemTitle : ''}
+                              onChange={(e) => index === 0 ? handleFormData("poemTitle", e.target.value) : null}
+                              placeholder={`Enter title for poem ${index + 1}`}
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor={`poemFile${index + 1}`}>Upload Poem (PDF, DOC, DOCX)</Label>
+                            <div className="mt-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => poemFileRef.current?.click()}
+                                className="w-full text-sm"
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Choose File for Poem {index + 1}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Photo Upload Section */}
+                <div className="mb-6">
                   <div>
                     <Label htmlFor="photoFile">Upload Your Photo (JPG, PNG)</Label>
                     <div className="mt-2">
                       <input
+                        ref={photoFileRef}
                         type="file"
                         accept=".jpg,.jpeg,.png"
-                        onChange={(e) => handlePhotoChange(e.target.files?.[0] || null)}
+                        onChange={(e) => handleFileChange("photo", e.target.files?.[0] || null)}
                         className="hidden"
-                        id="photoFile"
                       />
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => document.getElementById("photoFile")?.click()}
+                        onClick={() => photoFileRef.current?.click()}
                         className="w-full"
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        {photoFile ? photoFile.name : "Choose File"}
+                        {files.photo ? files.photo.name : "Choose File"}
                       </Button>
                     </div>
                   </div>
+                </div>
 
-                  {/* Coupon Code Section - Only show for paid tiers */}
-                  {selectedTier && selectedTier.price > 0 && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h4 className="font-medium mb-3 flex items-center">
-                        <Gift className="w-4 h-4 mr-2 text-blue-600" />
-                        Have a Coupon Code?
-                      </h4>
-                      
-                      {!couponApplied ? (
-                        <div className="flex gap-2">
-                          <Input
-                            value={couponCode}
-                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                            placeholder="Enter coupon code"
-                            className="flex-1"
-                          />
+                {/* Coupon Code Section - Only show for paid tiers */}
+                {selectedTier && selectedTier.price > 0 && (
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+                    <h4 className="font-medium mb-3 flex items-center">
+                      <Gift className="w-4 h-4 mr-2 text-blue-600" />
+                      Have a Coupon Code?
+                    </h4>
+                    
+                    {!couponApplied ? (
+                      <div className="flex gap-2">
+                        <Input
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          placeholder="Enter coupon code"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          onClick={applyCoupon}
+                          disabled={isApplyingCoupon || !couponCode.trim()}
+                          variant="outline"
+                        >
+                          {isApplyingCoupon ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Apply"
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-2 bg-green-100 rounded border border-green-300">
+                          <span className="text-green-700 font-medium">
+                            ✅ Coupon "{couponCode}" applied successfully!
+                          </span>
                           <Button
                             type="button"
-                            onClick={applyCoupon}
-                            disabled={isApplyingCoupon || !couponCode.trim()}
-                            variant="outline"
+                            variant="ghost"
+                            size="sm"
+                            onClick={removeCoupon}
+                            className="text-red-600 hover:text-red-700"
                           >
-                            {isApplyingCoupon ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              "Apply"
-                            )}
+                            Remove
                           </Button>
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between p-2 bg-green-100 rounded border border-green-300">
-                            <span className="text-green-700 font-medium">
-                              ✅ Coupon "{couponCode}" applied successfully!
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={removeCoupon}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                          {discountedAmount === 0 ? (
-                            <p className="text-green-600 text-sm font-medium">
-                              🎉 You can now submit for free!
-                            </p>
-                          ) : (
-                            <p className="text-blue-600 text-sm">
-                              New amount: ₹{discountedAmount} (was ₹{selectedTier.price})
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      
-                      {couponError && (
-                        <p className="text-red-600 text-sm mt-2">{couponError}</p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Submission Guidelines</h4>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li>• Poems must be original work</li>
-                      <li>• Poems of any length are welcome</li>
-                      <li>• File size should not exceed 5MB</li>
-                      <li>• Photo should be clear and recent</li>
-                    </ul>
+                        {discountedAmount === 0 ? (
+                          <p className="text-green-600 text-sm font-medium">
+                            🎉 You can now submit for free!
+                          </p>
+                        ) : (
+                          <p className="text-blue-600 text-sm">
+                            New amount: ₹{discountedAmount} (was ₹{selectedTier.price})
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {couponError && (
+                      <p className="text-red-600 text-sm mt-2">{couponError}</p>
+                    )}
                   </div>
+                )}
+
+                {/* Submission Guidelines */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-medium mb-2">Submission Guidelines</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Poems must be original work</li>
+                    <li>• Poems of any length are welcome</li>
+                    <li>• File size should not exceed 5MB</li>
+                    <li>• Photo should be clear and recent</li>
+                  </ul>
                 </div>
-              </div>
 
               <div className="mt-6 flex items-center space-x-2">
                 <Checkbox
@@ -1054,10 +1064,10 @@ export default function SubmitPage() {
                 email: user?.email || "",
                 phone: "",
                 age: "",
+                poemTitle: "",
                 termsAccepted: false,
               });
-              setPoems([{ title: "", file: null }]);
-              setPhotoFile(null);
+              setFiles({ poem: null, photo: null });
             }}
             className="w-full bg-green-600 hover:bg-green-700"
           >
