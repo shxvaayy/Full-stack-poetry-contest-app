@@ -10,7 +10,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow()
 });
 
-// Submissions table - Updated with all required columns
+// ✅ UPDATED: Submissions table - Enhanced for multiple poems
 export const submissions = pgTable('submissions', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id),
@@ -26,7 +26,11 @@ export const submissions = pgTable('submissions', {
   photoUrl: text('photo_url'),
   paymentId: varchar('payment_id', { length: 255 }),
   paymentMethod: varchar('payment_method', { length: 50 }),
-  submissionUuid: varchar('submission_uuid', { length: 255 }).unique(),
+  // ✅ NEW: Fields for multiple poems support
+  submissionUuid: varchar('submission_uuid', { length: 255 }).notNull(), // Groups related poems
+  poemIndex: integer('poem_index').default(0).notNull(), // 0, 1, 2, 3, 4 for poem position
+  totalPoemsInSubmission: integer('total_poems').default(1).notNull(), // Total poems in this submission
+  // ✅ EXISTING: Keep all current fields
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   isWinner: boolean('is_winner').default(false),
   winnerPosition: integer('winner_position'),
@@ -42,7 +46,7 @@ export const submissions = pgTable('submissions', {
   }>(),
 });
 
-// Contacts table
+// Contacts table (no changes needed)
 export const contacts = pgTable('contacts', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
@@ -53,10 +57,62 @@ export const contacts = pgTable('contacts', {
   submittedAt: timestamp('submitted_at').defaultNow()
 });
 
-// Export types
+// ✅ UPDATED: Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Submission = typeof submissions.$inferSelect;
 export type InsertSubmission = typeof submissions.$inferInsert;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
+
+// ✅ NEW: Helper type for multiple poems submission
+export interface MultiPoemSubmissionData {
+  // Personal info (same for all poems)
+  firstName: string;
+  lastName?: string;
+  email: string;
+  phone?: string;
+  age?: string;
+  tier: string;
+  price: number;
+  photoUrl?: string;
+  paymentId?: string;
+  paymentMethod?: string;
+  userId?: number;
+  submissionUuid: string;
+  
+  // Poem-specific data (different for each poem)
+  poems: Array<{
+    title: string;
+    fileUrl: string;
+    index: number;
+  }>;
+}
+
+// ✅ NEW: Validation helpers
+export const VALID_TIERS = ['free', 'single', 'double', 'bulk'] as const;
+export type ValidTier = typeof VALID_TIERS[number];
+
+export const TIER_POEM_COUNTS: Record<ValidTier, number> = {
+  'free': 1,
+  'single': 1,
+  'double': 2,
+  'bulk': 5
+} as const;
+
+export const TIER_PRICES: Record<ValidTier, number> = {
+  'free': 0,
+  'single': 50,
+  'double': 100,
+  'bulk': 480
+} as const;
+
+// ✅ NEW: Helper function to validate tier and poem count
+export function validateTierPoemCount(tier: string, poemCount: number): boolean {
+  if (!VALID_TIERS.includes(tier as ValidTier)) {
+    return false;
+  }
+  
+  const expectedCount = TIER_POEM_COUNTS[tier as ValidTier];
+  return poemCount === expectedCount;
+}

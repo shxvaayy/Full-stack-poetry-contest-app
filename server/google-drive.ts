@@ -1,4 +1,3 @@
-
 import { google } from 'googleapis';
 import { Readable } from 'stream';
 
@@ -131,16 +130,55 @@ export async function uploadFileToDrive(
   }
 }
 
-// Upload poem file (PDF/DOC/DOCX)
-export async function uploadPoemFile(file: Buffer, email: string, originalFileName: string): Promise<string> {
+// ✅ FIXED: Upload poem file with proper naming for multiple poems
+export async function uploadPoemFile(
+  file: Buffer, 
+  email: string, 
+  originalFileName: string, 
+  poemIndex?: number,
+  poemTitle?: string
+): Promise<string> {
   const fileExtension = originalFileName.split('.').pop() || 'pdf';
-  const fileName = `${email}_poem.${fileExtension}`;
+  
+  // ✅ NEW: Create unique filename for each poem
+  let fileName: string;
+  if (poemIndex !== undefined && poemIndex > 0) {
+    // For multiple poems: email_poem_1_title.pdf, email_poem_2_title.pdf, etc.
+    const sanitizedTitle = poemTitle ? 
+      poemTitle.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 
+      'untitled';
+    fileName = `${email}_poem_${poemIndex + 1}_${sanitizedTitle}.${fileExtension}`;
+  } else {
+    // For single poem: email_poem.pdf
+    fileName = `${email}_poem.${fileExtension}`;
+  }
+  
   const mimeType = getMimeType(fileExtension);
   
+  console.log(`📤 Uploading poem file: ${fileName}`);
   return uploadFileToDrive(file, fileName, mimeType, 'Poems');
 }
 
-// Upload photo file (JPG/PNG)
+// ✅ FIXED: Upload multiple poem files with proper naming
+export async function uploadMultiplePoemFiles(
+  files: Buffer[], 
+  email: string, 
+  originalFileNames: string[],
+  poemTitles: string[]
+): Promise<string[]> {
+  const uploadPromises = files.map(async (file, index) => {
+    const originalFileName = originalFileNames[index] || `poem_${index + 1}.pdf`;
+    const poemTitle = poemTitles[index] || `poem_${index + 1}`;
+    
+    return uploadPoemFile(file, email, originalFileName, index, poemTitle);
+  });
+  
+  const results = await Promise.all(uploadPromises);
+  console.log(`✅ Uploaded ${results.length} poem files for ${email}`);
+  return results;
+}
+
+// Upload photo file (JPG/PNG) - Keep existing functionality
 export async function uploadPhotoFile(file: Buffer, email: string, originalFileName: string): Promise<string> {
   const fileExtension = originalFileName.split('.').pop() || 'jpg';
   const fileName = `${email}_photo.${fileExtension}`;
