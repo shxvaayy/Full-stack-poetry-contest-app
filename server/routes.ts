@@ -31,17 +31,36 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
   });
 };
 
-// Configure multer for multiple file uploads
+// FIXED: Configure multer with proper field names and limits
 const upload = multer({ 
   dest: 'uploads/',
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit per file
-    files: 10 // Maximum 10 files (5 poems + 1 photo + extras)
+    files: 15 // Maximum 15 files total
+  },
+  fileFilter: (req, file, cb) => {
+    console.log('📁 Multer receiving file:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype
+    });
+    
+    // Accept all file types but log them
+    cb(null, true);
   }
 });
 
-// In-memory storage for submissions (legacy compatibility)
-const submissions: any[] = [];
+// FIXED: Define all possible field configurations
+const uploadFields = upload.fields([
+  { name: 'poemFile', maxCount: 1 },
+  { name: 'photoFile', maxCount: 1 },
+  { name: 'poems', maxCount: 10 }, // This was missing and causing the error!
+  { name: 'photo', maxCount: 1 },
+  { name: 'files', maxCount: 15 }, // Generic files field
+]);
+
+// Fallback: Accept any field name
+const uploadAny = upload.any();
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -794,7 +813,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
 // ===== SUBMISSION ENDPOINTS =====
 
 // Single poem submission
-router.post('/api/submit-poem', upload.fields([
+router.post('/api/submit-poem', uploadAny([
   { name: 'poemFile', maxCount: 1 },
   { name: 'photoFile', maxCount: 1 }
 ]), asyncHandler(async (req: any, res: any) => {
