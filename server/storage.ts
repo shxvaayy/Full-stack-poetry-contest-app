@@ -1,6 +1,7 @@
+// storage.ts
 import { db } from './db.js';
 import { users, submissions, contacts, type User, type InsertUser, type Submission, type InsertSubmission, type Contact, type InsertContact } from './schema.js';
-import { eq, and, set } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -16,13 +17,7 @@ export interface IStorage {
     score: number;
     type: string;
     status: string;
-    scoreBreakdown: {
-      originality: number;
-      emotion: number;
-      structure: number;
-      language: number;
-      theme: number;
-    };
+    scoreBreakdown: any;
   }): Promise<Submission | undefined>;
 }
 
@@ -74,21 +69,37 @@ export class PostgreSQLStorage implements IStorage {
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
     try {
-      // The provided change snippet is incomplete and doesn't include the insertSubmission object details.
-      // Assuming the issue is within this function and relates to column mapping, I'll apply the fix here based on the intention.
-      const submissionToInsert = {
-        ...insertSubmission,
-        poem_index: insertSubmission.poemIndex || 0,
-        total_poems_in_submission: insertSubmission.totalPoemsInSubmission || 1,
-      };
-      delete submissionToInsert.poemIndex;
-      delete submissionToInsert.totalPoemsInSubmission;
+      console.log('📝 Creating submission with data:', {
+        title: insertSubmission.poemTitle,
+        tier: insertSubmission.tier,
+        index: insertSubmission.poemIndex,
+        total: insertSubmission.totalPoemsInSubmission,
+        uuid: insertSubmission.submissionUuid,
+        email: insertSubmission.email
+      });
 
-      const [submission] = await db.insert(submissions).values(submissionToInsert).returning();
-      console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}"`);
+      // Ensure all required fields have default values
+      const submissionData = {
+        ...insertSubmission,
+        submissionUuid: insertSubmission.submissionUuid || `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        poemIndex: insertSubmission.poemIndex ?? 0,
+        totalPoemsInSubmission: insertSubmission.totalPoemsInSubmission ?? 1,
+        status: insertSubmission.status || 'pending',
+        type: insertSubmission.type || 'Human'
+      };
+
+      const [submission] = await db.insert(submissions).values(submissionData).returning();
+      console.log(`✅ Created submission ID ${submission.id}: "${submission.poemTitle}" (${submission.tier} tier)`);
       return submission;
     } catch (error) {
       console.error('❌ Error creating submission:', error);
+      console.error('❌ Failed submission data:', {
+        title: insertSubmission.poemTitle,
+        tier: insertSubmission.tier,
+        email: insertSubmission.email,
+        uuid: insertSubmission.submissionUuid,
+        index: insertSubmission.poemIndex
+      });
       throw error;
     }
   }
@@ -107,6 +118,7 @@ export class PostgreSQLStorage implements IStorage {
   async getWinningSubmissions(): Promise<Submission[]> {
     try {
       const winners = await db.select().from(submissions).where(eq(submissions.isWinner, true));
+      console.log(`🏆 Found ${winners.length} winning submissions`);
       return winners;
     } catch (error) {
       console.error('❌ Error getting winners:', error);
@@ -140,13 +152,7 @@ export class PostgreSQLStorage implements IStorage {
     score: number;
     type: string;
     status: string;
-    scoreBreakdown: {
-      originality: number;
-      emotion: number;
-      structure: number;
-      language: number;
-      theme: number;
-    };
+    scoreBreakdown: any;
   }): Promise<Submission | undefined> {
     try {
       const [submission] = await db.update(submissions)
@@ -154,66 +160,15 @@ export class PostgreSQLStorage implements IStorage {
           score: evaluation.score,
           type: evaluation.type,
           status: evaluation.status,
-          scoreBreakdown: evaluation.scoreBreakdown,
+          scoreBreakdown: JSON.stringify(evaluation.scoreBreakdown)
         })
         .where(eq(submissions.id, id))
         .returning();
-
-      if (!submission) {
-        console.log(`Submission with id ${id} not found`);
-        return undefined;
-      }
-
-      console.log(`✅ Updated submission evaluation for submission ID ${id}`);
+      
+      console.log(`✅ Updated submission ${id} evaluation`);
       return submission;
     } catch (error) {
       console.error('❌ Error updating submission evaluation:', error);
-      return undefined;
-    }
-  }
-
-  async updateSubmissionWinner(id: number, isWinner: boolean, position?: number): Promise<Submission | undefined> {
-    try {
-      const [submission] = await db.update(submissions)
-        .set({
-          isWinner: isWinner,
-          winnerPosition: position || null,
-        })
-        .where(eq(submissions.id, id))
-        .returning();
-
-      if (!submission) {
-        console.log(`Submission with id ${id} not found`);
-        return undefined;
-      }
-
-      console.log(`✅ Updated winner status for submission ID ${id}`);
-      return submission;
-    } catch (error) {
-      console.error('❌ Error updating winner status:', error);
-      return undefined;
-    }
-  }
-
-  async updateSubmissionStatus(id: number, status: string): Promise<Submission | undefined> {
-    try {
-      const [submission] = await db.update(submissions)
-        .set({
-          status: status,
-          processedAt: new Date(),
-        })
-        .where(eq(submissions.id, id))
-        .returning();
-
-      if (!submission) {
-        console.log(`Submission with id ${id} not found`);
-        return undefined;
-      }
-
-      console.log(`✅ Updated submission status for submission ID ${id} to ${status}`);
-      return submission;
-    } catch (error) {
-      console.error('❌ Error updating submission status:', error);
       return undefined;
     }
   }

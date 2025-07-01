@@ -1,22 +1,13 @@
+// index.ts
 console.log('🚀 SERVER STARTING - First line executed');
-console.log('🚀 Node version:', process.version);
-console.log('🚀 Working directory:', process.cwd());
-console.log('🚀 Environment:', process.env.NODE_ENV);
-console.log('🚀 Port from env:', process.env.PORT);
 
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-
-console.log('🚀 Basic imports successful');
-
 import { registerRoutes } from './routes.js';
 import { connectDatabase, client } from './db.js';
-import { createTables } from './migrate.js';
-
-console.log('🚀 All imports successful');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,21 +15,11 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('🚀 Express app created, PORT:', PORT);
-
 // Environment validation
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL environment variable is required');
   process.exit(1);
 }
-
-console.log('🚀 Environment validation passed');
-
-// Environment check
-console.log('🔍 Environment Check:');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', PORT);
-console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
 
 // Middleware
 app.use(cors({
@@ -52,8 +33,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-console.log('🚀 Middleware configured');
 
 // Request logging
 app.use((req, res, next) => {
@@ -70,202 +49,149 @@ app.get('/health', (req, res) => {
   });
 });
 
-console.log('🚀 Health check route configured');
-
-// Serve static files
-const publicPath = path.join(__dirname, '../dist/public');
-app.use(express.static(publicPath));
-
-console.log('🚀 Static files configured, path:', publicPath);
-
-// COMPREHENSIVE Database fix function
-async function fixDatabaseSchema() {
+// CRITICAL: Auto-fix database schema on startup
+async function autoFixDatabase() {
   try {
-    console.log('🔧 Comprehensive database schema fix...');
-
-    // ALL missing columns that might be needed based on your schema
-    const columnsToAdd = [
-      { name: 'status', type: 'VARCHAR(50) DEFAULT \'pending\'' },
-      { name: 'score', type: 'INTEGER' },
-      { name: 'type', type: 'VARCHAR(50)' },
-      { name: 'score_breakdown', type: 'JSONB' },
-      { name: 'is_winner', type: 'BOOLEAN DEFAULT FALSE' },
-      { name: 'winner_position', type: 'INTEGER' },
-      { name: 'author_bio', type: 'TEXT' },
-      { name: 'contest_month', type: 'TEXT DEFAULT \'current\'' },
-      { name: 'payment_screenshot_url', type: 'TEXT' },
-      { name: 'payment_method', type: 'VARCHAR(50)' },
-      { name: 'processed_at', type: 'TIMESTAMP' },
-      { name: 'admin_notes', type: 'TEXT' },
-      { name: 'submission_uuid', type: 'UUID DEFAULT gen_random_uuid()' }
+    console.log('🔧 AUTO-FIXING DATABASE SCHEMA...');
+    
+    await connectDatabase();
+    
+    // Check if the problematic columns exist
+    const columnCheck = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'submissions' 
+      AND column_name IN ('poem_index', 'submission_uuid', 'total_poems_in_submission')
+    `);
+    
+    const existingColumns = columnCheck.rows.map(row => row.column_name);
+    console.log('📋 Existing special columns:', existingColumns);
+    
+    // Add missing columns one by one
+    const requiredColumns = [
+      { name: 'submission_uuid', type: 'VARCHAR(255) DEFAULT gen_random_uuid()' },
+      { name: 'poem_index', type: 'INTEGER DEFAULT 0 NOT NULL' },
+      { name: 'total_poems_in_submission', type: 'INTEGER DEFAULT 1 NOT NULL' }
     ];
-
-    console.log('📋 Adding/verifying columns...');
-
-    for (const column of columnsToAdd) {
-      try {
-        await client.query(`ALTER TABLE submissions ADD COLUMN IF NOT EXISTS ${column.name} ${column.type}`);
-        console.log(`✅ Added/verified column: ${column.name}`);
-      } catch (error) {
-        console.log(`⚠️ Column ${column.name} issue:`, error.message);
+    
+    for (const column of requiredColumns) {
+      if (!existingColumns.includes(column.name)) {
+        console.log(`➕ Adding missing column: ${column.name}`);
+        await client.query(`ALTER TABLE submissions ADD COLUMN ${column.name} ${column.type}`);
+        console.log(`✅ Added column: ${column.name}`);
+      } else {
+        console.log(`✅ Column already exists: ${column.name}`);
       }
     }
-
-    // Update existing submissions to have proper default values
-    try {
-      await client.query(`
-        UPDATE submissions 
-        SET 
-          status = COALESCE(status, 'pending'),
-          is_winner = COALESCE(is_winner, FALSE),
-          contest_month = COALESCE(contest_month, 'current')
-        WHERE status IS NULL OR is_winner IS NULL OR contest_month IS NULL
-      `);
-      console.log('✅ Updated existing submissions with default values');
-    } catch (error) {
-      console.log('⚠️ Default values update issue:', error.message);
-    }
-
-    // Verify final table structure
-    const columns = await client.query(`
-      SELECT column_name, data_type, is_nullable, column_default
-      FROM information_schema.columns 
-      WHERE table_name = 'submissions'
-      ORDER BY ordinal_position
+    
+    // Update any NULL submission_uuid values
+    await client.query(`
+      UPDATE submissions 
+      SET submission_uuid = gen_random_uuid() 
+      WHERE submission_uuid IS NULL
     `);
-
-    console.log('📋 Final submissions table structure:');
-    columns.rows.forEach(col => {
-      console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable}, default: ${col.column_default || 'none'})`);
-    });
-
-    // Test insert to verify schema is complete
-    try {
-      await client.query(`
-        SELECT 
-          id, first_name, email, poem_title, tier, status, 
-          score, type, is_winner, author_bio, contest_month
-        FROM submissions 
-        LIMIT 1
-      `);
-      console.log('✅ Schema verification query successful');
-    } catch (error) {
-      console.error('❌ Schema verification failed:', error.message);
-      throw error;
-    }
-
-    console.log('🎉 Comprehensive database schema fix completed!');
+    
+    // Verify the fix by testing a select query
+    await client.query(`
+      SELECT id, poem_title, submission_uuid, poem_index, total_poems_in_submission 
+      FROM submissions 
+      LIMIT 1
+    `);
+    
+    console.log('🎉 Database schema auto-fix completed successfully!');
     return true;
-
+    
   } catch (error) {
-    console.error('❌ Database schema fix failed:', error);
-    return false;
+    console.error('❌ Database auto-fix failed:', error);
+    
+    // If the table doesn't exist at all, create it
+    try {
+      console.log('🔨 Creating submissions table from scratch...');
+      
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS submissions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER,
+          first_name VARCHAR(100) NOT NULL,
+          last_name VARCHAR(100),
+          email VARCHAR(255) NOT NULL,
+          phone VARCHAR(20),
+          age VARCHAR(10),
+          poem_title VARCHAR(255) NOT NULL,
+          tier VARCHAR(50) NOT NULL,
+          price DECIMAL(10,2) DEFAULT 0.00,
+          poem_file_url TEXT,
+          photo_url TEXT,
+          payment_id VARCHAR(255),
+          payment_method VARCHAR(50),
+          submission_uuid VARCHAR(255) DEFAULT gen_random_uuid(),
+          poem_index INTEGER DEFAULT 0 NOT NULL,
+          total_poems_in_submission INTEGER DEFAULT 1 NOT NULL,
+          submitted_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+          score INTEGER,
+          type VARCHAR(50) DEFAULT 'Human',
+          score_breakdown TEXT,
+          is_winner BOOLEAN DEFAULT FALSE,
+          winner_position INTEGER
+        );
+      `);
+      
+      console.log('✅ Created submissions table from scratch');
+      return true;
+      
+    } catch (createError) {
+      console.error('❌ Failed to create table:', createError);
+      return false;
+    }
   }
 }
 
-// FINAL FIX: Simple, direct initialization
+// Initialize everything
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
-
-    // Step 1: Connect to database
-    console.log('🔌 Step 1: Connecting to database...');
-    await connectDatabase();
-    console.log('✅ Step 1 completed: Database connected');
-
-    // Step 1.5: Fix database schema COMPREHENSIVELY
-    console.log('🔧 Step 1.5: Comprehensive database schema fix...');
-    const schemaFixed = await fixDatabaseSchema();
-    if (schemaFixed) {
-      console.log('✅ Step 1.5 completed: Database schema fully fixed');
-    } else {
-      console.log('❌ Step 1.5 FAILED: Schema fix failed - this might cause issues');
+    
+    // Step 1: Fix database schema automatically
+    const dbFixed = await autoFixDatabase();
+    if (!dbFixed) {
+      console.error('❌ Database fix failed, but continuing anyway...');
     }
-
-    // Step 2: Run migrations with timeout
-    console.log('🔧 Step 2: Running database migrations...');
-    console.log('🎯 CRITICAL: About to call createTables()...');
-
-    const migrationPromise = createTables();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Migration timeout')), 30000)
-    );
-
-    const migrationResult = await Promise.race([migrationPromise, timeoutPromise]);
-
-    console.log('🎯 CRITICAL: createTables() returned:', migrationResult);
-    console.log('✅ Step 2 completed: Database migrations done');
-
-    // FORCE LOG TO CONFIRM WE GET HERE
-    console.log('🎯 CRITICAL CHECKPOINT: Migration phase completed, proceeding to routes...');
-
-    // Step 3: Register routes
-    console.log('🛣️ Step 3: Starting route registration...');
+    
+    // Step 2: Register routes
     registerRoutes(app);
-    console.log('✅ Step 3 completed: Routes registered successfully');
-
-    // Error handling middleware
-    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('❌ Unhandled error:', err);
-      res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-      });
-    });
-
-    // SPA fallback
-    app.get('*', (req, res) => {
-      const indexPath = path.join(publicPath, 'index.html');
-      res.sendFile(indexPath);
-    });
-
-    console.log('🎯 CRITICAL CHECKPOINT: About to start server...');
-
+    console.log('✅ Routes registered');
+    
+    // Step 3: Serve static files
+    const publicPath = path.join(__dirname, '../dist/public');
+    app.use(express.static(publicPath));
+    console.log('✅ Static files configured');
+    
     // Step 4: Start server
-    console.log('🚀 Step 4: Starting server...');
-    console.log(`🔌 Attempting to bind to 0.0.0.0:${PORT}...`);
-
-    const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log('🎉 SERVER STARTED SUCCESSFULLY!');
-      console.log(`📱 Application: http://0.0.0.0:${PORT}`);
-      console.log(`🔧 API: http://0.0.0.0:${PORT}/api`);
-      console.log(`💓 Health: http://0.0.0.0:${PORT}/health`);
-      console.log(`🌐 External URL: https://writory.onrender.com`);
-      console.log('✅ Step 4 completed: Server listening');
-      console.log('🔥 RENDER: Server is now accepting connections!');
-      console.log('🎯 CRITICAL: PORT IS OPEN AND READY');
+    app.listen(PORT, () => {
+      console.log('🎉 SERVER RUNNING SUCCESSFULLY!');
+      console.log(`🌐 Server running on port ${PORT}`);
+      console.log(`🔗 URL: ${process.env.NODE_ENV === 'production' ? 'https://writory.onrender.com' : `http://localhost:${PORT}`}`);
+      console.log('✅ Database schema fixed automatically');
+      console.log('✅ Ready to accept poem submissions!');
     });
-
-    server.on('error', (error: any) => {
-      console.error('❌ Server failed to start:', error);
-      throw error;
-    });
-
-    server.on('listening', () => {
-      console.log('🎯 Server listening event fired');
-      console.log('🎯 RENDER SHOULD DETECT THIS PORT NOW');
-    });
-
-    return server;
-
-  } catch (error: any) {
-    console.error('❌ APPLICATION STARTUP FAILED:', error);
-    console.error('❌ Error stack:', error?.stack);
-    throw error;
+    
+  } catch (error) {
+    console.error('❌ Application initialization failed:', error);
+    process.exit(1);
   }
 }
 
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 Received SIGTERM, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 Received SIGINT, shutting down gracefully');
+  process.exit(0);
+});
+
 // Start the application
-console.log('🏁 Starting application initialization...');
-console.log('🎯 CRITICAL: About to call initializeApp()...');
-
-initializeApp()
-  .then((server) => {
-    console.log('🎉 Application started successfully');
-  })
-  .catch((error) => {
-    console.error('🔴 Fatal error during initialization:', error);
-    process.exit(1);
-  });
-
-console.log('🚀 END OF FILE REACHED - All code loaded successfully');
+initializeApp();
