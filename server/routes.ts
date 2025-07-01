@@ -1089,4 +1089,7 @@ router.get('/api/submissions', async (req, res) => {
   }
 });
 
-export { router };
+export function registerRoutes(app: any) {
+  app.use(router);
+}
+export default router;
