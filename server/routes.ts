@@ -1168,6 +1168,146 @@ router.get('/api/legacy-submissions', (req, res) => {
   res.json(submissions);
 });
 
+// ===== ADMIN CSV UPLOAD ENDPOINT =====
+
+// Admin CSV upload endpoint
+router.post('/api/admin/upload-csv', safeUploadAny, asyncHandler(async (req: any, res: any) => {
+  console.log('📊 Admin CSV upload received');
+  
+  try {
+    // Find the CSV file in uploaded files
+    const csvFile = req.files?.find((f: any) => 
+      f.fieldname === 'csvFile' || 
+      f.originalname?.toLowerCase().endsWith('.csv') ||
+      f.mimetype === 'text/csv'
+    );
+
+    if (!csvFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'No CSV file found in upload'
+      });
+    }
+
+    console.log('📁 Processing CSV file:', csvFile.originalname);
+
+    // Read and parse CSV file
+    const csvContent = fs.readFileSync(csvFile.path, 'utf-8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'CSV file must contain at least a header and one data row'
+      });
+    }
+
+    // Parse header
+    const header = lines[0].split(',').map(h => h.trim());
+    console.log('📋 CSV Header:', header);
+
+    // Expected columns: email,poemtitle,score,type,originality,emotion,structure,language,theme,status
+    const requiredColumns = ['email', 'poemtitle', 'score', 'type', 'originality', 'emotion', 'structure', 'language', 'theme', 'status'];
+    const missingColumns = requiredColumns.filter(col => !header.includes(col));
+    
+    if (missingColumns.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Missing required columns: ${missingColumns.join(', ')}`
+      });
+    }
+
+    let processed = 0;
+    const errors = [];
+
+    // Process each data row
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      
+      if (values.length !== header.length) {
+        errors.push(`Row ${i + 1}: Column count mismatch`);
+        continue;
+      }
+
+      const rowData = {};
+      header.forEach((col, index) => {
+        rowData[col] = values[index];
+      });
+
+      try {
+        // Find submission by email and poem title
+        const submission = await storage.getSubmissionByEmailAndTitle(rowData.email, rowData.poemtitle);
+        
+        if (!submission) {
+          errors.push(`Row ${i + 1}: No submission found for ${rowData.email} - ${rowData.poemtitle}`);
+          continue;
+        }
+
+        // Prepare score breakdown
+        const scoreBreakdown = {
+          originality: parseInt(rowData.originality) || 0,
+          emotion: parseInt(rowData.emotion) || 0,
+          structure: parseInt(rowData.structure) || 0,
+          language: parseInt(rowData.language) || 0,
+          theme: parseInt(rowData.theme) || 0
+        };
+
+        // Update submission with evaluation data
+        await storage.updateSubmissionEvaluation(submission.id, {
+          score: parseInt(rowData.score) || 0,
+          type: rowData.type || 'Human',
+          status: rowData.status || 'Evaluated',
+          scoreBreakdown: JSON.stringify(scoreBreakdown),
+          isWinner: false, // Set based on your logic
+          winnerPosition: null
+        });
+
+        processed++;
+        console.log(`✅ Updated submission ${submission.id}: ${rowData.poemtitle}`);
+        
+      } catch (updateError) {
+        console.error(`❌ Error updating row ${i + 1}:`, updateError);
+        errors.push(`Row ${i + 1}: ${updateError.message}`);
+      }
+    }
+
+    // Clean up uploaded file
+    try {
+      fs.unlinkSync(csvFile.path);
+    } catch (err) {
+      console.error('Warning: Could not delete temp CSV file:', csvFile.path);
+    }
+
+    console.log(`🎉 CSV processing completed: ${processed} processed, ${errors.length} errors`);
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${processed} records`,
+      processed,
+      errors: errors.slice(0, 10) // Limit error list
+    });
+
+  } catch (error) {
+    console.error('❌ CSV upload error:', error);
+    
+    // Clean up files on error
+    if (req.files) {
+      req.files.forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'CSV processing failed: ' + error.message
+    });
+  }
+}));
+
 // Final error handler
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 Final error handler:', error);

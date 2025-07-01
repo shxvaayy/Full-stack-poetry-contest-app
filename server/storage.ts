@@ -168,6 +168,21 @@ export async function updateUser(uid: string, userData: any) {
   }
 }
 
+export async function getAllSubmissions() {
+  try {
+    console.log('🔍 Getting all submissions');
+    const result = await db.select()
+      .from(submissions)
+      .orderBy(desc(submissions.submittedAt));
+    
+    console.log(`✅ Found ${result.length} total submissions`);
+    return result;
+  } catch (error) {
+    console.error('❌ Error getting all submissions:', error);
+    throw error;
+  }
+}
+
 // Export all storage functions
 export const storage = {
   getUserByUid,
@@ -176,5 +191,6 @@ export const storage = {
   updateSubmissionEvaluation,
   createUser,
   createSubmission,
-  updateUser
+  updateUser,
+  getAllSubmissions
 };

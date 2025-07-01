@@ -246,11 +246,11 @@ export default function UserProfile() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-  <TabsTrigger value="overview">Overview</TabsTrigger>
-  <TabsTrigger value="submissions">My Submissions</TabsTrigger>
-  <TabsTrigger value="results">Results</TabsTrigger>
-</TabsList>
+              <TabsList className={`grid w-full ${hasAnnouncedResults ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+                {hasAnnouncedResults && <TabsTrigger value="results">Results</TabsTrigger>}
+              </TabsList>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">

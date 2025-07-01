@@ -516,9 +516,9 @@ export default function SubmitPage() {
 
     } catch (error: any) {
       console.error('❌ Form submission error:', error);
-      
+
       let errorMessage = error.message;
-      
+
       // Handle specific error types
       if (error.message.includes('<!DOCTYPE')) {
         errorMessage = 'Server error: Received HTML instead of JSON. Please try again or contact support.';
@@ -527,7 +527,7 @@ export default function SubmitPage() {
       } else if (error.message.includes('Not Found')) {
         errorMessage = 'API endpoint not found. Please contact support.';
       }
-      
+
       toast({
         title: "Submission Failed",
         description: errorMessage,
@@ -909,7 +909,7 @@ At Writory, every voice is gold.
                       disabled={isSubmitting || !isFormValid()}
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
-                      {isSubmitting ? (
+                      {isSubmitting ?```text
                         <>
                           <Loader2 className="w-4 h-4 animate-spin mr-2" />
                           Submitting...
@@ -1080,9 +1080,13 @@ At Writory, every voice is gold.
                 <Button onClick={() => window.location.href = '/'} className="flex-1">
                   Return Home
                 </Button>
-                <Button onClick={() => window.location.href = '/results'} variant="outline" className="flex-1">
-                  View Status
-                </Button>
+                <Button 
+                        variant="outline" 
+                        onClick={() => window.location.href = '/profile'}
+                        className="flex-1"
+                      >
+                        View Status
+                      </Button>
               </div>
             </CardContent>
           </Card>
