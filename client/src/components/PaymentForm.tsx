@@ -1,37 +1,32 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, Loader2, Info } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, CreditCard, QrCode, ArrowLeft } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface PaymentFormProps {
-  selectedTier: string;
   amount: number;
-  onPaymentSuccess: (paymentData: any) => void;
-  onPaymentError: (error: string) => void;
+  tier: string;
+  onSuccess: (data: any) => void;
+  onError: (error: string) => void;
+  onBack: () => void;
 }
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
-export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, onPaymentError }: PaymentFormProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
+const PaymentForm: React.FC<PaymentFormProps> = ({
+  amount,
+  tier,
+  onSuccess,
+  onError,
+  onBack
+}) => {
+  const { toast } = useToast();
+  const [isProcessingRazorpay, setIsProcessingRazorpay] = useState(false);
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [showQRPayment, setShowQRPayment] = useState(false);
 
-  // Convert INR to USD (approximate rate)
-  const usdAmount = (amount * 0.012).toFixed(2);
-
-  const loadRazorpayScript = () => {
+  // Load Razorpay script
+  const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
@@ -40,111 +35,116 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
     });
   };
 
+  // Handle Razorpay Payment
   const handleRazorpayPayment = async () => {
     try {
-      setIsProcessing(true);
-      setError(null);
+      setIsProcessingRazorpay(true);
 
+      // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay script');
       }
 
-      console.log('💳 Creating Razorpay order...');
-
-      const orderResponse = await fetch('/api/create-razorpay-order', {
+      // Create order
+      console.log('🔧 Creating Razorpay order for amount:', amount);
+      
+      const orderResponse = await fetch('/api/create-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           amount: amount,
-          tier: selectedTier,
-          metadata: {
-            tier: selectedTier,
-            amount: amount.toString()
-          }
+          currency: 'INR',
+          receipt: `receipt_${Date.now()}`
         }),
       });
 
       if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || 'Failed to create payment order');
+        const errorText = await orderResponse.text();
+        console.error('❌ Order creation failed:', errorText);
+        throw new Error(`Order creation failed: ${orderResponse.status}`);
       }
 
       const orderData = await orderResponse.json();
-      console.log('✅ Razorpay order created:', orderData);
+      console.log('✅ Order created:', orderData);
 
+      // Initialize Razorpay
       const options = {
-        key: orderData.key,
+        key: process.env.RAZORPAY_KEY_ID || 'rzp_live_YourKeyHere',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Writory Poetry Contest',
-        description: `Poetry Contest - ${selectedTier}`,
-        order_id: orderData.orderId,
-        handler: async function (response: any) {
-          console.log('💰 Razorpay payment successful:', response);
-          setIsProcessing(false);
+        description: `${tier} tier submission`,
+        order_id: orderData.id,
+        handler: async (response: any) => {
+          console.log('✅ Payment successful:', response);
           
-          // Immediately call success with Razorpay data
-          onPaymentSuccess({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            amount: amount,
-            currency: 'INR',
-            payment_status: 'captured',
-            payment_method: 'razorpay'
-          });
+          // Verify payment
+          try {
+            const verifyResponse = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            if (verifyResponse.ok) {
+              const paymentData = {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                payment_method: 'razorpay',
+                amount: amount,
+                payment_status: 'completed'
+              };
+              onSuccess(paymentData);
+            } else {
+              throw new Error('Payment verification failed');
+            }
+          } catch (error: any) {
+            console.error('❌ Payment verification error:', error);
+            onError('Payment verification failed');
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            console.log('Payment modal closed');
+            setIsProcessingRazorpay(false);
+          }
         },
         prefill: {
           name: '',
           email: '',
           contact: ''
         },
-        notes: {
-          tier: selectedTier
-        },
         theme: {
-          color: '#059669'
-        },
-        modal: {
-          ondismiss: function() {
-            console.log('💳 Razorpay payment cancelled by user');
-            setIsProcessing(false);
-          }
+          color: '#8B5CF6'
         }
       };
 
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
 
     } catch (error: any) {
       console.error('❌ Razorpay payment error:', error);
-      setError(error.message);
-      onPaymentError(error.message);
-      setIsProcessing(false);
+      onError(error.message || 'Payment failed');
+    } finally {
+      setIsProcessingRazorpay(false);
     }
   };
 
+  // Handle PayPal Payment
   const handlePayPalPayment = async () => {
     try {
       setIsProcessingPayPal(true);
-      setError(null);
-
-      console.log('💰 Testing PayPal configuration first...');
-
-      // Test PayPal config before creating order
-      const testResponse = await fetch('/api/test-paypal');
-      const testData = await testResponse.json();
-      
-      console.log('PayPal config test result:', testData);
-
-      if (!testData.success || !testData.configured) {
-        throw new Error(`PayPal Configuration Issue: ${testData.error || 'PayPal not properly configured'}`);
-      }
-
-      console.log('✅ PayPal configured properly, creating order...');
+      console.log('🔧 Creating PayPal order for amount:', amount);
 
       const response = await fetch('/api/create-paypal-order', {
         method: 'POST',
@@ -153,148 +153,168 @@ export default function PaymentForm({ selectedTier, amount, onPaymentSuccess, on
         },
         body: JSON.stringify({
           amount: amount,
-          tier: selectedTier,
-          currency: 'USD'
+          currency: 'USD' // PayPal uses USD
         }),
       });
 
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (parseError) {
-        const responseText = await response.text();
-        console.error('Failed to parse PayPal response:', responseText);
-        throw new Error(`PayPal server error: ${responseText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ PayPal order creation failed:', errorText);
+        throw new Error(`PayPal order creation failed: ${response.status}`);
       }
 
-      console.log('PayPal order response:', responseData);
+      const data = await response.json();
+      console.log('✅ PayPal order created:', data);
 
-      if (response.ok && responseData.success && responseData.approvalUrl) {
-        console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
-        window.location.href = responseData.approvalUrl;
+      if (data.approval_url) {
+        // Redirect to PayPal for payment
+        window.location.href = data.approval_url;
       } else {
-        const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
-        throw new Error(errorMsg);
+        throw new Error('No PayPal approval URL received');
       }
 
     } catch (error: any) {
       console.error('❌ PayPal payment error:', error);
-      setError(`PayPal Error: ${error.message}`);
-      onPaymentError(`PayPal Error: ${error.message}`);
+      onError(error.message || 'PayPal payment failed');
     } finally {
       setIsProcessingPayPal(false);
     }
   };
 
-  if (selectedTier === 'free' || amount === 0) {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center text-green-600">
-            {amount === 0 ? "Free Entry with Coupon" : "Free Entry Selected"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">
-            {amount === 0 ? "Your coupon made this submission free!" : "Your free entry is ready to submit!"}
-          </p>
-          <Button 
-            onClick={() => onPaymentSuccess({ 
-              payment_status: 'free', 
-              payment_method: amount === 0 ? 'coupon_free' : 'free' 
-            })}
-            className="w-full bg-green-600 hover:bg-green-700"
-          >
-            Continue with Free Entry
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Get poem count for display
+  const getPoemCount = (tier: string): number => {
+    const counts = { 'free': 1, 'single': 1, 'double': 2, 'bulk': 5 };
+    return counts[tier as keyof typeof counts] || 1;
+  };
+
+  const poemCount = getPoemCount(tier);
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-center">Complete Payment - ₹{amount}</CardTitle>
-          <p className="text-center text-gray-600">Choose your payment method</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+      <div className="container mx-auto px-4 max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Payment</h1>
+          <p className="text-lg text-gray-600">Complete your payment to submit your poems</p>
+        </div>
 
-          {/* Currency conversion info for PayPal */}
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              <strong>PayPal Note:</strong> PayPal charges in USD. ₹{amount} = ~${usdAmount} USD (exchange rates may vary)
-            </AlertDescription>
-          </Alert>
-
-          {/* Razorpay Payment */}
-          <Button
-            onClick={handleRazorpayPayment}
-            disabled={isProcessing || isProcessingPayPal}
-            className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center"
-          >
-            {isProcessing ? (
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            ) : (
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
-                    <span className="text-blue-600 font-bold text-xs">RZP</span>
-                  </div>
-                  <span>Razorpay</span>
+        <Card className="shadow-xl">
+          <CardContent className="p-8">
+            {/* Order Summary */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Tier:</span>
+                  <span className="capitalize">{tier.replace('_', ' ')} Poems</span>
                 </div>
-                <span className="text-sm opacity-90">₹{amount}</span>
-              </div>
-            )}
-          </Button>
-
-          {/* PayPal Payment */}
-          <Button
-            onClick={handlePayPalPayment}
-            disabled={isProcessing || isProcessingPayPal}
-            className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
-          >
-            {isProcessingPayPal ? (
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            ) : (
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <div className="w-8 h-6 bg-white rounded mr-3 flex items-center justify-center">
-                    <span className="text-blue-600 font-bold text-xs">PP</span>
-                  </div>
-                  <span>PayPal</span>
+                <div className="flex justify-between">
+                  <span>Poems:</span>
+                  <span>{poemCount}</span>
                 </div>
-                <span className="text-sm opacity-90">${usdAmount} USD</span>
+                <hr className="my-3" />
+                <div className="flex justify-between text-xl font-bold">
+                  <span>Total:</span>
+                  <span>₹{amount}</span>
+                </div>
               </div>
-            )}
-          </Button>
+            </div>
 
-          <Button
-            onClick={() => window.history.back()}
-            variant="outline"
-            className="w-full"
-          >
-            Back to Form
-          </Button>
-        </CardContent>
-      </Card>
+            {/* Payment Section */}
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  Complete Payment - ₹{amount}
+                </h3>
+                <p className="text-gray-600">Choose your payment method</p>
+              </div>
 
-      <div className="text-center text-sm text-gray-500">
-        <p>Secure payments powered by Razorpay & PayPal</p>
-        <p>Your payment information is encrypted and secure</p>
-        <p className="mt-2">
-          <strong>Razorpay:</strong> Pay in INR (₹{amount}) • <strong>PayPal:</strong> Pay in USD (~${usdAmount})
-        </p>
+              {/* Error Display */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="text-red-600 text-sm">
+                    ⚠️ Payment integration temporarily unavailable. Please contact support.
+                  </div>
+                </div>
+              </div>
+
+              {/* PayPal Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="text-blue-600 text-sm">
+                    <strong>PayPal Note:</strong> PayPal charges in USD. ₹{amount} = ~${(amount * 0.012).toFixed(2)} USD (exchange rates may vary)
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Buttons */}
+              <div className="space-y-4">
+                {/* Razorpay Button */}
+                <Button
+                  onClick={handleRazorpayPayment}
+                  disabled={isProcessingRazorpay || isProcessingPayPal}
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                >
+                  {isProcessingRazorpay ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="w-4 h-4 mr-2" />
+                  )}
+                  {isProcessingRazorpay ? 'Processing...' : `Pay with Razorpay (₹${amount})`}
+                </Button>
+
+                {/* PayPal Button */}
+                <Button
+                  onClick={handlePayPalPayment}
+                  disabled={isProcessingRazorpay || isProcessingPayPal}
+                  className="w-full h-12 bg-yellow-500 hover:bg-yellow-600 text-black"
+                >
+                  {isProcessingPayPal ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <div className="flex items-center">
+                      <span className="mr-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">PP</span>
+                      PayPal
+                    </div>
+                  )}
+                  <span className="ml-auto">${(amount * 0.012).toFixed(2)} USD</span>
+                </Button>
+              </div>
+
+              {/* Back Button */}
+              <Button
+                onClick={onBack}
+                variant="outline"
+                className="w-full"
+                disabled={isProcessingRazorpay || isProcessingPayPal}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Form
+              </Button>
+
+              {/* Payment Info */}
+              <div className="text-center text-sm text-gray-500">
+                <p>Secure payments powered by Razorpay & PayPal</p>
+                <p>Your payment information is encrypted and secure</p>
+                <p className="mt-2">
+                  <strong>Razorpay:</strong> Pay in INR (₹{amount}) • <strong>PayPal:</strong> Pay in USD (~${(amount * 0.012).toFixed(2)})
+                </p>
+              </div>
+
+              {/* Back Button (duplicate for better UX) */}
+              <Button
+                onClick={onBack}
+                variant="ghost"
+                className="w-full"
+                disabled={isProcessingRazorpay || isProcessingPayPal}
+              >
+                Back to Form
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default PaymentForm;
