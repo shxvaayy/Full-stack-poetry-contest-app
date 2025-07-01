@@ -80,7 +80,7 @@ console.log('🚀 Static files configured, path:', publicPath);
 async function fixDatabaseSchema() {
   try {
     console.log('🔧 Comprehensive database schema fix...');
-    
+
     // ALL missing columns that might be needed based on your schema
     const columnsToAdd = [
       { name: 'status', type: 'VARCHAR(50) DEFAULT \'pending\'' },
@@ -94,11 +94,12 @@ async function fixDatabaseSchema() {
       { name: 'payment_screenshot_url', type: 'TEXT' },
       { name: 'payment_method', type: 'VARCHAR(50)' },
       { name: 'processed_at', type: 'TIMESTAMP' },
-      { name: 'admin_notes', type: 'TEXT' }
+      { name: 'admin_notes', type: 'TEXT' },
+      { name: 'submission_uuid', type: 'UUID DEFAULT gen_random_uuid()' }
     ];
-    
+
     console.log('📋 Adding/verifying columns...');
-    
+
     for (const column of columnsToAdd) {
       try {
         await client.query(`ALTER TABLE submissions ADD COLUMN IF NOT EXISTS ${column.name} ${column.type}`);
@@ -107,7 +108,7 @@ async function fixDatabaseSchema() {
         console.log(`⚠️ Column ${column.name} issue:`, error.message);
       }
     }
-    
+
     // Update existing submissions to have proper default values
     try {
       await client.query(`
@@ -122,7 +123,7 @@ async function fixDatabaseSchema() {
     } catch (error) {
       console.log('⚠️ Default values update issue:', error.message);
     }
-    
+
     // Verify final table structure
     const columns = await client.query(`
       SELECT column_name, data_type, is_nullable, column_default
@@ -130,12 +131,12 @@ async function fixDatabaseSchema() {
       WHERE table_name = 'submissions'
       ORDER BY ordinal_position
     `);
-    
+
     console.log('📋 Final submissions table structure:');
     columns.rows.forEach(col => {
       console.log(`  - ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable}, default: ${col.column_default || 'none'})`);
     });
-    
+
     // Test insert to verify schema is complete
     try {
       await client.query(`
@@ -150,10 +151,10 @@ async function fixDatabaseSchema() {
       console.error('❌ Schema verification failed:', error.message);
       throw error;
     }
-    
+
     console.log('🎉 Comprehensive database schema fix completed!');
     return true;
-    
+
   } catch (error) {
     console.error('❌ Database schema fix failed:', error);
     return false;
@@ -164,12 +165,12 @@ async function fixDatabaseSchema() {
 async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
-    
+
     // Step 1: Connect to database
     console.log('🔌 Step 1: Connecting to database...');
     await connectDatabase();
     console.log('✅ Step 1 completed: Database connected');
-    
+
     // Step 1.5: Fix database schema COMPREHENSIVELY
     console.log('🔧 Step 1.5: Comprehensive database schema fix...');
     const schemaFixed = await fixDatabaseSchema();
@@ -178,29 +179,29 @@ async function initializeApp() {
     } else {
       console.log('❌ Step 1.5 FAILED: Schema fix failed - this might cause issues');
     }
-    
+
     // Step 2: Run migrations with timeout
     console.log('🔧 Step 2: Running database migrations...');
     console.log('🎯 CRITICAL: About to call createTables()...');
-    
+
     const migrationPromise = createTables();
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Migration timeout')), 30000)
     );
-    
+
     const migrationResult = await Promise.race([migrationPromise, timeoutPromise]);
-    
+
     console.log('🎯 CRITICAL: createTables() returned:', migrationResult);
     console.log('✅ Step 2 completed: Database migrations done');
-    
+
     // FORCE LOG TO CONFIRM WE GET HERE
     console.log('🎯 CRITICAL CHECKPOINT: Migration phase completed, proceeding to routes...');
-    
+
     // Step 3: Register routes
     console.log('🛣️ Step 3: Starting route registration...');
     registerRoutes(app);
     console.log('✅ Step 3 completed: Routes registered successfully');
-    
+
     // Error handling middleware
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
       console.error('❌ Unhandled error:', err);
@@ -221,7 +222,7 @@ async function initializeApp() {
     // Step 4: Start server
     console.log('🚀 Step 4: Starting server...');
     console.log(`🔌 Attempting to bind to 0.0.0.0:${PORT}...`);
-    
+
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('🎉 SERVER STARTED SUCCESSFULLY!');
       console.log(`📱 Application: http://0.0.0.0:${PORT}`);

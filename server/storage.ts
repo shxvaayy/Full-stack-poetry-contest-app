@@ -74,14 +74,8 @@ export class PostgreSQLStorage implements IStorage {
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
     try {
-      // Ensure we have a unique submission UUID
-      const submissionData = {
-        ...insertSubmission,
-        submissionUuid: insertSubmission.submissionUuid || crypto.randomUUID()
-      };
-      
-      const [submission] = await db.insert(submissions).values(submissionData).returning();
-      console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}" (UUID: ${submission.submissionUuid})`);
+      const [submission] = await db.insert(submissions).values(insertSubmission).returning();
+      console.log(`✅ Created submission ID ${submission.id} for user ${submission.userId}: "${submission.poemTitle}"`);
       return submission;
     } catch (error) {
       console.error('❌ Error creating submission:', error);
@@ -187,6 +181,29 @@ export class PostgreSQLStorage implements IStorage {
       return submission;
     } catch (error) {
       console.error('❌ Error updating winner status:', error);
+      return undefined;
+    }
+  }
+
+  async updateSubmissionStatus(id: number, status: string): Promise<Submission | undefined> {
+    try {
+      const [submission] = await db.update(submissions)
+        .set({
+          status: status,
+          processedAt: new Date(),
+        })
+        .where(eq(submissions.id, id))
+        .returning();
+
+      if (!submission) {
+        console.log(`Submission with id ${id} not found`);
+        return undefined;
+      }
+
+      console.log(`✅ Updated submission status for submission ID ${id} to ${status}`);
+      return submission;
+    } catch (error) {
+      console.error('❌ Error updating submission status:', error);
       return undefined;
     }
   }
