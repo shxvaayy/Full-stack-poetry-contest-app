@@ -419,12 +419,12 @@ export default function SubmitPage() {
       }
 
       const poemCount = getPoemCount(selectedTier.id);
-      
+
       // Validate multiple poems if required
       for (let i = 0; i < poemCount; i++) {
         const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
         const file = i === 0 ? files.poem : multiplePoems.files[i];
-        
+
         if (!title) {
           throw new Error(`Please enter title for poem ${i + 1}`);
         }
@@ -442,28 +442,28 @@ export default function SubmitPage() {
       }
 
       const formDataToSend = new FormData();
-      
+
       // Add basic form data
       Object.entries(formData).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, value.toString());
         }
       });
-      
+
       // Add tier and payment data
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('userUid', user?.uid || '');
       if (actualPaymentData) {
         formDataToSend.append('paymentData', JSON.stringify(actualPaymentData));
       }
-      
+
       // Add multiple poem titles
       const allTitles = [formData.poemTitle];
       for (let i = 1; i < poemCount; i++) {
         allTitles.push(multiplePoems.titles[i] || '');
       }
       formDataToSend.append('multiplePoemTitles', JSON.stringify(allTitles));
-      
+
       // Add poem files
       if (files.poem) {
         formDataToSend.append('poems', files.poem);
@@ -473,25 +473,25 @@ export default function SubmitPage() {
           formDataToSend.append('poems', multiplePoems.files[i] as File);
         }
       }
-      
+
       // Add photo file
       if (files.photo) {
         formDataToSend.append('photo', files.photo);
       }
-      
+
       console.log('📤 Sending form data to API...');
-      
-      const response = await fetch('/api/submit', {
+
+      const response = await fetch('/api/submit-poem', {
         method: 'POST',
         body: formDataToSend,
         credentials: 'same-origin',
       });
 
       console.log('📥 API response status:', response.status);
-      
+
       const result = await response.json();
       console.log('📥 API response data:', result);
-      
+
       if (result.success) {
         setCurrentStep("completed");
         toast({
@@ -501,7 +501,7 @@ export default function SubmitPage() {
       } else {
         throw new Error(result.error || 'Submission failed');
       }
-      
+
     } catch (error: any) {
       console.error('❌ Form submission error:', error);
       toast({
@@ -517,15 +517,15 @@ export default function SubmitPage() {
   // Render dynamic poem fields based on tier
   const renderPoemFields = () => {
     if (!selectedTier) return null;
-    
+
     const poemCount = getPoemCount(selectedTier.id);
     const fields = [];
-    
+
     for (let i = 0; i < poemCount; i++) {
       fields.push(
         <div key={i} className="space-y-4 p-4 border rounded-lg bg-gray-50">
           <h3 className="text-lg font-semibold text-gray-800">Poem {i + 1}</h3>
-          
+
           <div>
             <Label htmlFor={`poem-title-${i}`}>Poem Title *</Label>
             <Input
@@ -543,7 +543,7 @@ export default function SubmitPage() {
               className="mt-1"
             />
           </div>
-          
+
           <div>
             <Label htmlFor={`poem-file-${i}`}>Upload Poem File * (PDF, DOC, DOCX)</Label>
             <Input
@@ -571,7 +571,7 @@ export default function SubmitPage() {
         </div>
       );
     }
-    
+
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-800">
@@ -589,12 +589,12 @@ export default function SubmitPage() {
     }
 
     const poemCount = getPoemCount(selectedTier.id);
-    
+
     // Check all poem titles and files
     for (let i = 0; i < poemCount; i++) {
       const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
       const file = i === 0 ? files.poem : multiplePoems.files[i];
-      
+
       if (!title || !file) {
         return false;
       }
@@ -699,7 +699,7 @@ export default function SubmitPage() {
                 {/* Personal Information */}
                 <div className="space-y-4">
                   <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName">First Name *</Label>
@@ -876,7 +876,7 @@ export default function SubmitPage() {
                   >
                     Back to Tiers
                   </Button>
-                  
+
                   {selectedTier && discountedAmount === 0 ? (
                     <Button
                       type="submit"
@@ -1039,7 +1039,7 @@ export default function SubmitPage() {
                 Thank you for submitting your {getPoemCount(selectedTier?.id || 'free') > 1 ? 'poems' : 'poem'} to the Writory Poetry Contest. 
                 You will receive a confirmation email shortly.
               </p>
-              
+
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <h3 className="font-semibold text-blue-800 mb-2">What's Next?</h3>
                 <ul className="text-sm text-blue-700 space-y-1">

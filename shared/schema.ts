@@ -80,7 +80,7 @@ export interface MultiPoemSubmissionData {
   paymentMethod?: string;
   userId?: number;
   submissionUuid: string;
-  
+
   // Poem-specific data (different for each poem)
   poems: Array<{
     title: string;
@@ -98,24 +98,6 @@ export const TIER_POEM_COUNTS: Record<ValidTier, number> = {
   'single': 1,
   'double': 2,
   'bulk': 5
-};
-
-export const TIER_PRICES: Record<ValidTier, number> = {
-  'free': 0,
-  'single': 50,
-  'double': 100,
-  'bulk': 480
-};
-
-// Validation function
-export function validateTierPoemCount(tier: string, poemCount: number): boolean {
-  if (!VALID_TIERS.includes(tier as ValidTier)) {
-    return false;
-  }
-  
-  const expectedCount = TIER_POEM_COUNTS[tier as ValidTier];
-  return poemCount === expectedCount;
-}
 } as const;
 
 export const TIER_PRICES: Record<ValidTier, number> = {
@@ -127,10 +109,11 @@ export const TIER_PRICES: Record<ValidTier, number> = {
 
 // ✅ NEW: Helper function to validate tier and poem count
 export function validateTierPoemCount(tier: string, poemCount: number): boolean {
-  if (!VALID_TIERS.includes(tier as ValidTier)) {
-    return false;
-  }
-  
-  const expectedCount = TIER_POEM_COUNTS[tier as ValidTier];
-  return poemCount === expectedCount;
+  const expectedCount = TIER_POEM_COUNTS[tier as keyof typeof TIER_POEM_COUNTS];
+  console.log('🔍 Tier validation:', { tier, poemCount, expectedCount });
+  return expectedCount !== undefined && expectedCount === poemCount;
+}
+
+export function isValidTier(tier: string): boolean {
+  return tier in TIER_POEM_COUNTS;
 }

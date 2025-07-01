@@ -212,7 +212,7 @@ router.post('/api/verify-payment', async (req, res) => {
 
     // Create signature verification string
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-
+    
     // Generate expected signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -227,7 +227,7 @@ router.post('/api/verify-payment', async (req, res) => {
 
     if (expectedSignature === razorpay_signature) {
       console.log('✅ Payment signature verified successfully');
-
+      
       // Fetch additional payment details for verification
       try {
         const payment = await razorpay.payments.fetch(razorpay_payment_id);
@@ -520,9 +520,9 @@ router.post('/api/validate-coupon', async (req, res) => {
 
     // Import coupon validation from coupon-codes.ts
     const { validateCouponCode, markCodeAsUsed } = await import('../client/src/pages/coupon-codes.js');
-
+    
     const validation = validateCouponCode(code, tier);
-
+    
     if (!validation.valid) {
       return res.json({
         valid: false,
@@ -779,10 +779,21 @@ router.post('/api/submit', upload.fields([
       });
     }
 
-    // Validate tier
-    if (!validateTierPoemCount(tier, 1)) {
-      console.error('❌ Invalid tier:', tier);
-      return res.status(400).json({ error: 'Invalid tier selected' });
+    // Validate tier exists
+    if (!tier || typeof tier !== 'string') {
+      console.error('❌ Missing or invalid tier:', tier);
+      return res.status(400).json({ error: 'Tier is required and must be a valid string' });
+    }
+
+    // Check if tier is valid
+    const validTiers = Object.keys(TIER_POEM_COUNTS);
+    if (!validTiers.includes(tier)) {
+      console.error('❌ Invalid tier selected:', tier, 'Valid tiers:', validTiers);
+      return res.status(400).json({ 
+        error: 'Invalid tier selected',
+        validTiers: validTiers,
+        receivedTier: tier
+      });
     }
 
     // Get expected poem count for tier
@@ -798,9 +809,12 @@ router.post('/api/submit', upload.fields([
 
     // Validate poem count matches tier
     if (poemFiles.length !== expectedPoemCount) {
-      console.error(`❌ Poem count mismatch: received ${poemFiles.length}, expected ${expectedPoemCount}`);
+      console.error(`❌ Poem count mismatch: received ${poemFiles.length}, expected ${expectedPoemCount} for tier ${tier}`);
       return res.status(400).json({
-        error: `Invalid number of poems. Expected ${expectedPoemCount} for ${tier} tier, received ${poemFiles.length}`
+        error: `Invalid number of poems. Expected ${expectedPoemCount} for ${tier} tier, received ${poemFiles.length}`,
+        expectedCount: expectedPoemCount,
+        receivedCount: poemFiles.length,
+        tier: tier
       });
     }
 
@@ -808,7 +822,7 @@ router.post('/api/submit', upload.fields([
     const actualAmount = parseFloat(amount) || 0;
     if (tier !== 'free' && actualAmount > 0) {
       console.log('💳 Validating payment for paid tier...');
-
+      
       // Check for valid payment data
       const hasRazorpayPayment = razorpay_order_id && razorpay_payment_id && razorpay_signature;
       const hasPayPalPayment = paypal_order_id;
@@ -872,7 +886,7 @@ router.post('/api/submit', upload.fields([
         const titles = Array.isArray(poemTitles) ? poemTitles : 
                       typeof poemTitles === 'string' ? JSON.parse(poemTitles) : 
                       poemFiles.map((_, i) => `Poem ${i + 1}`);
-
+        
         poemUrls = await uploadMultiplePoemFiles(poemFiles, titles);
         console.log('✅ Multiple poems uploaded:', poemUrls.length);
       }
