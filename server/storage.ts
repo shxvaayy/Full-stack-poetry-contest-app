@@ -233,39 +233,56 @@ export async function trackCouponUsage(usageData: {
   }) {
     try {
       console.log('🎫 Tracking coupon usage:', usageData);
-      
-      // Double check to prevent race conditions - check if this user has already used this coupon
-      const existingUsage = await checkCouponUsage(usageData.couponCode, usageData.userUid);
-      if (existingUsage) {
-        console.log('❌ Coupon already used by this user - preventing duplicate');
-        throw new Error('Coupon code has already been used by this user');
-      }
 
-      // Get user ID if exists
-      let userId = null;
-      try {
-        const user = await getUserByUid(usageData.userUid);
-        userId = user?.id || null;
-      } catch (error) {
-        console.log('User not found, continuing without userId');
-      }
+      const upperCode = usageData.couponCode.toUpperCase();
 
-      // Create usage record
-      const newUsageData = {
-        couponCode: usageData.couponCode.toUpperCase(),
-        userUid: usageData.userUid,
-        userId: userId,
-        submissionId: usageData.submissionId,
-        discountAmount: usageData.discountAmount.toString()
-      };
+      // CRITICAL: Use database transaction to prevent race conditions
+      const result = await db.transaction(async (tx) => {
+        // Check if already used within transaction
+        const existingUsage = await tx
+          .select()
+          .from(couponUsage)
+          .where(
+            and(
+              eq(couponUsage.couponCode, upperCode),
+              eq(couponUsage.userUid, usageData.userUid)
+            )
+          )
+          .limit(1);
 
-      const [usageRecord] = await db
-        .insert(couponUsage)
-        .values(newUsageData)
-        .returning();
+        if (existingUsage.length > 0) {
+          console.log('❌ Coupon already used by this user during transaction check');
+          throw new Error('Coupon code has already been used by this user');
+        }
 
-      console.log('✅ Coupon usage tracked in database:', usageRecord.id);
-      return usageRecord;
+        // Get user ID if exists
+        let userId = null;
+        try {
+          const user = await getUserByUid(usageData.userUid);
+          userId = user?.id || null;
+        } catch (error) {
+          console.log('User not found, continuing without userId');
+        }
+
+        // Create usage record
+        const newUsageData = {
+          couponCode: upperCode,
+          userUid: usageData.userUid,
+          userId: userId,
+          submissionId: usageData.submissionId,
+          discountAmount: usageData.discountAmount.toString()
+        };
+
+        const [usageRecord] = await tx
+          .insert(couponUsage)
+          .values(newUsageData)
+          .returning();
+
+        console.log('✅ Coupon usage tracked in database with transaction:', usageRecord.id);
+        return usageRecord;
+      });
+
+      return result;
     } catch (error) {
       console.error('❌ Error tracking coupon usage:', error);
       throw error;
@@ -276,7 +293,7 @@ export async function trackCouponUsage(usageData: {
   export async function checkCouponUsage(couponCode: string, userUid: string): Promise<boolean> {
     try {
       const upperCode = couponCode.toUpperCase();
-      
+
       console.log('🔍 Checking coupon usage for:', { upperCode, userUid });
 
       const existingUsage = await db
@@ -292,13 +309,12 @@ export async function trackCouponUsage(usageData: {
 
       const hasUsed = existingUsage.length > 0;
       console.log('📋 Coupon usage check result:', { hasUsed, foundRecords: existingUsage.length });
-      
+
       return hasUsed;
     } catch (error) {
       console.error('❌ Error checking coupon usage:', error);
-      console.log('⚠️ Database error details:', error.message);
-      // Return false (allow usage) if database check fails to prevent blocking valid coupons
-      return false;
+      // In case of error, don't allow usage to prevent abuse
+      throw error;
     }
   }
 

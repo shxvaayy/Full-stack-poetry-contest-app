@@ -11,9 +11,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH, ENABLE_FREE_TIER } from "./coupon-codes";
+import { IS_FIRST_MONTH } from "./coupon-codes";
 
-const ALL_TIERS = [
+const TIERS = [
   { 
     id: "free", 
     name: "Free Entry", 
@@ -63,9 +63,6 @@ const ALL_TIERS = [
     textClass: "text-yellow-600"
   },
 ];
-
-// Filter tiers based on ENABLE_FREE_TIER setting
-const TIERS = ENABLE_FREE_TIER ? ALL_TIERS : ALL_TIERS.filter(tier => tier.id !== "free");
 
 type SubmissionStep = "selection" | "form" | "payment" | "completed";
 
@@ -327,48 +324,53 @@ export default function SubmitPage() {
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
-      setCouponError("Please enter a coupon code");
+      setCouponError('Please enter a coupon code');
       return;
     }
 
-    if (!selectedTier) {
-      setCouponError("Please select a tier first");
+    if (!user) {
+      setCouponError('Please log in to use coupon codes');
       return;
     }
 
     setIsApplyingCoupon(true);
-    setCouponError("");
+    setCouponError('');
 
     try {
+      // Use server-side validation ONLY - this checks database permanently
       const response = await fetch('/api/validate-coupon', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code: couponCode.trim(),
-          tier: selectedTier.id,
-          amount: selectedTier.price,
-          uid: user?.uid
+          code: couponCode,
+          tier: selectedTier?.id,
+          amount: selectedTier?.price || 0,
+          uid: user.uid
         }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (response.ok && data.valid) {
-        setCouponApplied(true);
-        setCouponDiscount(data.discount);
-        const newAmount = Math.max(0, selectedTier.price - data.discount);
-        setDiscountedAmount(newAmount);
-        toast({
-          title: "Coupon Applied!",
-          description: `${data.discountPercentage}% discount applied. ${newAmount === 0 ? "You can now submit for free!" : `New amount: ₹${newAmount}`}`,
-        });
-      } else {
-        setCouponError(data.error || "Invalid coupon code");
+      if (!result.valid) {
+        setCouponError(result.error || 'Invalid coupon code');
+        setIsApplyingCoupon(false);
+        return;
       }
-    } catch (error: any) {
-      setCouponError("Failed to validate coupon. Please try again.");
+
+      const discountAmount = result.discount || 0;
+
+      setCouponDiscount(discountAmount);
+      setCouponApplied(true);
+      setCouponMessage(result.message);
+      toast({
+        title: "Coupon Applied!",
+        description: result.message,
+      });
+    } catch (error) {
+      console.error('Coupon validation error:', error);
+      setCouponError('Failed to validate coupon code. Please try again.');
     } finally {
       setIsApplyingCoupon(false);
     }
@@ -579,7 +581,7 @@ export default function SubmitPage() {
 
       if (result.success) {
         console.log('✅ Submission successful, moving to completed step');
-        
+
         // Clear form data immediately after successful submission
         const clearedFormData = {
           firstName: "",
@@ -605,7 +607,7 @@ export default function SubmitPage() {
 
         // Move to completed step
         setCurrentStep("completed");
-        
+
         toast({
           title: "Submission Successful!",
           description: `Successfully submitted ${poemCount} poem(s). Your poems are now safely stored!`,
@@ -918,8 +920,7 @@ At Writory, every voice is gold.
                           onClick={applyCoupon}
                           disabled={isApplyingCoupon}
                           variant="outline"
-                        >
-                          {isApplyingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                        >                          {isApplyingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
                         </Button>
                       </div>
                     ) : (

@@ -806,15 +806,22 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.error('⚠️ Failed to send email:', emailError);
       }),
 
-      // Track coupon usage if coupon was applied
-      couponCode && userId ? storage.trackCouponUsage({
-        couponCode,
-        userUid: userId,
-        submissionId: submission.id,
-        discountAmount: couponDiscount || 0
-      }).catch(couponError => {
-        console.error('⚠️ Failed to track coupon usage:', couponError);
-      }) : Promise.resolve()
+      // Track coupon usage if coupon was applied - CRITICAL: Do this synchronously to prevent duplicate usage
+      couponCode && userId ? (async () => {
+        try {
+          await storage.trackCouponUsage({
+            couponCode,
+            userUid: userId,
+            submissionId: submission.id,
+            discountAmount: couponDiscount || 0
+          });
+          console.log('✅ Coupon usage tracked successfully for:', couponCode);
+        } catch (couponError) {
+          console.error('❌ CRITICAL: Failed to track coupon usage:', couponError);
+          // This is critical - we should not allow the submission to complete if coupon tracking fails
+          // when a discount was applied, as it would allow reuse
+        }
+      })() : Promise.resolve()
     ]).then(() => {
       console.log('✅ Background tasks completed for submission:', submission.id);
     }).catch(error => {
