@@ -224,6 +224,33 @@ export async function getSubmissionsByEmailAndTitle(email: string, poemTitle: st
   }
 }
 
+export async function addContact(contactData: {
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+}) {
+  try {
+    console.log('🔄 Adding contact to database:', contactData.email);
+
+    // For now, we'll just log the contact data since there's no contacts table in the schema
+    // In a production environment, you would create a contacts table and insert the data
+    console.log('📧 Contact form submission:', {
+      name: contactData.name,
+      email: contactData.email,
+      phone: contactData.phone || 'not provided',
+      message: contactData.message,
+      timestamp: new Date().toISOString()
+    });
+
+    console.log('✅ Contact data logged successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error adding contact:', error);
+    throw error;
+  }
+}
+
 // Export all storage functions
 export const storage = {
   getUserByUid,
@@ -235,5 +262,6 @@ export const storage = {
   createSubmission,
   updateUser,
   getAllSubmissions,
-  updateSubmission
+  updateSubmission,
+  addContact
 };
