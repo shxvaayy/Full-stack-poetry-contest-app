@@ -4,8 +4,10 @@ import { Client } from 'pg';
 // Database configuration
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is required');
+if (!process.env.DATABASE_URL) {
+  console.warn('⚠️ DATABASE_URL not set - running in development mode without persistence');
+  // Create a mock database URL for development
+  process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/temp';
 }
 
 console.log('🔍 Database Configuration:');

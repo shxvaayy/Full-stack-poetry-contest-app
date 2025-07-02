@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+\import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -457,6 +457,19 @@ export default function SubmitPage() {
       console.log('Form data:', formData);
       console.log('Payment data:', actualPaymentData);
       console.log('Selected tier:', selectedTier);
+
+      // Check if server is reachable first
+      try {
+        const healthCheck = await fetch('/api/test', { 
+          method: 'GET',
+          timeout: 5000 
+        });
+        if (!healthCheck.ok) {
+          throw new Error('Server not responding');
+        }
+      } catch (serverError) {
+        throw new Error('Server is not running. Please contact support or try again later.');
+      }
 
       // Validate form
       if (!formData.firstName || !formData.email || !formData.poemTitle) {
