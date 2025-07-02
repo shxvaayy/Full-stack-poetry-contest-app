@@ -346,7 +346,9 @@ export default function UserProfile() {
             
               
                 
-                  {submissions.map((submission) => (
+                  }
+                  
+                    {submissions.map((submission) => (
             <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
               <div className="flex items-start justify-between">
                 <div>
