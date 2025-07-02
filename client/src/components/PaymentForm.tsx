@@ -231,29 +231,13 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
             {amount === 0 ? "Your coupon made this submission free!" : "Your free entry is ready to submit!"}
           </p>
           <Button 
-            onClick={() => {
-              // Show loading state before proceeding
-              setIsProcessing?.(true);
-              
-              // Add a small delay to show loading state consistently
-              setTimeout(() => {
-                onSuccess({ 
-                  payment_status: 'free', 
-                  payment_method: amount === 0 ? 'coupon_free' : 'free' 
-                });
-              }, 500);
-            }}
-            disabled={isProcessing}
+            onClick={() => onSuccess({ 
+              payment_status: 'free', 
+              payment_method: amount === 0 ? 'coupon_free' : 'free' 
+            })}
             className="w-full bg-green-600 hover:bg-green-700"
           >
-            {isProcessing ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                Processing...
-              </>
-            ) : (
-              'Continue with Free Entry'
-            )}
+            Continue with Free Entry
           </Button>
         </CardContent>
       </Card>
