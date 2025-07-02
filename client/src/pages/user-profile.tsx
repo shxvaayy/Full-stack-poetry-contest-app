@@ -341,14 +341,8 @@ export default function UserProfile() {
                   </CardHeader>
                   <CardContent>
                     {submissions.length > 0 ? (
-                      
-          
-            
-              
-                
-                  }
-                  
-                    {submissions.map((submission) => (
+                      <div className="space-y-4">
+                        {submissions.map((submission) => (
             <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
               <div className="flex items-start justify-between">
                 <div>
@@ -364,7 +358,7 @@ export default function UserProfile() {
                   <p className="text-lg font-semibold text-green-600">
                     ₹{submission.amount}
                   </p>
-                                    
+
                 </div>
               </div>
 
@@ -398,14 +392,11 @@ export default function UserProfile() {
                 <Badge className={getTierColor(submission.tier)}>
                   {submission.tier}
                 </Badge>
-                
+
               </div>
             </Card>
           ))}
-          
-            
-        
-      
+                      </div>
                     ) : (
                       <div className="text-center py-8">
                         <FileText className="mx-auto text-gray-400 mb-4" size={48} />
