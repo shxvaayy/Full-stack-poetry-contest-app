@@ -165,13 +165,11 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
 
     console.log('✅ User found:', user.email, 'User ID:', user.id);
 
-    //const submissions = await storage.getSubmissionsByUser(user.id);
-    // Retrieve all submissions without filtering by user ID
-    const allSubmissions = await storage.getAllSubmissions();
-    console.log(`✅ Found ${allSubmissions.length} submissions`);
+    const submissions = await storage.getSubmissionsByUser(user.id);
+    console.log(`✅ Found ${submissions.length} submissions for user ${user.id}`);
 
     // Log the raw submissions for debugging
-    console.log('📋 Raw submissions:', allSubmissions.map(s => ({
+    console.log('📋 Raw submissions:', submissions.map(s => ({
       id: s.id,
       poemTitle: s.poemTitle,
       tier: s.tier,
@@ -180,7 +178,7 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
     })));
 
     // Transform submissions to match frontend expectations
-    const transformedSubmissions = allSubmissions.map(sub => ({
+    const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
       name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
       poemTitle: sub.poemTitle,
