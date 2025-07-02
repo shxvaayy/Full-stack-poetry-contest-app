@@ -464,7 +464,7 @@ export default function SubmitPage() {
       for (let i = 1; i < poemCount; i++) {
         allTitles.push(multiplePoems.titles[i] || '');
       }
-      formDataToSend.append('multiplePoemTitles', JSON.stringify(allTitles));
+      formDataToSend.append('poemTitles', JSON.stringify(allTitles));
 
       // Add poem files
       if (files.poem) {
@@ -483,7 +483,7 @@ export default function SubmitPage() {
 
       console.log('📤 Sending form data to API...');
 
-      const response = await fetch('/api/submit-poem', {
+      const response = await fetch(poemCount > 1 ? '/api/submit-multiple-poems' : '/api/submit-poem', {
         method: 'POST',
         body: formDataToSend,
         credentials: 'same-origin',

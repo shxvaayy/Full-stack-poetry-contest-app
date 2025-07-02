@@ -221,9 +221,9 @@ export async function addMultiplePoemsToSheet(data: {
       data.age || '',                                     // E - Age
       title,                                              // F - Poem Title
       data.tier,                                          // G - Tier
-      index === 0 ? (data.price || 0).toString() : '0',  // H - Amount (only first poem)
+      (data.price || 0).toString(),                       // H - Amount (same for all poems in submission)
       data.poemFileUrls?.[index] || '',                   // I - Poem File URL
-      index === 0 ? '' : '',                              // J - Photo (only for first poem)
+      '', // Photo left empty for now                     // J - Photo (same for all poems)
       data.submissionUuid,                                // K - Submission UUID
       (index + 1).toString()                              // L - Poem Index
     ]);
