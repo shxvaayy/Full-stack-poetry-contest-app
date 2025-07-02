@@ -97,41 +97,44 @@ export async function getSubmissionCountFromSheet(): Promise<number> {
   }
 }
 
-export async function addContactToSheet(data: ContactData): Promise<void> {
+export async function addContactToSheet(contactData: ContactData) {
   try {
-    const authClient = await getAuthClient();
-    if (!authClient) return;
+    console.log('📝 Adding contact to Google Sheets:', {
+      email: contactData.email,
+      phone: contactData.phone || 'not provided',
+      hasTimestamp: !!contactData.timestamp
+    });
 
-    const rowData = [
-      data.timestamp,
-      data.name,
-      data.email,
-      data.phone,
-      data.message
+    const timestamp = contactData.timestamp || new Date().toISOString();
+
+    const values = [
+      [
+        timestamp, // A: Timestamp
+        contactData.name, // B: Name
+        contactData.email, // C: Email
+        contactData.phone || '', // D: Phone
+        contactData.message // E: Message
+      ]
     ];
+
+    console.log('📊 Contact data to append:', values[0]);
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Contacts!A:E',
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
-      auth: authClient,
-      requestBody: {
-        values: [rowData]
+      valueInputOption: 'RAW',
+      resource: {
+        values: values
       }
     };
 
-    console.log('📋 Final Google Sheets request:', {
-      range: request.range,
-      values: request.requestBody.values,
-      phonePosition: 'Column D (index 3)',
-      phoneValue: rowData[3]
-    });
+    const response = await sheets.spreadsheets.values.append(request);
+    console.log('✅ Contact added to Google Sheets successfully');
+    return response;
 
-    await sheets.spreadsheets.values.append(request);
-    console.log('✅ Contact data added to Google Sheets');
   } catch (error) {
     console.error('❌ Error adding contact to Google Sheets:', error);
+    throw error;
   }
 }
 
