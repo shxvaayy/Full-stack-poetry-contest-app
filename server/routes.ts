@@ -85,14 +85,18 @@ const uploadFields = upload.fields([
 const submissions: any[] = [];
 
 // Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
-
-console.log('🔧 Razorpay Configuration Check:');
-console.log('- Key ID exists:', !!process.env.RAZORPAY_KEY_ID);
-console.log('- Key Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
+let razorpay: any = null;
+try {
+    razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID!,
+        key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    });
+    console.log('🔧 Razorpay Configuration Check:');
+    console.log('- Key ID exists:', !!process.env.RAZORPAY_KEY_ID);
+    console.log('- Key Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
+} catch (error) {
+    console.error('❌ Razorpay initialization failed:', error);
+}
 
 // Add PayPal routes
 router.use('/', paypalRouter);
@@ -296,8 +300,8 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   }
 
   // Check Razorpay configuration
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    console.error('❌ Razorpay not configured');
+  if (!razorpay) {
+    console.error('❌ Razorpay not initialized');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
     });
@@ -357,8 +361,8 @@ router.post('/api/create-order', asyncHandler(async (req: any, res: any) => {
   }
 
   // Check Razorpay configuration
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    console.error('❌ Razorpay not configured');
+  if (!razorpay) {
+    console.error('❌ Razorpay not initialized');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
     });

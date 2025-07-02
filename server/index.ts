@@ -19,12 +19,15 @@ const PORT = process.env.PORT || 3000;
 
 // Environment validation
 console.log('🔍 Checking environment variables...');
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL environment variable is required');
-  process.exit(1);
-}
+console.log('- DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('- RAZORPAY_KEY_ID exists:', !!process.env.RAZORPAY_KEY_ID);
+console.log('- RAZORPAY_KEY_SECRET exists:', !!process.env.RAZORPAY_KEY_SECRET);
 
-console.log('✅ Environment variables validated');
+if (!process.env.DATABASE_URL) {
+  console.warn('⚠️ DATABASE_URL not set - some features may not work');
+} else {
+  console.log('✅ DATABASE_URL configured');
+}
 console.log('📊 Environment:', process.env.NODE_ENV || 'development');
 
 // Enhanced CORS configuration
