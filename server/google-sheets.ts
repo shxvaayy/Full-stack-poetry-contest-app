@@ -257,9 +257,7 @@ export async function addMultiplePoemsToSheet(data: {
     throw error;
   }
 }
-
-
-    
+}
 
 export async function initializeSheetHeaders(): Promise<void> {
   try {
