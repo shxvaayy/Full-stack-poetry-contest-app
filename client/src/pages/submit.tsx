@@ -85,14 +85,29 @@ export default function SubmitPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState("");
   const [discountedAmount, setDiscountedAmount] = useState(0);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: user?.email || "",
-    phone: "",
-    age: "",
-    poemTitle: "",
-    termsAccepted: false,
+  const [formData, setFormData] = useState(() => {
+    // Try to restore from sessionStorage to prevent loss on reload
+    const saved = sessionStorage.getItem('writory_form_data');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          email: user?.email || parsed.email || "",
+        };
+      } catch (e) {
+        console.log('Failed to parse saved form data');
+      }
+    }
+    return {
+      firstName: "",
+      lastName: "",
+      email: user?.email || "",
+      phone: "",
+      age: "",
+      poemTitle: "",
+      termsAccepted: false,
+    };
   });
   const [files, setFiles] = useState({
     poem: null as File | null,
@@ -130,41 +145,6 @@ export default function SubmitPage() {
       return updated;
     });
   };
-
-  // Prevent navigation during submission
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isSubmitting) {
-        e.preventDefault();
-        e.returnValue = 'Your poem is being submitted. Are you sure you want to leave?';
-        return 'Your poem is being submitted. Are you sure you want to leave?';
-      }
-    };
-
-    const handlePopState = (e: PopStateEvent) => {
-      if (isSubmitting) {
-        e.preventDefault();
-        window.history.pushState(null, '', window.location.href);
-        toast({
-          title: "Please Wait",
-          description: "Your poem is being submitted. Please do not navigate away.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    if (isSubmitting) {
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      window.addEventListener('popstate', handlePopState);
-      // Push a new state to prevent back navigation
-      window.history.pushState(null, '', window.location.href);
-    }
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [isSubmitting]);
 
   // Check URL parameters for payment status
   useEffect(() => {
@@ -400,7 +380,12 @@ export default function SubmitPage() {
   };
 
   const handleFormData = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      // Save to sessionStorage to prevent loss on reload
+      sessionStorage.setItem('writory_form_data', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleFileChange = (fileType: 'poem' | 'photo', file: File | null) => {
@@ -467,13 +452,6 @@ export default function SubmitPage() {
   const handleFormSubmitInternal = async (actualPaymentData: any) => {
     try {
       setIsSubmitting(true);
-
-      // Show immediate loading toast with warning
-      toast({
-        title: "Please Wait",
-        description: "Your poem is being submitted. Do not press back or reload the page, otherwise your poem might not get submitted.",
-        duration: 10000, // Show for 10 seconds
-      });
 
       console.log('🚀 Form submission started');
       console.log('Form data:', formData);
@@ -581,7 +559,7 @@ export default function SubmitPage() {
         console.log('✅ Submission successful, moving to completed step');
         
         // Clear form data immediately after successful submission
-        setFormData({
+        const clearedFormData = {
           firstName: "",
           lastName: "",
           email: user?.email || "",
@@ -589,7 +567,8 @@ export default function SubmitPage() {
           age: "",
           poemTitle: "",
           termsAccepted: false,
-        });
+        };
+        setFormData(clearedFormData);
         setFiles({
           poem: null,
           photo: null,
@@ -598,6 +577,9 @@ export default function SubmitPage() {
           titles: ["", "", "", "", ""],
           files: [null, null, null, null, null],
         });
+
+        // Clear from sessionStorage
+        sessionStorage.removeItem('writory_form_data');
 
         // Move to completed step
         setCurrentStep("completed");
@@ -811,26 +793,6 @@ At Writory, every voice is gold.
               {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
             </p>
           </div>
-
-          {/* Warning message during submission */}
-          {isSubmitting && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <Card className="shadow-2xl max-w-md mx-4">
-                <CardContent className="p-8 text-center">
-                  <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">Please Wait</h2>
-                  <p className="text-gray-600 mb-4">
-                    Your poem is being submitted. This may take a few seconds.
-                  </p>
-                  <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
-                    <p className="text-yellow-800 font-semibold text-sm">
-                      ⚠️ Do not press back or reload the page, otherwise your poem might not get submitted!
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           <Card className="shadow-xl">
             <CardContent className="p-8">
@@ -1170,6 +1132,35 @@ At Writory, every voice is gold.
     );
   }
 
+  // Show loading page during submission for all payment types
+  if (isSubmitting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Card className="shadow-xl">
+            <CardContent className="p-8 text-center">
+              <div className="flex flex-col items-center space-y-4">
+                <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+                <h1 className="text-2xl font-bold text-gray-800">Please Wait</h1>
+                <p className="text-gray-600">
+                  Your poem is being submitted. This may take a few seconds.
+                </p>
+                <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 mt-4">
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
+                    <p className="text-yellow-800 font-medium">
+                      Do not press back or reload the page, otherwise your poem might not get submitted!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (currentStep === "completed") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -1177,15 +1168,10 @@ At Writory, every voice is gold.
           <Card className="shadow-xl">
             <CardContent className="p-8 text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-800 mb-4">Thank You!</h1>
-              <div className="p-4 bg-green-100 border border-green-300 rounded-lg mb-6">
-                <p className="text-green-800 font-semibold text-lg">
-                  🎉 Submission Successful!
-                </p>
-                <p className="text-green-700 mt-2">
-                  Your poem has been submitted successfully for the contest. You will receive a confirmation email shortly.
-                </p>
-              </div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-4">Submission Successful!</h1>
+              <p className="text-gray-600 mb-6">
+                Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
+              </p>
 
               {/* Submission Details */}
               <div className="bg-gray-50 p-6 rounded-lg mb-6 text-left">

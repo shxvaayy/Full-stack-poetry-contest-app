@@ -230,6 +230,16 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
           <p className="text-gray-600 mb-4">
             {amount === 0 ? "Your coupon made this submission free!" : "Your free entry is ready to submit!"}
           </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center">
+              <Info className="w-5 h-5 text-blue-600 mr-2" />
+              <p className="text-blue-800 text-sm">
+                After clicking continue, please wait for submission to complete and don't reload the page.
+              </p>
+            </div>
+          </div>
+
           <Button 
             onClick={() => onSuccess({ 
               payment_status: 'free', 
