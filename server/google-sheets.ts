@@ -199,6 +199,8 @@ export async function addMultiplePoemsToSheet(data: {
   titles: string[];
   submissionUuid: string;
   submissionIds: number[];
+  poemFileUrls: string[];
+  photoFileUrl?: string;
 }): Promise<void> {
   try {
     console.log(`📝 Adding ${data.titles.length} poems to sheet for:`, data.firstName, data.tier);
@@ -221,8 +223,8 @@ export async function addMultiplePoemsToSheet(data: {
       title,
       data.tier,
       index === 0 ? (data.price || 0) : 0, // Only first poem has payment amount
-      '', // Poem file URL (will be filled separately)
-      index === 0 ? '' : '', // Photo URL (only for first poem)
+      data.poemFileUrls[index] || '', // Individual poem file URL
+      index === 0 ? (data.photoFileUrl || '') : '', // Photo URL (only for first poem)
       data.submissionUuid,
       index + 1, // Poem index
       data.titles.length // Total poems

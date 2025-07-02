@@ -882,23 +882,25 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     // Add to Google Sheets
     try {
       console.log('📊 Adding to Google Sheets...');
-      for (let i = 0; i < submissions.length; i++) {
-        const submission = submissions[i];
-        await addPoemSubmissionToSheet({
-          timestamp: submission.submittedAt.toISOString(),
-          name: `${submission.firstName} ${submission.lastName || ''}`.trim(),
-          email: submission.email,
-          phone: submission.phone || '',
-          age: submission.age?.toString() || '',
-          poemTitle: submission.poemTitle,
-          tier: submission.tier,
-          amount: (i === 0 ? submission.price : 0).toString(),
-          poemFile: submission.poemFileUrl || '',
-          photo: i === 0 ? submission.photoFileUrl || '' : '',
-          submissionUuid: submission.submissionUuid,
-          poemIndex: submission.poemIndex
-        });
-      }
+      
+      // Use the dedicated multiple poems function
+      await addMultiplePoemsToSheet({
+        firstName,
+        lastName: lastName || '',
+        email,
+        phone: phone || '',
+        age: age || '',
+        tier,
+        price: price ? parseFloat(price) : 0,
+        paymentId: paymentId || null,
+        paymentMethod: paymentMethod || 'free',
+        titles,
+        submissionUuid,
+        submissionIds: submissions.map(s => s.id),
+        poemFileUrls,
+        photoFileUrl
+      });
+      
       console.log('✅ Added to Google Sheets');
     } catch (sheetError) {
       console.error('⚠️ Failed to add to Google Sheets:', sheetError);
