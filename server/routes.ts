@@ -366,7 +366,7 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   }
 
   // Check Razorpay configuration
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  if (!razorpay || !process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('❌ Razorpay not configured');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
@@ -427,7 +427,7 @@ router.post('/api/create-order', asyncHandler(async (req: any, res: any) => {
   }
 
   // Check Razorpay configuration
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  if (!razorpay || !process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('❌ Razorpay not configured');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
@@ -661,7 +661,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         } catch (deleteError) {
           console.error('❌ Error deleting submission:', deleteError);
         }
-        
+
         return res.status(400).json({
           success: false,
           error: 'Coupon validation failed. Please try again or contact support.'
@@ -910,7 +910,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         } catch (deleteError) {
           console.error('❌ Error deleting submissions:', deleteError);
         }
-        
+
         return res.status(400).json({
           success: false,
           error: 'Coupon validation failed. Please try again or contact support.'
@@ -1141,7 +1141,7 @@ router.post('/api/verify-paypal-payment', asyncHandler(async (req: any, res: any
   // For now, we'll accept any orderId as valid since PayPal integration is handled client-side
   // In production, you should verify this with PayPal's API
   console.log('✅ PayPal payment verified (mock verification)');
-  
+
   res.json({
     success: true,
     orderId,
@@ -1241,7 +1241,7 @@ router.get('/api/submissions/count', asyncHandler(async (req: any, res: any) => 
   try {
     // Get count from Google Sheets
     const sheetCount = await getSubmissionCountFromSheet();
-    
+
     // Get count from database
     const dbSubmissions = await storage.getAllSubmissions();
     const dbCount = dbSubmissions.length;
@@ -1289,11 +1289,11 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
   try {
     console.log('📖 Reading CSV file...');
     const csvContent = fs.readFileSync(req.file.path, 'utf-8');
-    
+
     // Parse CSV (simple implementation - you might want to use a CSV library)
     const lines = csvContent.split('\n').filter(line => line.trim());
     const headers = lines[0].split(',').map(h => h.trim());
-    
+
     console.log('📋 CSV headers:', headers);
     console.log(`📊 Processing ${lines.length - 1} rows...`);
 
@@ -1304,14 +1304,14 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = lines[i].split(',').map(v => v.trim());
-        
+
         // Assuming CSV format: email, poemTitle, score, type, status, isWinner, winnerPosition
         if (values.length >= 5) {
           const [email, poemTitle, score, type, status, isWinner, winnerPosition] = values;
-          
+
           // Find submission by email and poem title
           const submission = await storage.getSubmissionByEmailAndTitle(email, poemTitle);
-          
+
           if (submission) {
             // Update submission with evaluation data
             await storage.updateSubmissionEvaluation(submission.id, {
@@ -1322,7 +1322,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
               isWinner: isWinner?.toLowerCase() === 'true',
               winnerPosition: winnerPosition ? parseInt(winnerPosition) : null
             });
-            
+
             updatedCount++;
             console.log(`✅ Updated submission ${submission.id} for ${email} - ${poemTitle}`);
           } else {
@@ -1351,7 +1351,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
 
   } catch (error) {
     console.error('❌ Error processing CSV:', error);
-    
+
     // Clean up file on error
     if (req.file) {
       try {
