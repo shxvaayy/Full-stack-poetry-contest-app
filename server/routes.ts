@@ -701,7 +701,19 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ User found:', user.email);
       }
     } else {
-      console.log('⚠️ No UID provided, creating submission without user link');
+      // Try to find user by email as fallback
+      console.log('⚠️ No UID provided, trying to find user by email:', email);
+      try {
+        const existingUsers = await storage.getAllUsers?.() || [];
+        user = existingUsers.find(u => u.email === email) || null;
+        if (user) {
+          console.log('✅ Found user by email:', user.email);
+        } else {
+          console.log('⚠️ No user found by email, creating submission without user link');
+        }
+      } catch (error) {
+        console.log('⚠️ Could not search for user by email, creating submission without user link');
+      }
     }
 
     // Create submission data
@@ -909,7 +921,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     // Create or find user - FIXED VERSION
     let user = null;
-    if (userId) {      console.log('🔍 Looking for user with UID:', userId);
+    if (userId) {
+      console.log('🔍 Looking for user with UID:', userId);
       user = await storage.getUserByUid(userId);
       if (!user) {
         console.log('🔄 Creating new user:', email);
@@ -925,7 +938,19 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       }
       console.log('🔗 Will link all submissions to user ID:', user.id);
     } else {
-      console.log('⚠️ No UID provided, creating submissions without user link');
+      // Try to find user by email as fallback
+      console.log('⚠️ No UID provided, trying to find user by email:', email);
+      try {
+        const existingUsers = await storage.getAllUsers?.() || [];
+        user = existingUsers.find(u => u.email === email) || null;
+        if (user) {
+          console.log('✅ Found user by email:', user.email);
+        } else {
+          console.log('⚠️ No user found by email, creating submissions without user link');
+        }
+      } catch (error) {
+        console.log('⚠️ Could not search for user by email, creating submissions without user link');
+      }
     }
 
     // Create submissions for each poem

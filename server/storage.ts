@@ -242,6 +242,18 @@ export async function getSubmissionsByEmailAndTitle(email: string, poemTitle: st
   }
 }
 
+export async function getAllUsers() {
+  try {
+    console.log('🔍 Getting all users');
+    const result = await db.select().from(users);
+    console.log(`✅ Found ${result.length} total users`);
+    return result;
+  } catch (error) {
+    console.error('❌ Error getting all users:', error);
+    throw error;
+  }
+}
+
 export async function addContact(contactData: {
   name: string;
   email: string;
@@ -279,6 +291,7 @@ export const storage = {
   createUser,
   createSubmission,
   updateUser,
+  getAllUsers,
   getAllSubmissions,
   updateSubmission,
   addContact,
