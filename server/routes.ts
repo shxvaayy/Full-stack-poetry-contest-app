@@ -81,8 +81,7 @@ const uploadFields = upload.fields([
   { name: 'files', maxCount: 15 },
 ]);
 
-// In-memory storage for submissions (legacy compatibility)
-const submissions: any[] = [];
+// Note: Using database storage instead of in-memory for persistence
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -1102,24 +1101,30 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       photoFileUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
     }
 
-    // Save to in-memory storage (legacy)
-    const submission = {
-      id: submissions.length + 1,
+    // Save to database (legacy endpoint but using persistent storage)
+    const submissionData = {
+      userId: null, // Legacy submissions don't have user links
       firstName,
       lastName: lastName || '',
       email,
       phone: phone || '',
-      age: age || '',
+      age: age ? parseInt(age) : null,
       poemTitle,
       tier,
+      price: tier === 'free' ? 0 : TIER_PRICES[tier as keyof typeof TIER_PRICES] || 0,
       paymentId: paymentId || null,
       paymentMethod,
       poemFileUrl,
-      photoFileUrl,
-      submittedAt: new Date().toISOString()
+      photoFileUrl: photoFileUrl,
+      submissionUuid: crypto.randomUUID(),
+      poemIndex: 1,
+      totalPoemsInSubmission: 1,
+      submittedAt: new Date(),
+      status: 'Pending',
+      type: 'Human'
     };
 
-    submissions.push(submission);
+    const submission = await storage.createSubmission(submissionData);
 
     // Add to Google Sheets
     try {
@@ -1210,10 +1215,12 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Get submission count from Google Sheets
+// Get submission count from database
 router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
   try {
-    const count = await getSubmissionCountFromSheet();
+    // Get count from database instead of Google Sheets for real-time accuracy
+    const submissions = await storage.getAllSubmissions();
+    const count = submissions.length;
     res.json({ count });
   } catch (error) {
     console.error('❌ Error getting submission count:', error);
@@ -1223,31 +1230,18 @@ router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
 
 // Contact form submission
 router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
-  const { name, email, phone, message } = req.body;
-
-  console.log('📬 Contact form data received:', {
-    name,
-    email,
-    phone: phone || 'not provided',
-    message: message?.substring(0, 50) + '...'
-  });
+  const { name, email, message } = req.body;
 
   if (!name || !email || !message) {
     return res.status(400).json({
       success: false,
-      error: 'Name, email, and message are required'
+      error: 'All fields are required'
     });
   }
 
   try {
-    // Add to Google Sheets with phone and timestamp
-    await addContactToSheet({ 
-      name, 
-      email, 
-      phone: phone || '', 
-      message,
-      timestamp: new Date().toISOString()
-    });
+    // Add to Google Sheets
+    await addContactToSheet({ name, email, message });
     
     res.json({
       success: true,
@@ -1262,10 +1256,32 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Get in-memory submissions (legacy)
-router.get('/api/legacy-submissions', (req, res) => {
-  res.json(submissions);
-});
+// Get legacy submissions from database
+router.get('/api/legacy-submissions', asyncHandler(async (req: any, res: any) => {
+  try {
+    const submissions = await storage.getAllSubmissions();
+    // Transform to legacy format
+    const legacySubmissions = submissions.map(sub => ({
+      id: sub.id,
+      firstName: sub.firstName,
+      lastName: sub.lastName || '',
+      email: sub.email,
+      phone: sub.phone || '',
+      age: sub.age?.toString() || '',
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      paymentId: sub.paymentId,
+      paymentMethod: sub.paymentMethod || 'free',
+      poemFileUrl: sub.poemFileUrl,
+      photoFileUrl: sub.photoUrl,
+      submittedAt: sub.submittedAt?.toISOString()
+    }));
+    res.json(legacySubmissions);
+  } catch (error) {
+    console.error('❌ Error getting legacy submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions' });
+  }
+}));
 
 // Admin CSV upload endpoint
 router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
