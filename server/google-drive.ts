@@ -140,17 +140,23 @@ export async function uploadPoemFile(
 ): Promise<string> {
   const fileExtension = originalFileName.split('.').pop() || 'pdf';
   
-  // ✅ NEW: Create unique filename for each poem
+  // ✅ NEW: Create filename in format email_poemtitle.pdf
   let fileName: string;
-  if (poemIndex !== undefined && poemIndex > 0) {
-    // For multiple poems: email_poem_1_title.pdf, email_poem_2_title.pdf, etc.
-    const sanitizedTitle = poemTitle ? 
-      poemTitle.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) : 
-      'untitled';
-    fileName = `${email}_poem_${poemIndex + 1}_${sanitizedTitle}.${fileExtension}`;
+  if (poemTitle) {
+    // Sanitize poem title for filename use
+    const sanitizedTitle = poemTitle
+      .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .substring(0, 50); // Limit title length
+    
+    fileName = `${email}_${sanitizedTitle}.${fileExtension}`;
   } else {
-    // For single poem: email_poem.pdf
-    fileName = `${email}_poem.${fileExtension}`;
+    // Fallback if no poem title provided
+    if (poemIndex !== undefined && poemIndex > 0) {
+      fileName = `${email}_poem_${poemIndex + 1}.${fileExtension}`;
+    } else {
+      fileName = `${email}_poem.${fileExtension}`;
+    }
   }
   
   const mimeType = getMimeType(fileExtension);
