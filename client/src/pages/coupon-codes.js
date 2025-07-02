@@ -1,5 +1,6 @@
 // Coupon codes configuration
 export const IS_FIRST_MONTH = true; // Change this to false for second month onwards
+export const FREE_ENTRY_ENABLED = true; // Set to false to disable free entry tier completely
 
 // Free tier control - Set to false to disable free tier for everyone
 export const ENABLE_FREE_TIER = true; // Change this to false to disable free tier completely
@@ -37,25 +38,28 @@ export const USED_CODES = new Set();
 
 export function validateCouponCode(code, tier) {
   const upperCode = code.toUpperCase();
-  
+
   // Check if code was already used
   if (USED_CODES.has(upperCode)) {
     return { valid: false, message: 'This coupon code has already been used.' };
   }
-  
+
   // Check for 100% discount codes (only work on ₹50 tier)
   if (FREE_TIER_CODES.includes(upperCode)) {
+    if (!FREE_ENTRY_ENABLED) {
+      return { valid: false, message: 'Free entry tier is currently disabled.' };
+    }
     if (tier !== 'single') {
-      return { valid: false, message: '100% discount codes only work on the ₹50 tier.' };
+      return { valid: false, message: 'This coupon code only works for the ₹50 tier.' };
     }
     return { valid: true, type: 'free', discount: 100, message: 'Valid 100% discount code! This tier is now free.' };
   }
-  
+
   // Check for 10% discount codes (work on all paid tiers)
   if (DISCOUNT_CODES.includes(upperCode)) {
     return { valid: true, type: 'discount', discount: 10, message: 'Valid discount code! 10% discount applied.' };
   }
-  
+
   return { valid: false, message: 'Invalid coupon code.' };
 }
 

@@ -292,7 +292,7 @@ export default function SubmitPage() {
     }
   };
 
-  const { data: submissionStatus } = useQuery({
+  const { data: userSubmissionStatus } = useQuery({
     queryKey: ['/api/users', user?.uid, 'submission-status'],
     queryFn: () => apiRequest(`/api/users/${user?.uid}/submission-status`),
     enabled: !!user?.uid,
@@ -694,7 +694,7 @@ export default function SubmitPage() {
   };
 
   // Check submission status
-  if (submissionStatus?.hasSubmitted) {
+  if (userSubmissionStatus?.hasSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
