@@ -736,33 +736,31 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     const submission = await storage.createSubmission(submissionData);
     console.log('✅ Submission saved with ID:', submission.id);
 
-    // Add to Google Sheets
-    try {
-      console.log('📊 Adding to Google Sheets...');
-      await addPoemSubmissionToSheet({
+    // Background tasks - don't wait for these to complete
+    // This ensures fast response to user while still completing necessary tasks
+    Promise.all([
+      // Add to Google Sheets in background
+      addPoemSubmissionToSheet({
         ...submissionData,
         submissionId: submission.id
-      });
-      console.log('✅ Added to Google Sheets');
-    } catch (sheetError) {
-      console.error('⚠️ Failed to add to Google Sheets:', sheetError);
-      // Continue even if sheets fail
-    }
-
-    // Send confirmation email
-    try {
-      console.log('📧 Sending confirmation email to:', email);
-      await sendSubmissionConfirmation(email, {
+      }).catch(sheetError => {
+        console.error('⚠️ Failed to add to Google Sheets:', sheetError);
+      }),
+      
+      // Send confirmation email in background
+      sendSubmissionConfirmation(email, {
         name: firstName,
         poemTitle,
         tier,
         submissionId: submission.id
-      });
-      console.log('✅ Confirmation email sent');
-    } catch (emailError) {
-      console.error('⚠️ Failed to send email:', emailError);
-      // Continue even if email fails
-    }
+      }).catch(emailError => {
+        console.error('⚠️ Failed to send email:', emailError);
+      })
+    ]).then(() => {
+      console.log('✅ Background tasks completed for submission:', submission.id);
+    }).catch(error => {
+      console.error('⚠️ Some background tasks failed for submission:', submission.id, error);
+    });
 
     // Clean up uploaded files
     if (req.files) {
@@ -964,10 +962,11 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     console.log('✅ All submissions saved');
 
-    // Add to Google Sheets using the new multiple poems function
-    try {
-      console.log('📊 Adding to Google Sheets...');
-      await addMultiplePoemsToSheet({
+    // Background tasks - don't wait for these to complete
+    // This ensures fast response to user while still completing necessary tasks
+    Promise.all([
+      // Add to Google Sheets in background
+      addMultiplePoemsToSheet({
         firstName: firstName,
         lastName: lastName,
         email: email,
@@ -982,25 +981,24 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         submissionIds: submissions.map(s => s.id),
         poemFileUrls: poemFileUrls,
         photoFileUrl: photoFileUrl
-      });
-      console.log('✅ Added all poems to Google Sheets');
-    } catch (sheetError) {
-      console.error('⚠️ Failed to add to Google Sheets:', sheetError);
-    }
-
-    // Send confirmation email
-    try {
-      console.log('📧 Sending confirmation email...');
-      await sendMultiplePoemsConfirmation(email, {
+      }).catch(sheetError => {
+        console.error('⚠️ Failed to add to Google Sheets:', sheetError);
+      }),
+      
+      // Send confirmation email in background
+      sendMultiplePoemsConfirmation(email, {
         name: firstName,
         poemTitles: titles,
         tier,
         submissionUuid
-      });
-      console.log('✅ Confirmation email sent');
-    } catch (emailError) {
-      console.error('⚠️ Failed to send email:', emailError);
-    }
+      }).catch(emailError => {
+        console.error('⚠️ Failed to send email:', emailError);
+      })
+    ]).then(() => {
+      console.log('✅ Background tasks completed for multiple submissions:', submissionUuid);
+    }).catch(error => {
+      console.error('⚠️ Some background tasks failed for submissions:', submissionUuid, error);
+    });
 
     // Clean up uploaded files
     if (req.files) {

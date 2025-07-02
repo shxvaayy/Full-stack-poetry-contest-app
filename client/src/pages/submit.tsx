@@ -192,13 +192,26 @@ export default function SubmitPage() {
 
         toast({
           title: "Payment Successful!",
-          description: "Payment completed successfully. You can now submit your poem.",
+          description: "Processing your submission...",
         });
 
-        // Auto-submit after a short delay
-        setTimeout(() => {
-          handleFormSubmit();
-        }, 1000);
+        // Immediately submit after payment verification
+        try {
+          setIsSubmitting(true);
+          await handleFormSubmitWithPaymentData({
+            stripe_session_id: sessionId,
+            payment_method: 'stripe',
+            amount: selectedTier?.price || 0
+          });
+        } catch (error) {
+          console.error('❌ Submission after verification failed:', error);
+          setIsSubmitting(false);
+          toast({
+            title: "Submission Error",
+            description: "Payment successful but submission failed. Please contact support.",
+            variant: "destructive",
+          });
+        }
       } else {
         const errorData = await response.json();
         console.error('❌ Payment verification failed:', errorData);
@@ -243,13 +256,26 @@ export default function SubmitPage() {
 
         toast({
           title: "PayPal Payment Successful!",
-          description: "Payment completed successfully. Submitting your poem now...",
+          description: "Processing your submission...",
         });
 
-        // Auto-submit after a short delay
-        setTimeout(() => {
-          handleFormSubmit();
-        }, 1000);
+        // Immediately submit after PayPal verification
+        try {
+          setIsSubmitting(true);
+          await handleFormSubmitWithPaymentData({
+            paypal_order_id: orderId,
+            payment_method: 'paypal',
+            amount: selectedTier?.price || 0
+          });
+        } catch (error) {
+          console.error('❌ Submission after PayPal verification failed:', error);
+          setIsSubmitting(false);
+          toast({
+            title: "Submission Error",
+            description: "Payment successful but submission failed. Please contact support.",
+            variant: "destructive",
+          });
+        }
       } else {
         const errorData = await response.json();
         console.error('❌ PayPal payment verification failed:', errorData);
@@ -346,7 +372,7 @@ export default function SubmitPage() {
     setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
-  const handlePaymentSuccess = (data: any) => {
+  const handlePaymentSuccess = async (data: any) => {
     console.log('✅ Payment successful, data received:', data);
 
     // Ensure payment data is in the correct format
@@ -365,20 +391,23 @@ export default function SubmitPage() {
       description: "Processing your submission...",
     });
 
-    // Auto-submit with the processed payment data directly
-    setTimeout(async () => {
-      try {
-        console.log('🔄 Auto-submitting after payment success...');
-        await handleFormSubmitWithPaymentData(processedPaymentData);
-      } catch (error) {
-        console.error('❌ Auto-submission failed:', error);
-        toast({
-          title: "Submission Error",
-          description: "Payment successful but submission failed. Please try submitting again.",
-          variant: "destructive",
-        });
-      }
-    }, 500);
+    // Immediately submit after payment success - no delay
+    try {
+      console.log('🔄 Immediately submitting after payment success...');
+      setIsSubmitting(true);
+      await handleFormSubmitWithPaymentData(processedPaymentData);
+      // Submission completed successfully - user will be redirected to completed step
+    } catch (error) {
+      console.error('❌ Immediate submission failed:', error);
+      setIsSubmitting(false);
+      toast({
+        title: "Submission Error",
+        description: "Payment successful but submission failed. Please contact support.",
+        variant: "destructive",
+      });
+      // Keep user on payment step so they can retry
+      setCurrentStep("form");
+    }
   };
 
   const handlePaymentError = (error: string) => {
@@ -508,13 +537,8 @@ export default function SubmitPage() {
 
       if (result.success) {
         console.log('✅ Submission successful, moving to completed step');
-        setCurrentStep("completed");
-        toast({
-          title: "Submission Successful!",
-          description: `Successfully submitted ${poemCount} poem(s)`,
-        });
-
-        // Clear form data
+        
+        // Clear form data immediately after successful submission
         setFormData({
           firstName: "",
           lastName: "",
@@ -531,6 +555,14 @@ export default function SubmitPage() {
         setMultiplePoems({
           titles: ["", "", "", "", ""],
           files: [null, null, null, null, null],
+        });
+
+        // Move to completed step
+        setCurrentStep("completed");
+        
+        toast({
+          title: "Submission Successful!",
+          description: `Successfully submitted ${poemCount} poem(s). Your poems are now safely stored!`,
         });
       } else {
         throw new Error(result.error || 'Submission failed');
