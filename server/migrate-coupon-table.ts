@@ -4,42 +4,83 @@ export async function migrateCouponTable() {
   try {
     console.log('🔄 Starting coupon table migration...');
 
-    // First, check if the coupons table exists and create it if it doesn't
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS coupons (
-        id SERIAL PRIMARY KEY,
-        code VARCHAR(50) UNIQUE NOT NULL,
-        discount_amount INTEGER NOT NULL DEFAULT 0,
-        is_active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      )
-    `);
+    // Connect to database if not already connected
+    if (!isConnected) {
+      await connectDatabase();
+    }
 
-    // Check if discount_amount column exists, if not add it
-    const columnExists = await client.query(`
+    // Check if discount_amount column exists
+    const discountAmountResult = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'coupons' AND column_name = 'discount_amount'
     `);
 
-    if (columnExists.rows.length === 0) {
+    if (discountAmountResult.rows.length === 0) {
       console.log('Adding discount_amount column to coupons table...');
       await client.query(`
-        ALTER TABLE coupons ADD COLUMN discount_amount INTEGER NOT NULL DEFAULT 0
+        ALTER TABLE coupons 
+        ADD COLUMN discount_amount INTEGER DEFAULT 0
       `);
     }
 
-    // Insert sample coupon codes
-    await client.query(`
-      INSERT INTO coupons (code, discount_amount, is_active, created_at, updated_at) 
-      VALUES 
-        ('FREEENTRY', 0, true, NOW(), NOW()),
-        ('DISCOUNT10', 10, true, NOW(), NOW()),
-        ('DISCOUNT20', 20, true, NOW(), NOW()),
-        ('STUDENT50', 50, true, NOW(), NOW())
-      ON CONFLICT (code) DO NOTHING
+    // Check if discount_type column exists
+    const discountTypeResult = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'coupons' AND column_name = 'discount_type'
     `);
+
+    if (discountTypeResult.rows.length === 0) {
+      console.log('Adding discount_type column to coupons table...');
+
+      // First add the column as nullable with default value
+      await client.query(`
+        ALTER TABLE coupons 
+        ADD COLUMN discount_type TEXT DEFAULT 'percentage'
+      `);
+
+      // Update any NULL values to default
+      console.log('Updating NULL discount_type values...');
+      await client.query(`
+        UPDATE coupons 
+        SET discount_type = 'percentage' 
+        WHERE discount_type IS NULL
+      `);
+
+      // Now make it NOT NULL
+      console.log('Setting discount_type as NOT NULL...');
+      await client.query(`
+        ALTER TABLE coupons 
+        ALTER COLUMN discount_type SET NOT NULL
+      `);
+    } else {
+      // Column exists, but check if there are NULL values and fix them
+      console.log('Checking for NULL discount_type values...');
+      const nullValuesResult = await client.query(`
+        SELECT COUNT(*) as count FROM coupons WHERE discount_type IS NULL
+      `);
+
+      if (parseInt(nullValuesResult.rows[0].count) > 0) {
+        console.log('Fixing NULL discount_type values...');
+        await client.query(`
+          UPDATE coupons 
+          SET discount_type = 'percentage' 
+          WHERE discount_type IS NULL
+        `);
+
+        // Set NOT NULL constraint if it doesn't exist
+        try {
+          await client.query(`
+            ALTER TABLE coupons 
+            ALTER COLUMN discount_type SET NOT NULL
+          `);
+        } catch (error) {
+          // Constraint might already exist, ignore this error
+          console.log('NOT NULL constraint already exists or could not be added');
+        }
+      }
+    }
 
     console.log('✅ Coupon table migration completed successfully');
   } catch (error) {
