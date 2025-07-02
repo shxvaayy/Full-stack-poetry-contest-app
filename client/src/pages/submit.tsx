@@ -332,7 +332,8 @@ export default function SubmitPage() {
           code: couponCode.trim(),
           tier: selectedTier.id,
           amount: selectedTier.price,
-          uid: user?.uid
+          uid: user?.uid,
+          email: formData.email || user?.email
         }),
       });
 
@@ -538,7 +539,7 @@ export default function SubmitPage() {
       if (result.success) {
         console.log('✅ Submission successful, moving to completed step');
         setSubmissionStatus("Success! Your submission is complete. Email confirmation will arrive shortly.");
-        
+
         // Clear form data immediately after successful submission
         setFormData({
           firstName: "",
@@ -564,7 +565,7 @@ export default function SubmitPage() {
           setIsSubmitting(false);
           setSubmissionStatus("");
         }, 1500);
-        
+
         toast({
           title: "Submission Successful!",
           description: `Successfully submitted ${poemCount} poem(s). Your poems are now safely stored!`,

@@ -469,11 +469,11 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
 
 // ===== COUPON VALIDATION ENDPOINT =====
 
-// Validate coupon code
+// Validate coupon code with usage tracking
 router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
-  const { code, tier, amount, uid } = req.body;
+  const { code, tier, amount, uid, email } = req.body;
 
-  console.log('🎫 Coupon validation request:', { code, tier, amount, uid });
+  console.log('🎫 Coupon validation request:', { code, tier, amount, uid, email });
 
   // Validate required fields
   if (!code || !tier) {
@@ -483,7 +483,6 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     });
   }
 
-  // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
   const upperCode = code.toUpperCase();
 
   // Free tier codes (100% discount on ₹50 tier only)
@@ -514,42 +513,174 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
   ];
 
-  // Check for 100% discount codes (only work on ₹50 tier)
-  if (FREE_TIER_CODES.includes(upperCode)) {
-    if (tier !== 'single') {
+  // Check if code is valid first
+  const isFreeTierCode = FREE_TIER_CODES.includes(upperCode);
+  const isDiscountCode = DISCOUNT_CODES.includes(upperCode);
+
+  if (!isFreeTierCode && !isDiscountCode) {
+    return res.json({
+      valid: false,
+      error: 'Invalid coupon code.'
+    });
+  }
+
+  // Check if user has already used this coupon code
+  try {
+    let hasUsedCoupon = false;
+
+    if (uid) {
+      // Check by user UID
+      const usageCheck = await client.query(`
+        SELECT cu.id 
+        FROM coupon_usage cu
+        JOIN coupons c ON cu.coupon_id = c.id
+        WHERE c.code = $1 AND cu.user_uid = $2
+      `, [upperCode, uid]);
+      hasUsedCoupon = usageCheck.rows.length > 0;
+    } else if (email) {
+      // Check by email as fallback
+      const usageCheck = await client.query(`
+        SELECT cu.id 
+        FROM coupon_usage cu
+        JOIN coupons c ON cu.coupon_id = c.id
+        JOIN submissions s ON cu.submission_id = s.id
+        WHERE c.code = $1 AND s.email = $2
+      `, [upperCode, email]);
+      hasUsedCoupon = usageCheck.rows.length > 0;
+    }
+
+    if (hasUsedCoupon) {
+      return res.json({
+        valid: false,
+        error: 'Coupon code already used. Each coupon can only be used once per user.'
+      });
+    }
+
+    // Validate tier restrictions for free codes
+    if (isFreeTierCode && tier !== 'single') {
       return res.json({
         valid: false,
         error: '100% discount codes only work on the ₹50 tier.'
       });
     }
 
-    return res.json({
-      valid: true,
-      type: 'free',
-      discount: amount || 50, // Full amount
-      discountPercentage: 100,
-      message: 'Valid 100% discount code! This tier is now free.'
+    // Return appropriate discount
+    if (isFreeTierCode) {
+      return res.json({
+        valid: true,
+        type: 'free',
+        discount: amount || 50,
+        discountPercentage: 100,
+        message: 'Valid 100% discount code! This tier is now free.'
+      });
+    }
+
+    if (isDiscountCode) {
+      const discountAmount = Math.round((amount || 0) * 0.10);
+      return res.json({
+        valid: true,
+        type: 'discount',
+        discount: discountAmount,
+        discountPercentage: 10,
+        message: 'Valid discount code! 10% discount applied.'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error checking coupon usage:', error);
+    return res.status(500).json({
+      valid: false,
+      error: 'Error validating coupon. Please try again.'
+    });
+  }
+}));
+
+// Record coupon usage after successful submission
+router.post('/api/record-coupon-usage', asyncHandler(async (req: any, res: any) => {
+  const { code, uid, email, submissionId, discountAmount } = req.body;
+
+  console.log('📝 Recording coupon usage:', { code, uid, email, submissionId, discountAmount });
+
+  if (!code || !submissionId || discountAmount === undefined) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields for coupon usage recording'
     });
   }
 
-  // Check for 10% discount codes (work on all paid tiers)
-  if (DISCOUNT_CODES.includes(upperCode)) {
-    const discountAmount = Math.round((amount || 0) * 0.10);
+  try {
+    const upperCode = code.toUpperCase();
 
-    return res.json({
-      valid: true,
-      type: 'discount',
-      discount: discountAmount,
-      discountPercentage: 10,
-      message: 'Valid discount code! 10% discount applied.'
+    // Find or create the coupon record
+    let couponResult = await client.query(`
+      SELECT id FROM coupons WHERE code = $1
+    `, [upperCode]);
+
+    let couponId;
+
+    if (couponResult.rows.length === 0) {
+      // Create coupon record if it doesn't exist
+      const newCouponResult = await client.query(`
+        INSERT INTO coupons (
+          code, 
+          discount_type, 
+          discount_value, 
+          valid_from, 
+          valid_until, 
+          is_active,
+          created_at
+        ) VALUES ($1, $2, $3, NOW() - INTERVAL '1 day', NOW() + INTERVAL '1 year', true, NOW())
+        RETURNING id
+      `, [upperCode, 'percentage', discountAmount === 100 ? 100 : 10]);
+      
+      couponId = newCouponResult.rows[0].id;
+      console.log('✅ Created new coupon record:', couponId);
+    } else {
+      couponId = couponResult.rows[0].id;
+      console.log('✅ Found existing coupon:', couponId);
+    }
+
+    // Get user ID if available
+    let userId = null;
+    if (uid) {
+      const userResult = await storage.getUserByUid(uid);
+      userId = userResult?.id || null;
+    }
+
+    // Record the usage
+    await client.query(`
+      INSERT INTO coupon_usage (
+        coupon_id,
+        user_id,
+        submission_id,
+        user_uid,
+        discount_amount,
+        used_at
+      ) VALUES ($1, $2, $3, $4, $5, NOW())
+    `, [couponId, userId, submissionId, uid || null, discountAmount]);
+
+    // Update coupon used count
+    await client.query(`
+      UPDATE coupons 
+      SET used_count = used_count + 1,
+          updated_at = NOW()
+      WHERE id = $1
+    `, [couponId]);
+
+    console.log('✅ Coupon usage recorded successfully');
+
+    res.json({
+      success: true,
+      message: 'Coupon usage recorded'
+    });
+
+  } catch (error) {
+    console.error('❌ Error recording coupon usage:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to record coupon usage'
     });
   }
-
-  // Invalid code
-  return res.json({
-    valid: false,
-    error: 'Invalid coupon code.'
-  });
 }));
 
 // Test Razorpay configuration
@@ -772,6 +903,29 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Email sent for submission:', submission.id);
       } catch (emailError) {
         console.error('⚠️ Failed to send email:', emailError);
+      }
+
+      try {
+        // Record coupon usage if coupon was used
+        const couponCode = req.body.couponCode;
+        const couponDiscount = req.body.couponDiscount;
+        
+        if (couponCode && couponDiscount > 0) {
+          await fetch(`${req.protocol}://${req.get('host')}/api/record-coupon-usage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: couponCode,
+              uid: userId,
+              email: email,
+              submissionId: submission.id,
+              discountAmount: couponDiscount
+            })
+          });
+          console.log('✅ Coupon usage recorded for submission:', submission.id);
+        }
+      } catch (couponError) {
+        console.error('⚠️ Failed to record coupon usage:', couponError);
       }
     });
 
@@ -1024,6 +1178,29 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         console.log('✅ Email sent for multiple submissions:', submissionUuid);
       } catch (emailError) {
         console.error('⚠️ Failed to send email:', emailError);
+      }
+
+      try {
+        // Record coupon usage if coupon was used (for first submission only to avoid duplicates)
+        const couponCode = req.body.couponCode;
+        const couponDiscount = req.body.couponDiscount;
+        
+        if (couponCode && couponDiscount > 0 && submissions.length > 0) {
+          await fetch(`${req.protocol}://${req.get('host')}/api/record-coupon-usage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: couponCode,
+              uid: userId,
+              email: email,
+              submissionId: submissions[0].id, // Use first submission ID
+              discountAmount: couponDiscount
+            })
+          });
+          console.log('✅ Coupon usage recorded for multiple submissions:', submissionUuid);
+        }
+      } catch (couponError) {
+        console.error('⚠️ Failed to record coupon usage:', couponError);
       }
     });
 
@@ -1426,7 +1603,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
 router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any) => {
   try {
     console.log('🔧 Manual user-submission linking triggered...');
-    
+
     // Get all submissions that don't have a user_id but have email addresses
     const unlinkedSubmissions = await client.query(`
       SELECT id, email, first_name, last_name 
@@ -1434,7 +1611,7 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
       WHERE user_id IS NULL AND email IS NOT NULL
       ORDER BY submitted_at DESC
     `);
-    
+
     if (unlinkedSubmissions.rows.length === 0) {
       return res.json({
         success: true,
@@ -1443,20 +1620,20 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
         usersCreated: 0
       });
     }
-    
+
     console.log(`🔍 Found ${unlinkedSubmissions.rows.length} unlinked submissions`);
-    
+
     let linked = 0;
     let usersCreated = 0;
-    
+
     for (const submission of unlinkedSubmissions.rows) {
       // Try to find a user with this email
       let userResult = await client.query(`
         SELECT id, email FROM users WHERE email = $1
       `, [submission.email]);
-      
+
       let user;
-      
+
       if (userResult.rows.length > 0) {
         user = userResult.rows[0];
         console.log(`👤 Found existing user for ${submission.email}`);
@@ -1473,7 +1650,7 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
             submission.email,
             `${submission.first_name} ${submission.last_name || ''}`.trim()
           ]);
-          
+
           user = newUserResult.rows[0];
           usersCreated++;
           console.log(`✅ Created user account for ${submission.email}`);
@@ -1482,7 +1659,7 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
           continue; // Skip this submission
         }
       }
-      
+
       if (user) {
         // Link the submission to this user
         await client.query(`
@@ -1490,12 +1667,12 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
           SET user_id = $1 
           WHERE id = $2
         `, [user.id, submission.id]);
-        
+
         console.log(`✅ Linked submission ${submission.id} to user ${user.email}`);
         linked++;
       }
     }
-    
+
     res.json({
       success: true,
       message: `Successfully processed ${unlinkedSubmissions.rows.length} submissions!`,
@@ -1503,7 +1680,7 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
       usersCreated,
       linked
     });
-    
+
   } catch (error) {
     console.error('❌ Manual linking failed:', error);
     res.status(500).json({
@@ -1519,19 +1696,19 @@ router.get('/api/debug/submissions', asyncHandler(async (req: any, res: any) => 
     // Get total submissions count
     const totalResult = await storage.getAllSubmissions();
     const total = totalResult.length;
-    
+
     // Get submissions with user links
     const linkedResult = await client.query(`
       SELECT COUNT(*) FROM submissions WHERE user_id IS NOT NULL
     `);
     const linked = parseInt(linkedResult.rows[0].count);
-    
+
     // Get submissions without user links
     const unlinkedResult = await client.query(`
       SELECT COUNT(*) FROM submissions WHERE user_id IS NULL
     `);
     const unlinked = parseInt(unlinkedResult.rows[0].count);
-    
+
     // Get recent submissions
     const recentResult = await client.query(`
       SELECT id, email, first_name, last_name, poem_title, user_id, submitted_at
@@ -1539,11 +1716,11 @@ router.get('/api/debug/submissions', asyncHandler(async (req: any, res: any) => 
       ORDER BY submitted_at DESC 
       LIMIT 10
     `);
-    
+
     // Get all users
     const usersResult = await client.query(`SELECT COUNT(*) FROM users`);
     const totalUsers = parseInt(usersResult.rows[0].count);
-    
+
     res.json({
       success: true,
       summary: {
