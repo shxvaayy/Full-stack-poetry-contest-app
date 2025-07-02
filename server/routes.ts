@@ -308,7 +308,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
       }
 
       // Validate against coupon codes (your existing logic)
-      const { validateCouponCode } = await import('./coupon-codes.js');
+      const { validateCouponCode } = await import('./coupon-codes');
       const validation = validateCouponCode(code, tier);
 
       if (!validation.valid) {

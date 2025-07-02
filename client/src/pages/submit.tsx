@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
+import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2, Clock, Shield, RefreshCcw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -85,6 +85,14 @@ export default function SubmitPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState("");
   const [discountedAmount, setDiscountedAmount] = useState(0);
+  
+  // NEW: Enhanced loading states
+  const [submissionProgress, setSubmissionProgress] = useState("");
+  const [showReloadWarning, setShowReloadWarning] = useState(false);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [isCreatingSubmission, setIsCreatingSubmission] = useState(false);
+  const [isProcessingCoupon, setIsProcessingCoupon] = useState(false);
+  
   const [formData, setFormData] = useState(() => {
     // Try to restore from sessionStorage to prevent loss on reload
     const saved = sessionStorage.getItem('writory_form_data');
@@ -109,6 +117,7 @@ export default function SubmitPage() {
       termsAccepted: false,
     };
   });
+  
   const [files, setFiles] = useState({
     poem: null as File | null,
     photo: null as File | null,
@@ -121,6 +130,36 @@ export default function SubmitPage() {
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+
+  // CRITICAL: Prevent page unload during submission
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSubmitting || isProcessingPayment || isUploadingFiles || isCreatingSubmission) {
+        e.preventDefault();
+        e.returnValue = 'Your submission is in progress. Are you sure you want to leave?';
+        return 'Your submission is in progress. Are you sure you want to leave?';
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && (isSubmitting || isProcessingPayment)) {
+        console.warn('⚠️ User navigated away during submission');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSubmitting, isProcessingPayment, isUploadingFiles, isCreatingSubmission]);
+
+  // Show reload warning when any critical process is active
+  useEffect(() => {
+    setShowReloadWarning(isSubmitting || isProcessingPayment || isUploadingFiles || isCreatingSubmission);
+  }, [isSubmitting, isProcessingPayment, isUploadingFiles, isCreatingSubmission]);
 
   // Get poem count based on tier
   const getPoemCount = (tierId: string): number => {
@@ -157,9 +196,11 @@ export default function SubmitPage() {
 
     if (sessionId && paymentSuccess === 'true') {
       console.log('🎉 Stripe payment successful, verifying session:', sessionId);
+      setSubmissionProgress("Verifying payment...");
       verifyPayment(sessionId);
     } else if (paypalOrderId && paymentSuccess === 'true') {
       console.log('🎉 PayPal payment successful, verifying order:', paypalOrderId);
+      setSubmissionProgress("Verifying PayPal payment...");
       verifyPayPalPayment(paypalOrderId);
     } else if (paymentCancelled === 'true') {
       toast({
@@ -186,6 +227,8 @@ export default function SubmitPage() {
 
   const verifyPayment = async (sessionId: string) => {
     try {
+      setIsProcessingPayment(true);
+      setSubmissionProgress("Verifying your payment...");
       console.log('🔍 Verifying payment session:', sessionId);
 
       const response = await fetch('/api/verify-checkout-session', {
@@ -204,6 +247,7 @@ export default function SubmitPage() {
         setSessionId(sessionId);
         setPaymentCompleted(true);
         setCurrentStep("form");
+        setSubmissionProgress("Payment verified! Processing submission...");
 
         toast({
           title: "Payment Successful!",
@@ -221,6 +265,7 @@ export default function SubmitPage() {
         } catch (error) {
           console.error('❌ Submission after verification failed:', error);
           setIsSubmitting(false);
+          setIsProcessingPayment(false);
           toast({
             title: "Submission Error",
             description: "Payment successful but submission failed. Please contact support.",
@@ -234,6 +279,7 @@ export default function SubmitPage() {
       }
     } catch (error: any) {
       console.error('❌ Payment verification error:', error);
+      setIsProcessingPayment(false);
       toast({
         title: "Payment Verification Failed",
         description: error.message || "There was an issue verifying your payment. Please contact support.",
@@ -244,6 +290,8 @@ export default function SubmitPage() {
 
   const verifyPayPalPayment = async (orderId: string) => {
     try {
+      setIsProcessingPayment(true);
+      setSubmissionProgress("Verifying PayPal payment...");
       console.log('🔍 Verifying PayPal order:', orderId);
 
       const response = await fetch('/api/verify-paypal-payment', {
@@ -268,6 +316,7 @@ export default function SubmitPage() {
         setSessionId(orderId);
         setPaymentCompleted(true);
         setCurrentStep("form");
+        setSubmissionProgress("PayPal payment verified! Processing submission...");
 
         toast({
           title: "PayPal Payment Successful!",
@@ -285,6 +334,7 @@ export default function SubmitPage() {
         } catch (error) {
           console.error('❌ Submission after PayPal verification failed:', error);
           setIsSubmitting(false);
+          setIsProcessingPayment(false);
           toast({
             title: "Submission Error",
             description: "Payment successful but submission failed. Please contact support.",
@@ -298,6 +348,7 @@ export default function SubmitPage() {
       }
     } catch (error: any) {
       console.error('❌ PayPal payment verification error:', error);
+      setIsProcessingPayment(false);
       toast({
         title: "PayPal Payment Verification Failed",
         description: error.message || "There was an issue verifying your PayPal payment. Please contact support.",
@@ -322,7 +373,7 @@ export default function SubmitPage() {
     setCurrentStep("form");
   };
 
-  // FIXED: Enhanced coupon application with proper database validation
+  // ENHANCED: Coupon application with better loading states
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code');
@@ -335,7 +386,9 @@ export default function SubmitPage() {
     }
 
     setIsApplyingCoupon(true);
+    setIsProcessingCoupon(true);
     setCouponError('');
+    setSubmissionProgress("Validating coupon code...");
 
     try {
       // CRITICAL FIX: Server-side validation with database check
@@ -357,6 +410,8 @@ export default function SubmitPage() {
       if (!result.valid) {
         setCouponError(result.error || 'Invalid coupon code');
         setIsApplyingCoupon(false);
+        setIsProcessingCoupon(false);
+        setSubmissionProgress("");
         return;
       }
 
@@ -366,6 +421,7 @@ export default function SubmitPage() {
       setCouponDiscount(discountAmount);
       setDiscountedAmount(finalAmount);
       setCouponApplied(true);
+      setSubmissionProgress("");
       
       toast({
         title: "Coupon Applied!",
@@ -374,8 +430,10 @@ export default function SubmitPage() {
     } catch (error) {
       console.error('Coupon validation error:', error);
       setCouponError('Failed to validate coupon code. Please try again.');
+      setSubmissionProgress("");
     } finally {
       setIsApplyingCoupon(false);
+      setIsProcessingCoupon(false);
     }
   };
 
@@ -501,6 +559,7 @@ export default function SubmitPage() {
     return true;
   };
 
+  // ENHANCED: Form submission with detailed progress tracking
   const handleFormSubmitWithPaymentData = async (paymentInfo: any) => {
     if (!validateForm() || !selectedTier) {
       setIsSubmitting(false);
@@ -509,12 +568,17 @@ export default function SubmitPage() {
 
     try {
       console.log('📝 Submitting form with payment data:', paymentInfo);
+      setIsSubmitting(true);
+      setIsUploadingFiles(true);
+      setSubmissionProgress("Preparing your submission...");
 
       const poemCount = getPoemCount(selectedTier.id);
       let response;
 
       if (poemCount === 1) {
         // Single poem submission
+        setSubmissionProgress("Uploading poem and photo files...");
+        
         const formDataToSend = new FormData();
         
         // Add form fields
@@ -552,6 +616,10 @@ export default function SubmitPage() {
         if (files.poem) formDataToSend.append('poemFile', files.poem);
         if (files.photo) formDataToSend.append('photoFile', files.photo);
 
+        setIsUploadingFiles(false);
+        setIsCreatingSubmission(true);
+        setSubmissionProgress("Creating your submission...");
+        
         console.log('📤 Sending single poem submission...');
         response = await fetch('/api/submit-poem', {
           method: 'POST',
@@ -560,6 +628,8 @@ export default function SubmitPage() {
         });
       } else {
         // Multiple poems submission
+        setSubmissionProgress(`Uploading ${poemCount} poem files and photo...`);
+        
         const formDataToSend = new FormData();
         
         // Add form fields
@@ -607,6 +677,10 @@ export default function SubmitPage() {
         // Add photo file
         if (files.photo) formDataToSend.append('photo', files.photo);
 
+        setIsUploadingFiles(false);
+        setIsCreatingSubmission(true);
+        setSubmissionProgress("Creating your submissions...");
+        
         console.log('📤 Sending multiple poems submission...');
         response = await fetch('/api/submit-multiple-poems', {
           method: 'POST',
@@ -615,11 +689,19 @@ export default function SubmitPage() {
         });
       }
 
+      setSubmissionProgress("Finalizing submission...");
+
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Submission successful:', result);
         
-        setCurrentStep("completed");
+        setSubmissionProgress("Success! Redirecting...");
+        
+        // Small delay to show success message
+        setTimeout(() => {
+          setCurrentStep("completed");
+          setSubmissionProgress("");
+        }, 1000);
         
         // Clear form data from session storage
         try {
@@ -639,6 +721,7 @@ export default function SubmitPage() {
       }
     } catch (error: any) {
       console.error('❌ Form submission error:', error);
+      setSubmissionProgress("");
       toast({
         title: "Submission Error",
         description: error.message || "There was an error submitting your poem. Please try again.",
@@ -646,6 +729,9 @@ export default function SubmitPage() {
       });
     } finally {
       setIsSubmitting(false);
+      setIsProcessingPayment(false);
+      setIsUploadingFiles(false);
+      setIsCreatingSubmission(false);
     }
   };
 
@@ -656,6 +742,7 @@ export default function SubmitPage() {
     
     // Immediately submit after payment
     setIsSubmitting(true);
+    setSubmissionProgress("Payment successful! Processing submission...");
     handleFormSubmitWithPaymentData(paymentData);
   };
 
@@ -669,6 +756,7 @@ export default function SubmitPage() {
     // If free tier or payment already completed, submit directly
     if (discountedAmount === 0 || paymentCompleted) {
       console.log('💰 Free submission or payment already completed');
+      setSubmissionProgress("Processing your submission...");
       setIsSubmitting(true);
       await handleFormSubmitWithPaymentData(paymentData || {});
     } else {
@@ -680,6 +768,81 @@ export default function SubmitPage() {
   const canSelectFree = () => {
     if (!IS_FIRST_MONTH) return false;
     return !submissionStatus?.freeSubmissionUsed;
+  };
+
+  // NEW: Reload Warning Component
+  const ReloadWarning = () => {
+    if (!showReloadWarning) return null;
+
+    return (
+      <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white px-4 py-3 shadow-lg">
+        <div className="max-w-4xl mx-auto flex items-center justify-center space-x-3">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1 text-center">
+            <span className="font-semibold">⚠️ SUBMISSION IN PROGRESS</span>
+            <span className="ml-2">
+              Do not refresh or close this page! Your submission may be lost.
+            </span>
+          </div>
+          <Shield className="w-5 h-5 flex-shrink-0" />
+        </div>
+      </div>
+    );
+  };
+
+  // NEW: Enhanced Loading Overlay
+  const LoadingOverlay = () => {
+    if (!isSubmitting && !isProcessingPayment && !isUploadingFiles && !isCreatingSubmission) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 backdrop-blur-sm">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+          <div className="text-center space-y-6">
+            <div className="relative">
+              <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto" />
+              {isUploadingFiles && (
+                <Upload className="w-6 h-6 text-green-600 absolute top-5 left-1/2 transform -translate-x-1/2" />
+              )}
+              {isCreatingSubmission && (
+                <CheckCircle className="w-6 h-6 text-green-600 absolute top-5 left-1/2 transform -translate-x-1/2" />
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-gray-900">
+                {isProcessingPayment ? "Processing Payment" : "Submitting Your Poem"}
+              </h3>
+              
+              {submissionProgress && (
+                <p className="text-gray-600">{submissionProgress}</p>
+              )}
+              
+              <div className="text-sm text-gray-500 space-y-1">
+                {isUploadingFiles && <p>📤 Uploading files...</p>}
+                {isCreatingSubmission && <p>📝 Creating submission...</p>}
+                {isProcessingPayment && <p>💳 Verifying payment...</p>}
+                {isProcessingCoupon && <p>🎫 Validating coupon...</p>}
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2 text-red-800">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-semibold">Important!</p>
+                  <p>Please do not refresh or close this page. Your submission is being processed.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-center space-x-2 text-gray-500 text-sm">
+              <Clock className="w-4 h-4" />
+              <span>This may take a few moments...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderTierSelection = () => (
@@ -767,6 +930,7 @@ export default function SubmitPage() {
           onChange={(e) => handleFormData('poemTitle', e.target.value)}
           placeholder="Enter your poem title"
           required
+          disabled={isSubmitting || isProcessingPayment}
         />
         
         <div className="space-y-2">
@@ -779,6 +943,7 @@ export default function SubmitPage() {
               variant="outline"
               onClick={() => poemFileRef.current?.click()}
               className="flex items-center space-x-2"
+              disabled={isSubmitting || isProcessingPayment}
             >
               <Upload className="w-4 h-4" />
               <span>Choose File</span>
@@ -795,6 +960,7 @@ export default function SubmitPage() {
             accept=".pdf,.doc,.docx"
             onChange={(e) => handleFileUpload('poem', e.target.files?.[0] || null)}
             className="hidden"
+            disabled={isSubmitting || isProcessingPayment}
           />
         </div>
       </div>
@@ -833,6 +999,7 @@ export default function SubmitPage() {
                     onChange={(e) => handleMultiplePoemData(index, 'title', e.target.value)}
                     placeholder={`Enter title for poem ${index + 1}`}
                     required
+                    disabled={isSubmitting || isProcessingPayment}
                   />
                 </div>
                 
@@ -855,6 +1022,7 @@ export default function SubmitPage() {
                         input.click();
                       }}
                       className="flex items-center space-x-2"
+                      disabled={isSubmitting || isProcessingPayment}
                     >
                       <Upload className="w-4 h-4" />
                       <span>Choose File</span>
@@ -874,22 +1042,120 @@ export default function SubmitPage() {
     );
   };
 
+  const renderPhotoUpload = () => (
+    <div className="space-y-2">
+      <Label htmlFor="photoFile" className="text-sm font-medium text-gray-700">
+        Upload Your Photo *
+      </Label>
+      <div className="flex items-center space-x-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => photoFileRef.current?.click()}
+          className="flex items-center space-x-2"
+          disabled={isSubmitting || isProcessingPayment}
+        >
+          <Upload className="w-4 h-4" />
+          <span>Choose Photo</span>
+        </Button>
+        {files.photo && (
+          <span className="text-sm text-green-600">
+            ✓ {files.photo.name}
+          </span>
+        )}
+      </div>
+      <input
+        ref={photoFileRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => handleFileUpload('photo', e.target.files?.[0] || null)}
+        className="hidden"
+        disabled={isSubmitting || isProcessingPayment}
+      />
+    </div>
+  );
+
+  const renderCouponSection = () => {
+    if (!selectedTier || selectedTier.id === 'free') return null;
+
+    return (
+      <Card className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Gift className="w-5 h-5 text-purple-600" />
+            <h3 className="font-semibold text-purple-900">Have a Coupon Code?</h3>
+          </div>
+          
+          {!couponApplied ? (
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <Input
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Enter coupon code"
+                  className="flex-1"
+                  disabled={isApplyingCoupon || isSubmitting || isProcessingPayment}
+                />
+                <Button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={!couponCode.trim() || isApplyingCoupon || isSubmitting || isProcessingPayment}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {isApplyingCoupon ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Apply'
+                  )}
+                </Button>
+              </div>
+              
+              {couponError && (
+                <div className="text-sm text-red-600 flex items-center space-x-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>{couponError}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800 font-medium">
+                    Coupon "{couponCode}" Applied!
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={removeCoupon}
+                  disabled={isSubmitting || isProcessingPayment}
+                >
+                  Remove
+                </Button>
+              </div>
+              
+              <div className="text-sm text-green-700">
+                Discount: ₹{couponDiscount}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
   const renderForm = () => (
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold text-gray-900">Submit Your Poem</h1>
-        <div className="flex items-center justify-center space-x-4">
-          <div className={`px-4 py-2 rounded-full ${selectedTier?.bgClass} text-white`}>
-            {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentStep("selection")}
-          >
-            Change Tier
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Submit Your {selectedTier?.name}
+        </h1>
+        <p className="text-gray-600">
+          Fill in your details and upload your poem
+        </p>
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-6">
@@ -907,6 +1173,7 @@ export default function SubmitPage() {
                 onChange={(e) => handleFormData('firstName', e.target.value)}
                 placeholder="Enter your first name"
                 required
+                disabled={isSubmitting || isProcessingPayment}
               />
             </div>
             
@@ -919,6 +1186,7 @@ export default function SubmitPage() {
                 value={formData.lastName}
                 onChange={(e) => handleFormData('lastName', e.target.value)}
                 placeholder="Enter your last name"
+                disabled={isSubmitting || isProcessingPayment}
               />
             </div>
             
@@ -933,7 +1201,7 @@ export default function SubmitPage() {
                 onChange={(e) => handleFormData('email', e.target.value)}
                 placeholder="Enter your email"
                 required
-                disabled={!!user?.email}
+                disabled={isSubmitting || isProcessingPayment}
               />
             </div>
             
@@ -946,6 +1214,7 @@ export default function SubmitPage() {
                 value={formData.phone}
                 onChange={(e) => handleFormData('phone', e.target.value)}
                 placeholder="Enter your phone number"
+                disabled={isSubmitting || isProcessingPayment}
               />
             </div>
             
@@ -959,259 +1228,157 @@ export default function SubmitPage() {
                 value={formData.age}
                 onChange={(e) => handleFormData('age', e.target.value)}
                 placeholder="Enter your age"
+                disabled={isSubmitting || isProcessingPayment}
               />
             </div>
           </div>
         </Card>
 
-        {/* Poem Details */}
+        {/* Poem Submission */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Poem Details</h3>
+          
           {getPoemCount(selectedTier?.id || '') === 1 ? renderPoemForm() : renderMultiplePoemsForm()}
-        </Card>
-
-        {/* Photo Upload */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Author Photo</h3>
-          <div className="space-y-2">
-            <Label htmlFor="photoFile" className="text-sm font-medium text-gray-700">
-              Upload Your Photo (JPG, PNG) *
-            </Label>
-            <div className="flex items-center space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => photoFileRef.current?.click()}
-                className="flex items-center space-x-2"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Choose Photo</span>
-              </Button>
-              {files.photo && (
-                <span className="text-sm text-green-600">
-                  ✓ {files.photo.name}
-                </span>
-              )}
-            </div>
-            <input
-              ref={photoFileRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileUpload('photo', e.target.files?.[0] || null)}
-              className="hidden"
-            />
+          
+          <div className="mt-6">
+            {renderPhotoUpload()}
           </div>
         </Card>
 
-        {/* Coupon Code - Only show for paid tiers */}
-        {selectedTier && selectedTier.price > 0 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Coupon Code</h3>
-            {!couponApplied ? (
-              <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <Input
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="Enter coupon code"
-                    disabled={isApplyingCoupon}
-                  />
-                  <Button
-                    type="button"
-                    onClick={applyCoupon}
-                    disabled={isApplyingCoupon || !couponCode.trim()}
-                    className="whitespace-nowrap"
-                  >
-                    {isApplyingCoupon ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Applying...
-                      </>
-                    ) : (
-                      'Apply'
-                    )}
-                  </Button>
-                </div>
-                {couponError && (
-                  <p className="text-sm text-red-600">{couponError}</p>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-green-800 font-medium">
-                    Coupon "{couponCode}" applied! Discount: ₹{couponDiscount}
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={removeCoupon}
-                >
-                  Remove
-                </Button>
-              </div>
-            )}
-          </Card>
-        )}
+        {/* Coupon Section */}
+        {renderCouponSection()}
 
         {/* Price Summary */}
-        {selectedTier && (
-          <Card className="p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Price Summary</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Submission Fee ({selectedTier.name}):</span>
-                <span>₹{selectedTier.price}</span>
+        <Card className="p-6 bg-gray-50">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Tier: {selectedTier?.name}</span>
+              <span>₹{selectedTier?.price}</span>
+            </div>
+            
+            {couponApplied && (
+              <div className="flex justify-between text-green-600">
+                <span>Discount:</span>
+                <span>-₹{couponDiscount}</span>
               </div>
-              {couponApplied && couponDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount ({couponCode}):</span>
-                  <span>-₹{couponDiscount}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-semibold border-t pt-2">
-                <span>Total Amount:</span>
+            )}
+            
+            <div className="border-t pt-2 font-semibold text-lg">
+              <div className="flex justify-between">
+                <span>Total:</span>
                 <span>₹{discountedAmount}</span>
               </div>
             </div>
-          </Card>
-        )}
-
-        {/* Terms and Conditions */}
-        <Card className="p-6">
-          <div className="flex items-start space-x-3">
-            <Checkbox
-              id="terms"
-              checked={formData.termsAccepted}
-              onCheckedChange={(checked) => handleFormData('termsAccepted', checked)}
-            />
-            <div className="space-y-1">
-              <Label htmlFor="terms" className="text-sm font-medium text-gray-700 cursor-pointer">
-                I accept the terms and conditions *
-              </Label>
-              <p className="text-xs text-gray-500">
-                By submitting, you agree to our contest rules and privacy policy.
-              </p>
-            </div>
           </div>
         </Card>
 
-        {/* Submit Button */}
-        <div className="flex space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setCurrentStep("selection")}
-            className="flex-1"
-          >
-            Back to Tiers
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || !formData.termsAccepted}
-            className="flex-1"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {paymentCompleted ? 'Submitting...' : 'Processing...'}
-              </>
-            ) : (
-              discountedAmount === 0 ? 'Submit for Free' : `Proceed to Payment (₹${discountedAmount})`
-            )}
-          </Button>
+        {/* Terms and Conditions */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="termsAccepted"
+            checked={formData.termsAccepted}
+            onCheckedChange={(checked) => handleFormData('termsAccepted', checked)}
+            disabled={isSubmitting || isProcessingPayment}
+          />
+          <Label htmlFor="termsAccepted" className="text-sm text-gray-700">
+            I accept the{" "}
+            <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
+              terms and conditions
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+              privacy policy
+            </a>
+          </Label>
         </div>
+
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+          disabled={isSubmitting || isProcessingPayment || !formData.termsAccepted}
+        >
+          {isSubmitting || isProcessingPayment ? (
+            <div className="flex items-center space-x-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>
+                {isProcessingPayment ? "Processing Payment..." : "Submitting..."}
+              </span>
+            </div>
+          ) : discountedAmount === 0 ? (
+            "Submit Poem (Free)"
+          ) : (
+            `Proceed to Payment (₹${discountedAmount})`
+          )}
+        </Button>
       </form>
     </div>
   );
 
   const renderPayment = () => (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <div className="text-center space-y-4">
+    <div className="max-w-lg mx-auto">
+      <div className="text-center space-y-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Complete Payment</h1>
-        <div className="flex items-center justify-center space-x-4">
-          <div className={`px-4 py-2 rounded-full ${selectedTier?.bgClass} text-white`}>
-            {selectedTier?.name} - ₹{discountedAmount}
-          </div>
-        </div>
+        <p className="text-gray-600">
+          Pay ₹{discountedAmount} to submit your {selectedTier?.name}
+        </p>
       </div>
 
-      {selectedTier && (
-        <PaymentForm
-          amount={discountedAmount}
-          tier={selectedTier.id}
-          metadata={{
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            tier: selectedTier.id,
-            uid: user?.uid
-          }}
-          onSuccess={handlePaymentSuccess}
-          onError={(error) => {
-            console.error('Payment error:', error);
-            toast({
-              title: "Payment Error",
-              description: error.message || "Payment failed. Please try again.",
-              variant: "destructive",
-            });
-          }}
-          setIsProcessing={setIsProcessingPayment}
-        />
-      )}
-
-      <div className="flex space-x-4">
-        <Button
-          variant="outline"
-          onClick={() => setCurrentStep("form")}
-          className="flex-1"
-          disabled={isProcessingPayment}
-        >
-          Back to Form
-        </Button>
-      </div>
+      <PaymentForm
+        amount={discountedAmount}
+        tier={selectedTier?.id || ''}
+        onSuccess={handlePaymentSuccess}
+        onError={(error) => {
+          console.error('Payment error:', error);
+          toast({
+            title: "Payment Error",
+            description: error.message || "Payment failed. Please try again.",
+            variant: "destructive",
+          });
+        }}
+        disabled={isProcessingPayment}
+        setIsProcessing={setIsProcessingPayment}
+      />
     </div>
   );
 
   const renderCompleted = () => (
     <div className="max-w-2xl mx-auto text-center space-y-8">
       <div className="space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500">
-          <CheckCircle className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full">
+          <CheckCircle className="w-12 h-12 text-green-600" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">Submission Successful!</h1>
+        
+        <h1 className="text-4xl font-bold text-gray-900">
+          Submission Successful!
+        </h1>
+        
         <p className="text-lg text-gray-600">
-          Thank you for submitting your poem. You will receive a confirmation email shortly.
+          Thank you for submitting your poem to our contest. We've received your submission and will review it soon.
         </p>
       </div>
 
-      <Card className="p-6 text-left">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">What's Next?</h3>
-        <div className="space-y-3 text-sm text-gray-600">
-          <div className="flex items-start space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-            <span>Your poem has been successfully uploaded and is being processed</span>
-          </div>
-          <div className="flex items-start space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-            <span>You will receive a confirmation email with your submission details</span>
-          </div>
-          <div className="flex items-start space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-            <span>Contest results will be announced at the end of the month</span>
-          </div>
-          <div className="flex items-start space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-            <span>Winners will be contacted via email and announced on our website</span>
-          </div>
+      <Card className="p-6 bg-blue-50 border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-900 mb-2">What's Next?</h3>
+        <div className="text-blue-800 space-y-2 text-left">
+          <p>• You'll receive a confirmation email shortly</p>
+          <p>• Our judges will review your submission</p>
+          <p>• Winners will be announced at the end of the contest period</p>
+          <p>• Check your email and our website for updates</p>
         </div>
       </Card>
 
       <div className="space-y-4">
         <Button
+          onClick={() => window.location.href = '/my-submissions'}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          View My Submissions
+        </Button>
+        
+        <Button
+          variant="outline"
           onClick={() => {
             setCurrentStep("selection");
             setSelectedTier(null);
@@ -1219,42 +1386,27 @@ export default function SubmitPage() {
             setPaymentData(null);
             setCouponApplied(false);
             setCouponCode("");
-            setCouponDiscount(0);
-            setDiscountedAmount(0);
-            setFormData({
-              firstName: "",
-              lastName: "",
-              email: user?.email || "",
-              phone: "",
-              age: "",
-              poemTitle: "",
-              termsAccepted: false,
-            });
             setFiles({ poem: null, photo: null });
-            setMultiplePoems({
-              titles: ["", "", "", "", ""],
-              files: [null, null, null, null, null],
-            });
+            setMultiplePoems({ titles: ["", "", "", "", ""], files: [null, null, null, null, null] });
           }}
-          className="w-full"
+          className="ml-4"
         >
           Submit Another Poem
-        </Button>
-        
-        <Button
-          variant="outline"
-          onClick={() => window.location.href = '/'}
-          className="w-full"
-        >
-          Back to Home
         </Button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="container mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {/* Reload Warning */}
+      <ReloadWarning />
+      
+      {/* Loading Overlay */}
+      <LoadingOverlay />
+      
+      {/* Main Content */}
+      <div className={`${showReloadWarning ? 'mt-16' : ''} transition-all duration-300`}>
         {currentStep === "selection" && renderTierSelection()}
         {currentStep === "form" && renderForm()}
         {currentStep === "payment" && renderPayment()}
