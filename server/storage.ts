@@ -296,8 +296,9 @@ export async function trackCouponUsage(usageData: {
       return hasUsed;
     } catch (error) {
       console.error('❌ Error checking coupon usage:', error);
-      // In case of error, don't allow usage to prevent abuse
-      throw error;
+      console.log('⚠️ Database error details:', error.message);
+      // Return false (allow usage) if database check fails to prevent blocking valid coupons
+      return false;
     }
   }
 
