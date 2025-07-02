@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { router } from './routes.js';
+import router from './routes.js';
 import { createCouponTrackingTable } from './create-coupon-tracking.js';
 
 // Load environment variables
