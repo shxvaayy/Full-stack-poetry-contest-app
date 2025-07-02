@@ -183,9 +183,11 @@ export async function getAllSubmissions() {
   }
 }
 
-async updateSubmission(id: number, data: Partial<Submission>) {
-    const [updated] = await this.db
-      .update(submissions)
+export async function updateSubmission(id: number, data: any) {
+  try {
+    console.log('🔄 Updating submission:', id, data);
+
+    const result = await db.update(submissions)
       .set({
         ...data,
         updatedAt: new Date()
@@ -193,12 +195,19 @@ async updateSubmission(id: number, data: Partial<Submission>) {
       .where(eq(submissions.id, id))
       .returning();
 
-    return updated;
+    console.log('✅ Submission updated:', id);
+    return result[0];
+  } catch (error) {
+    console.error('❌ Error updating submission:', error);
+    throw error;
   }
+}
 
-  async getSubmissionsByEmailAndTitle(email: string, poemTitle: string) {
-    return await this.db
-      .select()
+export async function getSubmissionsByEmailAndTitle(email: string, poemTitle: string) {
+  try {
+    console.log('🔍 Getting submissions by email and title:', { email, poemTitle });
+
+    const result = await db.select()
       .from(submissions)
       .where(
         and(
@@ -206,25 +215,14 @@ async updateSubmission(id: number, data: Partial<Submission>) {
           eq(submissions.poemTitle, poemTitle)
         )
       );
-  }
 
-  async updateSubmissionEvaluation(id: number, data: {
-    score?: number;
-    type?: string;
-    scoreBreakdown?: string;
-    status?: string;
-  }) {
-    const [updated] = await this.db
-      .update(submissions)
-      .set({
-        ...data,
-        updatedAt: new Date()
-      })
-      .where(eq(submissions.id, id))
-      .returning();
-
-    return updated;
+    console.log(`✅ Found ${result.length} submissions`);
+    return result;
+  } catch (error) {
+    console.error('❌ Error getting submissions by email and title:', error);
+    throw error;
   }
+}
 
 // Export all storage functions
 export const storage = {
