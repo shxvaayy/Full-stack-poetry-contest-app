@@ -491,7 +491,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     });
   }
 
-  // Check if user has already used this coupon - STRICT CHECK but with better error handling
+  // Check if user has already used this coupon - STRICT CHECK
   try {
     const hasUsedCoupon = await storage.checkCouponUsage(code, uid);
     if (hasUsedCoupon) {
@@ -503,8 +503,10 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     }
   } catch (error) {
     console.error('❌ Error checking coupon usage:', error);
-    // Continue with validation instead of failing - just log the error
-    console.log('⚠️ Continuing with coupon validation despite usage check error');
+    return res.status(500).json({
+      valid: false,
+      error: 'Failed to validate coupon. Please try again.'
+    });
   }
 
   // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
@@ -709,25 +711,45 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       console.log('✅ Photo file uploaded:', photoFileUrl);
     }
 
-    // Create or find user - FIXED VERSION
+    // Create or find user - IMPROVED VERSION
     let user = null;
     if (userId) {
       console.log('🔍 Looking for user with UID:', userId);
       user = await storage.getUserByUid(userId);
       if (!user) {
         console.log('🔄 Creating new user:', email);
-        user = await storage.createUser({
-          uid: userId,
-          email,
-          name: firstName + (lastName ? ` ${lastName}` : ''),
-          phone: phone || null
-        });
-        console.log('✅ User created:', user.email);
+        try {
+          user = await storage.createUser({
+            uid: userId,
+            email,
+            name: firstName + (lastName ? ` ${lastName}` : ''),
+            phone: phone || null
+          });
+          console.log('✅ User created successfully:', user.email);
+        } catch (createError) {
+          console.error('❌ Failed to create user:', createError);
+          // Try to find by email as fallback
+          const existingUsers = await db.select().from(users).where(eq(users.email, email));
+          if (existingUsers.length > 0) {
+            user = existingUsers[0];
+            console.log('✅ Found existing user by email:', user.email);
+          }
+        }
       } else {
         console.log('✅ User found:', user.email);
       }
     } else {
-      console.log('⚠️ No UID provided, creating submission without user link');
+      console.log('⚠️ No UID provided, trying to find user by email');
+      // Try to find user by email even without UID
+      try {
+        const existingUsers = await db.select().from(users).where(eq(users.email, email));
+        if (existingUsers.length > 0) {
+          user = existingUsers[0];
+          console.log('✅ Found user by email fallback:', user.email);
+        }
+      } catch (error) {
+        console.log('⚠️ Could not find user by email fallback');
+      }
     }
 
     // Create submission data
