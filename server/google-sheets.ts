@@ -185,7 +185,7 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
   }
 }
 
-// ✅ NEW: Function for multiple poems submission
+// ✅ NEW: Function for multiple poems submission - FIXED
 export async function addMultiplePoemsToSheet(data: {
   firstName: string;
   lastName?: string;
@@ -199,8 +199,7 @@ export async function addMultiplePoemsToSheet(data: {
   titles: string[];
   submissionUuid: string;
   submissionIds: number[];
-  poemFileUrls: string[];
-  photoFileUrl?: string;
+  poemFileUrls?: string[]; // Add poem file URLs
 }): Promise<void> {
   try {
     console.log(`📝 Adding ${data.titles.length} poems to sheet for:`, data.firstName, data.tier);
@@ -215,30 +214,30 @@ export async function addMultiplePoemsToSheet(data: {
 
     // Create rows for each poem
     const rowsToAdd = data.titles.map((title, index) => [
-      timestamp,
-      name,
-      data.email,
-      data.phone || '',
-      data.age || '',
-      title,
-      data.tier,
-      index === 0 ? (data.price || 0) : 0, // Only first poem has payment amount
-      data.poemFileUrls[index] || '', // Individual poem file URL
-      index === 0 ? (data.photoFileUrl || '') : '', // Photo URL (only for first poem)
-      data.submissionUuid,
-      index + 1, // Poem index
-      data.titles.length // Total poems
+      timestamp,                                           // A - Timestamp
+      name,                                               // B - Name
+      data.email,                                         // C - Email
+      data.phone || '',                                   // D - Phone
+      data.age || '',                                     // E - Age
+      title,                                              // F - Poem Title
+      data.tier,                                          // G - Tier
+      index === 0 ? (data.price || 0).toString() : '0',  // H - Amount (only first poem)
+      data.poemFileUrls?.[index] || '',                   // I - Poem File URL
+      index === 0 ? '' : '',                              // J - Photo (only for first poem)
+      data.submissionUuid,                                // K - Submission UUID
+      (index + 1).toString()                              // L - Poem Index
     ]);
 
+    // Use the correct Google Sheets API structure
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:M',
+      range: 'Poetry!A:L',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
-      resource: {
-        values: rowsToAdd
-      },
       auth: authClient,
+      requestBody: {  // Use requestBody instead of resource
+        values: rowsToAdd
+      }
     };
 
     console.log(`📊 Adding ${rowsToAdd.length} rows to Google Sheets:`, rowsToAdd);
