@@ -32,33 +32,52 @@ export const DISCOUNT_CODES = [
   'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
 ];
 
-// Used codes storage (in production, this should be stored in database)
-export const USED_CODES = new Set();
+// Define types for better TypeScript support
+interface ValidationResult {
+  valid: boolean;
+  type?: 'free' | 'discount';
+  discount?: number;
+  message: string;
+}
 
-export function validateCouponCode(code, tier) {
+export function validateCouponCode(code: string, tier: string): ValidationResult {
   const upperCode = code.toUpperCase();
-  
-  // Check if code was already used
-  if (USED_CODES.has(upperCode)) {
-    return { valid: false, message: 'This coupon code has already been used.' };
-  }
   
   // Check for 100% discount codes (only work on ₹50 tier)
   if (FREE_TIER_CODES.includes(upperCode)) {
     if (tier !== 'single') {
-      return { valid: false, message: '100% discount codes only work on the ₹50 tier.' };
+      return { 
+        valid: false, 
+        message: '100% discount codes only work on the ₹50 tier.' 
+      };
     }
-    return { valid: true, type: 'free', discount: 100, message: 'Valid 100% discount code! This tier is now free.' };
+    return { 
+      valid: true, 
+      type: 'free', 
+      discount: 100, 
+      message: 'Valid 100% discount code! This tier is now free.' 
+    };
   }
   
   // Check for 10% discount codes (work on all paid tiers)
   if (DISCOUNT_CODES.includes(upperCode)) {
-    return { valid: true, type: 'discount', discount: 10, message: 'Valid discount code! 10% discount applied.' };
+    return { 
+      valid: true, 
+      type: 'discount', 
+      discount: 10, 
+      message: 'Valid discount code! 10% discount applied.' 
+    };
   }
   
-  return { valid: false, message: 'Invalid coupon code.' };
+  return { 
+    valid: false, 
+    message: 'Invalid coupon code.' 
+  };
 }
 
-export function markCodeAsUsed(code) {
-  USED_CODES.add(code.toUpperCase());
+// Note: Used codes are now tracked in database, not in memory
+// This function is kept for backward compatibility but not used
+export function markCodeAsUsed(code: string): void {
+  // This function is deprecated - coupon usage is now tracked in database
+  console.log(`⚠️ markCodeAsUsed called for ${code} - this is now handled by database`);
 }
