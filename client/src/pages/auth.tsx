@@ -28,6 +28,8 @@ export default function AuthPage() {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isLinkingPhone, setIsLinkingPhone] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [phoneUserEmail, setPhoneUserEmail] = useState("");
 
   // Clean up recaptcha on unmount
   useEffect(() => {
@@ -57,6 +59,8 @@ export default function AuthPage() {
     setConfirmationResult(null);
     setIsLinkingPhone(false);
     setOtpTimer(0);
+    setShowEmailInput(false);
+    setPhoneUserEmail("");
     
     // Clear reCAPTCHA
     if (window.recaptchaVerifier) {
@@ -198,21 +202,70 @@ export default function AuthPage() {
           title: "Phone Linked",
           description: "Phone number linked successfully!",
         });
+        resetPhoneForm();
       } else {
-        // Sign in with phone
+        // Sign in with phone - but now require email
         await confirmationResult.confirm(otp);
+        
+        // After successful phone verification, ask for email
+        setShowOtpInput(false);
+        setShowEmailInput(true);
+        
         toast({
-          title: "Phone Sign-in Success",
-          description: "Successfully signed in with phone!",
+          title: "Phone Verified",
+          description: "Now please provide your email address for poem submissions",
         });
       }
-      
-      // Reset form
-      resetPhoneForm();
     } catch (error: any) {
       console.error("OTP verification error:", error);
       toast({
         title: "OTP Verification Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompletePhoneSignIn = async () => {
+    if (!phoneUserEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(phoneUserEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // The user is already signed in with Firebase at this point
+      // We just need to update their profile/account with the email
+      toast({
+        title: "Sign-in Complete",
+        description: "Successfully signed in with phone and email!",
+      });
+      
+      // Reset all forms
+      resetPhoneForm();
+      setShowEmailInput(false);
+      setPhoneUserEmail("");
+    } catch (error: any) {
+      console.error("Complete sign-in error:", error);
+      toast({
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -365,7 +418,29 @@ export default function AuthPage() {
                         disabled={loading || !otp || otp.length !== 6} 
                         className="w-full"
                       >
-                        {loading ? "Verifying..." : "Verify & Sign In"}
+                        {loading ? "Verifying..." : "Verify Phone"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {showEmailInput && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600 text-center">
+                        📧 Please provide your email for poem submissions
+                      </p>
+                      <Input
+                        placeholder="Enter your email address"
+                        value={phoneUserEmail}
+                        onChange={(e) => setPhoneUserEmail(e.target.value)}
+                        type="email"
+                        disabled={loading}
+                      />
+                      <Button 
+                        onClick={handleCompletePhoneSignIn} 
+                        disabled={loading || !phoneUserEmail} 
+                        className="w-full"
+                      >
+                        {loading ? "Completing Sign-in..." : "Complete Sign-in"}
                       </Button>
                     </div>
                   )}

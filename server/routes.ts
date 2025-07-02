@@ -244,6 +244,24 @@ router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, re
   }
 }));
 
+// Helper function to generate username from phone number
+function generateUsernameFromPhone(phone: string, email?: string): string {
+  if (email) {
+    // If email is provided, use part of email as name
+    const emailPart = email.split('@')[0];
+    return emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+  }
+
+  if (!phone) return 'User';
+
+  // Remove +91 or other country codes and take last 4 digits
+  const cleanPhone = phone.replace(/^\+\d{1,3}/, '').replace(/\D/g, '');
+  const lastFourDigits = cleanPhone.slice(-4);
+
+  // Generate username like "User7890" 
+  return `User${lastFourDigits}`;
+}
+
 // Create/update user
 router.post('/api/users', asyncHandler(async (req: any, res: any) => {
   const { uid, email, name, phone } = req.body;
@@ -256,10 +274,27 @@ router.post('/api/users', asyncHandler(async (req: any, res: any) => {
       console.log('✅ User already exists:', user.email);
       res.json(user);
     } else {
+      // Generate name for phone users
+      let userName = name;
+      let userEmail = email;
+
+      if (!userName && phone) {
+        userName = generateUsernameFromPhone(phone, email);
+        console.log('📱 Generated username for phone user:', userName);
+      }
+
+      // For phone users, require email (no fallback)
+      if (phone && !email) {
+        console.error('❌ Phone user missing email address');
+        return res.status(400).json({
+          error: 'Email address is required for phone authentication'
+        });
+      }
+
       const newUser = await storage.createUser({
         uid,
-        email,
-        name: name || null,
+        email: userEmail,
+        name: userName || 'User',
         phone: phone || null
       });
       console.log('✅ Created new user:', newUser.email);
@@ -537,7 +572,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         JOIN coupons c ON cu.coupon_id = c.id
         WHERE c.code = $1 AND cu.user_uid = $2
       `, [upperCode, uid]);
-      
+
       if (usageCheck.rows.length > 0) {
         const usageDate = new Date(usageCheck.rows[0].used_at).toLocaleDateString();
         return res.json({
@@ -554,7 +589,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         JOIN submissions s ON cu.submission_id = s.id
         WHERE c.code = $1 AND s.email = $2
       `, [upperCode, email]);
-      
+
       if (usageCheck.rows.length > 0) {
         const usageDate = new Date(usageCheck.rows[0].used_at).toLocaleDateString();
         return res.json({
@@ -642,7 +677,7 @@ router.post('/api/record-coupon-usage', asyncHandler(async (req: any, res: any) 
         ) VALUES ($1, $2, $3, NOW() - INTERVAL '1 day', NOW() + INTERVAL '1 year', true, NOW())
         RETURNING id
       `, [upperCode, 'percentage', discountAmount === 100 ? 100 : 10]);
-      
+
       couponId = newCouponResult.rows[0].id;
       console.log('✅ Created new coupon record:', couponId);
     } else {
@@ -837,9 +872,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     console.log('📁 Identified files:', {
       poemFile: poemFile?.originalname,
       photoFile: photoFile?.originalname
-    });
-
-    // Upload files to Google Drive
+    });    // Upload files to Google Drive
     let poemFileUrl = null;
     let photoFileUrl = null;
 
@@ -966,7 +999,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         // Record coupon usage if coupon was used
         const couponCode = req.body.couponCode;
         const couponDiscount = req.body.couponDiscount;
-        
+
         if (couponCode && couponDiscount > 0) {
           await fetch(`${req.protocol}://${req.get('host')}/api/record-coupon-usage`, {
             method: 'POST',
@@ -1241,7 +1274,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         // Record coupon usage if coupon was used (for first submission only to avoid duplicates)
         const couponCode = req.body.couponCode;
         const couponDiscount = req.body.couponDiscount;
-        
+
         if (couponCode && couponDiscount > 0 && submissions.length > 0) {
           await fetch(`${req.protocol}://${req.get('host')}/api/record-coupon-usage`, {
             method: 'POST',

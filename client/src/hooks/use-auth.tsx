@@ -33,22 +33,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       console.log("Starting logout process...");
-      
+
       // Clear demo session
       localStorage.removeItem('demo-session');
-      
+
       // Clear states
       setUser(null);
       setDbUser(null);
-      
+
       // Firebase logout (if not in demo mode)
       const demoMode = !import.meta.env.VITE_FIREBASE_API_KEY;
       if (!demoMode) {
         await firebaseLogout();
       }
-      
+
       console.log("Logout completed, redirecting...");
-      
+
       // Force navigation to home/login
       window.location.href = '/';
     } catch (error) {
@@ -63,24 +63,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     console.log("AuthProvider useEffect running...");
-    
+
     // Check for demo mode (when Firebase keys are not available)
     const demoMode = !import.meta.env.VITE_FIREBASE_API_KEY;
-    
+
     if (demoMode) {
       console.log("Demo mode detected");
-      
+
       // Create a demo user for testing
       const demoUser = {
         uid: 'demo-user-123',
         email: 'demo@writory.com',
         displayName: 'Demo User'
       };
-      
+
       // Check if we have a demo session
       const hasSession = localStorage.getItem('demo-session');
       console.log("Demo session exists:", hasSession);
-      
+
       if (hasSession) {
         setUser(demoUser as any);
         setDbUser({
@@ -95,9 +95,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
-    
+
     console.log("Firebase mode, setting up auth listener...");
-    
+
     // Handle redirect result first (in case user was redirected back)
     handleRedirectResult()
       .then((result) => {
@@ -109,21 +109,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .catch((error) => {
         console.error("Redirect result error:", error);
       });
-    
+
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       console.log("Firebase auth state changed:", firebaseUser);
       setUser(firebaseUser);
-      
+
       if (firebaseUser) {
         try {
+          // For phone users, get email from localStorage if it was collected
+          let userEmail = firebaseUser.email;
+          if (!userEmail && firebaseUser.phoneNumber) {
+            userEmail = localStorage.getItem(`phone_user_email_${firebaseUser.uid}`);
+          }
+
           // Create/get user in database
           const response = await apiRequest("POST", "/api/users", {
             uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
+            email: userEmail,
+            name: firebaseUser.displayName || null, // Will be null for phone users
             phone: firebaseUser.phoneNumber,
           });
-          
+
           if (response.ok) {
             const userData = await response.json();
             setDbUser(userData);
@@ -149,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setDbUser(null);
       }
-      
+
       setLoading(false);
     });
 
