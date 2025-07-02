@@ -187,7 +187,7 @@ console.log(`   - Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅ Configured' : '
 const server = app.listen(port, '0.0.0.0', () => {
   console.log(`🌟 Writory Poetry Contest Server running on port ${port}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📁 Serving static files from: /opt/render/project/src/dist/public`);
+  console.log(`📁 Serving static files from: ${process.cwd()}/dist/public`);
   console.log('🎯 Server is ready to accept requests!');
 
   // Initialize database after server is running
