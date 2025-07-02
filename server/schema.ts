@@ -131,10 +131,11 @@ export const coupons = pgTable('coupons', {
 // ✅ Coupon usage tracking
 export const couponUsage = pgTable('coupon_usage', {
   id: serial('id').primaryKey(),
-  couponId: integer('coupon_id').references(() => coupons.id).notNull(),
+  couponCode: varchar('coupon_code', { length: 50 }).notNull(), // Store the actual code used
+  couponId: integer('coupon_id').references(() => coupons.id),
   userId: integer('user_id').references(() => users.id),
   submissionId: integer('submission_id').references(() => submissions.id),
-  userUid: varchar('user_uid', { length: 255 }), // For tracking without user account
+  userUid: varchar('user_uid', { length: 255 }).notNull(), // For tracking without user account
   discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).notNull(),
   usedAt: timestamp('used_at').defaultNow().notNull()
 });

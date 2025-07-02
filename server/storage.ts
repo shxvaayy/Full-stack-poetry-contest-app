@@ -1,6 +1,6 @@
 import { db } from './db.js';
-import { users, submissions } from './schema.js';
-import { eq, and, desc } from 'drizzle-orm';
+import { users, submissions, contacts, couponUsage, type User, type NewUser, type Submission, type NewSubmission, type Contact, type NewContact, type NewCouponUsage } from './schema.js';
+import { eq, and, desc, gte, lt, sql } from 'drizzle-orm';
 
 export async function getUserByUid(uid: string) {
   try {
@@ -224,6 +224,75 @@ export async function getSubmissionsByEmailAndTitle(email: string, poemTitle: st
   }
 }
 
+  // Track coupon usage
+export async function trackCouponUsage(usageData: {
+    couponCode: string;
+    userUid: string;
+    submissionId: number;
+    discountAmount: number;
+  }) {
+    try {
+    console.log('tracking')
+    // First, check if this user has already used this coupon
+    const existingUsage = await checkCouponUsage(usageData.couponCode, usageData.userUid);
+    if (existingUsage) {
+      throw new Error('Coupon code has already been used by this user');
+    }
+
+    // Get user ID if exists
+    let userId = null;
+    try {
+      const user = await getUserByUid(usageData.userUid);
+      userId = user?.id || null;
+    } catch (error) {
+      console.log('User not found, continuing without userId');
+    }
+
+    // Create usage record
+    const newUsageData = {
+      couponCode: usageData.couponCode.toUpperCase(),
+      userUid: usageData.userUid,
+      userId: userId,
+      submissionId: usageData.submissionId,
+      discountAmount: usageData.discountAmount.toString()
+    };
+
+    const [usageRecord] = await db
+      .insert(couponUsage)
+      .values(newUsageData)
+      .returning();
+
+    console.log('✅ Coupon usage tracked in database:', usageRecord.id);
+    return usageRecord;
+  } catch(e) {
+      console.log(e)
+  }
+  }
+
+  // Check if user has already used a coupon code
+  export async function checkCouponUsage(couponCode: string, userUid: string): Promise<boolean> {
+    try {
+      const upperCode = couponCode.toUpperCase();
+
+      const existingUsage = await db
+        .select()
+        .from(couponUsage)
+        .where(
+          and(
+            eq(couponUsage.couponCode, upperCode),
+            eq(couponUsage.userUid, userUid)
+          )
+        )
+        .limit(1);
+
+      return existingUsage.length > 0;
+    } catch (error) {
+      console.error('❌ Error checking coupon usage:', error);
+      return false; // Allow usage if check fails
+    }
+  }
+
+
 // Export all storage functions
 export const storage = {
   getUserByUid,
@@ -235,5 +304,7 @@ export const storage = {
   createSubmission,
   updateUser,
   getAllSubmissions,
-  updateSubmission
+  updateSubmission,
+  trackCouponUsage,
+  checkCouponUsage
 };

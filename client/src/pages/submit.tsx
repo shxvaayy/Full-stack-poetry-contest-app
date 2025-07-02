@@ -508,6 +508,12 @@ export default function SubmitPage() {
         formDataToSend.append('paymentMethod', actualPaymentData.payment_method || 'razorpay');
       }
 
+      // Add coupon data if applied
+      if (couponApplied && couponCode) {
+        formDataToSend.append('couponCode', couponCode);
+        formDataToSend.append('couponDiscount', couponDiscount.toString());
+      }
+
       // Add multiple poem titles
       const allTitles = [formData.poemTitle];
       for (let i = 1; i < poemCount; i++) {

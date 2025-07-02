@@ -46,13 +46,13 @@ const upload = multer({
       console.error('❌ Invalid request object in multer');
       return cb(new Error('Invalid request'), false);
     }
-    
+
     console.log('📁 Multer receiving file:', {
       fieldname: file.fieldname,
       originalname: file.originalname,
       mimetype: file.mimetype
     });
-    
+
     // Accept all file types
     cb(null, true);
   }
@@ -81,7 +81,8 @@ const uploadFields = upload.fields([
   { name: 'files', maxCount: 15 },
 ]);
 
-// Note: Using database storage instead of in-memory for persistence
+// In-memory storage for submissions (legacy compatibility)
+const submissions: any[] = [];
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -113,7 +114,7 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
   console.log('🧪 Test upload endpoint hit');
   console.log('📋 Request body:', req.body);
   console.log('📁 Files received:', req.files);
-  
+
   res.json({
     success: true,
     message: 'Upload test successful',
@@ -133,15 +134,15 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
 router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting user by UID:', uid);
-  
+
   try {
     const user = await storage.getUserByUid(uid);
-    
+
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     console.log('✅ User found:', user.email);
     res.json(user);
   } catch (error) {
@@ -154,20 +155,20 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submissions for UID:', uid);
-  
+
   try {
     const user = await storage.getUserByUid(uid);
-    
+
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     console.log('✅ User found:', user.email, 'User ID:', user.id);
-    
+
     const submissions = await storage.getSubmissionsByUser(user.id);
     console.log(`✅ Found ${submissions.length} submissions for user ${user.email}`);
-    
+
     // Log the raw submissions for debugging
     console.log('📋 Raw submissions:', submissions.map(s => ({
       id: s.id,
@@ -176,7 +177,7 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       userId: s.userId,
       submittedAt: s.submittedAt
     })));
-    
+
     // Transform submissions to match frontend expectations
     const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
@@ -195,7 +196,7 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
       poemIndex: sub.poemIndex,
       totalPoemsInSubmission: sub.totalPoemsInSubmission
     }));
-    
+
     console.log('✅ Transformed submissions:', transformedSubmissions.length);
     res.json(transformedSubmissions);
   } catch (error) {
@@ -208,33 +209,33 @@ router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any
 router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   console.log('🔍 Getting submission status for UID:', uid);
-  
+
   try {
     const user = await storage.getUserByUid(uid);
-    
+
     if (!user) {
       console.log('❌ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     const submissions = await storage.getSubmissionsByUser(user.id);
-    
+
     // Check if user has used free submission
     const freeSubmissionUsed = submissions.some(sub => sub.tier === 'free');
-    
+
     // Get current month submissions
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
     const currentMonthSubmissions = submissions.filter(sub => 
       sub.submittedAt && sub.submittedAt.toISOString().slice(0, 7) === currentMonth
     );
-    
+
     const statusData = {
       freeSubmissionUsed,
       totalSubmissions: currentMonthSubmissions.length,
       contestMonth: currentMonth,
       allTimeSubmissions: submissions.length
     };
-    
+
     console.log('✅ Submission status:', statusData);
     res.json(statusData);
   } catch (error) {
@@ -247,10 +248,10 @@ router.get('/api/users/:uid/submission-status', asyncHandler(async (req: any, re
 router.post('/api/users', asyncHandler(async (req: any, res: any) => {
   const { uid, email, name, phone } = req.body;
   console.log('🔍 Creating/updating user:', { uid, email, name });
-  
+
   try {
     let user = await storage.getUserByUid(uid);
-    
+
     if (user) {
       console.log('✅ User already exists:', user.email);
       res.json(user);
@@ -472,9 +473,9 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
 // Validate coupon code
 router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
   const { code, tier, amount, uid } = req.body;
-  
+
   console.log('🎫 Coupon validation request:', { code, tier, amount, uid });
-  
+
   // Validate required fields
   if (!code || !tier) {
     return res.status(400).json({
@@ -482,10 +483,10 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
       error: 'Coupon code and tier are required'
     });
   }
-  
+
   // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
   const upperCode = code.toUpperCase();
-  
+
   // Free tier codes (100% discount on ₹50 tier only)
   const FREE_TIER_CODES = [
     'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
@@ -499,7 +500,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'PENMIRACLE', 'GIFTOFVERSE', 'LYRICALENTRY', 'WRTYWAVE', 'MUSEDROP',
     'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
   ];
-  
+
   // 10% discount codes for all paid tiers
   const DISCOUNT_CODES = [
     'FLOWRHYME10', 'VERSETREAT', 'WRITEJOY10', 'CANTODEAL', 'LYRICSPARK',
@@ -513,7 +514,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'FREESHADE10', 'WRTYJUMP', 'BARDGIFT10', 'POETRAYS', 'LIGHTQUILL',
     'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
   ];
-  
+
   // Check for 100% discount codes (only work on ₹50 tier)
   if (FREE_TIER_CODES.includes(upperCode)) {
     if (tier !== 'single') {
@@ -522,7 +523,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         error: '100% discount codes only work on the ₹50 tier.'
       });
     }
-    
+
     return res.json({
       valid: true,
       type: 'free',
@@ -531,11 +532,11 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
       message: 'Valid 100% discount code! This tier is now free.'
     });
   }
-  
+
   // Check for 10% discount codes (work on all paid tiers)
   if (DISCOUNT_CODES.includes(upperCode)) {
     const discountAmount = Math.round((amount || 0) * 0.10);
-    
+
     return res.json({
       valid: true,
       type: 'discount',
@@ -544,7 +545,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
       message: 'Valid discount code! 10% discount applied.'
     });
   }
-  
+
   // Invalid code
   return res.json({
     valid: false,
@@ -610,7 +611,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       paymentId,
       paymentMethod,
       uid,
-      userUid // Also accept userUid as fallback
+      userUid, // Also accept userUid as fallback
+      couponCode,
+      couponDiscount
     } = req.body;
 
     // Use uid or userUid (frontend might send either)
@@ -637,7 +640,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         f.fieldname === 'poems' || 
         f.originalname?.toLowerCase().includes('poem')
       );
-      
+
       photoFile = req.files.find((f: any) => 
         f.fieldname === 'photoFile' || 
         f.fieldname === 'photo' || 
@@ -657,10 +660,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     if (poemFile) {
       console.log('☁️ Uploading poem file to Google Drive...');
-      
+
       // Convert multer file to buffer
       const poemBuffer = fs.readFileSync(poemFile.path);
-      
+
       poemFileUrl = await uploadPoemFile(
         poemBuffer, 
         email, 
@@ -671,10 +674,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     if (photoFile) {
       console.log('☁️ Uploading photo file to Google Drive...');
-      
+
       // Convert multer file to buffer
       const photoBuffer = fs.readFileSync(photoFile.path);
-      
+
       photoFileUrl = await uploadPhotoFile(
         photoBuffer, 
         email, 
@@ -724,7 +727,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
       status: 'Pending',
-      type: 'Human'
+      type: 'Human',
+      couponCode: couponCode || null,
+      couponDiscount: couponDiscount ? parseFloat(couponDiscount) : 0,
     };
 
     console.log('🔗 Linking submission to user ID:', user?.id);
@@ -745,7 +750,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       }).catch(sheetError => {
         console.error('⚠️ Failed to add to Google Sheets:', sheetError);
       }),
-      
+
       // Send confirmation email in background
       sendSubmissionConfirmation(email, {
         name: firstName,
@@ -773,7 +778,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     console.log('🎉 Submission completed successfully!');
-    
+
     res.json({
       success: true,
       message: 'Poem submitted successfully!',
@@ -784,7 +789,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
   } catch (error) {
     console.error('❌ Submission error:', error);
-    
+
     // Clean up files on error
     if (req.files) {
       req.files.forEach((file: any) => {
@@ -822,7 +827,9 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       paymentMethod,
       uid,
       userUid, // Also accept userUid as fallback
-      poemTitles // This should be a JSON string array
+      poemTitles, // This should be a JSON string array
+      couponCode,
+      couponDiscount
     } = req.body;
 
     // Use uid or userUid (frontend might send either)
@@ -859,7 +866,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     const poemFiles = req.files?.filter((f: any) => 
       f.fieldname === 'poems' || f.originalname?.toLowerCase().includes('poem')
     ) || [];
-    
+
     const photoFile = req.files?.find((f: any) => 
       f.fieldname === 'photo' || 
       f.fieldname === 'photoFile' ||
@@ -877,11 +884,11 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     if (poemFiles.length > 0) {
       console.log('☁️ Uploading poem files to Google Drive...');
-      
+
       // Convert multer files to buffers
       const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
       const originalFileNames = poemFiles.map(file => file.originalname);
-      
+
       poemFileUrls = await uploadMultiplePoemFiles(
         poemBuffers, 
         email, 
@@ -893,10 +900,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     if (photoFile) {
       console.log('☁️ Uploading photo file to Google Drive...');
-      
+
       // Convert multer file to buffer
       const photoBuffer = fs.readFileSync(photoFile.path);
-      
+
       photoFileUrl = await uploadPhotoFile(
         photoBuffer, 
         email, 
@@ -951,7 +958,9 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         totalPoemsInSubmission: titles.length,
         submittedAt: new Date(),
         status: 'Pending',
-        type: 'Human'
+        type: 'Human',
+        couponCode: couponCode || null,
+        couponDiscount: couponDiscount ? parseFloat(couponDiscount) : 0,
       };
 
       console.log(`💾 Saving submission ${i + 1}/${titles.length}: ${titles[i]}`);
@@ -979,11 +988,13 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         submissionUuid: submissionUuid,
         submissionIds: submissions.map(s => s.id),
         poemFileUrls: poemFileUrls,
-        photoFileUrl: photoFileUrl
+        photoFileUrl: photoFileUrl,
+        couponCode: couponCode || null,
+        couponDiscount: couponDiscount ? parseFloat(couponDiscount) : 0,
       }).catch(sheetError => {
         console.error('⚠️ Failed to add to Google Sheets:', sheetError);
       }),
-      
+
       // Send confirmation email in background
       sendMultiplePoemsConfirmation(email, {
         name: firstName,
@@ -1011,7 +1022,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     }
 
     console.log('🎉 Multiple poems submission completed successfully!');
-    
+
     res.json({
       success: true,
       message: `${titles.length} poems submitted successfully!`,
@@ -1022,7 +1033,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
   } catch (error) {
     console.error('❌ Multiple poems submission error:', error);
-    
+
     // Clean up files on error
     if (req.files) {
       req.files.forEach((file: any) => {
@@ -1046,7 +1057,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 // Legacy single poem submission
 router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📝 Legacy single poem submission received (redirecting to new endpoint)');
-  
+
   // Just redirect to the new endpoint logic
   const {
     firstName,
@@ -1079,7 +1090,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
         f.fieldname === 'poems' || 
         f.originalname?.toLowerCase().includes('poem')
       );
-      
+
       photoFile = req.files.find((f: any) => 
         f.fieldname === 'photoFile' || 
         f.fieldname === 'photo' || 
@@ -1101,30 +1112,24 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       photoFileUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
     }
 
-    // Save to database (legacy endpoint but using persistent storage)
-    const submissionData = {
-      userId: null, // Legacy submissions don't have user links
+    // Save to in-memory storage (legacy)
+    const submission = {
+      id: submissions.length + 1,
       firstName,
       lastName: lastName || '',
       email,
       phone: phone || '',
-      age: age ? parseInt(age) : null,
+      age: age || '',
       poemTitle,
       tier,
-      price: tier === 'free' ? 0 : TIER_PRICES[tier as keyof typeof TIER_PRICES] || 0,
       paymentId: paymentId || null,
       paymentMethod,
       poemFileUrl,
-      photoFileUrl: photoFileUrl,
-      submissionUuid: crypto.randomUUID(),
-      poemIndex: 1,
-      totalPoemsInSubmission: 1,
-      submittedAt: new Date(),
-      status: 'Pending',
-      type: 'Human'
+      photoFileUrl,
+      submittedAt: new Date().toISOString()
     };
 
-    const submission = await storage.createSubmission(submissionData);
+    submissions.push(submission);
 
     // Add to Google Sheets
     try {
@@ -1164,7 +1169,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
 
   } catch (error) {
     console.error('❌ Legacy submission error:', error);
-    
+
     // Clean up files on error
     if (req.files) {
       req.files.forEach((file: any) => {
@@ -1190,7 +1195,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   try {
     const submissions = await storage.getAllSubmissions();
     console.log(`✅ Retrieved ${submissions.length} total submissions`);
-    
+
     // Transform submissions
     const transformedSubmissions = submissions.map(sub => ({
       id: sub.id,
@@ -1207,7 +1212,7 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
       status: sub.status || 'Pending',
       scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
     }));
-    
+
     res.json(transformedSubmissions);
   } catch (error) {
     console.error('❌ Error getting all submissions:', error);
@@ -1215,12 +1220,10 @@ router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Get submission count from database
+// Get submission count from Google Sheets
 router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
   try {
-    // Get count from database instead of Google Sheets for real-time accuracy
-    const submissions = await storage.getAllSubmissions();
-    const count = submissions.length;
+    const count = await getSubmissionCountFromSheet();
     res.json({ count });
   } catch (error) {
     console.error('❌ Error getting submission count:', error);
@@ -1242,7 +1245,7 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   try {
     // Add to Google Sheets
     await addContactToSheet({ name, email, message });
-    
+
     res.json({
       success: true,
       message: 'Contact form submitted successfully'
@@ -1256,37 +1259,15 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Get legacy submissions from database
-router.get('/api/legacy-submissions', asyncHandler(async (req: any, res: any) => {
-  try {
-    const submissions = await storage.getAllSubmissions();
-    // Transform to legacy format
-    const legacySubmissions = submissions.map(sub => ({
-      id: sub.id,
-      firstName: sub.firstName,
-      lastName: sub.lastName || '',
-      email: sub.email,
-      phone: sub.phone || '',
-      age: sub.age?.toString() || '',
-      poemTitle: sub.poemTitle,
-      tier: sub.tier,
-      paymentId: sub.paymentId,
-      paymentMethod: sub.paymentMethod || 'free',
-      poemFileUrl: sub.poemFileUrl,
-      photoFileUrl: sub.photoUrl,
-      submittedAt: sub.submittedAt?.toISOString()
-    }));
-    res.json(legacySubmissions);
-  } catch (error) {
-    console.error('❌ Error getting legacy submissions:', error);
-    res.status(500).json({ error: 'Failed to get submissions' });
-  }
-}));
+// Get in-memory submissions (legacy)
+router.get('/api/legacy-submissions', (req, res) => {
+  res.json(submissions);
+});
 
 // Admin CSV upload endpoint
 router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
   console.log('📊 Admin CSV upload request received');
-  
+
   if (!req.file) {
     return res.status(400).json({
       success: false,
@@ -1297,7 +1278,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
   try {
     const csvContent = fs.readFileSync(req.file.path, 'utf-8');
     const lines = csvContent.split('\n').filter(line => line.trim());
-    
+
     if (lines.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1332,7 +1313,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
 
         // Find the submission to update
         const submissions = await storage.getSubmissionsByEmailAndTitle(email.trim(), poemTitle.trim());
-        
+
         if (submissions.length === 0) {
           errors.push(`Line ${i + 1}: No submission found for ${email} - ${poemTitle}`);
           continue;
@@ -1374,7 +1355,7 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
 
   } catch (error) {
     console.error('❌ CSV upload error:', error);
-    
+
     // Clean up uploaded file
     if (req.file) {
       try {
@@ -1411,3 +1392,4 @@ export function registerRoutes(app: any) {
 
 // Export router
 export { router };
+// Updated the submit-poem and submit-multiple-poems endpoints to include coupon code and discount information in the submission data.
