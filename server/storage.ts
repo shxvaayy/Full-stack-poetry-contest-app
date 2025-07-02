@@ -234,10 +234,10 @@ export async function trackCouponUsage(usageData: {
     try {
       console.log('🎫 Tracking coupon usage:', usageData);
       
-      // First, check if this user has already used this coupon
+      // Double check to prevent race conditions - check if this user has already used this coupon
       const existingUsage = await checkCouponUsage(usageData.couponCode, usageData.userUid);
       if (existingUsage) {
-        console.log('❌ Coupon already used by this user');
+        console.log('❌ Coupon already used by this user - preventing duplicate');
         throw new Error('Coupon code has already been used by this user');
       }
 
@@ -276,6 +276,8 @@ export async function trackCouponUsage(usageData: {
   export async function checkCouponUsage(couponCode: string, userUid: string): Promise<boolean> {
     try {
       const upperCode = couponCode.toUpperCase();
+      
+      console.log('🔍 Checking coupon usage for:', { upperCode, userUid });
 
       const existingUsage = await db
         .select()
@@ -288,10 +290,14 @@ export async function trackCouponUsage(usageData: {
         )
         .limit(1);
 
-      return existingUsage.length > 0;
+      const hasUsed = existingUsage.length > 0;
+      console.log('📋 Coupon usage check result:', { hasUsed, foundRecords: existingUsage.length });
+      
+      return hasUsed;
     } catch (error) {
       console.error('❌ Error checking coupon usage:', error);
-      return false; // Allow usage if check fails
+      // In case of error, don't allow usage to prevent abuse
+      throw error;
     }
   }
 

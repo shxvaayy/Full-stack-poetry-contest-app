@@ -484,15 +484,29 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     });
   }
 
-  // Check if user has already used this coupon
-  if (uid) {
+  if (!uid) {
+    return res.status(400).json({
+      valid: false,
+      error: 'User authentication required for coupon validation'
+    });
+  }
+
+  // Check if user has already used this coupon - STRICT CHECK
+  try {
     const hasUsedCoupon = await storage.checkCouponUsage(code, uid);
     if (hasUsedCoupon) {
+      console.log('❌ Coupon already used by user:', { code, uid });
       return res.json({
         valid: false,
         error: 'You have already used this coupon code.'
       });
     }
+  } catch (error) {
+    console.error('❌ Error checking coupon usage:', error);
+    return res.status(500).json({
+      valid: false,
+      error: 'Failed to validate coupon. Please try again.'
+    });
   }
 
   // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
@@ -638,17 +652,6 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       });
     }
 
-    // Validate coupon usage if coupon is provided
-    if (couponCode && userId) {
-      const hasUsedCoupon = await storage.checkCouponUsage(couponCode, userId);
-      if (hasUsedCoupon) {
-        return res.status(400).json({
-          success: false,
-          error: 'You have already used this coupon code.'
-        });
-      }
-    }
-
     console.log('🔍 Processing submission for user UID:', userId);
     console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitle, tier });
 
@@ -762,22 +765,6 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     const submission = await storage.createSubmission(submissionData);
     console.log('✅ Submission saved with ID:', submission.id);
 
-    // Track coupon usage immediately if coupon was applied
-    if (couponCode && userId) {
-      try {
-        await storage.trackCouponUsage({
-          couponCode,
-          userUid: userId,
-          submissionId: submission.id,
-          discountAmount: parseFloat(couponDiscount || '0')
-        });
-        console.log('✅ Coupon usage tracked successfully');
-      } catch (couponError: any) {
-        console.error('❌ Failed to track coupon usage:', couponError);
-        // Don't fail the submission, but log the error
-      }
-    }
-
     // Background tasks - don't wait for these to complete
     // This ensures fast response to user while still completing necessary tasks
     Promise.all([
@@ -799,7 +786,15 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.error('⚠️ Failed to send email:', emailError);
       }),
 
-      
+      // Track coupon usage if coupon was applied
+      couponCode && userId ? storage.trackCouponUsage({
+        couponCode,
+        userUid: userId,
+        submissionId: submission.id,
+        discountAmount: couponDiscount || 0
+      }).catch(couponError => {
+        console.error('⚠️ Failed to track coupon usage:', couponError);
+      }) : Promise.resolve()
     ]).then(() => {
       console.log('✅ Background tasks completed for submission:', submission.id);
     }).catch(error => {
@@ -900,17 +895,6 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         success: false,
         error: `Invalid poem count for tier ${tier}. Expected ${TIER_POEM_COUNTS[tier]}, got ${titles.length}`
       });
-    }
-
-    // Validate coupon usage if coupon is provided
-    if (couponCode && userId) {
-      const hasUsedCoupon = await storage.checkCouponUsage(couponCode, userId);
-      if (hasUsedCoupon) {
-        return res.status(400).json({
-          success: false,
-          error: 'You have already used this coupon code.'
-        });
-      }
     }
 
     // Separate poem files and photo file
@@ -1021,22 +1005,6 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     console.log('✅ All submissions saved');
 
-    // Track coupon usage immediately if coupon was applied (only once for multiple poems)
-    if (couponCode && userId) {
-      try {
-        await storage.trackCouponUsage({
-          couponCode,
-          userUid: userId,
-          submissionId: submissions[0].id, // Use first submission ID
-          discountAmount: parseFloat(couponDiscount || '0')
-        });
-        console.log('✅ Coupon usage tracked successfully');
-      } catch (couponError: any) {
-        console.error('❌ Failed to track coupon usage:', couponError);
-        // Don't fail the submission, but log the error
-      }
-    }
-
     // Background tasks - don't wait for these to complete
     // This ensures fast response to user while still completing necessary tasks
     Promise.all([
@@ -1072,7 +1040,15 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         console.error('⚠️ Failed to send email:', emailError);
       }),
 
-      
+      // Track coupon usage if coupon was applied (only once for multiple poems)
+      couponCode && userId ? storage.trackCouponUsage({
+        couponCode,
+        userUid: userId,
+        submissionId: submissions[0].id, // Use first submission ID
+        discountAmount: couponDiscount ? parseFloat(couponDiscount) : 0
+      }).catch(couponError => {
+        console.error('⚠️ Failed to track coupon usage:', couponError);
+      }) : Promise.resolve()
     ]).then(() => {
       console.log('✅ Background tasks completed for multiple submissions:', submissionUuid);
     }).catch(error => {
