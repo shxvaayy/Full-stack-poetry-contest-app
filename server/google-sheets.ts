@@ -7,7 +7,7 @@ const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   : null;
 
 if (!credentials) {
-  console.log("❌ GOOGLE_SERVICE_ACCOUNT_JSON not loaded properly");
+  console.log('⚠️ GOOGLE_SERVICE_ACCOUNT_JSON not configured - Google Sheets integration disabled');
 } else {
   console.log("✅ Service account credentials loaded.");
 }

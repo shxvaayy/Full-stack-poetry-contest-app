@@ -1422,6 +1422,97 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
   }
 }));
 
+// Debug endpoint to manually trigger user-submission linking
+router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any) => {
+  try {
+    console.log('🔧 Manual user-submission linking triggered...');
+    
+    // Get all submissions that don't have a user_id but have email addresses
+    const unlinkedSubmissions = await client.query(`
+      SELECT id, email, first_name, last_name 
+      FROM submissions 
+      WHERE user_id IS NULL AND email IS NOT NULL
+      ORDER BY submitted_at DESC
+    `);
+    
+    if (unlinkedSubmissions.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No unlinked submissions found',
+        linked: 0,
+        usersCreated: 0
+      });
+    }
+    
+    console.log(`🔍 Found ${unlinkedSubmissions.rows.length} unlinked submissions`);
+    
+    let linked = 0;
+    let usersCreated = 0;
+    
+    for (const submission of unlinkedSubmissions.rows) {
+      // Try to find a user with this email
+      let userResult = await client.query(`
+        SELECT id, email FROM users WHERE email = $1
+      `, [submission.email]);
+      
+      let user;
+      
+      if (userResult.rows.length > 0) {
+        user = userResult.rows[0];
+        console.log(`👤 Found existing user for ${submission.email}`);
+      } else {
+        // Create a user account for this submission
+        console.log(`👤 Creating user account for ${submission.email}`);
+        try {
+          const newUserResult = await client.query(`
+            INSERT INTO users (uid, email, name, created_at)
+            VALUES ($1, $2, $3, NOW())
+            RETURNING id, email
+          `, [
+            `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique UID
+            submission.email,
+            `${submission.first_name} ${submission.last_name || ''}`.trim()
+          ]);
+          
+          user = newUserResult.rows[0];
+          usersCreated++;
+          console.log(`✅ Created user account for ${submission.email}`);
+        } catch (createError) {
+          console.error(`❌ Failed to create user for ${submission.email}:`, createError.message);
+          continue; // Skip this submission
+        }
+      }
+      
+      if (user) {
+        // Link the submission to this user
+        await client.query(`
+          UPDATE submissions 
+          SET user_id = $1 
+          WHERE id = $2
+        `, [user.id, submission.id]);
+        
+        console.log(`✅ Linked submission ${submission.id} to user ${user.email}`);
+        linked++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Successfully processed ${unlinkedSubmissions.rows.length} submissions!`,
+      totalProcessed: unlinkedSubmissions.rows.length,
+      usersCreated,
+      linked
+    });
+    
+  } catch (error) {
+    console.error('❌ Manual linking failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}));
+
 // Debug endpoint to check submission linking
 router.get('/api/debug/submissions', asyncHandler(async (req: any, res: any) => {
   try {

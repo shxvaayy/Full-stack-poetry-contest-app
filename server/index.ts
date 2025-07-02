@@ -25,7 +25,15 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-console.log('✅ Environment variables validated');
+// Check other services but don't fail startup
+console.log('📊 Service Configuration Check:');
+console.log('- Database URL: ✅ Available');
+console.log('- Google Service Account:', process.env.GOOGLE_SERVICE_ACCOUNT_JSON ? '✅ Configured' : '⚠️ Missing (non-critical)');
+console.log('- PayPal Client ID:', process.env.PAYPAL_CLIENT_ID ? '✅ Configured' : '⚠️ Missing (non-critical)');
+console.log('- Razorpay Key ID:', process.env.RAZORPAY_KEY_ID ? '✅ Configured' : '⚠️ Missing (non-critical)');
+console.log('- Email User:', process.env.EMAIL_USER ? '✅ Configured' : '⚠️ Missing (non-critical)');
+
+console.log('✅ Core environment variables validated');
 console.log('📊 Environment:', process.env.NODE_ENV || 'development');
 
 // Enhanced CORS configuration
