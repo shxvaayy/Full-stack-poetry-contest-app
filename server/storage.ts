@@ -6,12 +6,12 @@ export async function getUserByUid(uid: string) {
   try {
     console.log('🔍 Getting user by UID:', uid);
     const result = await db.select().from(users).where(eq(users.uid, uid));
-    
+
     if (result.length === 0) {
       console.log('❌ No user found with UID:', uid);
       return null;
     }
-    
+
     console.log('✅ Found user:', result[0].email);
     return result[0];
   } catch (error) {
@@ -27,7 +27,7 @@ export async function getSubmissionsByUser(userId: number) {
       .from(submissions)
       .where(eq(submissions.userId, userId))
       .orderBy(desc(submissions.submittedAt));
-    
+
     console.log(`✅ Found ${result.length} submissions for user ${userId}`);
     return result;
   } catch (error) {
@@ -39,15 +39,15 @@ export async function getSubmissionsByUser(userId: number) {
 export async function getSubmissionByEmailAndTitle(email: string, poemTitle: string) {
   try {
     console.log('🔍 Getting submission by email and title:', { email, poemTitle });
-    
+
     // First get user by email
     const user = await db.select().from(users).where(eq(users.email, email));
-    
+
     if (user.length === 0) {
       console.log('❌ No user found with email:', email);
       return null;
     }
-    
+
     // Then get submission by user ID and poem title
     const result = await db.select()
       .from(submissions)
@@ -57,12 +57,12 @@ export async function getSubmissionByEmailAndTitle(email: string, poemTitle: str
           eq(submissions.poemTitle, poemTitle)
         )
       );
-    
+
     if (result.length === 0) {
       console.log('❌ No submission found for:', { email, poemTitle });
       return null;
     }
-    
+
     console.log('✅ Found submission:', result[0].id);
     return result[0];
   } catch (error) {
@@ -81,7 +81,7 @@ export async function updateSubmissionEvaluation(submissionId: number, evaluatio
 }) {
   try {
     console.log('🔄 Updating submission evaluation:', submissionId, evaluationData);
-    
+
     const result = await db.update(submissions)
       .set({
         score: evaluationData.score,
@@ -95,7 +95,7 @@ export async function updateSubmissionEvaluation(submissionId: number, evaluatio
       })
       .where(eq(submissions.id, submissionId))
       .returning();
-    
+
     console.log('✅ Submission evaluation updated:', submissionId);
     return result[0];
   } catch (error) {
@@ -112,7 +112,7 @@ export async function createUser(userData: {
 }) {
   try {
     console.log('🔄 Creating new user:', userData.email);
-    
+
     const result = await db.insert(users).values({
       uid: userData.uid,
       email: userData.email,
@@ -121,7 +121,7 @@ export async function createUser(userData: {
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning();
-    
+
     console.log('✅ User created:', result[0].email);
     return result[0];
   } catch (error) {
@@ -133,13 +133,13 @@ export async function createUser(userData: {
 export async function createSubmission(submissionData: any) {
   try {
     console.log('🔄 Creating new submission:', submissionData.poemTitle);
-    
+
     const result = await db.insert(submissions).values({
       ...submissionData,
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning();
-    
+
     console.log('✅ Submission created:', result[0].id);
     return result[0];
   } catch (error) {
@@ -151,7 +151,7 @@ export async function createSubmission(submissionData: any) {
 export async function updateUser(uid: string, userData: any) {
   try {
     console.log('🔄 Updating user:', uid);
-    
+
     const result = await db.update(users)
       .set({
         ...userData,
@@ -159,7 +159,7 @@ export async function updateUser(uid: string, userData: any) {
       })
       .where(eq(users.uid, uid))
       .returning();
-    
+
     console.log('✅ User updated:', uid);
     return result[0];
   } catch (error) {
@@ -174,7 +174,7 @@ export async function getAllSubmissions() {
     const result = await db.select()
       .from(submissions)
       .orderBy(desc(submissions.submittedAt));
-    
+
     console.log(`✅ Found ${result.length} total submissions`);
     return result;
   } catch (error) {
@@ -182,6 +182,49 @@ export async function getAllSubmissions() {
     throw error;
   }
 }
+
+async updateSubmission(id: number, data: Partial<Submission>) {
+    const [updated] = await this.db
+      .update(submissions)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(submissions.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  async getSubmissionsByEmailAndTitle(email: string, poemTitle: string) {
+    return await this.db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.email, email),
+          eq(submissions.poemTitle, poemTitle)
+        )
+      );
+  }
+
+  async updateSubmissionEvaluation(id: number, data: {
+    score?: number;
+    type?: string;
+    scoreBreakdown?: string;
+    status?: string;
+  }) {
+    const [updated] = await this.db
+      .update(submissions)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(submissions.id, id))
+      .returning();
+
+    return updated;
+  }
 
 // Export all storage functions
 export const storage = {

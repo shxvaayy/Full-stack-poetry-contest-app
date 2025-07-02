@@ -696,7 +696,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       success: true,
       message: 'Poem submitted successfully!',
       submissionId: submission.id,
-      submissionUuid: submission.submissionUuid
+      submissionUuid: submission.submissionUuid,
+      submissions: [submission] // For consistency with frontend expectations
     });
 
   } catch (error) {
@@ -881,22 +882,23 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     // Add to Google Sheets
     try {
       console.log('📊 Adding to Google Sheets...');
-      await addMultiplePoemsToSheet({
-        name: `${firstName} ${lastName}`,
-        email,
-        phone,
-        age,
-        tier,
-        amount: price.toString(),
-        photo: photoUrl,
-        timestamp: new Date().toISOString(),
-        submissionUuid,
-        poems: submissions.map((submission, index) => ({
-          title: submission.poemTitle,
-          fileUrl: submission.poemFile,
-          index: index
-        }))
-      });
+      for (let i = 0; i < submissions.length; i++) {
+        const submission = submissions[i];
+        await addPoemSubmissionToSheet({
+          timestamp: submission.submittedAt.toISOString(),
+          name: `${submission.firstName} ${submission.lastName || ''}`.trim(),
+          email: submission.email,
+          phone: submission.phone || '',
+          age: submission.age?.toString() || '',
+          poemTitle: submission.poemTitle,
+          tier: submission.tier,
+          amount: (i === 0 ? submission.price : 0).toString(),
+          poemFile: submission.poemFileUrl || '',
+          photo: i === 0 ? submission.photoFileUrl || '' : '',
+          submissionUuid: submission.submissionUuid,
+          poemIndex: submission.poemIndex
+        });
+      }
       console.log('✅ Added to Google Sheets');
     } catch (sheetError) {
       console.error('⚠️ Failed to add to Google Sheets:', sheetError);
@@ -1169,6 +1171,112 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
 router.get('/api/legacy-submissions', (req, res) => {
   res.json(submissions);
 });
+
+// Admin CSV upload endpoint
+router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
+  console.log('📊 Admin CSV upload request received');
+  
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      error: 'No CSV file uploaded'
+    });
+  }
+
+  try {
+    const csvContent = fs.readFileSync(req.file.path, 'utf-8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'CSV file is empty'
+      });
+    }
+
+    // Expected header: email,poemtitle,score,type,originality,emotion,structure,language,theme,status
+    const header = lines[0].toLowerCase();
+    if (!header.includes('email') || !header.includes('poemtitle') || !header.includes('score')) {
+      return res.status(400).json({
+        success: false,
+        error: 'CSV file must contain email, poemtitle, and score columns'
+      });
+    }
+
+    let processed = 0;
+    const errors = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      try {
+        const values = line.split(',');
+        if (values.length < 10) {
+          errors.push(`Line ${i + 1}: Insufficient columns`);
+          continue;
+        }
+
+        const [email, poemTitle, score, type, originality, emotion, structure, language, theme, status] = values;
+
+        // Find the submission to update
+        const submissions = await storage.getSubmissionsByEmailAndTitle(email.trim(), poemTitle.trim());
+        
+        if (submissions.length === 0) {
+          errors.push(`Line ${i + 1}: No submission found for ${email} - ${poemTitle}`);
+          continue;
+        }
+
+        // Update the submission
+        for (const submission of submissions) {
+          await storage.updateSubmissionEvaluation(submission.id, {
+            score: parseInt(score) || 0,
+            type: type.trim() || 'Human',
+            scoreBreakdown: JSON.stringify({
+              originality: parseInt(originality) || 0,
+              emotion: parseInt(emotion) || 0,
+              structure: parseInt(structure) || 0,
+              language: parseInt(language) || 0,
+              theme: parseInt(theme) || 0
+            }),
+            status: status.trim() || 'Evaluated'
+          });
+        }
+
+        processed++;
+      } catch (error) {
+        errors.push(`Line ${i + 1}: ${error.message}`);
+      }
+    }
+
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${processed} records`,
+      processed,
+      errors: errors.slice(0, 10) // Limit errors to first 10
+    });
+
+  } catch (error) {
+    console.error('❌ CSV upload error:', error);
+    
+    // Clean up uploaded file
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error('Failed to clean up file:', cleanupError);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process CSV file: ' + error.message
+    });
+  }
+}));
 
 // Final error handler
 router.use((error: any, req: any, res: any, next: any) => {

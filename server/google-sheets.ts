@@ -258,6 +258,61 @@ export async function addMultiplePoemsToSheet(data: {
   }
 }
 
+
+    // ✅ CREATE MULTIPLE ROWS - One for each poem
+    const rowsToAdd = data.poems.map(poem => [
+      data.timestamp,                              // A - Timestamp
+      data.name,                                   // B - Name (full name)
+      data.email,                                  // C - Email
+      data.phone || '',                            // D - Phone
+      data.age || '',                              // E - Age
+      poem.title,                                  // F - Poem Title (DIFFERENT for each row)
+      data.tier,                                   // G - Tier (SAME for all)
+      amount.toString(),                           // H - Amount (SAME for all)
+      poem.fileUrl,                                // I - Poem File (DIFFERENT for each row)
+      data.photo,                                  // J - Photo (SAME for all)
+      data.submissionUuid,                         // K - Submission UUID (SAME for all - groups them)
+      (poem.index + 1).toString()                  // L - Poem Index (1, 2, 3, 4, 5)
+    ]);
+
+    const request = {
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Poetry!A:L', // Extended range A-L
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      auth: authClient,
+      requestBody: {
+        values: rowsToAdd
+      }
+    };
+
+    console.log(`📊 Sending ${rowsToAdd.length} rows to Google Sheets:`, rowsToAdd);
+
+    await sheets.spreadsheets.values.append(request);
+    console.log(`✅ Successfully added ${rowsToAdd.length} poem rows to Google Sheets`);
+    console.log('✅ Data structure for multiple poems:', {
+      timestamp: data.timestamp,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      tier: data.tier,
+      amount: amount,
+      photo: data.photo,
+      submissionUuid: data.submissionUuid,
+      poemCount: data.poems.length,
+      poems: data.poems.map(p => ({ title: p.title, fileUrl: p.fileUrl, index: p.index }))
+    });
+
+    const newCount = await getSubmissionCountFromSheet();
+    console.log(`🎯 Updated count after submission: ${newCount}`);
+
+  } catch (error) {
+    console.error('❌ Error adding multiple poems to Google Sheets:', error);
+    console.error('Error details:', error);
+    throw error;
+  }
+}
+
 export async function initializeSheetHeaders(): Promise<void> {
   try {
     const authClient = await getAuthClient();
