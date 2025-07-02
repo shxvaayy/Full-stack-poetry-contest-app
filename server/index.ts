@@ -18,7 +18,7 @@ const port = process.env.PORT || 3000;
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] // Replace with your actual domain
+    ? true // Allow all origins in production for now
     : ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -65,11 +65,9 @@ app.use((req, res, next) => {
   const url = req.url;
   const userAgent = req.get('User-Agent') || 'Unknown';
   
-  console.log(`[${timestamp}] ${method} ${url} - ${userAgent}`);
-  
-  // Log body for POST requests (excluding file uploads)
-  if (method === 'POST' && !req.url.includes('/upload') && !req.url.includes('/submit')) {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+  // Only log non-static requests
+  if (!url.includes('.js') && !url.includes('.css') && !url.includes('.ico')) {
+    console.log(`[${timestamp}] ${method} ${url} - ${userAgent}`);
   }
   
   next();
@@ -146,7 +144,7 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
   // Don't exit in production, just log
   if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
+    console.log('⚠️ Not exiting process in development mode');
   }
 });
 
@@ -155,28 +153,11 @@ process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   // Don't exit in production, just log
   if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
+    console.log('⚠️ Not exiting process in development mode');
   }
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Process terminated');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Process terminated');
-    process.exit(0);
-  });
-});
-
-// Database initialization function
+// Database initialization function with better error handling
 async function initializeDatabase() {
   try {
     console.log('🔧 Initializing database...');
@@ -184,7 +165,8 @@ async function initializeDatabase() {
     console.log('✅ Database initialized successfully');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
-    console.log('⚠️ Continuing without database initialization - some features may not work');
+    console.log('⚠️ Server will continue without database initialization');
+    console.log('⚠️ Some features may not work until database is properly connected');
     // Don't exit - continue with startup for better resilience
   }
 }
@@ -201,45 +183,52 @@ console.log(`   - Razorpay: ${process.env.RAZORPAY_KEY_ID && process.env.RAZORPA
 console.log(`   - PayPal: ${process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET ? '✅ Configured' : '❌ Missing'}`);
 console.log(`   - Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅ Configured' : '❌ Missing'}`);
 
-// Initialize database and start server
-initializeDatabase().then(() => {
-  const server = app.listen(port, () => {
-    console.log('✅ Database setup completed');
-    console.log(`🌟 Writory Poetry Contest Server running on port ${port}`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`📁 Serving static files from: ${clientBuildPath}`);
-    console.log('🎯 Server is ready to accept submissions!');
-    
-    // Log available endpoints in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('\n📋 Available API endpoints:');
-      console.log('   - GET  /health');
-      console.log('   - GET  /api/test');
-      console.log('   - POST /api/submit-poem');
-      console.log('   - POST /api/submit-multiple-poems');
-      console.log('   - POST /api/validate-coupon');
-      console.log('   - POST /api/create-razorpay-order');
-      console.log('   - POST /api/verify-payment');
-      console.log('   - GET  /api/users/:uid');
-      console.log('   - GET  /api/users/:uid/submissions');
-      console.log('   - GET  /api/users/:uid/submission-status');
-      console.log('   - POST /api/users');
-      console.log('');
-    }
+// Start server first, then initialize database
+const server = app.listen(port, () => {
+  console.log(`🌟 Writory Poetry Contest Server running on port ${port}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📁 Serving static files from: ${clientBuildPath}`);
+  console.log('🎯 Server is ready to accept requests!');
+  
+  // Initialize database after server is running
+  initializeDatabase().catch((error) => {
+    console.error('❌ Post-startup database initialization failed:', error);
   });
-
-  // Store server reference for graceful shutdown
-  global.server = server;
-
-  // Set timeouts for better production performance
-  server.timeout = 120000; // 2 minutes
-  server.keepAliveTimeout = 65000; // 65 seconds
-  server.headersTimeout = 66000; // 66 seconds
-
-}).catch((error) => {
-  console.error('💥 Failed to start server:', error);
-  process.exit(1);
+  
+  // Log available endpoints in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\n📋 Available API endpoints:');
+    console.log('   - GET  /health');
+    console.log('   - GET  /api/test');
+    console.log('   - POST /api/submit-poem');
+    console.log('   - POST /api/submit-multiple-poems');
+    console.log('   - POST /api/validate-coupon');
+    console.log('   - POST /api/create-razorpay-order');
+    console.log('   - POST /api/verify-payment');
+    console.log('   - GET  /api/users/:uid');
+    console.log('   - GET  /api/users/:uid/submissions');
+    console.log('   - GET  /api/users/:uid/submission-status');
+    console.log('   - POST /api/users');
+    console.log('');
+  }
 });
+
+// Set timeouts for better production performance
+server.timeout = 120000; // 2 minutes
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds
+
+// Handle graceful shutdown
+const gracefulShutdown = () => {
+  console.log('🛑 Received shutdown signal, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Process terminated');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 // Export app for testing
 export default app;
