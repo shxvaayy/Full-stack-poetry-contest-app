@@ -439,7 +439,7 @@ export default function SubmitPage() {
   const handleFormSubmitInternal = async (actualPaymentData: any) => {
     try {
       setIsSubmitting(true);
-      setSubmissionStatus("Preparing your submission...");
+      setSubmissionStatus("Validating your submission...");
 
       console.log('🚀 Form submission started');
       console.log('Form data:', formData);
@@ -477,6 +477,8 @@ export default function SubmitPage() {
       if (!formData.termsAccepted) {
         throw new Error('Please accept the terms and conditions');
       }
+
+      setSubmissionStatus("Preparing your files for upload...");
 
       const formDataToSend = new FormData();
 
@@ -526,7 +528,7 @@ export default function SubmitPage() {
         formDataToSend.append('photo', files.photo);
       }
 
-      setSubmissionStatus("Uploading your files and saving your submission...");
+      setSubmissionStatus("Uploading your files and submitting...");
       console.log('📤 Sending form data to API...');
 
       const response = await fetch(poemCount > 1 ? '/api/submit-multiple-poems' : '/api/submit-poem', {
@@ -539,7 +541,6 @@ export default function SubmitPage() {
       });
 
       console.log('📥 API response status:', response.status);
-      console.log('📥 API response headers:', Object.fromEntries(response.headers.entries()));
 
       // Check if response is actually JSON
       const contentType = response.headers.get('content-type');
@@ -553,8 +554,10 @@ export default function SubmitPage() {
       console.log('📥 API response data:', result);
 
       if (result.success) {
-        console.log('✅ Submission successful, moving to completed step');
-        setSubmissionStatus("Success! Your submission is complete. Email confirmation will arrive shortly.");
+        console.log('✅ Submission successful, immediately showing success');
+        
+        // IMMEDIATE success feedback - no waiting for background tasks
+        setSubmissionStatus("🎉 Submission complete! Processing confirmation email...");
 
         // Clear form data immediately after successful submission
         setFormData({
@@ -575,17 +578,19 @@ export default function SubmitPage() {
           files: [null, null, null, null, null],
         });
 
-        // Small delay to show success message, then move to completed step
+        // Show immediate success toast
+        toast({
+          title: "Submission Successful!",
+          description: `Your ${poemCount > 1 ? `${poemCount} poems have` : 'poem has'} been successfully submitted!`,
+        });
+
+        // Quick transition to completed step (reduced from 1500ms to 800ms)
         setTimeout(() => {
           setCurrentStep("completed");
           setIsSubmitting(false);
           setSubmissionStatus("");
-        }, 1500);
+        }, 800);
 
-        toast({
-          title: "Submission Successful!",
-          description: `Successfully submitted ${poemCount} poem(s). Your poems are now safely stored!`,
-        });
       } else {
         throw new Error(result.error || 'Submission failed');
       }
@@ -1141,11 +1146,20 @@ At Writory, every voice is gold.
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-6"></div>
           <h2 className="text-xl font-bold text-gray-800 mb-4">Processing Submission</h2>
           <p className="text-gray-600 mb-4">
-            {submissionStatus || "Please don't close this window or navigate away..."}
+            {submissionStatus || "Please wait while we process your submission..."}
           </p>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              <strong>Important:</strong> Do not refresh or go back. Your submission is being processed.
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-red-800 font-semibold">
+              ⚠️ CRITICAL WARNING ⚠️
+            </p>
+            <p className="text-sm text-red-700 mt-2">
+              <strong>DO NOT refresh, reload, or close this page!</strong><br/>
+              Your poem submission may not be recorded if you navigate away now.
+            </p>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-700">
+              This process typically takes 10-30 seconds. Please be patient.
             </p>
           </div>
         </div>
