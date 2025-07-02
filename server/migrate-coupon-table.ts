@@ -1,44 +1,47 @@
-
-import { client, connectDatabase } from './db.js';
+import { client } from './db.js';
 
 export async function migrateCouponTable() {
   try {
-    console.log('🔧 Starting coupon table migration...');
-    
-    await connectDatabase();
-    
-    // Create coupons table if it doesn't exist
+    console.log('🔄 Starting coupon table migration...');
+
+    // First, check if the coupons table exists and create it if it doesn't
     await client.query(`
       CREATE TABLE IF NOT EXISTS coupons (
         id SERIAL PRIMARY KEY,
-        code TEXT NOT NULL UNIQUE,
-        discount_amount INTEGER NOT NULL,
-        is_used BOOLEAN DEFAULT FALSE,
-        used_by_email TEXT,
-        used_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
+        code VARCHAR(50) UNIQUE NOT NULL,
+        discount_amount INTEGER NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
     `);
-    
-    console.log('✅ Coupons table created successfully');
-    
-    // Insert default coupon codes if they don't exist
-    const defaultCoupons = [
-      { code: 'SAVE20', discount_amount: 20 },
-      { code: 'WELCOME10', discount_amount: 10 },
-      { code: 'POETRY50', discount_amount: 50 }
-    ];
-    
-    for (const coupon of defaultCoupons) {
+
+    // Check if discount_amount column exists, if not add it
+    const columnExists = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'coupons' AND column_name = 'discount_amount'
+    `);
+
+    if (columnExists.rows.length === 0) {
+      console.log('Adding discount_amount column to coupons table...');
       await client.query(`
-        INSERT INTO coupons (code, discount_amount) 
-        VALUES ($1, $2) 
-        ON CONFLICT (code) DO NOTHING
-      `, [coupon.code, coupon.discount_amount]);
+        ALTER TABLE coupons ADD COLUMN discount_amount INTEGER NOT NULL DEFAULT 0
+      `);
     }
-    
-    console.log('✅ Default coupon codes inserted');
-    
+
+    // Insert sample coupon codes
+    await client.query(`
+      INSERT INTO coupons (code, discount_amount, is_active, created_at, updated_at) 
+      VALUES 
+        ('FREEENTRY', 0, true, NOW(), NOW()),
+        ('DISCOUNT10', 10, true, NOW(), NOW()),
+        ('DISCOUNT20', 20, true, NOW(), NOW()),
+        ('STUDENT50', 50, true, NOW(), NOW())
+      ON CONFLICT (code) DO NOTHING
+    `);
+
+    console.log('✅ Coupon table migration completed successfully');
   } catch (error) {
     console.error('❌ Coupon table migration failed:', error);
     throw error;
