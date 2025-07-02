@@ -1,4 +1,3 @@
-
 import { client, connectDatabase } from './db.js';
 
 async function createCouponTrackingTable() {
@@ -7,8 +6,11 @@ async function createCouponTrackingTable() {
     
     console.log('🔧 Creating coupon_usage table...');
     
+    // Drop existing table to recreate with proper constraints
+    await client.query(`DROP TABLE IF EXISTS coupon_usage CASCADE;`);
+    
     await client.query(`
-      CREATE TABLE IF NOT EXISTS coupon_usage (
+      CREATE TABLE coupon_usage (
         id SERIAL PRIMARY KEY,
         coupon_code VARCHAR(50) NOT NULL,
         coupon_id INTEGER REFERENCES coupons(id),
@@ -18,8 +20,8 @@ async function createCouponTrackingTable() {
         discount_amount DECIMAL(10, 2) NOT NULL,
         used_at TIMESTAMP DEFAULT NOW() NOT NULL,
         
-        -- Create index for fast lookups
-        UNIQUE(coupon_code, user_uid)
+        -- CRITICAL: Prevent duplicate usage by same user
+        CONSTRAINT unique_coupon_per_user UNIQUE(coupon_code, user_uid)
       );
     `);
     

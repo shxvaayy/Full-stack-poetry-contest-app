@@ -128,7 +128,7 @@ export const coupons = pgTable('coupons', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
-// ✅ Coupon usage tracking
+// ✅ Coupon usage tracking - FIXED WITH UNIQUE CONSTRAINT
 export const couponUsage = pgTable('coupon_usage', {
   id: serial('id').primaryKey(),
   couponCode: varchar('coupon_code', { length: 50 }).notNull(), // Store the actual code used

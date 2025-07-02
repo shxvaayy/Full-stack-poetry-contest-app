@@ -322,6 +322,7 @@ export default function SubmitPage() {
     setCurrentStep("form");
   };
 
+  // FIXED: Enhanced coupon application with proper database validation
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code');
@@ -337,7 +338,7 @@ export default function SubmitPage() {
     setCouponError('');
 
     try {
-      // Use server-side validation ONLY - this checks database permanently
+      // CRITICAL FIX: Server-side validation with database check
       const response = await fetch('/api/validate-coupon', {
         method: 'POST',
         headers: {
@@ -390,251 +391,257 @@ export default function SubmitPage() {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
       // Save to sessionStorage to prevent loss on reload
-      sessionStorage.setItem('writory_form_data', JSON.stringify(updated));
+      try {
+        sessionStorage.setItem('writory_form_data', JSON.stringify(updated));
+      } catch (e) {
+        console.log('Failed to save form data to sessionStorage');
+      }
       return updated;
     });
   };
 
-  const handleFileChange = (fileType: 'poem' | 'photo', file: File | null) => {
-    setFiles(prev => ({ ...prev, [fileType]: file }));
+  const handleFileUpload = (type: 'poem' | 'photo', file: File | null) => {
+    setFiles(prev => ({ ...prev, [type]: file }));
   };
 
-  const handlePaymentSuccess = async (data: any) => {
-    console.log('✅ Payment successful, data received:', data);
-
-    // Ensure payment data is in the correct format
-    const processedPaymentData = {
-      ...data,
-      payment_method: data.payment_method || 'razorpay',
-      amount: selectedTier?.price || 0
-    };
-
-    console.log('💾 Setting payment data:', processedPaymentData);
-    setPaymentData(processedPaymentData);
-    setPaymentCompleted(true);
-
-    toast({
-      title: "Payment Successful!",
-      description: "Processing your submission...",
-    });
-
-    // Immediately submit after payment success - no delay
-    try {
-      console.log('🔄 Immediately submitting after payment success...');
-      setIsSubmitting(true);
-      await handleFormSubmitWithPaymentData(processedPaymentData);
-      // Submission completed successfully - user will be redirected to completed step
-    } catch (error) {
-      console.error('❌ Immediate submission failed:', error);
-      setIsSubmitting(false);
+  const validateForm = () => {
+    const { firstName, email, termsAccepted } = formData;
+    
+    if (!firstName.trim()) {
       toast({
-        title: "Submission Error",
-        description: "Payment successful but submission failed. Please contact support.",
+        title: "Validation Error",
+        description: "First name is required",
         variant: "destructive",
       });
-      // Keep user on payment step so they can retry
-      setCurrentStep("form");
+      return false;
     }
-  };
 
-  const handlePaymentError = (error: string) => {
-    console.error('❌ Payment error:', error);
-    toast({
-      title: "Payment Failed",
-      description: error,
-      variant: "destructive",
-    });
-    setCurrentStep("form");
-  };
+    if (!email.trim()) {
+      toast({
+        title: "Validation Error", 
+        description: "Email is required",
+        variant: "destructive",
+      });
+      return false;
+    }
 
-  const handleFormSubmitWithPaymentData = async (paymentDataParam?: any) => {
-    const actualPaymentData = paymentDataParam || paymentData;
-    return await handleFormSubmitInternal(actualPaymentData);
-  };
+    if (!termsAccepted) {
+      toast({
+        title: "Validation Error",
+        description: "Please accept the terms and conditions",
+        variant: "destructive",
+      });
+      return false;
+    }
 
-  const handleFormSubmit = async () => {
-    return await handleFormSubmitInternal(paymentData);
-  };
-
-  const handleFormSubmitInternal = async (actualPaymentData: any) => {
-    try {
-      setIsSubmitting(true);
-
-      console.log('🚀 Form submission started');
-      console.log('Form data:', formData);
-      console.log('Payment data:', actualPaymentData);
-      console.log('Selected tier:', selectedTier);
-
-      // Check if server is reachable first
-      try {
-        const healthCheck = await fetch('/api/test', { 
-          method: 'GET',
-          timeout: 5000 
+    // Validate based on tier
+    const poemCount = getPoemCount(selectedTier?.id || '');
+    
+    if (poemCount === 1) {
+      // Single poem validation
+      if (!formData.poemTitle.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Poem title is required",
+          variant: "destructive",
         });
-        if (!healthCheck.ok) {
-          throw new Error('Server not responding');
-        }
-      } catch (serverError) {
-        throw new Error('Server is not running. Please contact support or try again later.');
+        return false;
       }
 
-      // Validate form
-      if (!formData.firstName || !formData.email || !formData.poemTitle) {
-        throw new Error('Please fill in all required fields');
-      }
-
-      if (!selectedTier) {
-        throw new Error('Please select a tier');
-      }
-
-      const poemCount = getPoemCount(selectedTier.id);
-
-      // Validate multiple poems if required
-      for (let i = 0; i < poemCount; i++) {
-        const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-        const file = i === 0 ? files.poem : multiplePoems.files[i];
-
-        if (!title) {
-          throw new Error(`Please enter title for poem ${i + 1}`);
-        }
-        if (!file) {
-          throw new Error(`Please upload file for poem ${i + 1}`);
-        }
+      if (!files.poem) {
+        toast({
+          title: "Validation Error",
+          description: "Poem file is required",
+          variant: "destructive",
+        });
+        return false;
       }
 
       if (!files.photo) {
-        throw new Error('Please upload your photo');
-      }
-
-      if (!formData.termsAccepted) {
-        throw new Error('Please accept the terms and conditions');
-      }
-
-      const formDataToSend = new FormData();
-
-      // Add basic form data
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formDataToSend.append(key, value.toString());
-        }
-      });
-
-      // Add tier and payment data
-      formDataToSend.append('tier', selectedTier.id);
-      formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
-      formDataToSend.append('userUid', user?.uid || '');
-      if (actualPaymentData) {
-        formDataToSend.append('paymentId', actualPaymentData.razorpay_payment_id || actualPaymentData.paypal_order_id || '');
-        formDataToSend.append('paymentMethod', actualPaymentData.payment_method || 'razorpay');
-      }
-
-      // Add coupon data if applied
-      if (couponApplied && couponCode) {
-        formDataToSend.append('couponCode', couponCode);
-        formDataToSend.append('couponDiscount', couponDiscount.toString());
-      }
-
-      // Add multiple poem titles
-      const allTitles = [formData.poemTitle];
-      for (let i = 1; i < poemCount; i++) {
-        allTitles.push(multiplePoems.titles[i] || '');
-      }
-      formDataToSend.append('poemTitles', JSON.stringify(allTitles));
-
-      // Add poem files
-      if (files.poem) {
-        formDataToSend.append('poems', files.poem);
-      }
-      for (let i = 1; i < poemCount; i++) {
-        if (multiplePoems.files[i]) {
-          formDataToSend.append('poems', multiplePoems.files[i] as File);
-        }
-      }
-
-      // Add photo file
-      if (files.photo) {
-        formDataToSend.append('photo', files.photo);
-      }
-
-      console.log('📤 Sending form data to API...');
-
-      const response = await fetch(poemCount > 1 ? '/api/submit-multiple-poems' : '/api/submit-poem', {
-        method: 'POST',
-        body: formDataToSend,
-        credentials: 'same-origin',
-        headers: {
-          'Accept': 'application/json',
-        }
-      });
-
-      console.log('📥 API response status:', response.status);
-      console.log('📥 API response headers:', Object.fromEntries(response.headers.entries()));
-
-      // Check if response is actually JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await response.text();
-        console.error('❌ Non-JSON response received:', responseText);
-        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}...`);
-      }
-
-      const result = await response.json();
-      console.log('📥 API response data:', result);
-
-      if (result.success) {
-        console.log('✅ Submission successful, moving to completed step');
-
-        // Clear form data immediately after successful submission
-        const clearedFormData = {
-          firstName: "",
-          lastName: "",
-          email: user?.email || "",
-          phone: "",
-          age: "",
-          poemTitle: "",
-          termsAccepted: false,
-        };
-        setFormData(clearedFormData);
-        setFiles({
-          poem: null,
-          photo: null,
+        toast({
+          title: "Validation Error", 
+          description: "Photo file is required",
+          variant: "destructive",
         });
-        setMultiplePoems({
-          titles: ["", "", "", "", ""],
-          files: [null, null, null, null, null],
+        return false;
+      }
+    } else {
+      // Multiple poems validation
+      const filledTitles = multiplePoems.titles.slice(0, poemCount).filter(title => title.trim());
+      const uploadedFiles = multiplePoems.files.slice(0, poemCount).filter(file => file !== null);
+
+      if (filledTitles.length !== poemCount) {
+        toast({
+          title: "Validation Error",
+          description: `Please provide titles for all ${poemCount} poems`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (uploadedFiles.length !== poemCount) {
+        toast({
+          title: "Validation Error",
+          description: `Please upload all ${poemCount} poem files`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (!files.photo) {
+        toast({
+          title: "Validation Error",
+          description: "Photo file is required", 
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleFormSubmitWithPaymentData = async (paymentInfo: any) => {
+    if (!validateForm() || !selectedTier) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      console.log('📝 Submitting form with payment data:', paymentInfo);
+
+      const poemCount = getPoemCount(selectedTier.id);
+      let response;
+
+      if (poemCount === 1) {
+        // Single poem submission
+        const formDataToSend = new FormData();
+        
+        // Add form fields
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+            formDataToSend.append(key, value.toString());
+          }
         });
 
-        // Clear from sessionStorage
-        sessionStorage.removeItem('writory_form_data');
+        // Add tier and payment info
+        formDataToSend.append('tier', selectedTier.id);
+        formDataToSend.append('price', discountedAmount.toString());
+        formDataToSend.append('uid', user?.uid || '');
+        
+        // Add payment data
+        if (paymentInfo.stripe_session_id) {
+          formDataToSend.append('sessionId', paymentInfo.stripe_session_id);
+          formDataToSend.append('paymentMethod', 'stripe');
+          formDataToSend.append('paymentId', paymentInfo.stripe_session_id);
+        } else if (paymentInfo.paypal_order_id) {
+          formDataToSend.append('paymentId', paymentInfo.paypal_order_id);
+          formDataToSend.append('paymentMethod', 'paypal');
+        } else if (paymentInfo.razorpay_payment_id) {
+          formDataToSend.append('paymentId', paymentInfo.razorpay_payment_id);
+          formDataToSend.append('paymentMethod', 'razorpay');
+        }
 
-        // Move to completed step
+        // Add coupon info if applied
+        if (couponApplied && couponCode) {
+          formDataToSend.append('couponCode', couponCode);
+          formDataToSend.append('discountAmount', couponDiscount.toString());
+        }
+
+        // Add files
+        if (files.poem) formDataToSend.append('poemFile', files.poem);
+        if (files.photo) formDataToSend.append('photoFile', files.photo);
+
+        console.log('📤 Sending single poem submission...');
+        response = await fetch('/api/submit-poem', {
+          method: 'POST',
+          body: formDataToSend,
+          credentials: 'same-origin',
+        });
+      } else {
+        // Multiple poems submission
+        const formDataToSend = new FormData();
+        
+        // Add form fields
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && key !== 'poemTitle') {
+            formDataToSend.append(key, value.toString());
+          }
+        });
+
+        // Add tier and payment info
+        formDataToSend.append('tier', selectedTier.id);
+        formDataToSend.append('price', discountedAmount.toString());
+        formDataToSend.append('uid', user?.uid || '');
+
+        // Add payment data
+        if (paymentInfo.stripe_session_id) {
+          formDataToSend.append('sessionId', paymentInfo.stripe_session_id);
+          formDataToSend.append('paymentMethod', 'stripe');
+          formDataToSend.append('paymentId', paymentInfo.stripe_session_id);
+        } else if (paymentInfo.paypal_order_id) {
+          formDataToSend.append('paymentId', paymentInfo.paypal_order_id);
+          formDataToSend.append('paymentMethod', 'paypal');
+        } else if (paymentInfo.razorpay_payment_id) {
+          formDataToSend.append('paymentId', paymentInfo.razorpay_payment_id);
+          formDataToSend.append('paymentMethod', 'razorpay');
+        }
+
+        // Add coupon info if applied
+        if (couponApplied && couponCode) {
+          formDataToSend.append('couponCode', couponCode);
+          formDataToSend.append('discountAmount', couponDiscount.toString());
+        }
+
+        // Add poem titles
+        const relevantTitles = multiplePoems.titles.slice(0, poemCount);
+        formDataToSend.append('poemTitles', JSON.stringify(relevantTitles));
+
+        // Add poem files
+        multiplePoems.files.slice(0, poemCount).forEach((file, index) => {
+          if (file) {
+            formDataToSend.append(`poems[${index}]`, file);
+          }
+        });
+
+        // Add photo file
+        if (files.photo) formDataToSend.append('photo', files.photo);
+
+        console.log('📤 Sending multiple poems submission...');
+        response = await fetch('/api/submit-multiple-poems', {
+          method: 'POST',
+          body: formDataToSend,
+          credentials: 'same-origin',
+        });
+      }
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Submission successful:', result);
+        
         setCurrentStep("completed");
+        
+        // Clear form data from session storage
+        try {
+          sessionStorage.removeItem('writory_form_data');
+        } catch (e) {
+          console.log('Failed to clear form data from sessionStorage');
+        }
 
         toast({
           title: "Submission Successful!",
-          description: `Successfully submitted ${poemCount} poem(s). Your poems are now safely stored!`,
+          description: "Your poem has been submitted successfully.",
         });
       } else {
-        throw new Error(result.error || 'Submission failed');
+        const errorData = await response.json();
+        console.error('❌ Submission failed:', errorData);
+        throw new Error(errorData.error || 'Submission failed');
       }
-
     } catch (error: any) {
       console.error('❌ Form submission error:', error);
-
-      let errorMessage = error.message;
-
-      // Handle specific error types
-      if (error.message.includes('<!DOCTYPE')) {
-        errorMessage = 'Server error: Received HTML instead of JSON. Please try again or contact support.';
-      } else if (error.message.includes('Failed to fetch')) {
-        errorMessage = 'Network error: Please check your internet connection and try again.';
-      } else if (error.message.includes('Not Found')) {
-        errorMessage = 'API endpoint not found. Please contact support.';
-      }
-
       toast({
-        title: "Submission Failed",
-        description: errorMessage,
+        title: "Submission Error",
+        description: error.message || "There was an error submitting your poem. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -642,639 +649,617 @@ export default function SubmitPage() {
     }
   };
 
-  // Render dynamic poem fields based on tier
-  const renderPoemFields = () => {
-    if (!selectedTier) return null;
+  const handlePaymentSuccess = (paymentData: any) => {
+    console.log('💳 Payment successful:', paymentData);
+    setPaymentData(paymentData);
+    setPaymentCompleted(true);
+    
+    // Immediately submit after payment
+    setIsSubmitting(true);
+    handleFormSubmitWithPaymentData(paymentData);
+  };
 
-    const poemCount = getPoemCount(selectedTier.id);
-    const fields = [];
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm() || !selectedTier) return;
 
-    for (let i = 0; i < poemCount; i++) {
-      fields.push(
-        <div key={i} className="space-y-4 p-4 border rounded-lg bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-800">Poem {i + 1}</h3>
+    console.log('📝 Form submission started for tier:', selectedTier.id);
 
-          <div>
-            <Label htmlFor={`poem-title-${i}`}>Poem Title *</Label>
-            <Input
-              id={`poem-title-${i}`}
-              value={i === 0 ? formData.poemTitle : multiplePoems.titles[i]}
-              onChange={(e) => {
-                if (i === 0) {
-                  handleFormData('poemTitle', e.target.value);
-                } else {
-                  handleMultiplePoemData(i, 'title', e.target.value);
-                }
-              }}
-              placeholder="Enter your poem title"
-              required
-              className="mt-1"
-            />
-          </div>
+    // If free tier or payment already completed, submit directly
+    if (discountedAmount === 0 || paymentCompleted) {
+      console.log('💰 Free submission or payment already completed');
+      setIsSubmitting(true);
+      await handleFormSubmitWithPaymentData(paymentData || {});
+    } else {
+      console.log('💳 Payment required, showing payment form');
+      setCurrentStep("payment");
+    }
+  };
 
-          <div>
-            <Label htmlFor={`poem-file-${i}`}>Upload Poem File * (PDF, DOC, DOCX)</Label>
-            <Input
-              id={`poem-file-${i}`}
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                if (i === 0) {
-                  handleFileChange('poem', file);
-                } else {
-                  handleMultiplePoemData(i, 'file', file);
-                }
-              }}
-              required
-              className="mt-1"
-            />
-            {i === 0 && files.poem && (
-              <p className="text-sm text-green-600 mt-1">✓ {files.poem.name}</p>
-            )}
-            {i > 0 && multiplePoems.files[i] && (
-              <p className="text-sm text-green-600 mt-1">✓ {multiplePoems.files[i]?.name}</p>
-            )}
+  const canSelectFree = () => {
+    if (!IS_FIRST_MONTH) return false;
+    return !submissionStatus?.freeSubmissionUsed;
+  };
+
+  const renderTierSelection = () => (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold text-gray-900">Choose Your Submission Tier</h1>
+        <p className="text-lg text-gray-600">
+          Select the tier that best fits your poetry submission needs
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {TIERS.map((tier) => {
+          const Icon = tier.icon;
+          const isDisabled = tier.id === 'free' && !canSelectFree();
+          
+          return (
+            <Card 
+              key={tier.id}
+              className={`relative cursor-pointer transition-all duration-300 hover:scale-105 ${
+                isDisabled 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : `hover:shadow-lg ${tier.borderClass} border-2`
+              }`}
+              onClick={() => !isDisabled && handleTierSelection(tier)}
+            >
+              <CardContent className="p-6 text-center space-y-4">
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${tier.bgClass}`}>
+                  <Icon className="w-8 h-8 text-white" />
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">{tier.name}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{tier.description}</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-gray-900">
+                    {tier.price === 0 ? 'Free' : `₹${tier.price}`}
+                  </div>
+                  
+                  {isDisabled && (
+                    <div className="text-sm text-red-600 font-medium">
+                      Free submission already used
+                    </div>
+                  )}
+                </div>
+                
+                <Button 
+                  className={`w-full ${tier.bgClass} ${tier.hoverClass} text-white`}
+                  disabled={isDisabled}
+                >
+                  {isDisabled ? 'Not Available' : 'Select'}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {submissionStatus?.freeSubmissionUsed && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-blue-600" />
+            <span className="text-blue-800 font-medium">
+              You have already used your free submission this month. Choose a paid tier to submit more poems.
+            </span>
           </div>
         </div>
-      );
-    }
+      )}
+    </div>
+  );
 
+  const renderPoemForm = () => {
+    const poemCount = getPoemCount(selectedTier?.id || '');
+    
     return (
       <div className="space-y-4">
-        <h2 className="text-xl font-bold text-gray-800">
-          Submit Your {poemCount > 1 ? `${poemCount} Poems` : 'Poem'}
-        </h2>
-        {fields}
-      </div>
-    );
-  };
-
-  // Check if form is valid for submission or payment
-  const isFormValid = () => {
-    if (!selectedTier || !formData.firstName || !formData.email || !formData.termsAccepted) {
-      return false;
-    }
-
-    const poemCount = getPoemCount(selectedTier.id);
-
-    // Check all poem titles and files
-    for (let i = 0; i < poemCount; i++) {
-      const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-      const file = i === 0 ? files.poem : multiplePoems.files[i];
-
-      if (!title || !file) {
-        return false;
-      }
-    }
-
-    if (!files.photo) {
-      return false;
-    }
-
-    return true;
-  };
-
-  // Check submission status
-  if (submissionStatus?.hasSubmitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <Card className="shadow-xl">
-            <CardContent className="p-8 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-800 mb-4">Already Submitted</h1>
-              <p className="text-gray-600 mb-6">
-                You have already submitted your entry for this month's contest.
-              </p>
-              <Button onClick={() => window.location.href = '/'}>
-                Return Home
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (currentStep === "selection") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Submit Your Poetry</h1>
-            <p className="text-lg text-gray-600">Choose your submission tier</p>
-            {IS_FIRST_MONTH && (
-              <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">
-                <p className="text-yellow-800 font-semibold">
-                  No rules, just heart — let your truth unfold,
-Your words are flames, fierce and bold.
-At Writory, every voice is gold.
-                </p>
-              </div>
+        <Label htmlFor="poemTitle" className="text-sm font-medium text-gray-700">
+          Poem Title *
+        </Label>
+        <Input
+          id="poemTitle"
+          value={formData.poemTitle}
+          onChange={(e) => handleFormData('poemTitle', e.target.value)}
+          placeholder="Enter your poem title"
+          required
+        />
+        
+        <div className="space-y-2">
+          <Label htmlFor="poemFile" className="text-sm font-medium text-gray-700">
+            Upload Poem File (PDF, DOC, DOCX) *
+          </Label>
+          <div className="flex items-center space-x-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => poemFileRef.current?.click()}
+              className="flex items-center space-x-2"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Choose File</span>
+            </Button>
+            {files.poem && (
+              <span className="text-sm text-green-600">
+                ✓ {files.poem.name}
+              </span>
             )}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {TIERS.map((tier) => {
-              const Icon = tier.icon;
-              return (
-                <Card 
-                  key={tier.id} 
-                  className={`cursor-pointer transition-all duration-300 hover:scale-105 ${tier.borderClass} border-2 hover:shadow-xl`}
-                  onClick={() => handleTierSelection(tier)}
-                >
-                  <CardContent className="p-6 text-center">
-                    <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
-                      <Icon className="w-8 h-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">{tier.name}</h3>
-                    <p className="text-gray-600 mb-4">{tier.description}</p>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {tier.price === 0 ? 'Free' : `₹${tier.price}`}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          <div className="text-center mt-8">
-            <p className="text-gray-600">
-              Remember! The more poems you submit, the greater your chances of winning!
-            </p>
-          </div>
+          <input
+            ref={poemFileRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => handleFileUpload('poem', e.target.files?.[0] || null)}
+            className="hidden"
+          />
         </div>
       </div>
     );
-  }
+  };
 
-  if (currentStep === "form") {
+  const renderMultiplePoemsForm = () => {
+    const poemCount = getPoemCount(selectedTier?.id || '');
+    
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Submission Form</h1>
-            <p className="text-lg text-gray-600">
-              {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
-            </p>
-          </div>
-
-          <Card className="shadow-xl">
-            <CardContent className="p-8">
-              <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
-                {/* Personal Information */}
-                <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name *</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) => handleFormData('firstName', e.target.value)}
-                        placeholder="Enter your first name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) => handleFormData('lastName', e.target.value)}
-                        placeholder="Enter your last name"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleFormData('email', e.target.value)}
-                      placeholder="Enter your email"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => handleFormData('phone', e.target.value)}
-                        placeholder="Enter your phone number"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="age">Age</Label>
-                      <Input
-                        id="age"
-                        value={formData.age}
-                        onChange={(e) => handleFormData('age', e.target.value)}
-                        placeholder="Enter your age"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Poem Fields - Dynamic based on tier */}
-                {renderPoemFields()}
-
-                {/* Photo Upload */}
-                <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-gray-800">Photo Upload</h2>
-                  <div>
-                    <Label htmlFor="photo">Upload Your Photo * (JPG, PNG)</Label>
-                    <Input
-                      id="photo"
-                      type="file"
-                      accept=".jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange('photo', e.target.files?.[0] || null)}
-                      required
-                      className="mt-1"
-                    />
-                    {files.photo && (
-                      <p className="text-sm text-green-600 mt-1">✓ {files.photo.name}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Coupon Code */}
-                {selectedTier && selectedTier.price > 0 && (
-                  <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
-                    <h3 className="text-lg font-semibold">Coupon Code (Optional)</h3>
-                    {!couponApplied ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value)}
-                          placeholder="Enter coupon code"
-                          className="flex-1"
-                        />
-                        <Button 
-                          type="button"
-                          onClick={applyCoupon}
-                          disabled={isApplyingCoupon}
-                          variant="outline"
-                        >                          {isApplyingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3 bg-green-100 rounded-md">
-                        <span className="text-green-800">
-                          Coupon applied! Discount: ₹{couponDiscount}
-                        </span>
-                        <Button type="button" onClick={removeCoupon} variant="ghost" size="sm">
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                    {couponError && <p className="text-sm text-red-600">{couponError}</p>}
-                  </div>
-                )}
-
-                {/* Payment Summary */}
-                {selectedTier && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-semibold mb-2">Payment Summary</h3>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Tier:</span>
-                        <span>{selectedTier.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Poems:</span>
-                        <span>{getPoemCount(selectedTier.id)}</span>
-                      </div>
-                      {couponApplied && (
-                        <>
-                          <div className="flex justify-between">
-                            <span>Original Price:</span>
-                            <span>₹{selectedTier.price}</span>
-                          </div>
-                          <div className="flex justify-between text-green-600">
-                            <span>Discount:</span>
-                            <span>-₹{couponDiscount}</span>
-                          </div>
-                        </>
-                      )}
-                      <div className="flex justify-between font-semibold text-lg border-t pt-1">
-                        <span>Total:</span>
-                        <span>₹{discountedAmount}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Terms and Conditions */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="terms"
-                    checked={formData.termsAccepted}
-                    onCheckedChange={(checked) => handleFormData('termsAccepted', checked)}
+      <div className="space-y-6">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Submit {poemCount} Poems
+          </h3>
+          <p className="text-sm text-gray-600">
+            Please provide title and file for each poem
+          </p>
+        </div>
+        
+        {Array.from({ length: poemCount }).map((_, index) => (
+          <Card key={index} className="p-4 border border-gray-200">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Poem {index + 1}</h4>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor={`poem-title-${index}`} className="text-sm font-medium text-gray-700">
+                    Poem Title *
+                  </Label>
+                  <Input
+                    id={`poem-title-${index}`}
+                    value={multiplePoems.titles[index]}
+                    onChange={(e) => handleMultiplePoemData(index, 'title', e.target.value)}
+                    placeholder={`Enter title for poem ${index + 1}`}
+                    required
                   />
-                  <Label htmlFor="terms" className="text-sm">
-                    I accept the{" "}
-                    <a href="/terms" target="_blank" className="text-purple-600 hover:underline">
-                      terms and conditions
-                    </a>{" "}
-                    and{" "}
-                    <a
-                      href="/privacy"
-                      target="_blank"
-                      className="text-purple-600 hover:underline"
-                    >
-                      privacy policy
-                    </a>{" "}
-                    *
-                                    </Label>
                 </div>
-
-                {/* Submit Buttons */}
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep("selection")}
-                    className="flex-1"
-                  >
-                    Back to Tiers
-                  </Button>
-
-                  {selectedTier && discountedAmount === 0 ? (
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting || !isFormValid()}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Submitting...
-                        </>
-                      ) : (
-                        'Submit for Free'
-                      )}
-                    </Button>
-                  ) : (
+                
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">
+                    Upload Poem File *
+                  </Label>
+                  <div className="flex items-center space-x-4">
                     <Button
                       type="button"
+                      variant="outline"
                       onClick={() => {
-                        if (isFormValid()) {
-                          setCurrentStep("payment");
-                        } else {
-                          toast({
-                            title: "Form Incomplete",
-                            description: "Please fill in all required fields",
-                            variant: "destructive",
-                          });
-                        }
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.pdf,.doc,.docx';
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          handleMultiplePoemData(index, 'file', file || null);
+                        };
+                        input.click();
                       }}
-                      disabled={!isFormValid()}
-                      className="flex-1"
+                      className="flex items-center space-x-2"
                     >
-                      Proceed to Payment
+                      <Upload className="w-4 h-4" />
+                      <span>Choose File</span>
                     </Button>
-                  )}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (currentStep === "payment") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Payment</h1>
-            <p className="text-lg text-gray-600">
-              Complete your payment to submit your {getPoemCount(selectedTier?.id || 'free') > 1 ? 'poems' : 'poem'}
-            </p>
-          </div>
-
-          <Card className="shadow-xl">
-            <CardContent className="p-8">
-              {/* Payment Summary */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Tier:</span>
-                    <span>{selectedTier?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Poems:</span>
-                    <span>{getPoemCount(selectedTier?.id || 'free')}</span>
-                  </div>
-                  {couponApplied && (
-                    <>
-                      <div className="flex justify-between">
-                        <span>Original Price:</span>
-                        <span>₹{selectedTier?.price}</span>
-                      </div>
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount:</span>
-                        <span>-₹{couponDiscount}</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between font-semibold text-lg border-t pt-1">
-                    <span>Total:</span>
-                    <span>₹{discountedAmount}</span>
+                    {multiplePoems.files[index] && (
+                      <span className="text-sm text-green-600">
+                        ✓ {multiplePoems.files[index]?.name}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  };
 
-              {/* QR Code Payment Display */}
-              {showQRPayment && qrPaymentData && (
-                <div className="mb-6 p-6 bg-blue-50 rounded-lg text-center">
-                  <QrCode className="w-8 h-8 mx-auto mb-4 text-blue-600" />
-                  <h3 className="text-lg font-semibold mb-4">Scan QR Code to Pay</h3>
-                  <div className="bg-white p-4 rounded-lg inline-block">
-                    <img 
-                      src={qrPaymentData.qr_code_url} 
-                      alt="Payment QR Code" 
-                      className="max-w-48 max-h-48"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 mt-4">
-                    Scan with your UPI app to complete payment
-                  </p>
+  const renderForm = () => (
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="text-center space-y-4">
+        <h1 className="text-3xl font-bold text-gray-900">Submit Your Poem</h1>
+        <div className="flex items-center justify-center space-x-4">
+          <div className={`px-4 py-2 rounded-full ${selectedTier?.bgClass} text-white`}>
+            {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentStep("selection")}
+          >
+            Change Tier
+          </Button>
+        </div>
+      </div>
+
+      <form onSubmit={handleFormSubmit} className="space-y-6">
+        {/* Personal Information */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
+                First Name *
+              </Label>
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => handleFormData('firstName', e.target.value)}
+                placeholder="Enter your first name"
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
+                Last Name
+              </Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => handleFormData('lastName', e.target.value)}
+                placeholder="Enter your last name"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Email *
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleFormData('email', e.target.value)}
+                placeholder="Enter your email"
+                required
+                disabled={!!user?.email}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                Phone Number
+              </Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => handleFormData('phone', e.target.value)}
+                placeholder="Enter your phone number"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="age" className="text-sm font-medium text-gray-700">
+                Age
+              </Label>
+              <Input
+                id="age"
+                type="number"
+                value={formData.age}
+                onChange={(e) => handleFormData('age', e.target.value)}
+                placeholder="Enter your age"
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Poem Details */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Poem Details</h3>
+          {getPoemCount(selectedTier?.id || '') === 1 ? renderPoemForm() : renderMultiplePoemsForm()}
+        </Card>
+
+        {/* Photo Upload */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Author Photo</h3>
+          <div className="space-y-2">
+            <Label htmlFor="photoFile" className="text-sm font-medium text-gray-700">
+              Upload Your Photo (JPG, PNG) *
+            </Label>
+            <div className="flex items-center space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => photoFileRef.current?.click()}
+                className="flex items-center space-x-2"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Choose Photo</span>
+              </Button>
+              {files.photo && (
+                <span className="text-sm text-green-600">
+                  ✓ {files.photo.name}
+                </span>
+              )}
+            </div>
+            <input
+              ref={photoFileRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileUpload('photo', e.target.files?.[0] || null)}
+              className="hidden"
+            />
+          </div>
+        </Card>
+
+        {/* Coupon Code - Only show for paid tiers */}
+        {selectedTier && selectedTier.price > 0 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Coupon Code</h3>
+            {!couponApplied ? (
+              <div className="space-y-4">
+                <div className="flex space-x-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Enter coupon code"
+                    disabled={isApplyingCoupon}
+                  />
                   <Button
-                    onClick={() => setShowQRPayment(false)}
-                    variant="outline"
-                    className="mt-4"
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={isApplyingCoupon || !couponCode.trim()}
+                    className="whitespace-nowrap"
                   >
-                    Back to Payment Options
+                    {isApplyingCoupon ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Applying...
+                      </>
+                    ) : (
+                      'Apply'
+                    )}
                   </Button>
                 </div>
-              )}
-
-              {/* Payment Form */}
-              {!showQRPayment && (
-                <PaymentForm
-                  amount={discountedAmount}
-                  tier={selectedTier?.id || 'free'}
-                  userEmail={formData.email}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                  isProcessing={isProcessingPayment}
-                  setIsProcessing={setIsProcessingPayment}
-                  isProcessingPayPal={isProcessingPayPal}
-                  setIsProcessingPayPal={setIsProcessingPayPal}
-                  onQRPayment={(qrData) => {
-                    setQrPaymentData(qrData);
-                    setShowQRPayment(true);
-                  }}
-                />
-              )}
-
-              <div className="mt-6 flex gap-4">
+                {couponError && (
+                  <p className="text-sm text-red-600">{couponError}</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800 font-medium">
+                    Coupon "{couponCode}" applied! Discount: ₹{couponDiscount}
+                  </span>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setCurrentStep("form")}
-                  className="flex-1"
-                  disabled={isProcessingPayment || isProcessingPayPal}
+                  size="sm"
+                  onClick={removeCoupon}
                 >
-                  Back to Form
+                  Remove
                 </Button>
               </div>
-            </CardContent>
+            )}
           </Card>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  // Show loading page during submission for all payment types
-  if (isSubmitting) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <Card className="shadow-xl">
-            <CardContent className="p-8 text-center">
-              <div className="flex flex-col items-center space-y-6">
-                <Loader2 className="w-20 h-20 text-blue-500 animate-spin" />
-                <h1 className="text-3xl font-bold text-gray-800">Please Wait</h1>
-                <p className="text-lg text-gray-600">
-                  Your poem is being submitted. This may take a few seconds.
-                </p>
-                <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-6 mt-6 max-w-md">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle className="w-6 h-6 text-yellow-600 mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-yellow-800 font-bold text-lg mb-2">
-                        Important Warning!
-                      </p>
-                      <p className="text-yellow-800 font-medium">
-                        Do not press back or reload the page, otherwise your poem might not get submitted!
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 text-blue-600">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium">Processing your submission...</span>
-                </div>
+        {/* Price Summary */}
+        {selectedTier && (
+          <Card className="p-6 bg-gray-50">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Price Summary</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Submission Fee ({selectedTier.name}):</span>
+                <span>₹{selectedTier.price}</span>
               </div>
-            </CardContent>
+              {couponApplied && couponDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount ({couponCode}):</span>
+                  <span>-₹{couponDiscount}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-semibold border-t pt-2">
+                <span>Total Amount:</span>
+                <span>₹{discountedAmount}</span>
+              </div>
+            </div>
           </Card>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  if (currentStep === "completed") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <Card className="shadow-xl">
-            <CardContent className="p-8 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-800 mb-4">Submission Successful!</h1>
-              <p className="text-gray-600 mb-6">
-                Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
+        {/* Terms and Conditions */}
+        <Card className="p-6">
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="terms"
+              checked={formData.termsAccepted}
+              onCheckedChange={(checked) => handleFormData('termsAccepted', checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="terms" className="text-sm font-medium text-gray-700 cursor-pointer">
+                I accept the terms and conditions *
+              </Label>
+              <p className="text-xs text-gray-500">
+                By submitting, you agree to our contest rules and privacy policy.
               </p>
+            </div>
+          </div>
+        </Card>
 
-              {/* Submission Details */}
-              <div className="bg-gray-50 p-6 rounded-lg mb-6 text-left">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Submission Details</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Name:</span>
-                    <span>{formData.firstName} {formData.lastName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Email:</span>
-                    <span>{formData.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Poem Title:</span>
-                    <span>{formData.poemTitle}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tier:</span>
-                    <span>{selectedTier?.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Amount Paid:</span>
-                    <span>₹{discountedAmount}</span>
-                  </div>
-                </div>
-              </div>
+        {/* Submit Button */}
+        <div className="flex space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setCurrentStep("selection")}
+            className="flex-1"
+          >
+            Back to Tiers
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || !formData.termsAccepted}
+            className="flex-1"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {paymentCompleted ? 'Submitting...' : 'Processing...'}
+              </>
+            ) : (
+              discountedAmount === 0 ? 'Submit for Free' : `Proceed to Payment (₹${discountedAmount})`
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
 
-              {/* Social Media Section */}
-              <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Follow us on Social Media</h3>
-                <div className="flex justify-center gap-4">
-                  <a href="https://x.com/writoryofficial" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-blue-500 transition-colors">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                  </a>
-                  <a href="https://www.facebook.com/people/Writory/61577727639318/?rdid=Qujzx917cNisZLAo&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F16hyCrZbE2%2F" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-blue-600 transition-colors">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                  </a>
-                  <a href="https://www.instagram.com/writoryofficial/" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-pink-600 transition-colors">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.327-1.297C4.198 14.895 3.72 13.70 3.72 12.37c0-1.341.478-2.535 1.402-3.431.924-.895 2.075-1.385 3.327-1.385 1.297 0 2.448.49 3.327 1.385.924.896 1.402 2.09 1.402 3.431 0 1.34-.478 2.525-1.402 3.321-.879.807-2.03 1.297-3.327 1.297zm8.953-8.207c-.315 0-.578-.263-.578-.578s.263-.578.578-.578.578.263.578.578-.263.578-.578.578zm-4.985 6.572c-1.297 0-2.353-1.056-2.353-2.353s1.056-2.353 2.353-2.353 2.353 1.056 2.353 2.353-1.056 2.353-2.353 2.353z"/>
-                    </svg>
-                  </a>
-                  <a href="https://www.linkedin.com/company/writoryofficial/posts/?feedView=all" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-blue-700 transition-colors">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                    </svg>
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <Button onClick={() => setCurrentStep("selection")} className="w-full bg-green-600 hover:bg-green-700">
-                  Submit Another Poem
-                </Button>
-                <Button onClick={() => window.location.href = '/'} variant="outline" className="w-full">
-                  Back to Home
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+  const renderPayment = () => (
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="text-center space-y-4">
+        <h1 className="text-3xl font-bold text-gray-900">Complete Payment</h1>
+        <div className="flex items-center justify-center space-x-4">
+          <div className={`px-4 py-2 rounded-full ${selectedTier?.bgClass} text-white`}>
+            {selectedTier?.name} - ₹{discountedAmount}
+          </div>
         </div>
       </div>
-    );
-  }
 
-  return null;
-};
+      {selectedTier && (
+        <PaymentForm
+          amount={discountedAmount}
+          tier={selectedTier.id}
+          metadata={{
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            tier: selectedTier.id,
+            uid: user?.uid
+          }}
+          onSuccess={handlePaymentSuccess}
+          onError={(error) => {
+            console.error('Payment error:', error);
+            toast({
+              title: "Payment Error",
+              description: error.message || "Payment failed. Please try again.",
+              variant: "destructive",
+            });
+          }}
+          setIsProcessing={setIsProcessingPayment}
+        />
+      )}
+
+      <div className="flex space-x-4">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentStep("form")}
+          className="flex-1"
+          disabled={isProcessingPayment}
+        >
+          Back to Form
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderCompleted = () => (
+    <div className="max-w-2xl mx-auto text-center space-y-8">
+      <div className="space-y-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500">
+          <CheckCircle className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold text-gray-900">Submission Successful!</h1>
+        <p className="text-lg text-gray-600">
+          Thank you for submitting your poem. You will receive a confirmation email shortly.
+        </p>
+      </div>
+
+      <Card className="p-6 text-left">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">What's Next?</h3>
+        <div className="space-y-3 text-sm text-gray-600">
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            <span>Your poem has been successfully uploaded and is being processed</span>
+          </div>
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            <span>You will receive a confirmation email with your submission details</span>
+          </div>
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            <span>Contest results will be announced at the end of the month</span>
+          </div>
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            <span>Winners will be contacted via email and announced on our website</span>
+          </div>
+        </div>
+      </Card>
+
+      <div className="space-y-4">
+        <Button
+          onClick={() => {
+            setCurrentStep("selection");
+            setSelectedTier(null);
+            setPaymentCompleted(false);
+            setPaymentData(null);
+            setCouponApplied(false);
+            setCouponCode("");
+            setCouponDiscount(0);
+            setDiscountedAmount(0);
+            setFormData({
+              firstName: "",
+              lastName: "",
+              email: user?.email || "",
+              phone: "",
+              age: "",
+              poemTitle: "",
+              termsAccepted: false,
+            });
+            setFiles({ poem: null, photo: null });
+            setMultiplePoems({
+              titles: ["", "", "", "", ""],
+              files: [null, null, null, null, null],
+            });
+          }}
+          className="w-full"
+        >
+          Submit Another Poem
+        </Button>
+        
+        <Button
+          variant="outline"
+          onClick={() => window.location.href = '/'}
+          className="w-full"
+        >
+          Back to Home
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="container mx-auto">
+        {currentStep === "selection" && renderTierSelection()}
+        {currentStep === "form" && renderForm()}
+        {currentStep === "payment" && renderPayment()}
+        {currentStep === "completed" && renderCompleted()}
+      </div>
+    </div>
+  );
+}

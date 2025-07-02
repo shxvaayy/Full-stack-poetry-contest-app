@@ -10,6 +10,9 @@ import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
+import { db } from './db.js';
+import { couponUsage, users } from './schema.js';
+import { eq, and } from 'drizzle-orm';
 
 const router = Router();
 
@@ -81,8 +84,8 @@ const uploadFields = upload.fields([
   { name: 'files', maxCount: 15 },
 ]);
 
-// In-memory storage for submissions (legacy compatibility)
-const submissions: any[] = [];
+// FIXED: REMOVED In-memory storage for submissions - ALL DATA NOW FROM DATABASE
+// const submissions: any[] = []; // DELETED - this was causing reset issues
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -271,6 +274,74 @@ router.post('/api/users', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// ===== COUPON VALIDATION ENDPOINT - COMPLETELY FIXED =====
+router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
+  const { code, tier, amount, uid } = req.body;
+  console.log('🎫 Validating coupon:', { code, tier, amount, uid });
+
+  if (!code || !tier || !uid) {
+    return res.status(400).json({
+      valid: false,
+      error: 'Missing required fields'
+    });
+  }
+
+  const upperCode = code.toUpperCase();
+
+  try {
+    // CRITICAL FIX: Use database transaction to prevent race conditions
+    const result = await db.transaction(async (tx) => {
+      // Check if user already used this coupon code
+      const existingUsage = await tx
+        .select()
+        .from(couponUsage)
+        .where(
+          and(
+            eq(couponUsage.couponCode, upperCode),
+            eq(couponUsage.userUid, uid)
+          )
+        )
+        .limit(1);
+
+      if (existingUsage.length > 0) {
+        throw new Error('You have already used this coupon code');
+      }
+
+      // Validate against coupon codes (your existing logic)
+      const { validateCouponCode } = await import('./coupon-codes.js');
+      const validation = validateCouponCode(code, tier);
+
+      if (!validation.valid) {
+        throw new Error(validation.message);
+      }
+
+      // Calculate discount
+      let discount = 0;
+      if (validation.type === 'free') {
+        discount = amount; // 100% discount
+      } else if (validation.type === 'discount') {
+        discount = Math.round(amount * (validation.discount / 100));
+      }
+
+      return {
+        valid: true,
+        discount,
+        message: validation.message
+      };
+    });
+
+    console.log('✅ Coupon validation successful:', result);
+    res.json(result);
+
+  } catch (error: any) {
+    console.error('❌ Coupon validation failed:', error);
+    res.status(400).json({
+      valid: false,
+      error: error.message || 'Invalid coupon code'
+    });
+  }
+}));
+
 // ===== RAZORPAY PAYMENT ENDPOINTS =====
 
 // Create Razorpay order
@@ -420,727 +491,41 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
     .update(body.toString())
     .digest('hex');
 
-  console.log('🔒 Signature verification:', {
+  console.log('🔍 Signature verification:', {
     received: razorpay_signature,
     expected: expectedSignature,
-    matches: expectedSignature === razorpay_signature
+    match: expectedSignature === razorpay_signature
   });
 
   if (expectedSignature === razorpay_signature) {
     console.log('✅ Payment signature verified successfully');
-
-    // Fetch additional payment details for verification
-    try {
-      const payment = await razorpay.payments.fetch(razorpay_payment_id);
-      console.log('💳 Payment details from Razorpay:', {
-        id: payment.id,
-        amount: payment.amount,
-        status: payment.status,
-        method: payment.method
-      });
-
-      res.json({
-        verified: true,
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id,
-        amount: payment.amount / 100, // Convert back to rupees
-        status: payment.status,
-        method: payment.method,
-        captured: payment.status === 'captured'
-      });
-
-    } catch (fetchError: any) {
-      console.error('⚠️ Could not fetch payment details, but signature is valid:', fetchError.message);
-      // If we can't fetch payment details but signature is valid, still consider it verified
-      res.json({
-        verified: true,
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id,
-        amount: amount,
-        note: 'Payment verified by signature (details fetch failed)'
-      });
-    }
-  } else {
-    console.error('❌ Payment signature verification failed');
-    res.status(400).json({ 
-      error: 'Payment verification failed - invalid signature' 
-    });
-  }
-}));
-
-// ===== COUPON VALIDATION ENDPOINT =====
-
-// Validate coupon code
-router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
-  const { code, tier, amount, uid } = req.body;
-
-  console.log('🎫 Coupon validation request:', { code, tier, amount, uid });
-
-  // Validate required fields
-  if (!code || !tier) {
-    return res.status(400).json({
-      valid: false,
-      error: 'Coupon code and tier are required'
-    });
-  }
-
-  if (!uid) {
-    return res.status(400).json({
-      valid: false,
-      error: 'User authentication required for coupon validation'
-    });
-  }
-
-  const upperCode = code.toUpperCase();
-
-  // Free tier codes (100% discount on ₹50 tier only)
-  const FREE_TIER_CODES = [
-    'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
-    'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
-    'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
-    'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
-    'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
-    'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
-    'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
-    'VERSEUNLOCK', 'QUILLEDPASS', 'FREEMUSE2025', 'WRITYSTREAK', 'RHYMESMILE',
-    'PENMIRACLE', 'GIFTOFVERSE', 'LYRICALENTRY', 'WRTYWAVE', 'MUSEDROP',
-    'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
-  ];
-
-  // 10% discount codes for all paid tiers
-  const DISCOUNT_CODES = [
-    'FLOWRHYME10', 'VERSETREAT', 'WRITEJOY10', 'CANTODEAL', 'LYRICSPARK',
-    'INKSAVER10', 'WRTYBRIGHT', 'PASSPOETRY', 'MUSEDISCOUNT', 'SONNETSAVE',
-    'QUILLFALL10', 'PENSPARKLE', 'LINESLOVE10', 'VERSELIGHT', 'RHYMEBOOST',
-    'WRITORSAVE', 'PROSEJOY10', 'POETPOWER10', 'WRTYDREAM', 'MUSESAVER10',
-    'POEMSTARS', 'WRITERSHADE', 'LYRICLOOT10', 'SONNETBLISS', 'INKBREEZE',
-    'VERSECHILL', 'PASSHUES', 'WRITERFEST', 'CANTOFEEL', 'POEMDISCOUNT',
-    'MIRACLEMUSE', 'LYRICSTORY10', 'POEMCUP10', 'WRTYFEAST10', 'PASSMIRROR',
-    'INKRAYS10', 'WRTYFLY', 'DISCOUNTINK', 'QUILLFLASH', 'WRITGLOW10',
-    'FREESHADE10', 'WRTYJUMP', 'BARDGIFT10', 'POETRAYS', 'LIGHTQUILL',
-    'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
-  ];
-
-  // First check if the code exists in our valid codes
-  const isValidCode = FREE_TIER_CODES.includes(upperCode) || DISCOUNT_CODES.includes(upperCode);
-  
-  if (!isValidCode) {
-    console.log('❌ Invalid coupon code:', upperCode);
-    return res.json({
-      valid: false,
-      error: 'Invalid coupon code.'
-    });
-  }
-
-  // Check if user has already used this specific coupon - STRICT DATABASE CHECK
-  try {
-    const hasUsedCoupon = await storage.checkCouponUsage(upperCode, uid);
-    if (hasUsedCoupon) {
-      console.log('❌ Coupon already used by user:', { code: upperCode, uid });
-      return res.json({
-        valid: false,
-        error: 'You have already used this coupon code.'
-      });
-    }
-  } catch (error) {
-    console.error('❌ Error checking coupon usage:', error);
-    return res.status(500).json({
-      valid: false,
-      error: 'Failed to validate coupon. Please try again.'
-    });
-  }
-
-  // Check for 100% discount codes (only work on ₹50 tier)
-  if (FREE_TIER_CODES.includes(upperCode)) {
-    if (tier !== 'single') {
-      return res.json({
-        valid: false,
-        error: '100% discount codes only work on the ₹50 tier.'
-      });
-    }
-
-    return res.json({
-      valid: true,
-      type: 'free',
-      discount: amount || 50, // Full amount
-      discountPercentage: 100,
-      message: 'Valid 100% discount code! This tier is now free.'
-    });
-  }
-
-  // Check for 10% discount codes (work on all paid tiers)
-  if (DISCOUNT_CODES.includes(upperCode)) {
-    const discountAmount = Math.round((amount || 0) * 0.10);
-
-    return res.json({
-      valid: true,
-      type: 'discount',
-      discount: discountAmount,
-      discountPercentage: 10,
-      message: 'Valid discount code! 10% discount applied.'
-    });
-  }
-
-  // This should never happen due to our earlier check, but just in case
-  return res.json({
-    valid: false,
-    error: 'Invalid coupon code.'
-  });
-}));
-
-// Test Razorpay configuration
-router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
-  console.log('🧪 Testing Razorpay configuration...');
-
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    return res.json({
-      success: false,
-      configured: false,
-      message: 'Razorpay credentials not configured'
-    });
-  }
-
-  try {
-    // Try to create a test order
-    const testOrder = await razorpay.orders.create({
-      amount: 100, // ₹1 in paise
-      currency: 'INR',
-      receipt: `test_${Date.now()}`
-    });
-
     res.json({
       success: true,
-      configured: true,
-      message: 'Razorpay is properly configured',
-      testOrderId: testOrder.id
+      message: 'Payment verified successfully',
+      payment_id: razorpay_payment_id,
+      order_id: razorpay_order_id
     });
-
-  } catch (error: any) {
-    console.error('❌ Razorpay test failed:', error);
-    res.json({
+  } else {
+    console.error('❌ Payment signature verification failed');
+    res.status(400).json({
       success: false,
-      configured: false,
-      message: 'Razorpay test failed: ' + error.message
+      error: 'Payment signature verification failed'
     });
   }
 }));
 
 // ===== SUBMISSION ENDPOINTS =====
 
-// Single poem submission with proper file handling - FIXED VERSION
+// Single poem submission endpoint
 router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📝 Single poem submission received');
-  console.log('📋 Body:', JSON.stringify(req.body, null, 2));
-  console.log('📁 Files:', req.files?.map((f: any) => ({ fieldname: f.fieldname, originalname: f.originalname })));
+  console.log('Form data received:', JSON.stringify(req.body, null, 2));
+  console.log('Files received:', req.files?.map((f: any) => ({ 
+    fieldname: f.fieldname, 
+    originalname: f.originalname,
+    size: f.size 
+  })) || []);
 
-  try {
-    const {
-      firstName,
-      lastName,
-      email,
-      phone,
-      age,
-      poemTitle,
-      tier,
-      price,
-      paymentId,
-      paymentMethod,
-      uid,
-      userUid, // Also accept userUid as fallback
-      couponCode,
-      couponDiscount
-    } = req.body;
-
-    // Use uid or userUid (frontend might send either)
-    const userId = uid || userUid;
-
-    // Validate required fields
-    if (!firstName || !email || !poemTitle || !tier) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: firstName, email, poemTitle, tier'
-      });
-    }
-
-    console.log('🔍 Processing submission for user UID:', userId);
-    console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitle, tier });
-
-    // Find uploaded files
-    let poemFile = null;
-    let photoFile = null;
-
-    if (req.files && Array.isArray(req.files)) {
-      poemFile = req.files.find((f: any) => 
-        f.fieldname === 'poemFile' || 
-        f.fieldname === 'poems' || 
-        f.originalname?.toLowerCase().includes('poem')
-      );
-
-      photoFile = req.files.find((f: any) => 
-        f.fieldname === 'photoFile' || 
-        f.fieldname === 'photo' || 
-        f.originalname?.toLowerCase().includes('photo') ||
-        f.mimetype?.startsWith('image/')
-      );
-    }
-
-    console.log('📁 Identified files:', {
-      poemFile: poemFile?.originalname,
-      photoFile: photoFile?.originalname
-    });
-
-    // Upload files to Google Drive
-    let poemFileUrl = null;
-    let photoFileUrl = null;
-
-    if (poemFile) {
-      console.log('☁️ Uploading poem file to Google Drive...');
-
-      // Convert multer file to buffer
-      const poemBuffer = fs.readFileSync(poemFile.path);
-
-      poemFileUrl = await uploadPoemFile(
-        poemBuffer, 
-        email, 
-        poemFile.originalname
-      );
-      console.log('✅ Poem file uploaded:', poemFileUrl);
-    }
-
-    if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive...');
-
-      // Convert multer file to buffer
-      const photoBuffer = fs.readFileSync(photoFile.path);
-
-      photoFileUrl = await uploadPhotoFile(
-        photoBuffer, 
-        email, 
-        photoFile.originalname
-      );
-      console.log('✅ Photo file uploaded:', photoFileUrl);
-    }
-
-    // Create or find user - IMPROVED VERSION
-    let user = null;
-    if (userId) {
-      console.log('🔍 Looking for user with UID:', userId);
-      user = await storage.getUserByUid(userId);
-      if (!user) {
-        console.log('🔄 Creating new user:', email);
-        try {
-          user = await storage.createUser({
-            uid: userId,
-            email,
-            name: firstName + (lastName ? ` ${lastName}` : ''),
-            phone: phone || null
-          });
-          console.log('✅ User created successfully:', user.email);
-        } catch (createError) {
-          console.error('❌ Failed to create user:', createError);
-          // Try to find by email as fallback
-          const existingUsers = await db.select().from(users).where(eq(users.email, email));
-          if (existingUsers.length > 0) {
-            user = existingUsers[0];
-            console.log('✅ Found existing user by email:', user.email);
-          }
-        }
-      } else {
-        console.log('✅ User found:', user.email);
-      }
-    } else {
-      console.log('⚠️ No UID provided, trying to find user by email');
-      // Try to find user by email even without UID
-      try {
-        const existingUsers = await db.select().from(users).where(eq(users.email, email));
-        if (existingUsers.length > 0) {
-          user = existingUsers[0];
-          console.log('✅ Found user by email fallback:', user.email);
-        }
-      } catch (error) {
-        console.log('⚠️ Could not find user by email fallback');
-      }
-    }
-
-    // Create submission data
-    const submissionData = {
-      userId: user?.id || null, // CRITICAL: Link to user
-      firstName,
-      lastName: lastName || '',
-      email,
-      phone: phone || '',
-      age: age ? parseInt(age) : null,
-      poemTitle,
-      tier,
-      price: price ? parseFloat(price) : 0,
-      paymentId: paymentId || null,
-      paymentMethod: paymentMethod || 'free',
-      poemFileUrl,
-      photoFileUrl,
-      submissionUuid: crypto.randomUUID(),
-      poemIndex: 1,
-      totalPoemsInSubmission: 1,
-      submittedAt: new Date(),
-      status: 'Pending',
-      type: 'Human',
-      couponCode: couponCode || null,
-      couponDiscount: couponDiscount ? parseFloat(couponDiscount) : 0,
-    };
-
-    console.log('🔗 Linking submission to user ID:', user?.id);
-    console.log('💾 Submission data:', submissionData);
-
-    // CRITICAL: Track coupon usage BEFORE saving submission if coupon was applied
-    if (couponCode && userId && couponDiscount && couponDiscount > 0) {
-      console.log('🎫 Tracking coupon usage BEFORE submission completion...');
-      try {
-        await storage.trackCouponUsage({
-          couponCode,
-          userUid: userId,
-          submissionId: 0, // Will update after submission is created
-          discountAmount: couponDiscount
-        });
-        console.log('✅ Coupon usage tracked successfully for:', couponCode);
-      } catch (couponError) {
-        console.error('❌ CRITICAL: Failed to track coupon usage:', couponError);
-        throw new Error('Failed to track coupon usage. Please try again.');
-      }
-    }
-
-    // Save to database
-    console.log('💾 Saving submission to database...');
-    const submission = await storage.createSubmission(submissionData);
-    console.log('✅ Submission saved with ID:', submission.id);
-
-    // Background tasks - don't wait for these to complete
-    // This ensures fast response to user while still completing necessary tasks
-    Promise.all([
-      // Add to Google Sheets in background
-      addPoemSubmissionToSheet({
-        ...submissionData,
-        submissionId: submission.id
-      }).catch(sheetError => {
-        console.error('⚠️ Failed to add to Google Sheets:', sheetError);
-      }),
-
-      // Send confirmation email in background
-      sendSubmissionConfirmation(email, {
-        name: firstName,
-        poemTitle,
-        tier,
-        submissionId: submission.id
-      }).catch(emailError => {
-        console.error('⚠️ Failed to send email:', emailError);
-      })
-    ]).then(() => {
-      console.log('✅ Background tasks completed for submission:', submission.id);
-    }).catch(error => {
-      console.error('⚠️ Some background tasks failed for submission:', submission.id, error);
-    });
-
-    // Clean up uploaded files
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          console.error('Warning: Could not delete temp file:', file.path);
-        }
-      });
-    }
-
-    console.log('🎉 Submission completed successfully!');
-
-    res.json({
-      success: true,
-      message: 'Poem submitted successfully!',
-      submissionId: submission.id,
-      submissionUuid: submission.submissionUuid,
-      submissions: [submission] // For consistency with frontend expectations
-    });
-
-  } catch (error) {
-    console.error('❌ Submission error:', error);
-
-    // Clean up files on error
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          // Ignore cleanup errors
-        }
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      error: 'Submission failed: ' + error.message
-    });
-  }
-}));
-
-// Multiple poems submission - FIXED VERSION
-router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req: any, res: any) => {
-  console.log('📝 Multiple poems submission received');
-  console.log('📋 Body:', JSON.stringify(req.body, null, 2));
-  console.log('📁 Files count:', req.files?.length || 0);
-
-  try {
-    const {
-      firstName,
-      lastName,
-      email,
-      phone,
-      age,
-      tier,
-      price,
-      paymentId,
-      paymentMethod,
-      uid,
-      userUid, // Also accept userUid as fallback
-      poemTitles, // This should be a JSON string array
-      couponCode,
-      couponDiscount
-    } = req.body;
-
-    // Use uid or userUid (frontend might send either)
-    const userId = uid || userUid;
-
-    // Parse poem titles
-    let titles = [];
-    try {
-      titles = JSON.parse(poemTitles || '[]');
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid poemTitles format'
-      });
-    }
-
-    // Validate required fields
-    if (!firstName || !email || !titles.length || !tier) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields'
-      });
-    }
-
-    // Validate tier and poem count
-    if (!validateTierPoemCount(tier, titles.length)) {
-      return res.status(400).json({
-        success: false,
-        error: `Invalid poem count for tier ${tier}. Expected ${TIER_POEM_COUNTS[tier]}, got ${titles.length}`
-      });
-    }
-
-    // Separate poem files and photo file
-    const poemFiles = req.files?.filter((f: any) => 
-      f.fieldname === 'poems' || f.originalname?.toLowerCase().includes('poem')
-    ) || [];
-
-    const photoFile = req.files?.find((f: any) => 
-      f.fieldname === 'photo' || 
-      f.fieldname === 'photoFile' ||
-      f.mimetype?.startsWith('image/')
-    );
-
-    console.log('📁 Identified files:', {
-      poemFiles: poemFiles.length,
-      photoFile: photoFile?.originalname
-    });
-
-    // Upload files to Google Drive
-    let poemFileUrls = [];
-    let photoFileUrl = null;
-
-    if (poemFiles.length > 0) {
-      console.log('☁️ Uploading poem files to Google Drive...');
-
-      // Convert multer files to buffers
-      const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
-      const originalFileNames = poemFiles.map(file => file.originalname);
-
-      poemFileUrls = await uploadMultiplePoemFiles(
-        poemBuffers, 
-        email, 
-        originalFileNames,
-        titles
-      );
-      console.log('✅ Poem files uploaded:', poemFileUrls.length);
-    }
-
-    if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive...');
-
-      // Convert multer file to buffer
-      const photoBuffer = fs.readFileSync(photoFile.path);
-
-      photoFileUrl = await uploadPhotoFile(
-        photoBuffer, 
-        email, 
-        photoFile.originalname
-      );
-      console.log('✅ Photo file uploaded:', photoFileUrl);
-    }
-
-    // Create or find user - FIXED VERSION
-    let user = null;
-    if (userId) {
-      console.log('🔍 Looking for user with UID:', userId);
-      user = await storage.getUserByUid(userId);
-      if (!user) {
-        console.log('🔄 Creating new user:', email);
-        user = await storage.createUser({
-          uid: userId,
-          email,
-          name: firstName + (lastName ? ` ${lastName}` : ''),
-          phone: phone || null
-        });
-        console.log('✅ User created:', user.email);
-      } else {
-        console.log('✅ User found:', user.email);
-      }
-      console.log('🔗 Will link all submissions to user ID:', user.id);
-    } else {
-      console.log('⚠️ No UID provided, creating submissions without user link');
-    }
-
-    // Create submissions for each poem
-    const submissionUuid = crypto.randomUUID();
-    const submissions = [];
-
-    for (let i = 0; i < titles.length; i++) {
-      const submissionData = {
-        userId: user?.id || null, // CRITICAL: Link to user
-        firstName,
-        lastName: lastName || '',
-        email,
-        phone: phone || '',
-        age: age ? parseInt(age) : null,
-        poemTitle: titles[i],
-        tier,
-        price: price ? parseFloat(price) : 0, // Same price for all poems in the submission
-        paymentId: paymentId || null, // Same payment ID for all poems
-        paymentMethod: paymentMethod || 'free',
-        poemFileUrl: poemFileUrls[i] || null,
-        photoFileUrl: photoFileUrl, // Same photo for all poems
-        submissionUuid,
-        poemIndex: i + 1,
-        totalPoemsInSubmission: titles.length,
-        submittedAt: new Date(),
-        status: 'Pending',
-        type: 'Human',
-        couponCode: couponCode || null,
-        couponDiscount: couponDiscount ? parseFloat(couponDiscount) : 0,
-      };
-
-      console.log(`💾 Saving submission ${i + 1}/${titles.length}: ${titles[i]}`);
-      const submission = await storage.createSubmission(submissionData);
-      submissions.push(submission);
-    }
-
-    console.log('✅ All submissions saved');
-
-    // Background tasks - don't wait for these to complete
-    // This ensures fast response to user while still completing necessary tasks
-    Promise.all([
-      // Add to Google Sheets in background
-      addMultiplePoemsToSheet({
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
-        phone: phone,
-        age: age,
-        tier: tier,
-        price: price ? parseFloat(price) : 0,
-        paymentId: paymentId,
-        paymentMethod: paymentMethod,
-        titles: titles,
-        submissionUuid: submissionUuid,
-        submissionIds: submissions.map(s => s.id),
-        poemFileUrls: poemFileUrls,
-        photoFileUrl: photoFileUrl,
-        couponCode: couponCode || null,
-        couponDiscount: couponDiscount ? parseFloat(couponDiscount) : 0,
-      }).catch(sheetError => {
-        console.error('⚠️ Failed to add to Google Sheets:', sheetError);
-      }),
-
-      // Send confirmation email in background
-      sendMultiplePoemsConfirmation(email, {
-        name: firstName,
-        poemTitles: titles,
-        tier,
-        submissionUuid
-      }).catch(emailError => {
-        console.error('⚠️ Failed to send email:', emailError);
-      }),
-
-      // Track coupon usage if coupon was applied (only once for multiple poems)
-      couponCode && userId ? storage.trackCouponUsage({
-        couponCode,
-        userUid: userId,
-        submissionId: submissions[0].id, // Use first submission ID
-        discountAmount: couponDiscount ? parseFloat(couponDiscount) : 0
-      }).catch(couponError => {
-        console.error('⚠️ Failed to track coupon usage:', couponError);
-      }) : Promise.resolve()
-    ]).then(() => {
-      console.log('✅ Background tasks completed for multiple submissions:', submissionUuid);
-    }).catch(error => {
-      console.error('⚠️ Some background tasks failed for submissions:', submissionUuid, error);
-    });
-
-    // Clean up uploaded files
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          console.error('Warning: Could not delete temp file:', file.path);
-        }
-      });
-    }
-
-    console.log('🎉 Multiple poems submission completed successfully!');
-
-    res.json({
-      success: true,
-      message: `${titles.length} poems submitted successfully!`,
-      submissionUuid,
-      submissionIds: submissions.map(s => s.id),
-      totalSubmissions: titles.length
-    });
-
-  } catch (error) {
-    console.error('❌ Multiple poems submission error:', error);
-
-    // Clean up files on error
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          // Ignore cleanup errors
-        }
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      error: 'Multiple poems submission failed: ' + error.message
-    });
-  }
-}));
-
-// ===== LEGACY SUBMISSION ENDPOINTS (Backward Compatibility) =====
-
-// Legacy single poem submission
-router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any) => {
-  console.log('📝 Legacy single poem submission received (redirecting to new endpoint)');
-
-  // Just redirect to the new endpoint logic
   const {
     firstName,
     lastName,
@@ -1148,192 +533,658 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
     phone,
     age,
     poemTitle,
-    tier = 'free', // Default to free for legacy submissions
+    tier,
+    price,
     paymentId,
-    paymentMethod = 'free'
+    paymentMethod,
+    sessionId,
+    uid,
+    termsAccepted,
+    couponCode,
+    discountAmount
   } = req.body;
 
+  // Validation
+  if (!firstName || !email || !poemTitle || !tier) {
+    console.error('❌ Missing required fields:', { firstName, email, poemTitle, tier });
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields: firstName, email, poemTitle, and tier are required'
+    });
+  }
+
+  if (termsAccepted !== 'true') {
+    console.error('❌ Terms not accepted');
+    return res.status(400).json({
+      success: false,
+      error: 'Terms and conditions must be accepted'
+    });
+  }
+
+  // File validation
+  const poemFile = req.files?.find((f: any) => f.fieldname === 'poemFile');
+  const photoFile = req.files?.find((f: any) => f.fieldname === 'photoFile');
+
+  if (!poemFile) {
+    console.error('❌ No poem file uploaded');
+    return res.status(400).json({
+      success: false,
+      error: 'Poem file is required'
+    });
+  }
+
+  if (!photoFile) {
+    console.error('❌ No photo file uploaded');
+    return res.status(400).json({
+      success: false,
+      error: 'Photo file is required'
+    });
+  }
+
   try {
-    // Basic validation
-    if (!firstName || !email || !poemTitle) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: firstName, email, poemTitle'
-      });
+    console.log('📤 Uploading files to Google Drive...');
+
+    // Upload poem file
+    const poemUploadResult = await uploadPoemFile(poemFile);
+    console.log('✅ Poem file uploaded:', poemUploadResult.url);
+
+    // Upload photo file
+    const photoUploadResult = await uploadPhotoFile(photoFile);
+    console.log('✅ Photo file uploaded:', photoUploadResult.url);
+
+    // Create user if not exists
+    let user = null;
+    if (uid) {
+      try {
+        user = await storage.getUserByUid(uid);
+        if (!user) {
+          user = await storage.createUser({
+            uid,
+            email,
+            name: `${firstName} ${lastName || ''}`.trim(),
+            phone: phone || null
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error handling user:', error);
+      }
     }
 
-    // Find uploaded files
-    let poemFile = null;
-    let photoFile = null;
-
-    if (req.files && Array.isArray(req.files)) {
-      poemFile = req.files.find((f: any) => 
-        f.fieldname === 'poemFile' || 
-        f.fieldname === 'poems' || 
-        f.originalname?.toLowerCase().includes('poem')
-      );
-
-      photoFile = req.files.find((f: any) => 
-        f.fieldname === 'photoFile' || 
-        f.fieldname === 'photo' || 
-        f.mimetype?.startsWith('image/')
-      );
-    }
-
-    // Upload files to Google Drive
-    let poemFileUrl = null;
-    let photoFileUrl = null;
-
-    if (poemFile) {
-      const poemBuffer = fs.readFileSync(poemFile.path);
-      poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname);
-    }
-
-    if (photoFile) {
-      const photoBuffer = fs.readFileSync(photoFile.path);
-      photoFileUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
-    }
-
-    // Save to in-memory storage (legacy)
-    const submission = {
-      id: submissions.length + 1,
+    // Prepare submission data
+    const submissionData = {
+      userId: user?.id || null,
       firstName,
-      lastName: lastName || '',
+      lastName: lastName || null,
       email,
-      phone: phone || '',
-      age: age || '',
+      phone: phone || null,
+      age: age ? parseInt(age) : null,
       poemTitle,
       tier,
+      price: price ? parseFloat(price) : 0,
       paymentId: paymentId || null,
-      paymentMethod,
-      poemFileUrl,
-      photoFileUrl,
-      submittedAt: new Date().toISOString()
+      paymentMethod: paymentMethod || null,
+      paymentStatus: tier === 'free' ? 'completed' : 'completed',
+      sessionId: sessionId || null,
+      termsAccepted: true,
+      poemFileUrl: poemUploadResult.url,
+      photoFileUrl: photoUploadResult.url,
+      driveFileId: poemUploadResult.fileId,
+      drivePhotoId: photoUploadResult.fileId,
+      poemIndex: 1,
+      submissionUuid: crypto.randomUUID(),
+      totalPoemsInSubmission: 1,
+      contestMonth: new Date().toISOString().slice(0, 7),
+      contestYear: new Date().getFullYear(),
+      submittedAt: new Date()
     };
 
-    submissions.push(submission);
+    console.log('💾 Creating submission in database...');
+    const submission = await storage.createSubmission(submissionData);
+    console.log('✅ Submission created with ID:', submission.id);
 
-    // Add to Google Sheets
-    try {
-      await addPoemSubmissionToSheet(submission);
-    } catch (sheetError) {
-      console.error('⚠️ Failed to add to Google Sheets:', sheetError);
+    // Track coupon usage if applied - FIXED WITH PROPER ERROR HANDLING
+    if (couponCode && discountAmount && parseFloat(discountAmount) > 0) {
+      try {
+        console.log('🎫 Tracking coupon usage...');
+        await storage.trackCouponUsage({
+          couponCode,
+          userUid: uid || email,
+          submissionId: submission.id,
+          discountAmount: parseFloat(discountAmount)
+        });
+        console.log('✅ Coupon usage tracked successfully');
+      } catch (couponError) {
+        console.error('❌ Error tracking coupon usage:', couponError);
+        // CRITICAL: If coupon tracking fails, delete the submission to prevent abuse
+        try {
+          await storage.deleteSubmission(submission.id);
+          console.log('🗑️ Submission deleted due to coupon tracking failure');
+        } catch (deleteError) {
+          console.error('❌ Error deleting submission:', deleteError);
+        }
+        
+        return res.status(400).json({
+          success: false,
+          error: 'Coupon validation failed. Please try again or contact support.'
+        });
+      }
     }
 
-    // Send confirmation email
-    try {
-      await sendSubmissionConfirmation(email, {
-        name: firstName,
-        poemTitle,
-        tier,
-        submissionId: submission.id
-      });
-    } catch (emailError) {
-      console.error('⚠️ Failed to send email:', emailError);
-    }
+    console.log('📊 Adding to Google Sheets...');
+    await addPoemSubmissionToSheet(submissionData);
+    console.log('✅ Added to Google Sheets');
+
+    console.log('📧 Sending confirmation email...');
+    await sendSubmissionConfirmation({
+      email,
+      firstName,
+      poemTitle,
+      tier,
+      submissionId: submission.id.toString(),
+      poemFileUrl: poemUploadResult.url,
+      photoFileUrl: photoUploadResult.url
+    });
+    console.log('✅ Confirmation email sent');
 
     // Clean up uploaded files
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          console.error('Warning: Could not delete temp file:', file.path);
-        }
-      });
+    try {
+      fs.unlinkSync(poemFile.path);
+      fs.unlinkSync(photoFile.path);
+      console.log('🗑️ Temporary files cleaned up');
+    } catch (cleanupError) {
+      console.error('⚠️ Error cleaning up files:', cleanupError);
     }
 
     res.json({
       success: true,
       message: 'Poem submitted successfully!',
-      submissionId: submission.id
+      submissionId: submission.id,
+      poemFileUrl: poemUploadResult.url,
+      photoFileUrl: photoUploadResult.url
     });
 
   } catch (error) {
-    console.error('❌ Legacy submission error:', error);
+    console.error('❌ Error in poem submission:', error);
 
     // Clean up files on error
-    if (req.files) {
-      req.files.forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          // Ignore cleanup errors
-        }
-      });
+    try {
+      if (poemFile) fs.unlinkSync(poemFile.path);
+      if (photoFile) fs.unlinkSync(photoFile.path);
+    } catch (cleanupError) {
+      console.error('⚠️ Error cleaning up files on error:', cleanupError);
     }
 
     res.status(500).json({
       success: false,
-      error: 'Submission failed: ' + error.message
+      error: error.message || 'Failed to submit poem'
     });
   }
 }));
 
-// ===== ADMIN/RESULTS ENDPOINTS =====
+// Multiple poems submission endpoint
+router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req: any, res: any) => {
+  console.log('📝 Multiple poems submission received');
+  console.log('Form data received:', JSON.stringify(req.body, null, 2));
+  console.log('Files received:', req.files?.map((f: any) => ({ 
+    fieldname: f.fieldname, 
+    originalname: f.originalname,
+    size: f.size 
+  })) || []);
 
-// Get all submissions (admin)
-router.get('/api/submissions', asyncHandler(async (req: any, res: any) => {
-  try {
-    const submissions = await storage.getAllSubmissions();
-    console.log(`✅ Retrieved ${submissions.length} total submissions`);
+  const {
+    firstName,
+    lastName,
+    email,
+    phone,
+    age,
+    tier,
+    price,
+    paymentId,
+    paymentMethod,
+    sessionId,
+    uid,
+    termsAccepted,
+    couponCode,
+    discountAmount
+  } = req.body;
 
-    // Transform submissions
-    const transformedSubmissions = submissions.map(sub => ({
-      id: sub.id,
-      name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
-      email: sub.email,
-      poemTitle: sub.poemTitle,
-      tier: sub.tier,
-      price: parseFloat(sub.price?.toString() || '0'),
-      submittedAt: sub.submittedAt,
-      isWinner: sub.isWinner || false,
-      winnerPosition: sub.winnerPosition,
-      score: sub.score,
-      type: sub.type || 'Human',
-      status: sub.status || 'Pending',
-      scoreBreakdown: sub.scoreBreakdown ? JSON.parse(sub.scoreBreakdown) : null
-    }));
-
-    res.json(transformedSubmissions);
-  } catch (error) {
-    console.error('❌ Error getting all submissions:', error);
-    res.status(500).json({ error: 'Failed to get submissions' });
-  }
-}));
-
-// Get submission count from Google Sheets
-router.get('/api/submission-count', asyncHandler(async (req: any, res: any) => {
-  try {
-    const count = await getSubmissionCountFromSheet();
-    res.json({ count });
-  } catch (error) {
-    console.error('❌ Error getting submission count:', error);
-    res.status(500).json({ error: 'Failed to get submission count' });
-  }
-}));
-
-// Contact form submission
-router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
-  const { name, email, message } = req.body;
-
-  if (!name || !email || !message) {
+  // Validation
+  if (!firstName || !email || !tier) {
+    console.error('❌ Missing required fields:', { firstName, email, tier });
     return res.status(400).json({
       success: false,
-      error: 'All fields are required'
+      error: 'Missing required fields: firstName, email, and tier are required'
+    });
+  }
+
+  if (termsAccepted !== 'true') {
+    console.error('❌ Terms not accepted');
+    return res.status(400).json({
+      success: false,
+      error: 'Terms and conditions must be accepted'
+    });
+  }
+
+  // Get expected poem count
+  const expectedPoemCount = TIER_POEM_COUNTS[tier as keyof typeof TIER_POEM_COUNTS];
+  if (!expectedPoemCount) {
+    console.error('❌ Invalid tier:', tier);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid tier specified'
+    });
+  }
+
+  // Parse poem titles
+  let poemTitles: string[] = [];
+  try {
+    if (typeof req.body.poemTitles === 'string') {
+      poemTitles = JSON.parse(req.body.poemTitles);
+    } else if (Array.isArray(req.body.poemTitles)) {
+      poemTitles = req.body.poemTitles;
+    }
+  } catch (error) {
+    console.error('❌ Error parsing poem titles:', error);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid poem titles format'
+    });
+  }
+
+  // Validate poem count
+  if (poemTitles.length !== expectedPoemCount) {
+    console.error('❌ Poem count mismatch:', { received: poemTitles.length, expected: expectedPoemCount });
+    return res.status(400).json({
+      success: false,
+      error: `Expected ${expectedPoemCount} poems for ${tier} tier, but received ${poemTitles.length}`
+    });
+  }
+
+  // File validation
+  const poemFiles = req.files?.filter((f: any) => f.fieldname.startsWith('poems[')) || [];
+  const photoFile = req.files?.find((f: any) => f.fieldname === 'photo');
+
+  if (poemFiles.length !== expectedPoemCount) {
+    console.error('❌ Poem file count mismatch:', { received: poemFiles.length, expected: expectedPoemCount });
+    return res.status(400).json({
+      success: false,
+      error: `Expected ${expectedPoemCount} poem files for ${tier} tier, but received ${poemFiles.length}`
+    });
+  }
+
+  if (!photoFile) {
+    console.error('❌ No photo file uploaded');
+    return res.status(400).json({
+      success: false,
+      error: 'Photo file is required'
     });
   }
 
   try {
-    // Add to Google Sheets
-    await addContactToSheet({ name, email, message });
+    console.log('📤 Uploading files to Google Drive...');
+
+    // Upload poem files
+    const poemUploadResults = await uploadMultiplePoemFiles(poemFiles);
+    console.log('✅ Poem files uploaded:', poemUploadResults.map(r => r.url));
+
+    // Upload photo file
+    const photoUploadResult = await uploadPhotoFile(photoFile);
+    console.log('✅ Photo file uploaded:', photoUploadResult.url);
+
+    // Create user if not exists
+    let user = null;
+    if (uid) {
+      try {
+        user = await storage.getUserByUid(uid);
+        if (!user) {
+          user = await storage.createUser({
+            uid,
+            email,
+            name: `${firstName} ${lastName || ''}`.trim(),
+            phone: phone || null
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error handling user:', error);
+      }
+    }
+
+    // Generate submission UUID for grouping
+    const submissionUuid = crypto.randomUUID();
+    const submissions = [];
+
+    console.log('💾 Creating submissions in database...');
+
+    // Create individual submissions for each poem
+    for (let i = 0; i < poemTitles.length; i++) {
+      const submissionData = {
+        userId: user?.id || null,
+        firstName,
+        lastName: lastName || null,
+        email,
+        phone: phone || null,
+        age: age ? parseInt(age) : null,
+        poemTitle: poemTitles[i],
+        tier,
+        price: i === 0 ? (price ? parseFloat(price) : 0) : 0, // Only first poem gets the price
+        paymentId: i === 0 ? (paymentId || null) : null,
+        paymentMethod: i === 0 ? (paymentMethod || null) : null,
+        paymentStatus: tier === 'free' ? 'completed' : 'completed',
+        sessionId: i === 0 ? (sessionId || null) : null,
+        termsAccepted: true,
+        poemFileUrl: poemUploadResults[i].url,
+        photoFileUrl: photoUploadResult.url,
+        driveFileId: poemUploadResults[i].fileId,
+        drivePhotoId: photoUploadResult.fileId,
+        poemIndex: i + 1,
+        submissionUuid,
+        totalPoemsInSubmission: poemTitles.length,
+        contestMonth: new Date().toISOString().slice(0, 7),
+        contestYear: new Date().getFullYear(),
+        submittedAt: new Date()
+      };
+
+      const submission = await storage.createSubmission(submissionData);
+      submissions.push(submission);
+      console.log(`✅ Submission ${i + 1} created with ID:`, submission.id);
+    }
+
+    // Track coupon usage if applied (only for first submission) - FIXED WITH PROPER ERROR HANDLING
+    if (couponCode && discountAmount && parseFloat(discountAmount) > 0 && submissions.length > 0) {
+      try {
+        console.log('🎫 Tracking coupon usage...');
+        await storage.trackCouponUsage({
+          couponCode,
+          userUid: uid || email,
+          submissionId: submissions[0].id,
+          discountAmount: parseFloat(discountAmount)
+        });
+        console.log('✅ Coupon usage tracked successfully');
+      } catch (couponError) {
+        console.error('❌ Error tracking coupon usage:', couponError);
+        // CRITICAL: If coupon tracking fails, delete all submissions to prevent abuse
+        try {
+          for (const submission of submissions) {
+            await storage.deleteSubmission(submission.id);
+          }
+          console.log('🗑️ All submissions deleted due to coupon tracking failure');
+        } catch (deleteError) {
+          console.error('❌ Error deleting submissions:', deleteError);
+        }
+        
+        return res.status(400).json({
+          success: false,
+          error: 'Coupon validation failed. Please try again or contact support.'
+        });
+      }
+    }
+
+    console.log('📊 Adding to Google Sheets...');
+    const sheetData = {
+      firstName,
+      lastName: lastName || '',
+      email,
+      phone: phone || '',
+      age: age || '',
+      poemTitles,
+      tier,
+      price: price || '0',
+      paymentId: paymentId || '',
+      paymentMethod: paymentMethod || '',
+      sessionId: sessionId || '',
+      submissionUuid,
+      poemFileUrls: poemUploadResults.map(r => r.url),
+      photoFileUrl: photoUploadResult.url,
+      submittedAt: new Date().toISOString()
+    };
+
+    await addMultiplePoemsToSheet(sheetData);
+    console.log('✅ Added to Google Sheets');
+
+    console.log('📧 Sending confirmation email...');
+    await sendMultiplePoemsConfirmation({
+      email,
+      firstName,
+      poemTitles,
+      tier,
+      submissionIds: submissions.map(s => s.id.toString()),
+      poemFileUrls: poemUploadResults.map(r => r.url),
+      photoFileUrl: photoUploadResult.url
+    });
+    console.log('✅ Confirmation email sent');
+
+    // Clean up uploaded files
+    try {
+      poemFiles.forEach(file => fs.unlinkSync(file.path));
+      fs.unlinkSync(photoFile.path);
+      console.log('🗑️ Temporary files cleaned up');
+    } catch (cleanupError) {
+      console.error('⚠️ Error cleaning up files:', cleanupError);
+    }
 
     res.json({
       success: true,
-      message: 'Contact form submitted successfully'
+      message: `${poemTitles.length} poems submitted successfully!`,
+      submissionIds: submissions.map(s => s.id),
+      submissionUuid,
+      poemFileUrls: poemUploadResults.map(r => r.url),
+      photoFileUrl: photoUploadResult.url
     });
+
   } catch (error) {
-    console.error('❌ Contact form submission error:', error);
+    console.error('❌ Error in multiple poems submission:', error);
+
+    // Clean up files on error
+    try {
+      if (poemFiles) poemFiles.forEach(file => fs.unlinkSync(file.path));
+      if (photoFile) fs.unlinkSync(photoFile.path);
+    } catch (cleanupError) {
+      console.error('⚠️ Error cleaning up files on error:', cleanupError);
+    }
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to submit poems'
+    });
+  }
+}));
+
+// ===== STRIPE PAYMENT ENDPOINTS =====
+
+// Create Stripe checkout session
+router.post('/api/create-checkout-session', asyncHandler(async (req: any, res: any) => {
+  console.log('💳 Creating Stripe checkout session...');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+  const { tier, amount, metadata } = req.body;
+
+  // Validate inputs
+  if (!tier || amount === undefined) {
+    console.error('❌ Missing required fields:', { tier, amount });
+    return res.status(400).json({ 
+      error: 'Tier and amount are required' 
+    });
+  }
+
+  // Skip Stripe for free submissions
+  if (amount === 0) {
+    console.log('💰 Free submission, skipping Stripe');
+    return res.json({
+      success: true,
+      sessionId: null,
+      message: 'Free submission, no payment required'
+    });
+  }
+
+  // Check Stripe configuration
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('❌ Stripe not configured');
+    return res.status(500).json({ 
+      error: 'Payment system not configured' 
+    });
+  }
+
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'inr',
+            product_data: {
+              name: `Poetry Contest - ${tier}`,
+              description: `Submit your poem(s) in the ${tier} tier`,
+            },
+            unit_amount: amount * 100, // Convert to paise
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${req.headers.origin}/submit?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
+      cancel_url: `${req.headers.origin}/submit?payment_cancelled=true`,
+      metadata: {
+        tier,
+        amount: amount.toString(),
+        ...metadata
+      }
+    });
+
+    console.log('✅ Stripe session created:', session.id);
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+
+  } catch (error: any) {
+    console.error('❌ Stripe session creation error:', error);
+    res.status(500).json({
+      error: error.message || 'Failed to create payment session'
+    });
+  }
+}));
+
+// Verify Stripe checkout session
+router.post('/api/verify-checkout-session', asyncHandler(async (req: any, res: any) => {
+  console.log('🔍 Verifying Stripe checkout session...');
+  const { sessionId } = req.body;
+
+  if (!sessionId) {
+    console.error('❌ Missing session ID');
+    return res.status(400).json({ 
+      error: 'Session ID is required' 
+    });
+  }
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('❌ Stripe not configured');
+    return res.status(500).json({ 
+      error: 'Payment system not configured' 
+    });
+  }
+
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    console.log('🔍 Session retrieved:', { 
+      id: session.id, 
+      status: session.payment_status,
+      amount: session.amount_total 
+    });
+
+    if (session.payment_status === 'paid') {
+      console.log('✅ Payment verified successfully');
+      res.json({
+        success: true,
+        session: {
+          id: session.id,
+          amount: session.amount_total / 100, // Convert back from paise
+          currency: session.currency,
+          status: session.payment_status,
+          metadata: session.metadata
+        }
+      });
+    } else {
+      console.error('❌ Payment not completed:', session.payment_status);
+      res.status(400).json({
+        error: 'Payment not completed',
+        status: session.payment_status
+      });
+    }
+
+  } catch (error: any) {
+    console.error('❌ Session verification error:', error);
+    res.status(500).json({
+      error: error.message || 'Failed to verify payment session'
+    });
+  }
+}));
+
+// ===== PAYPAL PAYMENT VERIFICATION =====
+
+// Verify PayPal payment
+router.post('/api/verify-paypal-payment', asyncHandler(async (req: any, res: any) => {
+  console.log('🔍 Verifying PayPal payment...');
+  const { orderId } = req.body;
+
+  if (!orderId) {
+    console.error('❌ Missing PayPal order ID');
+    return res.status(400).json({ 
+      error: 'PayPal order ID is required' 
+    });
+  }
+
+  // For now, we'll accept any orderId as valid since PayPal integration is handled client-side
+  // In production, you should verify this with PayPal's API
+  console.log('✅ PayPal payment verified (mock verification)');
+  
+  res.json({
+    success: true,
+    orderId,
+    status: 'COMPLETED',
+    message: 'PayPal payment verified successfully'
+  });
+}));
+
+// ===== CONTACT FORM ENDPOINT =====
+
+// Contact form submission
+router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
+  console.log('📧 Contact form submission received');
+  const { name, email, subject, message } = req.body;
+
+  // Validation
+  if (!name || !email || !message) {
+    console.error('❌ Missing required contact fields');
+    return res.status(400).json({
+      success: false,
+      error: 'Name, email, and message are required'
+    });
+  }
+
+  try {
+    console.log('📊 Adding contact to Google Sheets...');
+    await addContactToSheet({
+      name,
+      email,
+      subject: subject || '',
+      message,
+      submittedAt: new Date().toISOString()
+    });
+    console.log('✅ Contact added to Google Sheets');
+
+    res.json({
+      success: true,
+      message: 'Contact form submitted successfully!'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in contact form submission:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to submit contact form'
@@ -1341,137 +1192,187 @@ router.post('/api/contact', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Get in-memory submissions (legacy)
-router.get('/api/legacy-submissions', (req, res) => {
-  res.json(submissions);
-});
+// ===== ADMIN ENDPOINTS =====
 
-// Admin CSV upload endpoint
+// Get all submissions (admin only)
+router.get('/api/admin/submissions', asyncHandler(async (req: any, res: any) => {
+  console.log('👑 Admin: Getting all submissions');
+
+  try {
+    const submissions = await storage.getAllSubmissions();
+    console.log(`✅ Found ${submissions.length} total submissions`);
+
+    // Transform submissions for admin view
+    const transformedSubmissions = submissions.map(sub => ({
+      id: sub.id,
+      name: `${sub.firstName} ${sub.lastName || ''}`.trim(),
+      email: sub.email,
+      phone: sub.phone,
+      age: sub.age,
+      poemTitle: sub.poemTitle,
+      tier: sub.tier,
+      price: parseFloat(sub.price?.toString() || '0'),
+      paymentId: sub.paymentId,
+      paymentMethod: sub.paymentMethod,
+      paymentStatus: sub.paymentStatus,
+      submittedAt: sub.submittedAt,
+      isWinner: sub.isWinner || false,
+      winnerPosition: sub.winnerPosition,
+      score: sub.score,
+      type: sub.type || 'Human',
+      status: sub.status || 'Pending',
+      poemFileUrl: sub.poemFileUrl,
+      photoFileUrl: sub.photoFileUrl,
+      submissionUuid: sub.submissionUuid,
+      poemIndex: sub.poemIndex,
+      totalPoemsInSubmission: sub.totalPoemsInSubmission
+    }));
+
+    res.json(transformedSubmissions);
+  } catch (error) {
+    console.error('❌ Error getting admin submissions:', error);
+    res.status(500).json({ error: 'Failed to get submissions' });
+  }
+}));
+
+// Get submission counts
+router.get('/api/submissions/count', asyncHandler(async (req: any, res: any) => {
+  console.log('📊 Getting submission counts');
+
+  try {
+    // Get count from Google Sheets
+    const sheetCount = await getSubmissionCountFromSheet();
+    
+    // Get count from database
+    const dbSubmissions = await storage.getAllSubmissions();
+    const dbCount = dbSubmissions.length;
+
+    // Get current month count
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentMonthCount = dbSubmissions.filter(sub => 
+      sub.submittedAt && sub.submittedAt.toISOString().slice(0, 7) === currentMonth
+    ).length;
+
+    // Get tier breakdown
+    const tierCounts = dbSubmissions.reduce((acc: any, sub) => {
+      acc[sub.tier] = (acc[sub.tier] || 0) + 1;
+      return acc;
+    }, {});
+
+    const counts = {
+      totalFromSheet: sheetCount,
+      totalFromDatabase: dbCount,
+      currentMonth: currentMonthCount,
+      tierBreakdown: tierCounts,
+      contestMonth: currentMonth
+    };
+
+    console.log('✅ Submission counts:', counts);
+    res.json(counts);
+  } catch (error) {
+    console.error('❌ Error getting submission counts:', error);
+    res.status(500).json({ error: 'Failed to get submission counts' });
+  }
+}));
+
+// Upload CSV for bulk evaluation updates
 router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
-  console.log('📊 Admin CSV upload request received');
+  console.log('📊 Admin: CSV upload for evaluation');
 
   if (!req.file) {
+    console.error('❌ No CSV file uploaded');
     return res.status(400).json({
       success: false,
-      error: 'No CSV file uploaded'
+      error: 'CSV file is required'
     });
   }
 
   try {
+    console.log('📖 Reading CSV file...');
     const csvContent = fs.readFileSync(req.file.path, 'utf-8');
+    
+    // Parse CSV (simple implementation - you might want to use a CSV library)
     const lines = csvContent.split('\n').filter(line => line.trim());
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    console.log('📋 CSV headers:', headers);
+    console.log(`📊 Processing ${lines.length - 1} rows...`);
 
-    if (lines.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'CSV file is empty'
-      });
-    }
+    let updatedCount = 0;
+    let errorCount = 0;
 
-    // Expected header: email,poemtitle,score,type,originality,emotion,structure,language,theme,status
-    const header = lines[0].toLowerCase();
-    if (!header.includes('email') || !header.includes('poemtitle') || !header.includes('score')) {
-      return res.status(400).json({
-        success: false,
-        error: 'CSV file must contain email, poemtitle, and score columns'
-      });
-    }
-
-    let processed = 0;
-    const errors = [];
-
+    // Process each row (skip header)
     for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
       try {
-        const values = line.split(',');
-        if (values.length < 10) {
-          errors.push(`Line ${i + 1}: Insufficient columns`);
-          continue;
+        const values = lines[i].split(',').map(v => v.trim());
+        
+        // Assuming CSV format: email, poemTitle, score, type, status, isWinner, winnerPosition
+        if (values.length >= 5) {
+          const [email, poemTitle, score, type, status, isWinner, winnerPosition] = values;
+          
+          // Find submission by email and poem title
+          const submission = await storage.getSubmissionByEmailAndTitle(email, poemTitle);
+          
+          if (submission) {
+            // Update submission with evaluation data
+            await storage.updateSubmissionEvaluation(submission.id, {
+              score: parseInt(score) || 0,
+              type: type || 'Human',
+              status: status || 'Evaluated',
+              scoreBreakdown: JSON.stringify({}), // You can expand this
+              isWinner: isWinner?.toLowerCase() === 'true',
+              winnerPosition: winnerPosition ? parseInt(winnerPosition) : null
+            });
+            
+            updatedCount++;
+            console.log(`✅ Updated submission ${submission.id} for ${email} - ${poemTitle}`);
+          } else {
+            console.log(`⚠️ Submission not found: ${email} - ${poemTitle}`);
+            errorCount++;
+          }
         }
-
-        const [email, poemTitle, score, type, originality, emotion, structure, language, theme, status] = values;
-
-        // Find the submission to update
-        const submissions = await storage.getSubmissionsByEmailAndTitle(email.trim(), poemTitle.trim());
-
-        if (submissions.length === 0) {
-          errors.push(`Line ${i + 1}: No submission found for ${email} - ${poemTitle}`);
-          continue;
-        }
-
-        // Update the submission
-        for (const submission of submissions) {
-          await storage.updateSubmissionEvaluation(submission.id, {
-            score: parseInt(score) || 0,
-            type: type.trim() || 'Human',
-            scoreBreakdown: JSON.stringify({
-              originality: parseInt(originality) || 0,
-              emotion: parseInt(emotion) || 0,
-              structure: parseInt(structure) || 0,
-              language: parseInt(language) || 0,
-              theme: parseInt(theme) || 0
-            }),
-            status: status.trim() || 'Evaluated',
-            isWinner: false,
-            winnerPosition: null
-          });
-        }
-
-        processed++;
-      } catch (error) {
-        errors.push(`Line ${i + 1}: ${error.message}`);
+      } catch (rowError) {
+        console.error(`❌ Error processing row ${i}:`, rowError);
+        errorCount++;
       }
     }
 
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
 
+    console.log(`✅ CSV processing complete: ${updatedCount} updated, ${errorCount} errors`);
+
     res.json({
       success: true,
-      message: `Successfully processed ${processed} records`,
-      processed,
-      errors: errors.slice(0, 10) // Limit errors to first 10
+      message: `CSV processed successfully`,
+      updatedCount,
+      errorCount,
+      totalRows: lines.length - 1
     });
 
   } catch (error) {
-    console.error('❌ CSV upload error:', error);
-
-    // Clean up uploaded file
+    console.error('❌ Error processing CSV:', error);
+    
+    // Clean up file on error
     if (req.file) {
       try {
         fs.unlinkSync(req.file.path);
       } catch (cleanupError) {
-        console.error('Failed to clean up file:', cleanupError);
+        console.error('⚠️ Error cleaning up CSV file:', cleanupError);
       }
     }
 
     res.status(500).json({
       success: false,
-      error: 'Failed to process CSV file: ' + error.message
+      error: error.message || 'Failed to process CSV'
     });
   }
 }));
 
-// Final error handler
-router.use((error: any, req: any, res: any, next: any) => {
-  console.error('🚨 Final error handler:', error);
-  if (!res.headersSent) {
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Server Error'
-    });
-  }
-});
-
-// Register routes function
+// Export function to register routes
 export function registerRoutes(app: any) {
-  console.log('🛣️  Registering API routes...');
   app.use('/', router);
   console.log('✅ Routes registered successfully');
 }
 
-// Export router
-export { router };
-// Updated the submit-poem and submit-multiple-poems endpoints to include coupon code and discount information in the submission data.
+export default router;

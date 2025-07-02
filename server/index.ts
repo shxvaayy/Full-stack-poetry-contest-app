@@ -332,18 +332,19 @@ async function initializeApp() {
               </div>
               
               <div class="info">
-                <h3>How to Fix:</h3>
+                <h3>Possible Solutions:</h3>
                 <ol>
-                  <li>Ensure your React app is built with <code>npm run build</code></li>
-                  <li>Check that build files are in the correct directory</li>
-                  <li>Verify the build output includes an <code>index.html</code> file</li>
-                  <li>Restart the server after building</li>
+                  <li><strong>Build the frontend:</strong> Run <code>npm run build</code> in your project root</li>
+                  <li><strong>Check build configuration:</strong> Ensure your build outputs to <code>dist/public</code></li>
+                  <li><strong>Verify file permissions:</strong> Make sure the server can read the build files</li>
+                  <li><strong>Development mode:</strong> If in development, the frontend might be served separately</li>
                 </ol>
               </div>
               
               <div class="info">
-                <p><strong>Server Status:</strong> <span class="status warning">RUNNING</span> (API endpoints are functional)</p>
-                <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+                <h3>Backend Status:</h3>
+                <p><span class="status error">✅ RUNNING</span> The backend API is working correctly.</p>
+                <p>You can test the API endpoints directly or check <a href="/health">/health</a> for system status.</p>
               </div>
             </div>
           </body>
@@ -352,97 +353,76 @@ async function initializeApp() {
       }
     });
     
-    console.log('✅ React SPA routing configured with enhanced error handling');
+    // Step 6: Start the server
+    console.log('🎯 Starting HTTP server...');
     
-    // Step 6: Error handling middleware (must be last)
-    app.use((error, req, res, next) => {
-      console.error('🚨 Unhandled application error:', error);
-      
-      if (res.headersSent) {
-        return next(error);
-      }
-      
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message,
-        timestamp: new Date().toISOString(),
-        path: req.path
-      });
-    });
-    
-    // Step 7: Start the server
     const server = app.listen(PORT, () => {
-      console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'https://writory.onrender.com' : `http://localhost:${PORT}`}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🚀 Port: ${PORT}`);
-      console.log(`📅 Started: ${new Date().toISOString()}`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('✅ Database schema fixed - updated_at columns added');
-      console.log('✅ API routes active and ready');
-      console.log('✅ Static file serving configured');
-      console.log('✅ React SPA routing enabled');
-      console.log('🎯 Poetry contest platform is ready to accept submissions!');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      console.log('🎉 SERVER READY!');
+      console.log(`🌐 Server running on port ${PORT}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔗 Database status: http://localhost:${PORT}/api/db-status`);
+      console.log(`📅 Started at: ${new Date().toISOString()}`);
+      console.log('✅ All systems operational');
     });
-    
-    // Server error handling
-    server.on('error', (error) => {
-      console.error('❌ Server error:', error);
+
+    // Enhanced error handling for server
+    server.on('error', (error: any) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`💥 Port ${PORT} is already in use. Please choose a different port.`);
-        process.exit(1);
+        console.error(`❌ Port ${PORT} is already in use`);
+        console.error('💡 Try using a different port or stop the other process');
+      } else {
+        console.error('❌ Server error:', error);
       }
+      process.exit(1);
     });
-    
-    return server;
-    
+
+    // Graceful shutdown handling
+    const gracefulShutdown = (signal: string) => {
+      console.log(`\n🛑 Received ${signal}, starting graceful shutdown...`);
+      
+      server.close((err) => {
+        if (err) {
+          console.error('❌ Error during server shutdown:', err);
+          process.exit(1);
+        }
+        
+        console.log('✅ HTTP server closed');
+        console.log('👋 Goodbye!');
+        process.exit(0);
+      });
+      
+      // Force exit after 10 seconds
+      setTimeout(() => {
+        console.error('❌ Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000);
+    };
+
+    // Register shutdown handlers
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      console.error('❌ Uncaught Exception:', error);
+      console.error('🔄 Application will restart...');
+      process.exit(1);
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+      console.error('🔄 Application will restart...');
+      process.exit(1);
+    });
+
   } catch (error) {
-    console.error('❌ APPLICATION INITIALIZATION FAILED');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('Error details:', error);
-    console.error('Stack trace:', error.stack);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('❌ Failed to initialize application:', error);
     console.error('💡 Check your environment variables and database connection');
     process.exit(1);
   }
 }
 
-// Enhanced graceful shutdown handling
-const gracefulShutdown = (signal) => {
-  console.log(`\n👋 Received ${signal}, initiating graceful shutdown...`);
-  console.log('🔄 Closing server...');
-  
-  // Give ongoing requests time to complete
-  setTimeout(() => {
-    console.log('✅ Graceful shutdown completed');
-    process.exit(0);
-  }, 5000);
-};
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('🚨 UNCAUGHT EXCEPTION:', error);
-  console.error('Stack:', error.stack);
-  console.error('💥 Process will exit...');
-  process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('🚨 UNHANDLED PROMISE REJECTION at:', promise);
-  console.error('Reason:', reason);
-  console.error('💥 Process will exit...');
-  process.exit(1);
-});
-
 // Start the application
-console.log('🔄 Starting application initialization...');
-initializeApp().catch((error) => {
-  console.error('💥 Failed to start application:', error);
-  process.exit(1);
-});
+console.log('🏁 Starting application initialization...');
+initializeApp();
