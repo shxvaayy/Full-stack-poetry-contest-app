@@ -859,11 +859,11 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         age: age ? parseInt(age) : null,
         poemTitle: titles[i],
         tier,
-        price: i === 0 ? (price ? parseFloat(price) : 0) : 0, // Only first submission has price
-        paymentId: i === 0 ? (paymentId || null) : null,
-        paymentMethod: i === 0 ? (paymentMethod || 'free') : paymentMethod,
+        price: price ? parseFloat(price) : 0, // Same price for all poems in the submission
+        paymentId: paymentId || null, // Same payment ID for all poems
+        paymentMethod: paymentMethod || 'free',
         poemFileUrl: poemFileUrls[i] || null,
-        photoFileUrl: i === 0 ? photoFileUrl : null, // Only first submission has photo
+        photoFileUrl: photoFileUrl, // Same photo for all poems
         submissionUuid,
         poemIndex: i + 1,
         totalPoemsInSubmission: titles.length,
@@ -895,7 +895,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         titles: titles,
         submissionUuid: submissionUuid,
         submissionIds: submissions.map(s => s.id),
-        poemFileUrls: poemFileUrls
+        poemFileUrls: poemFileUrls,
+        photoFileUrl: photoFileUrl
       });
       console.log('✅ Added all poems to Google Sheets');
     } catch (sheetError) {
