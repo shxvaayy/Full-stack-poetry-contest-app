@@ -253,9 +253,12 @@ export async function addMultiplePoemsToSheet(data: {
     console.log(`✅ Successfully added ${rowsToAdd.length} poem rows to Google Sheets`);
 
   } catch (error) {
-    console.error('❌ Error adding multiple poems to Google Sheets:', error);
-    throw error;
-  }data.tier as keyof typeof tierAmounts] || 0;
+  console.error('❌ Error adding multiple poems to Google Sheets:', error);
+  throw error;
+}
+
+const amount = tierAmounts[data.tier as keyof typeof tierAmounts] || 0;
+
 
     // ✅ CREATE MULTIPLE ROWS - One for each poem
     const rowsToAdd = data.poems.map(poem => [

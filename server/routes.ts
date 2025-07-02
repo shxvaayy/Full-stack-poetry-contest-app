@@ -526,29 +526,14 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       paymentId,
       paymentMethod,
       uid,
-      userUid, // Also accept userUid as fallback
-      multiplePoemTitles // For multiple poems
+      userUid // Also accept userUid as fallback
     } = req.body;
 
     // Use uid or userUid (frontend might send either)
     const userId = uid || userUid;
 
-    // Check if this is multiple poems submission
-    let isMultiplePoems = false;
-    let poemTitles = [poemTitle];
-    
-    if (multiplePoemTitles) {
-      try {
-        poemTitles = JSON.parse(multiplePoemTitles);
-        isMultiplePoems = poemTitles.length > 1;
-        console.log('🔍 Multiple poems detected:', poemTitles.length);
-      } catch (e) {
-        console.log('⚠️ Failed to parse multiplePoemTitles, treating as single poem');
-      }
-    }
-
     // Validate required fields
-    if (!firstName || !email || !poemTitles[0] || !tier) {
+    if (!firstName || !email || !poemTitle || !tier) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: firstName, email, poemTitle, tier'
@@ -556,18 +541,17 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     console.log('🔍 Processing submission for user UID:', userId);
-    console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitles, tier, isMultiplePoems });
+    console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitle, tier });
 
     // Find uploaded files
-    let poemFiles = [];
+    let poemFile = null;
     let photoFile = null;
 
     if (req.files && Array.isArray(req.files)) {
-      // Get all poem files
-      poemFiles = req.files.filter((f: any) => 
+      poemFile = req.files.find((f: any) => 
         f.fieldname === 'poemFile' || 
         f.fieldname === 'poems' || 
-        (f.originalname?.toLowerCase().includes('poem') && !f.mimetype?.startsWith('image/'))
+        f.originalname?.toLowerCase().includes('poem')
       );
       
       photoFile = req.files.find((f: any) => 
@@ -579,41 +563,26 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     console.log('📁 Identified files:', {
-      poemFiles: poemFiles.length,
-      poemFileNames: poemFiles.map(f => f.originalname),
+      poemFile: poemFile?.originalname,
       photoFile: photoFile?.originalname
     });
 
     // Upload files to Google Drive
-    let poemFileUrls = [];
+    let poemFileUrl = null;
     let photoFileUrl = null;
 
-    if (poemFiles.length > 0) {
-      console.log('☁️ Uploading poem files to Google Drive...');
+    if (poemFile) {
+      console.log('☁️ Uploading poem file to Google Drive...');
       
-      if (isMultiplePoems) {
-        // Upload multiple poem files
-        const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
-        const originalFileNames = poemFiles.map(file => file.originalname);
-        
-        poemFileUrls = await uploadMultiplePoemFiles(
-          poemBuffers, 
-          email, 
-          originalFileNames,
-          poemTitles
-        );
-        console.log('✅ Multiple poem files uploaded:', poemFileUrls.length);
-      } else {
-        // Upload single poem file
-        const poemBuffer = fs.readFileSync(poemFiles[0].path);
-        const singlePoemUrl = await uploadPoemFile(
-          poemBuffer, 
-          email, 
-          poemFiles[0].originalname
-        );
-        poemFileUrls = [singlePoemUrl];
-        console.log('✅ Single poem file uploaded:', singlePoemUrl);
-      }
+      // Convert multer file to buffer
+      const poemBuffer = fs.readFileSync(poemFile.path);
+      
+      poemFileUrl = await uploadPoemFile(
+        poemBuffer, 
+        email, 
+        poemFile.originalname
+      );
+      console.log('✅ Poem file uploaded:', poemFileUrl);
     }
 
     if (photoFile) {
@@ -651,82 +620,44 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       console.log('⚠️ No UID provided, creating submission without user link');
     }
 
-    // Create submissions for each poem
-    const submissionUuid = crypto.randomUUID();
-    const submissions = [];
-    const actualPrice = price ? parseFloat(price) : 0;
+    // Create submission data
+    const submissionData = {
+      userId: user?.id || null, // CRITICAL: Link to user
+      firstName,
+      lastName: lastName || '',
+      email,
+      phone: phone || '',
+      age: age ? parseInt(age) : null,
+      poemTitle,
+      tier,
+      price: price ? parseFloat(price) : 0,
+      paymentId: paymentId || null,
+      paymentMethod: paymentMethod || 'free',
+      poemFileUrl,
+      photoFileUrl,
+      submissionUuid: crypto.randomUUID(),
+      poemIndex: 1,
+      totalPoemsInSubmission: 1,
+      submittedAt: new Date(),
+      status: 'Pending',
+      type: 'Human'
+    };
 
-    for (let i = 0; i < poemTitles.length; i++) {
-      const submissionData = {
-        userId: user?.id || null, // CRITICAL: Link to user
-        firstName,
-        lastName: lastName || '',
-        email,
-        phone: phone || '',
-        age: age ? parseInt(age) : null,
-        poemTitle: poemTitles[i],
-        tier,
-        price: i === 0 ? actualPrice : 0, // Only first submission has price
-        paymentId: i === 0 ? (paymentId || null) : null,
-        paymentMethod: i === 0 ? (paymentMethod || 'free') : paymentMethod,
-        poemFileUrl: poemFileUrls[i] || null,
-        photoFileUrl: i === 0 ? photoFileUrl : null, // Only first submission has photo
-        submissionUuid,
-        poemIndex: i + 1,
-        totalPoemsInSubmission: poemTitles.length,
-        submittedAt: new Date(),
-        status: 'Pending',
-        type: 'Human'
-      };
+    console.log('🔗 Linking submission to user ID:', user?.id);
+    console.log('💾 Submission data:', submissionData);
 
-      console.log(`💾 Saving submission ${i + 1}/${poemTitles.length}: ${poemTitles[i]}`);
-      const submission = await storage.createSubmission(submissionData);
-      submissions.push(submission);
-    }
-
-    console.log('✅ All submissions saved');
+    // Save to database
+    console.log('💾 Saving submission to database...');
+    const submission = await storage.createSubmission(submissionData);
+    console.log('✅ Submission saved with ID:', submission.id);
 
     // Add to Google Sheets
     try {
       console.log('📊 Adding to Google Sheets...');
-      if (isMultiplePoems) {
-        // Use multiple poems function
-        await addMultiplePoemsToSheet({
-          firstName,
-          lastName: lastName || '',
-          email,
-          phone: phone || '',
-          age: age || '',
-          tier,
-          price: actualPrice.toString(),
-          paymentId: paymentId || null,
-          paymentMethod: paymentMethod || 'free',
-          photo: photoFileUrl || '',
-          timestamp: new Date().toISOString(),
-          submissionUuid,
-          poems: poemTitles.map((title, index) => ({
-            title,
-            fileUrl: poemFileUrls[index] || '',
-            index
-          }))
-        });
-      } else {
-        // Use single poem function
-        await addPoemSubmissionToSheet({
-          name: firstName,
-          email,
-          phone: phone || '',
-          age: age || '',
-          poemTitle: poemTitles[0],
-          tier,
-          amount: actualPrice.toString(),
-          poemFile: poemFileUrls[0] || '',
-          photo: photoFileUrl || '',
-          timestamp: new Date().toISOString(),
-          submissionUuid,
-          poemIndex: 1
-        });
-      }
+      await addPoemSubmissionToSheet({
+        ...submissionData,
+        submissionId: submission.id
+      });
       console.log('✅ Added to Google Sheets');
     } catch (sheetError) {
       console.error('⚠️ Failed to add to Google Sheets:', sheetError);
@@ -763,10 +694,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     
     res.json({
       success: true,
-      message: isMultiplePoems ? `${poemTitles.length} poems submitted successfully!` : 'Poem submitted successfully!',
-      submissionIds: submissions.map(s => s.id),
-      submissionUuid: submissionUuid,
-      totalSubmissions: submissions.length
+      message: 'Poem submitted successfully!',
+      submissionId: submission.id,
+      submissionUuid: submission.submissionUuid
     });
 
   } catch (error) {
@@ -952,18 +882,20 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     try {
       console.log('📊 Adding to Google Sheets...');
       await addMultiplePoemsToSheet({
-        firstName,
-        lastName,
+        name: `${firstName} ${lastName}`,
         email,
         phone,
         age,
         tier,
-        price,
-        paymentId,
-        paymentMethod,
-        titles,
+        amount: price.toString(),
+        photo: photoUrl,
+        timestamp: new Date().toISOString(),
         submissionUuid,
-        submissionIds: submissions.map(s => s.id)
+        poems: submissions.map((submission, index) => ({
+          title: submission.poemTitle,
+          fileUrl: submission.poemFile,
+          index: index
+        }))
       });
       console.log('✅ Added to Google Sheets');
     } catch (sheetError) {

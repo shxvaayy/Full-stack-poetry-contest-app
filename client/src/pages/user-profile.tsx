@@ -36,9 +36,8 @@ interface Submission {
     language: number;
     theme: number;
   };
-  submissionUuid?: string;
-  poemIndex?: number;
-  totalPoemsInSubmission?: number;
+  submissionUuid: string;
+  poems: { id: number; title: string; fileUrl?: string }[];
 }
 
 interface SubmissionStatus {
@@ -342,91 +341,69 @@ export default function UserProfile() {
                   </CardHeader>
                   <CardContent>
                     {submissions.length > 0 ? (
-                      <div className="space-y-4">
-                        {submissions.map((submission) => (
-                          <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <h3 className="font-semibold text-lg">{submission.poemTitle}</h3>
-                                  {submission.poemIndex && submission.totalPoemsInSubmission && submission.totalPoemsInSubmission > 1 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Poem {submission.poemIndex} of {submission.totalPoemsInSubmission}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-gray-600 text-sm mb-2">
-                                  Submitted on {formatDate(submission.submittedAt)}
-                                  {submission.submissionUuid && submission.totalPoemsInSubmission > 1 && (
-                                    <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
-                                      Bulk Submission ID: {submission.submissionUuid.slice(-8)}
-                                    </span>
-                                  )}
-                                </p>
-                                <div className="flex items-center space-x-2 flex-wrap gap-2">
-                                  <Badge className={getTierColor(submission.tier)}>
-                                    {submission.tier}
-                                  </Badge>
-                                  <Badge className={getStatusColor(submission.status || 'Pending')}>
-                                    {getStatusIcon(submission.status || 'Pending')}
-                                    <span className="ml-1">{submission.status || 'Pending'}</span>
-                                  </Badge>
-                                  {submission.isWinner && (
-                                    <Badge className="bg-yellow-100 text-yellow-800">
-                                      <Award className="mr-1" size={12} />
-                                      Winner #{submission.winnerPosition}
-                                    </Badge>
-                                  )}
-                                  {submission.score && (
-                                    <Badge variant="outline">
-                                      Score: {submission.score}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-semibold text-green-600">
-                                  ₹{submission.amount}
-                                </p>
-                                {submission.poemIndex === 1 && submission.totalPoemsInSubmission > 1 && (
-                                  <p className="text-xs text-gray-500">
-                                    (Payment for {submission.totalPoemsInSubmission} poems)
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* ✅ Show score breakdown only if evaluated */}
-                            {submission.scoreBreakdown && submission.status === 'Evaluated' && (
-                              <div className="mt-4 pt-4 border-t">
-                                <h4 className="font-medium mb-2">Score Breakdown:</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                                  <div className="text-center p-2 bg-blue-50 rounded">
-                                    <div className="font-semibold">{submission.scoreBreakdown.originality}</div>
-                                    <div className="text-xs text-gray-600">Originality</div>
-                                  </div>
-                                  <div className="text-center p-2 bg-red-50 rounded">
-                                    <div className="font-semibold">{submission.scoreBreakdown.emotion}</div>
-                                    <div className="text-xs text-gray-600">Emotion</div>
-                                  </div>
-                                  <div className="text-center p-2 bg-green-50 rounded">
-                                    <div className="font-semibold">{submission.scoreBreakdown.structure}</div>
-                                    <div className="text-xs text-gray-600">Structure</div>
-                                  </div>
-                                  <div className="text-center p-2 bg-purple-50 rounded">
-                                    <div className="font-semibold">{submission.scoreBreakdown.language}</div>
-                                    <div className="text-xs text-gray-600">Language</div>
-                                  </div>
-                                  <div className="text-center p-2 bg-yellow-50 rounded">
-                                    <div className="font-semibold">{submission.scoreBreakdown.theme}</div>
-                                    <div className="text-xs text-gray-600">Theme</div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      
+          
+            
+              
+                
+                  {submissions.map((submission) => (
+            <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg">{submission.poems.length > 1 
+                      ? `${submission.poems.length} Poems Submission` 
+                      : submission.poems[0]?.title || 'Poem Submission'
+                    }</h3>
+                  <p className="text-gray-600 text-sm mb-2">
+                    Submitted on {formatDate(submission.submittedAt)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-semibold text-green-600">
+                    ₹{submission.amount}
+                  </p>
+                                    
+                </div>
+              </div>
+
+              {/* Show all poems in this submission */}
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">
+                  Poem{submission.poems.length > 1 ? 's' : ''} ({submission.poems.length}):
+                </h4>
+                <div className="space-y-2">
+                  {submission.poems.map((poem, index) => (
+                    <div key={poem.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium">
+                        {index + 1}. {poem.title}
+                      </span>
+                      {poem.fileUrl && (
+                        <a 
+                          href={poem.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          View File
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Badge className={getTierColor(submission.tier)}>
+                  {submission.tier}
+                </Badge>
+                
+              </div>
+            </Card>
+          ))}
+          
+            
+        
+      
                     ) : (
                       <div className="text-center py-8">
                         <FileText className="mx-auto text-gray-400 mb-4" size={48} />
