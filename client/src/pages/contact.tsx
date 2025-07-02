@@ -1,75 +1,61 @@
+
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, Info, Clock } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ContactPage() {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
+    phone: "", // Added phone field
     message: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      // Ensure phone number is included in the request
-      const contactData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone || '', // Ensure phone is always included
-        message: formData.message,
-        timestamp: new Date().toISOString()
-      };
-
-      console.log('📤 Sending contact data:', contactData);
-
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(contactData),
+  const contactMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      console.log('📤 Sending contact data:', {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        phoneLength: data.phone?.length,
+        phoneType: typeof data.phone,
+        message: data.message?.substring(0, 50) + '...'
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('🎉 Contact form submission successful:', result);
-      
+      const response = await apiRequest("POST", "/api/contact", data);
+      return response.json();
+    },
+    onSuccess: () => {
       toast({
         title: "Message sent successfully!",
         description: "We will reply within 24 hours.",
       });
-      
       setFormData({
         name: "",
         email: "",
-        phone: "",
+        phone: "", // Reset phone field
         message: "",
       });
-
-    } catch (error: any) {
-      console.error('🚨 Contact form submission failed:', error);
+    },
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
-    }
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    contactMutation.mutate(formData);
   };
 
   return (
@@ -130,9 +116,9 @@ export default function ContactPage() {
                 <Button
                   type="submit"
                   className="w-full bg-primary hover:bg-green-700 text-white font-semibold py-3 px-4"
-                  disabled={isSubmitting}
+                  disabled={contactMutation.isPending}
                 >
-                  {isSubmitting ? "Sending..." : "Submit"}
+                  {contactMutation.isPending ? "Sending..." : "Submit"}
                 </Button>
               </form>
 
