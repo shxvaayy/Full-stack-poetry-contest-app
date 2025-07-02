@@ -49,12 +49,12 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
+
   // Only set HTTPS headers in production
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
-  
+
   next();
 });
 
@@ -64,12 +64,12 @@ app.use((req, res, next) => {
   const method = req.method;
   const url = req.url;
   const userAgent = req.get('User-Agent') || 'Unknown';
-  
+
   // Only log non-static requests
   if (!url.includes('.js') && !url.includes('.css') && !url.includes('.ico')) {
     console.log(`[${timestamp}] ${method} ${url} - ${userAgent}`);
   }
-  
+
   next();
 });
 
@@ -88,7 +88,7 @@ app.get('/health', (req, res) => {
 app.use('/', router);
 
 // Serve static files from client build
-const clientBuildPath = join(__dirname, '../client/dist');
+const clientBuildPath = join(__dirname, '../dist/public');
 app.use(express.static(clientBuildPath, {
   maxAge: process.env.NODE_ENV === 'production' ? '1y' : '0',
   etag: true,
@@ -101,7 +101,7 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
-  
+
   res.sendFile(join(clientBuildPath, 'index.html'), (err) => {
     if (err) {
       console.error('❌ Error serving index.html:', err);
@@ -113,7 +113,7 @@ app.get('*', (req, res) => {
 // Global error handler
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('❌ Global error handler:', error);
-  
+
   // Handle specific error types
   if (error.type === 'entity.parse.failed') {
     return res.status(400).json({
@@ -121,18 +121,18 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
       details: error.message
     });
   }
-  
+
   if (error.type === 'entity.too.large') {
     return res.status(413).json({
       error: 'Request entity too large',
       details: 'File size exceeds the maximum allowed limit'
     });
   }
-  
+
   // Default error response
   const statusCode = error.statusCode || error.status || 500;
   const message = error.message || 'Internal Server Error';
-  
+
   res.status(statusCode).json({
     error: message,
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
@@ -187,14 +187,14 @@ console.log(`   - Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅ Configured' : '
 const server = app.listen(port, () => {
   console.log(`🌟 Writory Poetry Contest Server running on port ${port}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📁 Serving static files from: ${clientBuildPath}`);
+  console.log(`📁 Serving static files from: /opt/render/project/src/dist/public`);
   console.log('🎯 Server is ready to accept requests!');
-  
+
   // Initialize database after server is running
   initializeDatabase().catch((error) => {
     console.error('❌ Post-startup database initialization failed:', error);
   });
-  
+
   // Log available endpoints in development
   if (process.env.NODE_ENV !== 'production') {
     console.log('\n📋 Available API endpoints:');
