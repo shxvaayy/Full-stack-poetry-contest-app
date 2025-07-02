@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+\import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH } from "./coupon-codes";
+import { IS_FIRST_MONTH, ENABLE_FREE_TIER } from "./coupon-codes";
 
-const TIERS = [
+const ALL_TIERS = [
   { 
     id: "free", 
     name: "Free Entry", 
@@ -63,6 +63,9 @@ const TIERS = [
     textClass: "text-yellow-600"
   },
 ];
+
+// Filter tiers based on ENABLE_FREE_TIER setting
+const TIERS = ENABLE_FREE_TIER ? ALL_TIERS : ALL_TIERS.filter(tier => tier.id !== "free");
 
 type SubmissionStep = "selection" | "form" | "payment" | "completed";
 

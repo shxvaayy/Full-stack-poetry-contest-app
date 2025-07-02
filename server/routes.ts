@@ -85,18 +85,14 @@ const uploadFields = upload.fields([
 const submissions: any[] = [];
 
 // Initialize Razorpay
-let razorpay: any = null;
-try {
-    razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID!,
-        key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    });
-    console.log('🔧 Razorpay Configuration Check:');
-    console.log('- Key ID exists:', !!process.env.RAZORPAY_KEY_ID);
-    console.log('- Key Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
-} catch (error) {
-    console.error('❌ Razorpay initialization failed:', error);
-}
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
+
+console.log('🔧 Razorpay Configuration Check:');
+console.log('- Key ID exists:', !!process.env.RAZORPAY_KEY_ID);
+console.log('- Key Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
 
 // Add PayPal routes
 router.use('/', paypalRouter);
@@ -300,8 +296,8 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   }
 
   // Check Razorpay configuration
-  if (!razorpay) {
-    console.error('❌ Razorpay not initialized');
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.error('❌ Razorpay not configured');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
     });
@@ -361,8 +357,8 @@ router.post('/api/create-order', asyncHandler(async (req: any, res: any) => {
   }
 
   // Check Razorpay configuration
-  if (!razorpay) {
-    console.error('❌ Razorpay not initialized');
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.error('❌ Razorpay not configured');
     return res.status(500).json({ 
       error: 'Payment system not configured' 
     });
@@ -642,6 +638,17 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       });
     }
 
+    // Validate coupon usage if coupon is provided
+    if (couponCode && userId) {
+      const hasUsedCoupon = await storage.checkCouponUsage(couponCode, userId);
+      if (hasUsedCoupon) {
+        return res.status(400).json({
+          success: false,
+          error: 'You have already used this coupon code.'
+        });
+      }
+    }
+
     console.log('🔍 Processing submission for user UID:', userId);
     console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitle, tier });
 
@@ -755,6 +762,22 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     const submission = await storage.createSubmission(submissionData);
     console.log('✅ Submission saved with ID:', submission.id);
 
+    // Track coupon usage immediately if coupon was applied
+    if (couponCode && userId) {
+      try {
+        await storage.trackCouponUsage({
+          couponCode,
+          userUid: userId,
+          submissionId: submission.id,
+          discountAmount: parseFloat(couponDiscount || '0')
+        });
+        console.log('✅ Coupon usage tracked successfully');
+      } catch (couponError: any) {
+        console.error('❌ Failed to track coupon usage:', couponError);
+        // Don't fail the submission, but log the error
+      }
+    }
+
     // Background tasks - don't wait for these to complete
     // This ensures fast response to user while still completing necessary tasks
     Promise.all([
@@ -776,15 +799,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.error('⚠️ Failed to send email:', emailError);
       }),
 
-      // Track coupon usage if coupon was applied
-      couponCode && userId ? storage.trackCouponUsage({
-        couponCode,
-        userUid: userId,
-        submissionId: submission.id,
-        discountAmount: couponDiscount || 0
-      }).catch(couponError => {
-        console.error('⚠️ Failed to track coupon usage:', couponError);
-      }) : Promise.resolve()
+      
     ]).then(() => {
       console.log('✅ Background tasks completed for submission:', submission.id);
     }).catch(error => {
@@ -885,6 +900,17 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         success: false,
         error: `Invalid poem count for tier ${tier}. Expected ${TIER_POEM_COUNTS[tier]}, got ${titles.length}`
       });
+    }
+
+    // Validate coupon usage if coupon is provided
+    if (couponCode && userId) {
+      const hasUsedCoupon = await storage.checkCouponUsage(couponCode, userId);
+      if (hasUsedCoupon) {
+        return res.status(400).json({
+          success: false,
+          error: 'You have already used this coupon code.'
+        });
+      }
     }
 
     // Separate poem files and photo file
@@ -995,6 +1021,22 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     console.log('✅ All submissions saved');
 
+    // Track coupon usage immediately if coupon was applied (only once for multiple poems)
+    if (couponCode && userId) {
+      try {
+        await storage.trackCouponUsage({
+          couponCode,
+          userUid: userId,
+          submissionId: submissions[0].id, // Use first submission ID
+          discountAmount: parseFloat(couponDiscount || '0')
+        });
+        console.log('✅ Coupon usage tracked successfully');
+      } catch (couponError: any) {
+        console.error('❌ Failed to track coupon usage:', couponError);
+        // Don't fail the submission, but log the error
+      }
+    }
+
     // Background tasks - don't wait for these to complete
     // This ensures fast response to user while still completing necessary tasks
     Promise.all([
@@ -1030,15 +1072,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         console.error('⚠️ Failed to send email:', emailError);
       }),
 
-      // Track coupon usage if coupon was applied (only once for multiple poems)
-      couponCode && userId ? storage.trackCouponUsage({
-        couponCode,
-        userUid: userId,
-        submissionId: submissions[0].id, // Use first submission ID
-        discountAmount: couponDiscount ? parseFloat(couponDiscount) : 0
-      }).catch(couponError => {
-        console.error('⚠️ Failed to track coupon usage:', couponError);
-      }) : Promise.resolve()
+      
     ]).then(() => {
       console.log('✅ Background tasks completed for multiple submissions:', submissionUuid);
     }).catch(error => {
