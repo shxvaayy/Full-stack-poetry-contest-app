@@ -33,36 +33,7 @@ export const DISCOUNT_CODES = [
   'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
 ];
 
-// Used codes storage (in production, this should be stored in database)
-export const USED_CODES = new Set();
-
-export function validateCouponCode(code, tier) {
-  const upperCode = code.toUpperCase();
-
-  // Check if code was already used
-  if (USED_CODES.has(upperCode)) {
-    return { valid: false, message: 'This coupon code has already been used.' };
-  }
-
-  // Check for 100% discount codes (only work on ₹50 tier)
-  if (FREE_TIER_CODES.includes(upperCode)) {
-    if (!FREE_ENTRY_ENABLED) {
-      return { valid: false, message: 'Free entry tier is currently disabled.' };
-    }
-    if (tier !== 'single') {
-      return { valid: false, message: 'This coupon code only works for the ₹50 tier.' };
-    }
-    return { valid: true, type: 'free', discount: 100, message: 'Valid 100% discount code! This tier is now free.' };
-  }
-
-  // Check for 10% discount codes (work on all paid tiers)
-  if (DISCOUNT_CODES.includes(upperCode)) {
-    return { valid: true, type: 'discount', discount: 10, message: 'Valid discount code! 10% discount applied.' };
-  }
-
-  return { valid: false, message: 'Invalid coupon code.' };
-}
-
-export function markCodeAsUsed(code) {
-  USED_CODES.add(code.toUpperCase());
-}
+// NOTE: All coupon validation and usage tracking is now handled server-side
+// through the database. This file only contains configuration constants.
+// The validateCouponCode and markCodeAsUsed functions have been removed
+// as they were client-side only and posed security risks.
