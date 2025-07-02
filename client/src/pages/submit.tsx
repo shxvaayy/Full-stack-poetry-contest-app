@@ -11,7 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH } from "./coupon-codes.js";
+import { IS_FIRST_MONTH } from "../coupon-codes";
 
 const TIERS = [
   { 
