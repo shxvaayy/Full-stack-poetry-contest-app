@@ -22,18 +22,22 @@ export async function getUserByUid(uid: string) {
 
 // Get submissions by user ID
 export async function getSubmissionsByUser(userId: number) {
+  return await db.select().from(submissions).where(eq(submissions.userId, userId));
+}
+
+export async function getSubmissionCountByUser(userId: number): Promise<number> {
   try {
-    console.log('🔍 Getting submissions for user ID:', userId);
+    console.log('🔍 Counting submissions for user ID:', userId);
     const result = await db.select()
       .from(submissions)
-      .where(eq(submissions.userId, userId))
-      .orderBy(desc(submissions.submittedAt));
+      .where(eq(submissions.userId, userId));
 
-    console.log(`✅ Found ${result.length} submissions for user ${userId}`);
-    return result;
+    const count = result.length;
+    console.log(`✅ Found ${count} submissions for user ${userId}`);
+    return count;
   } catch (error) {
-    console.error('❌ Error getting submissions by user:', error);
-    throw error;
+    console.error('❌ Error counting submissions:', error);
+    return 0;
   }
 }
 
@@ -281,6 +285,24 @@ export async function addContact(contactData: {
   }
 }
 
+export async function getUserByEmail(email: string) {
+  try {
+    console.log('🔍 Getting user by email:', email);
+    const result = await db.select().from(users).where(eq(users.email, email));
+
+    if (result.length === 0) {
+      console.log('❌ No user found with email:', email);
+      return null;
+    }
+
+    console.log('✅ Found user:', result[0].email, 'ID:', result[0].id);
+    return result[0];
+  } catch (error) {
+    console.error('❌ Error getting user by email:', error);
+    return null;
+  }
+}
+
 // Export all storage functions
 export const storage = {
   getUserByUid,
@@ -296,4 +318,5 @@ export const storage = {
   updateSubmission,
   addContact,
   getSubmissionsByEmail,
+  getUserByEmail,
 };

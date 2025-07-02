@@ -4,22 +4,25 @@ import { client, connectDatabase } from './db.js';
 async function createTables() {
   try {
     console.log('🔧 Starting comprehensive database migration...');
-    
+
     await connectDatabase();
 
-    // Drop and recreate tables to ensure clean schema
-    console.log('🗑️ Dropping existing tables...');
-    await client.query('DROP TABLE IF EXISTS coupon_usage CASCADE;');
-    await client.query('DROP TABLE IF EXISTS admin_logs CASCADE;');
-    await client.query('DROP TABLE IF EXISTS contest_settings CASCADE;');
-    await client.query('DROP TABLE IF EXISTS coupons CASCADE;');
-    await client.query('DROP TABLE IF EXISTS submissions CASCADE;');
-    await client.query('DROP TABLE IF EXISTS contacts CASCADE;');
-    await client.query('DROP TABLE IF EXISTS users CASCADE;');
+    // Check if tables exist before creating
+    const tablesExist = await client.query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'users'
+    `);
 
-    console.log('🔨 Creating users table with ALL required columns...');
+    if (tablesExist.rows.length > 0) {
+      console.log('✅ Tables already exist, skipping creation');
+      return true;
+    }
+
+    console.log('🔧 Creating tables for first time...');
+
+    // Create users table
     await client.query(`
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         uid VARCHAR(255) NOT NULL UNIQUE,
         email VARCHAR(255) NOT NULL UNIQUE,
@@ -30,7 +33,7 @@ async function createTables() {
       );
     `);
 
-    console.log('🔨 Creating submissions table with ALL required columns...');
+    // Create submissions table
     await client.query(`
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
@@ -72,9 +75,9 @@ async function createTables() {
       );
     `);
 
-    console.log('🔨 Creating contacts table...');
+    // Create contacts table
     await client.query(`
-      CREATE TABLE contacts (
+      CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
@@ -86,9 +89,9 @@ async function createTables() {
       );
     `);
 
-    console.log('🔨 Creating coupons table...');
+    // Create coupons table
     await client.query(`
-      CREATE TABLE coupons (
+      CREATE TABLE IF NOT EXISTS coupons (
         id SERIAL PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         discount_type VARCHAR(20) NOT NULL,
@@ -174,7 +177,7 @@ async function createTables() {
     // Create triggers for all tables with updated_at
     console.log('🎯 Creating triggers for updated_at columns...');
     const tablesWithUpdatedAt = ['users', 'submissions', 'contacts', 'coupons', 'contest_settings'];
-    
+
     for (const table of tablesWithUpdatedAt) {
       await client.query(`
         CREATE TRIGGER update_${table}_updated_at 
@@ -187,7 +190,7 @@ async function createTables() {
     console.log('✅ Database migration completed successfully!');
     console.log('🎉 All tables created with proper schema matching Drizzle definitions');
     return true;
-    
+
   } catch (error) {
     console.error('❌ Error during migration:', error);
     return false;

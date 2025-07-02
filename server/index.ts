@@ -152,24 +152,37 @@ async function initializeApp() {
     await connectDatabase();
     console.log('✅ Database connected successfully');
 
-    // Step 2: Run coupon table migration
-    await migrateCouponTable();
-    console.log('✅ Coupon table migration completed');
+    // Step 2: Check if this is first deployment or development
+    const tablesExist = await client.query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name IN ('users', 'submissions')
+    `);
 
-    // Step 3: Run migrations to fix schema
-    console.log('🔧 Running database migrations...');
-    console.log('⚠️  This will recreate all tables to fix schema issues...');
+    const isFirstDeploy = tablesExist.rows.length === 0;
+    const isDevelopment = process.env.NODE_ENV === 'development';
 
-    const migrationSuccess = await createTables();
+    if (isFirstDeploy || isDevelopment) {
+      console.log('🔧 Running database migrations...');
+      
+      // Run coupon table migration
+      await migrateCouponTable();
+      console.log('✅ Coupon table migration completed');
+      
+      // Run migrations to fix schema
+      const migrationSuccess = await createTables();
 
-    if (!migrationSuccess) {
-      console.error('❌ Database migration failed - cannot continue');
-      console.error('💡 Please check your database connection and permissions');
-      process.exit(1);
+      if (!migrationSuccess) {
+        console.error('❌ Database migration failed - cannot continue');
+        console.error('💡 Please check your database connection and permissions');
+        process.exit(1);
+      }
+
+      console.log('🎉 Database schema synchronized successfully!');
+      console.log('✅ All tables created with proper updated_at columns');
+    } else {
+      console.log('✅ Database already initialized, skipping migrations');
+      console.log('📊 Preserving existing user data and submissions');
     }
-
-    console.log('🎉 Database schema synchronized successfully!');
-    console.log('✅ All tables created with proper updated_at columns');
 
     // Step 3.5: Fix user-submission links
     console.log('🔗 Fixing user-submission links...');
