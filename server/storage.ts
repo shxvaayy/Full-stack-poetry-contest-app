@@ -238,7 +238,7 @@ export async function trackCouponUsage(usageData: {
 
       // CRITICAL: Use database transaction to prevent race conditions
       const result = await db.transaction(async (tx) => {
-        // Check if already used within transaction
+        // Check if already used within transaction - STRICT CHECK
         const existingUsage = await tx
           .select()
           .from(couponUsage)
@@ -255,22 +255,23 @@ export async function trackCouponUsage(usageData: {
           throw new Error('Coupon code has already been used by this user');
         }
 
-        // Get user ID if exists
+        // Get user ID if exists (within transaction)
         let userId = null;
         try {
-          const user = await getUserByUid(usageData.userUid);
-          userId = user?.id || null;
+          const userResult = await tx.select().from(users).where(eq(users.uid, usageData.userUid)).limit(1);
+          userId = userResult.length > 0 ? userResult[0].id : null;
         } catch (error) {
-          console.log('User not found, continuing without userId');
+          console.log('User not found in transaction, continuing without userId');
         }
 
-        // Create usage record
+        // Create usage record with current timestamp
         const newUsageData = {
           couponCode: upperCode,
           userUid: usageData.userUid,
           userId: userId,
           submissionId: usageData.submissionId,
-          discountAmount: usageData.discountAmount.toString()
+          discountAmount: usageData.discountAmount.toString(),
+          usedAt: new Date()
         };
 
         const [usageRecord] = await tx
@@ -285,6 +286,10 @@ export async function trackCouponUsage(usageData: {
       return result;
     } catch (error) {
       console.error('❌ Error tracking coupon usage:', error);
+      // Don't allow submission to continue if coupon tracking fails and a discount was applied
+      if (usageData.discountAmount > 0) {
+        throw new Error('Failed to track coupon usage. Submission blocked to prevent duplicate usage.');
+      }
       throw error;
     }
   }

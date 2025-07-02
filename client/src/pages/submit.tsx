@@ -360,10 +360,12 @@ export default function SubmitPage() {
       }
 
       const discountAmount = result.discount || 0;
+      const finalAmount = Math.max(0, (selectedTier?.price || 0) - discountAmount);
 
       setCouponDiscount(discountAmount);
+      setDiscountedAmount(finalAmount);
       setCouponApplied(true);
-      setCouponMessage(result.message);
+      
       toast({
         title: "Coupon Applied!",
         description: result.message,

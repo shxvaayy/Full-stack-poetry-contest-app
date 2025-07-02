@@ -491,25 +491,6 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     });
   }
 
-  // Check if user has already used this coupon - STRICT CHECK
-  try {
-    const hasUsedCoupon = await storage.checkCouponUsage(code, uid);
-    if (hasUsedCoupon) {
-      console.log('❌ Coupon already used by user:', { code, uid });
-      return res.json({
-        valid: false,
-        error: 'You have already used this coupon code.'
-      });
-    }
-  } catch (error) {
-    console.error('❌ Error checking coupon usage:', error);
-    return res.status(500).json({
-      valid: false,
-      error: 'Failed to validate coupon. Please try again.'
-    });
-  }
-
-  // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
   const upperCode = code.toUpperCase();
 
   // Free tier codes (100% discount on ₹50 tier only)
@@ -539,6 +520,35 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'FREESHADE10', 'WRTYJUMP', 'BARDGIFT10', 'POETRAYS', 'LIGHTQUILL',
     'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
   ];
+
+  // First check if the code exists in our valid codes
+  const isValidCode = FREE_TIER_CODES.includes(upperCode) || DISCOUNT_CODES.includes(upperCode);
+  
+  if (!isValidCode) {
+    console.log('❌ Invalid coupon code:', upperCode);
+    return res.json({
+      valid: false,
+      error: 'Invalid coupon code.'
+    });
+  }
+
+  // Check if user has already used this specific coupon - STRICT DATABASE CHECK
+  try {
+    const hasUsedCoupon = await storage.checkCouponUsage(upperCode, uid);
+    if (hasUsedCoupon) {
+      console.log('❌ Coupon already used by user:', { code: upperCode, uid });
+      return res.json({
+        valid: false,
+        error: 'You have already used this coupon code.'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error checking coupon usage:', error);
+    return res.status(500).json({
+      valid: false,
+      error: 'Failed to validate coupon. Please try again.'
+    });
+  }
 
   // Check for 100% discount codes (only work on ₹50 tier)
   if (FREE_TIER_CODES.includes(upperCode)) {
@@ -571,7 +581,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     });
   }
 
-  // Invalid code
+  // This should never happen due to our earlier check, but just in case
   return res.json({
     valid: false,
     error: 'Invalid coupon code.'
@@ -780,6 +790,23 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     console.log('🔗 Linking submission to user ID:', user?.id);
     console.log('💾 Submission data:', submissionData);
 
+    // CRITICAL: Track coupon usage BEFORE saving submission if coupon was applied
+    if (couponCode && userId && couponDiscount && couponDiscount > 0) {
+      console.log('🎫 Tracking coupon usage BEFORE submission completion...');
+      try {
+        await storage.trackCouponUsage({
+          couponCode,
+          userUid: userId,
+          submissionId: 0, // Will update after submission is created
+          discountAmount: couponDiscount
+        });
+        console.log('✅ Coupon usage tracked successfully for:', couponCode);
+      } catch (couponError) {
+        console.error('❌ CRITICAL: Failed to track coupon usage:', couponError);
+        throw new Error('Failed to track coupon usage. Please try again.');
+      }
+    }
+
     // Save to database
     console.log('💾 Saving submission to database...');
     const submission = await storage.createSubmission(submissionData);
@@ -804,24 +831,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         submissionId: submission.id
       }).catch(emailError => {
         console.error('⚠️ Failed to send email:', emailError);
-      }),
-
-      // Track coupon usage if coupon was applied - CRITICAL: Do this synchronously to prevent duplicate usage
-      couponCode && userId ? (async () => {
-        try {
-          await storage.trackCouponUsage({
-            couponCode,
-            userUid: userId,
-            submissionId: submission.id,
-            discountAmount: couponDiscount || 0
-          });
-          console.log('✅ Coupon usage tracked successfully for:', couponCode);
-        } catch (couponError) {
-          console.error('❌ CRITICAL: Failed to track coupon usage:', couponError);
-          // This is critical - we should not allow the submission to complete if coupon tracking fails
-          // when a discount was applied, as it would allow reuse
-        }
-      })() : Promise.resolve()
+      })
     ]).then(() => {
       console.log('✅ Background tasks completed for submission:', submission.id);
     }).catch(error => {
