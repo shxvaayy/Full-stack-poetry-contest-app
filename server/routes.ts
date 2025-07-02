@@ -468,6 +468,91 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// ===== COUPON VALIDATION ENDPOINT =====
+
+// Validate coupon code
+router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
+  const { code, tier, amount, uid } = req.body;
+  
+  console.log('🎫 Coupon validation request:', { code, tier, amount, uid });
+  
+  // Validate required fields
+  if (!code || !tier) {
+    return res.status(400).json({
+      valid: false,
+      error: 'Coupon code and tier are required'
+    });
+  }
+  
+  // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
+  const upperCode = code.toUpperCase();
+  
+  // Free tier codes (100% discount on ₹50 tier only)
+  const FREE_TIER_CODES = [
+    'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
+    'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
+    'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
+    'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
+    'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
+    'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
+    'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
+    'VERSEUNLOCK', 'QUILLEDPASS', 'FREEMUSE2025', 'WRITYSTREAK', 'RHYMESMILE',
+    'PENMIRACLE', 'GIFTOFVERSE', 'LYRICALENTRY', 'WRTYWAVE', 'MUSEDROP',
+    'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
+  ];
+  
+  // 10% discount codes for all paid tiers
+  const DISCOUNT_CODES = [
+    'FLOWRHYME10', 'VERSETREAT', 'WRITEJOY10', 'CANTODEAL', 'LYRICSPARK',
+    'INKSAVER10', 'WRTYBRIGHT', 'PASSPOETRY', 'MUSEDISCOUNT', 'SONNETSAVE',
+    'QUILLFALL10', 'PENSPARKLE', 'LINESLOVE10', 'VERSELIGHT', 'RHYMEBOOST',
+    'WRITORSAVE', 'PROSEJOY10', 'POETPOWER10', 'WRTYDREAM', 'MUSESAVER10',
+    'POEMSTARS', 'WRITERSHADE', 'LYRICLOOT10', 'SONNETBLISS', 'INKBREEZE',
+    'VERSECHILL', 'PASSHUES', 'WRITERFEST', 'CANTOFEEL', 'POEMDISCOUNT',
+    'MIRACLEMUSE', 'LYRICSTORY10', 'POEMCUP10', 'WRTYFEAST10', 'PASSMIRROR',
+    'INKRAYS10', 'WRTYFLY', 'DISCOUNTINK', 'QUILLFLASH', 'WRITGLOW10',
+    'FREESHADE10', 'WRTYJUMP', 'BARDGIFT10', 'POETRAYS', 'LIGHTQUILL',
+    'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
+  ];
+  
+  // Check for 100% discount codes (only work on ₹50 tier)
+  if (FREE_TIER_CODES.includes(upperCode)) {
+    if (tier !== 'single') {
+      return res.json({
+        valid: false,
+        error: '100% discount codes only work on the ₹50 tier.'
+      });
+    }
+    
+    return res.json({
+      valid: true,
+      type: 'free',
+      discount: amount || 50, // Full amount
+      discountPercentage: 100,
+      message: 'Valid 100% discount code! This tier is now free.'
+    });
+  }
+  
+  // Check for 10% discount codes (work on all paid tiers)
+  if (DISCOUNT_CODES.includes(upperCode)) {
+    const discountAmount = Math.round((amount || 0) * 0.10);
+    
+    return res.json({
+      valid: true,
+      type: 'discount',
+      discount: discountAmount,
+      discountPercentage: 10,
+      message: 'Valid discount code! 10% discount applied.'
+    });
+  }
+  
+  // Invalid code
+  return res.json({
+    valid: false,
+    error: 'Invalid coupon code.'
+  });
+}));
+
 // Test Razorpay configuration
 router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   console.log('🧪 Testing Razorpay configuration...');
