@@ -520,47 +520,54 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
   if (!isFreeTierCode && !isDiscountCode) {
     return res.json({
       valid: false,
-      error: 'Invalid coupon code.'
+      error: 'Invalid coupon code'
     });
   }
 
-  // Check if user has already used this coupon code
+  // ENHANCED: Check if user has already used this coupon code
   try {
     let hasUsedCoupon = false;
 
     if (uid) {
-      // Check by user UID
+      // Check by user UID - PRIMARY CHECK
       const usageCheck = await client.query(`
-        SELECT cu.id 
+        SELECT cu.id, cu.used_at, c.code
         FROM coupon_usage cu
         JOIN coupons c ON cu.coupon_id = c.id
         WHERE c.code = $1 AND cu.user_uid = $2
       `, [upperCode, uid]);
-      hasUsedCoupon = usageCheck.rows.length > 0;
+      
+      if (usageCheck.rows.length > 0) {
+        const usageDate = new Date(usageCheck.rows[0].used_at).toLocaleDateString();
+        return res.json({
+          valid: false,
+          error: `Coupon already used. You used "${upperCode}" on ${usageDate}.`
+        });
+      }
     } else if (email) {
-      // Check by email as fallback
+      // Check by email as fallback - SECONDARY CHECK
       const usageCheck = await client.query(`
-        SELECT cu.id 
+        SELECT cu.id, cu.used_at, c.code, s.email
         FROM coupon_usage cu
         JOIN coupons c ON cu.coupon_id = c.id
         JOIN submissions s ON cu.submission_id = s.id
         WHERE c.code = $1 AND s.email = $2
       `, [upperCode, email]);
-      hasUsedCoupon = usageCheck.rows.length > 0;
-    }
-
-    if (hasUsedCoupon) {
-      return res.json({
-        valid: false,
-        error: 'Coupon code already used. Each coupon can only be used once per user.'
-      });
+      
+      if (usageCheck.rows.length > 0) {
+        const usageDate = new Date(usageCheck.rows[0].used_at).toLocaleDateString();
+        return res.json({
+          valid: false,
+          error: `Coupon already used. This email used "${upperCode}" on ${usageDate}.`
+        });
+      }
     }
 
     // Validate tier restrictions for free codes
     if (isFreeTierCode && tier !== 'single') {
       return res.json({
         valid: false,
-        error: '100% discount codes only work on the ₹50 tier.'
+        error: '100% discount codes only work on the ₹50 tier'
       });
     }
 
@@ -571,7 +578,8 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         type: 'free',
         discount: amount || 50,
         discountPercentage: 100,
-        message: 'Valid 100% discount code! This tier is now free.'
+        message: 'Valid 100% discount code! This tier is now free.',
+        code: upperCode
       });
     }
 
@@ -582,7 +590,8 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         type: 'discount',
         discount: discountAmount,
         discountPercentage: 10,
-        message: 'Valid discount code! 10% discount applied.'
+        message: 'Valid discount code! 10% discount applied.',
+        code: upperCode
       });
     }
 

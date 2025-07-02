@@ -344,15 +344,23 @@ export default function SubmitPage() {
         setCouponDiscount(data.discount);
         const newAmount = Math.max(0, selectedTier.price - data.discount);
         setDiscountedAmount(newAmount);
+        
         toast({
-          title: "Coupon Applied!",
+          title: "Coupon Applied Successfully!",
           description: `${data.discountPercentage}% discount applied. ${newAmount === 0 ? "You can now submit for free!" : `New amount: ₹${newAmount}`}`,
         });
       } else {
         setCouponError(data.error || "Invalid coupon code");
+        setCouponApplied(false);
+        setCouponDiscount(0);
+        setDiscountedAmount(selectedTier.price);
       }
     } catch (error: any) {
-      setCouponError("Failed to validate coupon. Please try again.");
+      console.error('Coupon validation error:', error);
+      setCouponError("Network error. Please check your connection and try again.");
+      setCouponApplied(false);
+      setCouponDiscount(0);
+      setDiscountedAmount(selectedTier.price);
     } finally {
       setIsApplyingCoupon(false);
     }
@@ -483,6 +491,14 @@ export default function SubmitPage() {
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
       formDataToSend.append('userUid', user?.uid || '');
+      
+      // Add coupon data if applied
+      if (couponApplied && couponCode) {
+        formDataToSend.append('couponCode', couponCode.trim().toUpperCase());
+        formDataToSend.append('couponDiscount', couponDiscount.toString());
+        formDataToSend.append('finalAmount', discountedAmount.toString());
+      }
+      
       if (actualPaymentData) {
         formDataToSend.append('paymentId', actualPaymentData.razorpay_payment_id || actualPaymentData.paypal_order_id || '');
         formDataToSend.append('paymentMethod', actualPaymentData.payment_method || 'razorpay');
