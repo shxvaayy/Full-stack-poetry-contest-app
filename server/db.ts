@@ -32,8 +32,16 @@ const MAX_CONNECTION_ATTEMPTS = 3;
 // Single connection function with retry logic
 async function connectDatabase() {
   if (isConnected) {
-    console.log('✅ Database already connected');
-    return;
+    // Test connection to make sure it's still alive
+    try {
+      await client.query('SELECT 1');
+      console.log('✅ Database already connected and verified');
+      return;
+    } catch (error) {
+      console.log('⚠️ Existing connection dead, reconnecting...');
+      isConnected = false;
+      connectionPromise = null;
+    }
   }
 
   if (connectionPromise) {

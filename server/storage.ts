@@ -20,6 +20,7 @@ export async function getUserByUid(uid: string) {
   }
 }
 
+// Get submissions by user ID
 export async function getSubmissionsByUser(userId: number) {
   try {
     console.log('🔍 Getting submissions for user ID:', userId);
@@ -168,6 +169,23 @@ export async function updateUser(uid: string, userData: any) {
   }
 }
 
+// Get submissions by email (for legacy support)
+export async function getSubmissionsByEmail(email: string) {
+  try {
+    console.log('🔍 Getting submissions for email:', email);
+    const result = await db.select()
+      .from(submissions)
+      .where(eq(submissions.email, email))
+      .orderBy(desc(submissions.submittedAt));
+
+    console.log(`✅ Found ${result.length} submissions for email ${email}`);
+    return result;
+  } catch (error) {
+    console.error('❌ Error getting submissions by email:', error);
+    throw error;
+  }
+}
+
 export async function getAllSubmissions() {
   try {
     console.log('🔍 Getting all submissions');
@@ -263,5 +281,6 @@ export const storage = {
   updateUser,
   getAllSubmissions,
   updateSubmission,
-  addContact
+  addContact,
+  getSubmissionsByEmail,
 };

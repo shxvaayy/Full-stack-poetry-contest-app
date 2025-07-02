@@ -32,9 +32,9 @@ async function createTables() {
 
     console.log('🔨 Creating submissions table with ALL required columns...');
     await client.query(`
-      CREATE TABLE submissions (
+      CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         first_name VARCHAR(255) NOT NULL,
         last_name VARCHAR(255),
         email VARCHAR(255) NOT NULL,
@@ -42,10 +42,10 @@ async function createTables() {
         age INTEGER,
         poem_title VARCHAR(255) NOT NULL,
         poem_content TEXT,
-        tier VARCHAR(50) NOT NULL,
-        price DECIMAL(10,2),
+        tier VARCHAR(50) NOT NULL DEFAULT 'free',
+        price DECIMAL(10,2) DEFAULT 0.00,
         payment_id VARCHAR(255),
-        payment_method VARCHAR(50),
+        payment_method VARCHAR(50) DEFAULT 'free',
         payment_status VARCHAR(50),
         session_id VARCHAR(255),
         terms_accepted BOOLEAN DEFAULT FALSE NOT NULL,
@@ -56,7 +56,7 @@ async function createTables() {
         poem_index INTEGER DEFAULT 1 NOT NULL,
         submission_uuid VARCHAR(255),
         total_poems_in_submission INTEGER DEFAULT 1 NOT NULL,
-        score INTEGER,
+        score INTEGER DEFAULT 0,
         type VARCHAR(50) DEFAULT 'Human',
         status VARCHAR(50) DEFAULT 'Pending',
         score_breakdown TEXT,
