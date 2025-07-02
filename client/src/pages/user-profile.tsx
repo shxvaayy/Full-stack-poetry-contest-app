@@ -76,7 +76,35 @@ export default function UserProfile() {
       const submissionsResponse = await fetch(`/api/users/${user!.uid}/submissions`);
       if (submissionsResponse.ok) {
         const submissionsData = await submissionsResponse.json();
-        setSubmissions(submissionsData);
+        
+        // Group submissions by submissionUuid
+        const groupedSubmissions = submissionsData.reduce((groups: { [key: string]: any }, submission: any) => {
+          const uuid = submission.submissionUuid || `single-${submission.id}`;
+          if (!groups[uuid]) {
+            groups[uuid] = {
+              id: submission.id,
+              name: submission.name,
+              tier: submission.tier,
+              amount: submission.amount,
+              submittedAt: submission.submittedAt,
+              submissionUuid: uuid,
+              poems: []
+            };
+          }
+          groups[uuid].poems.push({
+            id: submission.id,
+            title: submission.poemTitle,
+            score: submission.score,
+            status: submission.status,
+            type: submission.type,
+            isWinner: submission.isWinner,
+            winnerPosition: submission.winnerPosition,
+            scoreBreakdown: submission.scoreBreakdown
+          });
+          return groups;
+        }, {});
+
+        setSubmissions(Object.values(groupedSubmissions));
       }
 
       // Fetch submission status
@@ -150,7 +178,9 @@ export default function UserProfile() {
   };
 
   // ✅ Check if results are announced (only show results if there are winners or evaluated poems)
-  const hasAnnouncedResults = submissions.some(s => s.status === 'Evaluated' || s.score !== undefined);
+  const hasAnnouncedResults = submissions.some(s => 
+    s.poems.some((p: any) => p.status === 'Evaluated' || p.score !== undefined)
+  );
 
   if (loading) {
     return (
@@ -425,58 +455,108 @@ export default function UserProfile() {
                     </CardHeader>
                     <CardContent>
                       {/* Winners */}
-                      {submissions.filter(s => s.isWinner).length > 0 && (
+                      {submissions.some(s => s.poems.some((p: any) => p.isWinner)) && (
                         <div className="mb-6">
                           <h3 className="font-semibold text-lg mb-3">🏆 Your Winning Poems</h3>
                           <div className="space-y-3">
-                            {submissions.filter(s => s.isWinner).map((winner) => (
-                              <div key={winner.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h4 className="font-semibold">{winner.poemTitle}</h4>
-                                    <p className="text-sm text-gray-600">Position #{winner.winnerPosition}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    {winner.score && (
-                                      <div className="text-lg font-bold text-yellow-600">
-                                        Score: {winner.score}
-                                      </div>
-                                    )}
+                            {submissions.map(submission => 
+                              submission.poems.filter((p: any) => p.isWinner).map((winner: any) => (
+                                <div key={winner.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-semibold">{winner.title}</h4>
+                                      <p className="text-sm text-gray-600">Position #{winner.winnerPosition}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      {winner.score && (
+                                        <div className="text-lg font-bold text-yellow-600">
+                                          Score: {winner.score}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
 
                       {/* Evaluated Poems */}
-                      {submissions.filter(s => s.status === 'Evaluated' && !s.isWinner).length > 0 && (
+                      {submissions.some(s => s.poems.some((p: any) => p.status === 'Evaluated' && !p.isWinner)) && (
                         <div>
                           <h3 className="font-semibold text-lg mb-3">📊 Evaluated Poems</h3>
                           <div className="space-y-3">
-                            {submissions.filter(s => s.status === 'Evaluated' && !s.isWinner).map((poem) => (
-                              <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h4 className="font-semibold">{poem.poemTitle}</h4>
-                                    <p className="text-sm text-gray-600">Evaluated</p>
-                                  </div>
-                                  <div className="text-right">
-                                    {poem.score && (
-                                      <div className="text-lg font-bold text-blue-600">
-                                        Score: {poem.score}
-                                      </div>
-                                    )}
+                            {submissions.map(submission => 
+                              submission.poems.filter((p: any) => p.status === 'Evaluated' && !p.isWinner).map((poem: any) => (
+                                <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-semibold">{poem.title}</h4>
+                                      <p className="text-sm text-gray-600">Evaluated</p>
+                                      {poem.type && (
+                                        <Badge className={getTypeColor(poem.type)} size="sm">
+                                          {poem.type}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      {poem.score && (
+                                        <div className="text-lg font-bold text-blue-600">
+                                          Score: {poem.score}/100
+                                        </div>
+                                      )}
+                                      {poem.scoreBreakdown && (
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <Button variant="outline" size="sm" className="mt-2">
+                                              View Details
+                                            </Button>
+                                          </DialogTrigger>
+                                          <DialogContent>
+                                            <DialogHeader>
+                                              <DialogTitle>Score Breakdown: {poem.title}</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-3">
+                                              <div className="flex justify-between">
+                                                <span>Originality:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.originality}/25</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Emotion:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.emotion}/25</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Structure:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.structure}/20</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Language:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.language}/20</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Theme:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.theme}/10</span>
+                                              </div>
+                                              <hr />
+                                              <div className="flex justify-between font-bold">
+                                                <span>Total:</span>
+                                                <span>{poem.score}/100</span>
+                                              </div>
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
 
-                      {submissions.filter(s => s.isWinner || s.status === 'Evaluated').length === 0 && (
+                      {!submissions.some(s => s.poems.some((p: any) => p.isWinner || p.status === 'Evaluated')) && (
                         <div className="text-center py-8">
                           <Clock className="mx-auto text-gray-400 mb-4" size={48} />
                           <p className="text-gray-600">Results not yet available for your submissions.</p>

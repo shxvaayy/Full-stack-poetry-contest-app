@@ -136,59 +136,51 @@ export async function addContactToSheet(data: ContactData): Promise<void> {
 }
 
 // ✅ KEEP: Original function for single poem (backward compatibility)
-export async function addPoemSubmissionToSheet(data: PoemSubmissionData): Promise<void> {
+export async function addPoemSubmissionToSheet(data: any): Promise<void> {
   try {
-    console.log("📝 Adding single poem submission to sheet:", data.name, data.tier);
-    console.log("📁 File links - Poem:", data.poemFile, "Photo:", data.photo);
+    console.log("📝 Adding poem submission to sheet:", data);
 
     const authClient = await getAuthClient();
     if (!authClient) {
       throw new Error("No auth client available");
     }
 
-    // Calculate amount based on tier
-    const tierAmounts = {
-      'free': 0,
-      'single': 50,
-      'double': 100,
-      'bulk': 480
-    };
-    const amount = tierAmounts[data.tier as keyof typeof tierAmounts] || 0;
+    // Handle both old and new data formats
+    const timestamp = data.timestamp || data.submittedAt?.toISOString() || new Date().toISOString();
+    const name = data.name || `${data.firstName} ${data.lastName || ''}`.trim();
+    const amount = data.amount || data.price || 0;
 
-    // Extended sheet structure (A through L)
-    // A=Timestamp, B=Name, C=Email, D=Phone, E=Age, F=Poem Title, G=Tier, H=Amount, I=Poem File, J=Photo, K=Submission UUID, L=Poem Index
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:L', // Extended range
+      range: 'Poetry!A:L',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
       requestBody: {
         values: [[
-          data.timestamp,                           // A - Timestamp
-          data.name,                               // B - Name (full name)
-          data.email,                              // C - Email
-          data.phone || '',                        // D - Phone
-          data.age || '',                          // E - Age
-          data.poemTitle,                          // F - Poem Title
-          data.tier,                               // G - Tier
-          amount.toString(),                       // H - Amount
-          data.poemFile || '',                     // I - Poem File (Google Drive link)
-          data.photo || '',                        // J - Photo (Google Drive link)
-          data.submissionUuid || '',               // K - Submission UUID (for grouping)
-          (data.poemIndex !== undefined ? data.poemIndex + 1 : 1).toString() // L - Poem Index
+          timestamp,                               // A - Timestamp
+          name,                                   // B - Name
+          data.email,                             // C - Email
+          data.phone || '',                       // D - Phone
+          data.age || '',                         // E - Age
+          data.poemTitle,                         // F - Poem Title
+          data.tier,                              // G - Tier
+          amount.toString(),                      // H - Amount
+          data.poemFile || data.poemFileUrl || '', // I - Poem File
+          data.photo || data.photoFileUrl || '',  // J - Photo
+          data.submissionUuid || '',              // K - Submission UUID
+          (data.poemIndex || 1).toString()        // L - Poem Index
         ]]
       }
     };
 
-    console.log('📊 Sending to Google Sheets (A-L columns):', request.requestBody.values[0]);
+    console.log('📊 Sending to Google Sheets:', request.requestBody.values[0]);
 
     await sheets.spreadsheets.values.append(request);
-    console.log('✅ Single poem submission added to Google Sheets');
+    console.log('✅ Poem submission added to Google Sheets');
 
   } catch (error) {
     console.error('❌ Error adding poem submission to Google Sheets:', error);
-    console.error('Error details:', error);
     throw error;
   }
 }

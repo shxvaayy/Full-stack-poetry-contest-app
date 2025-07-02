@@ -1239,7 +1239,9 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
               language: parseInt(language) || 0,
               theme: parseInt(theme) || 0
             }),
-            status: status.trim() || 'Evaluated'
+            status: status.trim() || 'Evaluated',
+            isWinner: false,
+            winnerPosition: null
           });
         }
 

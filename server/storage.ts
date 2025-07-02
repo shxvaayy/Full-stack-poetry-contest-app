@@ -229,9 +229,11 @@ export const storage = {
   getUserByUid,
   getSubmissionsByUser,
   getSubmissionByEmailAndTitle,
+  getSubmissionsByEmailAndTitle,
   updateSubmissionEvaluation,
   createUser,
   createSubmission,
   updateUser,
-  getAllSubmissions
+  getAllSubmissions,
+  updateSubmission
 };
