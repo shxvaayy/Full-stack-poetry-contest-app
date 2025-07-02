@@ -1422,6 +1422,61 @@ router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(asyn
   }
 }));
 
+// Debug endpoint to check submission linking
+router.get('/api/debug/submissions', asyncHandler(async (req: any, res: any) => {
+  try {
+    // Get total submissions count
+    const totalResult = await storage.getAllSubmissions();
+    const total = totalResult.length;
+    
+    // Get submissions with user links
+    const linkedResult = await client.query(`
+      SELECT COUNT(*) FROM submissions WHERE user_id IS NOT NULL
+    `);
+    const linked = parseInt(linkedResult.rows[0].count);
+    
+    // Get submissions without user links
+    const unlinkedResult = await client.query(`
+      SELECT COUNT(*) FROM submissions WHERE user_id IS NULL
+    `);
+    const unlinked = parseInt(unlinkedResult.rows[0].count);
+    
+    // Get recent submissions
+    const recentResult = await client.query(`
+      SELECT id, email, first_name, last_name, poem_title, user_id, submitted_at
+      FROM submissions 
+      ORDER BY submitted_at DESC 
+      LIMIT 10
+    `);
+    
+    // Get all users
+    const usersResult = await client.query(`SELECT COUNT(*) FROM users`);
+    const totalUsers = parseInt(usersResult.rows[0].count);
+    
+    res.json({
+      success: true,
+      summary: {
+        totalSubmissions: total,
+        linkedToUsers: linked,
+        unlinkedSubmissions: unlinked,
+        totalUsers: totalUsers
+      },
+      recentSubmissions: recentResult.rows.map(sub => ({
+        id: sub.id,
+        email: sub.email,
+        name: `${sub.first_name} ${sub.last_name || ''}`.trim(),
+        poemTitle: sub.poem_title,
+        userId: sub.user_id,
+        hasUserLink: !!sub.user_id,
+        submittedAt: sub.submitted_at
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Debug endpoint error:', error);
+    res.status(500).json({ error: 'Debug query failed' });
+  }
+}));
+
 // Final error handler
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 Final error handler:', error);

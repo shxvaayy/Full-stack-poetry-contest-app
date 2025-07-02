@@ -435,16 +435,43 @@ async function fixUserSubmissionLinks() {
     console.log(`🔍 Found ${unlinkedSubmissions.rows.length} unlinked submissions`);
     
     let linked = 0;
+    let usersCreated = 0;
     
     for (const submission of unlinkedSubmissions.rows) {
       // Try to find a user with this email
-      const userResult = await client.query(`
+      let userResult = await client.query(`
         SELECT id, email FROM users WHERE email = $1
       `, [submission.email]);
       
+      let user;
+      
       if (userResult.rows.length > 0) {
-        const user = userResult.rows[0];
-        
+        user = userResult.rows[0];
+        console.log(`👤 Found existing user for ${submission.email}`);
+      } else {
+        // Create a user account for this submission
+        console.log(`👤 Creating user account for ${submission.email}`);
+        try {
+          const newUserResult = await client.query(`
+            INSERT INTO users (uid, email, name, created_at)
+            VALUES ($1, $2, $3, NOW())
+            RETURNING id, email
+          `, [
+            `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique UID
+            submission.email,
+            `${submission.first_name} ${submission.last_name || ''}`.trim()
+          ]);
+          
+          user = newUserResult.rows[0];
+          usersCreated++;
+          console.log(`✅ Created user account for ${submission.email}`);
+        } catch (createError) {
+          console.error(`❌ Failed to create user for ${submission.email}:`, createError.message);
+          continue; // Skip this submission
+        }
+      }
+      
+      if (user) {
         // Link the submission to this user
         await client.query(`
           UPDATE submissions 
@@ -457,8 +484,10 @@ async function fixUserSubmissionLinks() {
       }
     }
     
-    if (linked > 0) {
-      console.log(`🎉 Successfully linked ${linked} submissions to users!`);
+    if (linked > 0 || usersCreated > 0) {
+      console.log(`🎉 Successfully processed ${unlinkedSubmissions.rows.length} submissions!`);
+      console.log(`👥 Created ${usersCreated} new user accounts`);
+      console.log(`🔗 Linked ${linked} submissions to users`);
       
       // Show summary
       const totalLinked = await client.query(`
@@ -469,7 +498,7 @@ async function fixUserSubmissionLinks() {
         SELECT COUNT(*) FROM submissions WHERE user_id IS NULL
       `);
       
-      console.log(`📊 Summary:`);
+      console.log(`📊 Final Summary:`);
       console.log(`- Submissions linked to users: ${totalLinked.rows[0].count}`);
       console.log(`- Submissions without user links: ${totalUnlinked.rows[0].count}`);
     }
