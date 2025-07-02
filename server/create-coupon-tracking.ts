@@ -1,56 +1,59 @@
-import { client, connectDatabase } from './db.js';
+// server/create-coupon-tracking.ts
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+
+const client = postgres(connectionString);
+const db = drizzle(client);
 
 async function createCouponTrackingTable() {
   try {
-    await connectDatabase();
+    console.log('🗄️ Creating coupon_usage table...');
     
-    console.log('🔧 Creating coupon_usage table...');
-    
-    // Drop existing table to recreate with proper constraints
-    await client.query(`DROP TABLE IF EXISTS coupon_usage CASCADE;`);
-    
-    await client.query(`
-      CREATE TABLE coupon_usage (
+    // Create the table with proper structure
+    await client`
+      CREATE TABLE IF NOT EXISTS coupon_usage (
         id SERIAL PRIMARY KEY,
-        coupon_code VARCHAR(50) NOT NULL,
-        coupon_id INTEGER REFERENCES coupons(id),
-        user_id INTEGER REFERENCES users(id),
-        submission_id INTEGER REFERENCES submissions(id),
+        coupon_code VARCHAR(255) NOT NULL,
         user_uid VARCHAR(255) NOT NULL,
-        discount_amount DECIMAL(10, 2) NOT NULL,
-        used_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        
-        -- CRITICAL: Prevent duplicate usage by same user
+        submission_id INTEGER,
+        discount_amount DECIMAL(10,2),
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT unique_coupon_per_user UNIQUE(coupon_code, user_uid)
       );
-    `);
+    `;
     
-    console.log('✅ Coupon usage table created successfully');
+    console.log('✅ coupon_usage table created successfully');
     
-    // Create indexes for better performance
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_coupon_usage_code_uid ON coupon_usage(coupon_code, user_uid);
-      CREATE INDEX IF NOT EXISTS idx_coupon_usage_uid ON coupon_usage(user_uid);
-      CREATE INDEX IF NOT EXISTS idx_coupon_usage_submission ON coupon_usage(submission_id);
-    `);
+    // Create index for performance
+    await client`
+      CREATE INDEX IF NOT EXISTS idx_coupon_usage_user_uid ON coupon_usage(user_uid);
+    `;
     
-    console.log('✅ Coupon usage indexes created');
+    console.log('✅ Index created successfully');
     
   } catch (error) {
-    console.error('❌ Error creating coupon usage table:', error);
+    console.error('❌ Error creating coupon_usage table:', error);
     throw error;
+  } finally {
+    await client.end();
   }
 }
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   createCouponTrackingTable()
     .then(() => {
-      console.log('✅ Migration completed');
+      console.log('🎉 Database migration completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Migration failed:', error);
+      console.error('💥 Migration failed:', error);
       process.exit(1);
     });
 }
