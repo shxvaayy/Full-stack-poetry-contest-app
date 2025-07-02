@@ -10,6 +10,7 @@ import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
+import { client } from './db.js';
 
 const router = Router();
 
@@ -756,12 +757,59 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     // Use uid or userUid (frontend might send either)
     const userId = uid || userUid;
 
+    // Extract coupon data
+    const couponCode = req.body.couponCode;
+    const couponDiscount = req.body.couponDiscount ? parseFloat(req.body.couponDiscount) : 0;
+    const finalAmount = req.body.finalAmount ? parseFloat(req.body.finalAmount) : parseFloat(price || '0');
+
     // Validate required fields
     if (!firstName || !email || !poemTitle || !tier) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: firstName, email, poemTitle, tier'
       });
+    }
+
+    // CRITICAL: Double-check coupon usage before submission
+    if (couponCode && couponDiscount > 0) {
+      const upperCouponCode = couponCode.toUpperCase();
+      console.log('🔍 Double-checking coupon usage for:', upperCouponCode);
+
+      try {
+        let couponAlreadyUsed = false;
+
+        if (userId) {
+          const usageCheck = await client.query(`
+            SELECT cu.id, cu.used_at
+            FROM coupon_usage cu
+            JOIN coupons c ON cu.coupon_id = c.id
+            WHERE c.code = $1 AND cu.user_uid = $2
+          `, [upperCouponCode, userId]);
+          couponAlreadyUsed = usageCheck.rows.length > 0;
+        } else if (email) {
+          const usageCheck = await client.query(`
+            SELECT cu.id, cu.used_at
+            FROM coupon_usage cu
+            JOIN coupons c ON cu.coupon_id = c.id
+            JOIN submissions s ON cu.submission_id = s.id
+            WHERE c.code = $1 AND s.email = $2
+          `, [upperCouponCode, email]);
+          couponAlreadyUsed = usageCheck.rows.length > 0;
+        }
+
+        if (couponAlreadyUsed) {
+          return res.status(400).json({
+            success: false,
+            error: `Coupon "${upperCouponCode}" has already been used and cannot be reused.`
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error double-checking coupon:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Error validating coupon during submission. Please try again.'
+        });
+      }
     }
 
     console.log('🔍 Processing submission for user UID:', userId);

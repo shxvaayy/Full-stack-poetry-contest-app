@@ -323,6 +323,14 @@ export default function SubmitPage() {
     setCouponError("");
 
     try {
+      console.log('🎫 Validating coupon:', {
+        code: couponCode.trim(),
+        tier: selectedTier.id,
+        amount: selectedTier.price,
+        uid: user?.uid,
+        email: formData.email || user?.email
+      });
+
       const response = await fetch('/api/validate-coupon', {
         method: 'POST',
         headers: {
@@ -335,11 +343,19 @@ export default function SubmitPage() {
           uid: user?.uid,
           email: formData.email || user?.email
         }),
+        credentials: 'same-origin'
       });
 
-      const data = await response.json();
+      console.log('🔍 Coupon validation response status:', response.status);
 
-      if (response.ok && data.valid) {
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📥 Coupon validation data:', data);
+
+      if (data.valid) {
         setCouponApplied(true);
         setCouponDiscount(data.discount);
         const newAmount = Math.max(0, selectedTier.price - data.discount);
@@ -356,8 +372,17 @@ export default function SubmitPage() {
         setDiscountedAmount(selectedTier.price);
       }
     } catch (error: any) {
-      console.error('Coupon validation error:', error);
-      setCouponError("Network error. Please check your connection and try again.");
+      console.error('❌ Coupon validation error:', error);
+      
+      // Better error messaging
+      let errorMessage = "Error validating coupon. Please try again.";
+      if (error.message.includes('fetch')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.message.includes('Server error')) {
+        errorMessage = "Server error. Please try again in a moment.";
+      }
+      
+      setCouponError(errorMessage);
       setCouponApplied(false);
       setCouponDiscount(0);
       setDiscountedAmount(selectedTier.price);
