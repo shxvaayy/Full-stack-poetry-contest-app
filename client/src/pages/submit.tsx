@@ -66,7 +66,7 @@ const TIERS = [
 
 type SubmissionStep = "selection" | "form" | "payment" | "completed";
 
-function SubmitPage() {
+export default function SubmitPage() {
   const { user, dbUser } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<SubmissionStep>("selection");
@@ -904,11 +904,16 @@ At Writory, every voice is gold.
                       terms and conditions
                     </a>{" "}
                     and{" "}
-                    <a href="/privacy" target="_blank" className="text-purple-600 hover:underline">
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      className="text-purple-600 hover:underline"
+                    >
                       privacy policy
                     </a>{" "}
                     *
-                  </div>
+                                    </Label>
+                </div>
 
                 {/* Submit Buttons */}
                 <div className="flex gap-4">
@@ -1154,6 +1159,3 @@ At Writory, every voice is gold.
 
   return null;
 };
-
-export default SubmitPage;
-export { SubmitPage };
