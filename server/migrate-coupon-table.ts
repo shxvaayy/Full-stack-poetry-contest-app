@@ -1,4 +1,4 @@
-import { client } from './db.js';
+import { client, connectDatabase, isConnected } from './db.js';
 
 export async function migrateCouponTable() {
   try {
