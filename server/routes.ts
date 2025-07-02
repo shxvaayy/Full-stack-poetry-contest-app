@@ -13,6 +13,7 @@ import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.j
 import { db } from './db.js';
 import { couponUsage, users } from './schema.js';
 import { eq, and } from 'drizzle-orm';
+import { validateCouponCode } from './coupon-codes';
 
 const router = Router();
 
@@ -289,7 +290,6 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
   const upperCode = code.toUpperCase();
 
   try {
-    // CRITICAL FIX: Use database transaction to prevent race conditions
     const result = await db.transaction(async (tx) => {
       // Check if user already used this coupon code
       const existingUsage = await tx
@@ -307,8 +307,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         throw new Error('You have already used this coupon code');
       }
 
-      // Validate against coupon codes (your existing logic)
-      const { validateCouponCode } = await import('./coupon-codes.js');
+      // FIXED: Use static import (imported at top of file)
       const validation = validateCouponCode(code, tier);
 
       if (!validation.valid) {
@@ -318,9 +317,9 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
       // Calculate discount
       let discount = 0;
       if (validation.type === 'free') {
-        discount = amount; // 100% discount
+        discount = amount;
       } else if (validation.type === 'discount') {
-        discount = Math.round(amount * (validation.discount / 100));
+        discount = Math.round(amount * (validation.discount! / 100));
       }
 
       return {
