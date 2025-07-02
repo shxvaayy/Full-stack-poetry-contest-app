@@ -10,6 +10,7 @@ import { dirname } from 'path';
 import { registerRoutes } from './routes.js';
 import { connectDatabase } from './db.js';
 import { createTables } from './migrate.js';
+import { migrateCouponTable } from './migrate-coupon-table.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -75,9 +76,9 @@ app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   const userAgent = req.get('user-agent') || 'unknown';
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
-  
+
   console.log(`${timestamp} - ${req.method} ${req.path} - IP: ${ip} - UA: ${userAgent.substring(0, 50)}`);
-  
+
   // Log request body for POST/PUT requests (excluding sensitive data)
   if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
     const logBody = { ...req.body };
@@ -87,7 +88,7 @@ app.use((req, res, next) => {
     delete logBody.payment_id;
     console.log(`📝 Request body:`, JSON.stringify(logBody, null, 2));
   }
-  
+
   next();
 });
 
@@ -95,7 +96,7 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
   const uptime = process.uptime();
   const memoryUsage = process.memoryUsage();
-  
+
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
@@ -137,38 +138,42 @@ async function initializeApp() {
   try {
     console.log('🚀 Initializing application...');
     console.log('📅 Start time:', new Date().toISOString());
-    
+
     // Step 1: Connect to database
     console.log('🔌 Connecting to database...');
     await connectDatabase();
     console.log('✅ Database connected successfully');
-    
-    // Step 2: Run migrations to fix schema
+
+    // Step 2: Run coupon table migration
+    await migrateCouponTable();
+    console.log('✅ Coupon table migration completed');
+
+    // Step 3: Run migrations to fix schema
     console.log('🔧 Running database migrations...');
     console.log('⚠️  This will recreate all tables to fix schema issues...');
-    
+
     const migrationSuccess = await createTables();
-    
+
     if (!migrationSuccess) {
       console.error('❌ Database migration failed - cannot continue');
       console.error('💡 Please check your database connection and permissions');
       process.exit(1);
     }
-    
+
     console.log('🎉 Database schema synchronized successfully!');
     console.log('✅ All tables created with proper updated_at columns');
-    
-    // Step 3: Register API routes FIRST (before static files)
+
+    // Step 4: Register API routes FIRST (before static files)
     console.log('🛣️  Registering API routes...');
     registerRoutes(app);
     console.log('✅ API routes registered successfully');
-    
-    // Step 4: Configure static file serving
+
+    // Step 5: Configure static file serving
     const publicPath = path.join(__dirname, '../dist/public');
     console.log('📂 Static files configuration:');
     console.log('  - Public path:', publicPath);
     console.log('  - Directory exists:', fs.existsSync(publicPath));
-    
+
     if (fs.existsSync(publicPath)) {
       const files = fs.readdirSync(publicPath);
       console.log('  - Files found:', files.length);
@@ -176,12 +181,12 @@ async function initializeApp() {
     } else {
       console.warn('⚠️  Public directory not found - static files will not be served');
     }
-    
+
     // Enhanced static file serving with better caching and MIME types
     app.use(express.static(publicPath, {
       setHeaders: (res, filePath, stat) => {
         const ext = path.extname(filePath).toLowerCase();
-        
+
         // Set appropriate MIME types and caching
         switch (ext) {
           case '.js':
@@ -226,7 +231,7 @@ async function initializeApp() {
           default:
             res.set('Cache-Control', 'public, max-age=3600'); // 1 hour default
         }
-        
+
         // Add security headers for all static files
         res.set('X-Content-Type-Options', 'nosniff');
       },
@@ -236,9 +241,9 @@ async function initializeApp() {
       lastModified: true,
       index: false // Don't serve index.html automatically
     }));
-    
+
     console.log('✅ Static file serving configured with enhanced caching');
-    
+
     // Step 5: React SPA catch-all handler with better error handling
     app.get('*', (req, res) => {
       // Skip API routes - they should have been handled already
@@ -251,17 +256,17 @@ async function initializeApp() {
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const indexPath = path.join(publicPath, 'index.html');
       console.log('📄 Serving React SPA for route:', req.path);
-      
+
       if (fs.existsSync(indexPath)) {
         // Set headers for HTML delivery
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        
+
         // Send the React app
         res.sendFile(indexPath, (err) => {
           if (err) {
@@ -277,11 +282,11 @@ async function initializeApp() {
         });
       } else {
         console.error('❌ React app index.html not found at:', indexPath);
-        
+
         // Provide detailed error information
         const publicExists = fs.existsSync(publicPath);
         const files = publicExists ? fs.readdirSync(publicPath).slice(0, 20) : [];
-        
+
         res.status(404).send(`
           <!DOCTYPE html>
           <html>
@@ -308,7 +313,7 @@ async function initializeApp() {
             <div class="container">
               <h1 class="error">Frontend Build Not Found</h1>
               <p><span class="status error">ERROR</span> The React application build files are missing.</p>
-              
+
               <div class="info">
                 <h3>Diagnostic Information:</h3>
                 <div class="code">
@@ -318,7 +323,7 @@ async function initializeApp() {
                   <strong>Public directory exists:</strong> ${publicExists ? '✅ Yes' : '❌ No'}<br>
                   <strong>Files in directory:</strong> ${files.length}
                 </div>
-                
+
                 ${files.length > 0 ? `
                 <div class="files">
                   <strong>Available files:</strong><br>
@@ -327,7 +332,7 @@ async function initializeApp() {
                 </div>
                 ` : ''}
               </div>
-              
+
               <div class="info">
                 <h3>How to Fix:</h3>
                 <ol>
@@ -337,7 +342,7 @@ async function initializeApp() {
                   <li>Restart the server after building</li>
                 </ol>
               </div>
-              
+
               <div class="info">
                 <p><strong>Server Status:</strong> <span class="status warning">RUNNING</span> (API endpoints are functional)</p>
                 <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
@@ -348,17 +353,17 @@ async function initializeApp() {
         `);
       }
     });
-    
+
     console.log('✅ React SPA routing configured with enhanced error handling');
-    
+
     // Step 6: Error handling middleware (must be last)
     app.use((error, req, res, next) => {
       console.error('🚨 Unhandled application error:', error);
-      
+
       if (res.headersSent) {
         return next(error);
       }
-      
+
       res.status(500).json({
         error: 'Internal Server Error',
         message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message,
@@ -366,7 +371,7 @@ async function initializeApp() {
         path: req.path
       });
     });
-    
+
     // Step 7: Start the server
     const server = app.listen(PORT, () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
@@ -383,7 +388,7 @@ async function initializeApp() {
       console.log('🎯 Poetry contest platform is ready to accept submissions!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     });
-    
+
     // Server error handling
     server.on('error', (error) => {
       console.error('❌ Server error:', error);
@@ -392,9 +397,9 @@ async function initializeApp() {
         process.exit(1);
       }
     });
-    
+
     return server;
-    
+
   } catch (error) {
     console.error('❌ APPLICATION INITIALIZATION FAILED');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -410,7 +415,7 @@ async function initializeApp() {
 const gracefulShutdown = (signal) => {
   console.log(`\n👋 Received ${signal}, initiating graceful shutdown...`);
   console.log('🔄 Closing server...');
-  
+
   // Give ongoing requests time to complete
   setTimeout(() => {
     console.log('✅ Graceful shutdown completed');

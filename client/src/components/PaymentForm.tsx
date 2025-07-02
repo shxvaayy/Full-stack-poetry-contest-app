@@ -89,12 +89,12 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
         handler: async function (response: any) {
           console.log('💰 Razorpay payment successful:', response);
           setIsProcessing(false);
-          
+
           toast({
             title: "Payment Successful!",
             description: "Your payment has been processed successfully.",
           });
-          
+
           // Call success with Razorpay data - this will trigger form submission
           onSuccess({
             razorpay_order_id: response.razorpay_order_id,
@@ -138,7 +138,7 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
       setError(error.message);
       onError(error.message);
       setIsProcessing(false);
-      
+
       toast({
         title: "Payment Error",
         description: error.message,
@@ -157,7 +157,7 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
       // Test PayPal config before creating order
       const testResponse = await fetch('/api/test-paypal');
       const testData = await testResponse.json();
-      
+
       console.log('PayPal config test result:', testData);
 
       if (!testData.success || !testData.configured) {
@@ -201,7 +201,7 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
       console.error('❌ PayPal payment error:', error);
       setError(`PayPal Error: ${error.message}`);
       onError(`PayPal Error: ${error.message}`);
-      
+
       toast({
         title: "PayPal Error",
         description: error.message,
@@ -234,7 +234,7 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
             onClick={() => {
               // Show loading state before proceeding
               setIsProcessing?.(true);
-              
+
               // Add a small delay to show loading state consistently
               setTimeout(() => {
                 onSuccess({ 
@@ -370,3 +370,31 @@ export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }
     </div>
   );
 }
+
+const validateCoupon = async (code: string) => {
+      try {
+        const response = await fetch('/api/validate-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Coupon validation error:', error);
+        return { valid: false, message: 'Network error' };
+      }
+    };
+
+    const markCouponAsUsed = async (code: string, email: string) => {
+      try {
+        await fetch('/api/use-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, email }),
+        });
+      } catch (error) {
+        console.error('Error marking coupon as used:', error);
+      }
+    };

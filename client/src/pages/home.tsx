@@ -160,7 +160,7 @@ export default function HomePage() {
             Why Choose Writory?
           </h2>
           <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
               <CardContent className="p-8 text-center">
@@ -208,7 +208,7 @@ export default function HomePage() {
             Submission Options
           </h2>
           <p className="text-center text-gray-300 mb-12 text-lg">Choose the option that works best for you</p>
-          
+
           <div className="grid md:grid-cols-4 gap-6">
             <Card className="border border-green-500/30 bg-gradient-to-br from-green-900/20 to-emerald-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
               <CardContent className="p-6 text-center">

@@ -75,6 +75,7 @@ export default function SubmitPage() {
   const [paymentData, setPaymentData] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<string>("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
   const [qrPaymentData, setQrPaymentData] = useState<any>(null);
@@ -385,21 +386,18 @@ export default function SubmitPage() {
     console.log('💾 Setting payment data:', processedPaymentData);
     setPaymentData(processedPaymentData);
     setPaymentCompleted(true);
-
-    toast({
-      title: "Payment Successful!",
-      description: "Processing your submission...",
-    });
+    setIsSubmitting(true);
+    setSubmissionStatus("Payment successful! Processing your submission...");
 
     // Immediately submit after payment success - no delay
     try {
       console.log('🔄 Immediately submitting after payment success...');
-      setIsSubmitting(true);
       await handleFormSubmitWithPaymentData(processedPaymentData);
       // Submission completed successfully - user will be redirected to completed step
     } catch (error) {
       console.error('❌ Immediate submission failed:', error);
       setIsSubmitting(false);
+      setSubmissionStatus("");
       toast({
         title: "Submission Error",
         description: "Payment successful but submission failed. Please contact support.",
@@ -432,12 +430,7 @@ export default function SubmitPage() {
   const handleFormSubmitInternal = async (actualPaymentData: any) => {
     try {
       setIsSubmitting(true);
-
-      // Show loading message for all scenarios
-      toast({
-        title: "Please Wait",
-        description: "Your poem is being submitted. This may take a few seconds.",
-      });
+      setSubmissionStatus("Preparing your submission...");
 
       console.log('🚀 Form submission started');
       console.log('Form data:', formData);
@@ -516,6 +509,7 @@ export default function SubmitPage() {
         formDataToSend.append('photo', files.photo);
       }
 
+      setSubmissionStatus("Uploading your files and saving your submission...");
       console.log('📤 Sending form data to API...');
 
       const response = await fetch(poemCount > 1 ? '/api/submit-multiple-poems' : '/api/submit-poem', {
@@ -543,6 +537,7 @@ export default function SubmitPage() {
 
       if (result.success) {
         console.log('✅ Submission successful, moving to completed step');
+        setSubmissionStatus("Success! Your submission is complete. Email confirmation will arrive shortly.");
         
         // Clear form data immediately after successful submission
         setFormData({
@@ -563,8 +558,12 @@ export default function SubmitPage() {
           files: [null, null, null, null, null],
         });
 
-        // Move to completed step
-        setCurrentStep("completed");
+        // Small delay to show success message, then move to completed step
+        setTimeout(() => {
+          setCurrentStep("completed");
+          setIsSubmitting(false);
+          setSubmissionStatus("");
+        }, 1500);
         
         toast({
           title: "Submission Successful!",
@@ -594,7 +593,10 @@ export default function SubmitPage() {
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      if (currentStep !== "completed") {
+        setIsSubmitting(false);
+        setSubmissionStatus("");
+      }
     }
   };
 
@@ -1114,6 +1116,26 @@ At Writory, every voice is gold.
     );
   }
 
+  // Full-screen blocking loader during submission
+  if (isSubmitting) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-6"></div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Processing Submission</h2>
+          <p className="text-gray-600 mb-4">
+            {submissionStatus || "Please don't close this window or navigate away..."}
+          </p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-800">
+              <strong>Important:</strong> Do not refresh or go back. Your submission is being processed.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (currentStep === "completed") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -1123,7 +1145,7 @@ At Writory, every voice is gold.
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-800 mb-4">Submission Successful!</h1>
               <p className="text-gray-600 mb-6">
-                Your poem has been submitted successfully for the contest. You will get a Confirmation mail shortly.
+                Your poem has been submitted successfully for the contest. A confirmation email will be sent shortly.
               </p>
 
               {/* Submission Details */}
