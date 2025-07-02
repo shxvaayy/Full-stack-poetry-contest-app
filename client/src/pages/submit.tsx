@@ -993,6 +993,9 @@ At Writory, every voice is gold.
                       type="submit"
                       disabled={isSubmitting || !isFormValid()}
                       className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        setIsSubmitting(true);
+                      }}
                     >
                       {isSubmitting ? (
                         <>
@@ -1145,19 +1148,28 @@ At Writory, every voice is gold.
         <div className="container mx-auto px-4 max-w-2xl">
           <Card className="shadow-xl">
             <CardContent className="p-8 text-center">
-              <div className="flex flex-col items-center space-y-4">
-                <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
-                <h1 className="text-2xl font-bold text-gray-800">Please Wait</h1>
-                <p className="text-gray-600">
+              <div className="flex flex-col items-center space-y-6">
+                <Loader2 className="w-20 h-20 text-blue-500 animate-spin" />
+                <h1 className="text-3xl font-bold text-gray-800">Please Wait</h1>
+                <p className="text-lg text-gray-600">
                   Your poem is being submitted. This may take a few seconds.
                 </p>
-                <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 mt-4">
-                  <div className="flex items-center">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
-                    <p className="text-yellow-800 font-medium">
-                      Do not press back or reload the page, otherwise your poem might not get submitted!
-                    </p>
+                <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-6 mt-6 max-w-md">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="w-6 h-6 text-yellow-600 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-yellow-800 font-bold text-lg mb-2">
+                        Important Warning!
+                      </p>
+                      <p className="text-yellow-800 font-medium">
+                        Do not press back or reload the page, otherwise your poem might not get submitted!
+                      </p>
+                    </div>
                   </div>
+                </div>
+                <div className="flex items-center space-x-2 text-blue-600">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Processing your submission...</span>
                 </div>
               </div>
             </CardContent>

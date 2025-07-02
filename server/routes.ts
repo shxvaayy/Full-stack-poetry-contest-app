@@ -484,6 +484,17 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     });
   }
 
+  // Check if user has already used this coupon
+  if (uid) {
+    const hasUsedCoupon = await storage.checkCouponUsage(code, uid);
+    if (hasUsedCoupon) {
+      return res.json({
+        valid: false,
+        error: 'You have already used this coupon code.'
+      });
+    }
+  }
+
   // Import coupon validation functions (these are client-side functions, we'll replicate the logic)
   const upperCode = code.toUpperCase();
 
@@ -759,7 +770,17 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         submissionId: submission.id
       }).catch(emailError => {
         console.error('⚠️ Failed to send email:', emailError);
-      })
+      }),
+
+      // Track coupon usage if coupon was applied
+      couponCode && userId ? storage.trackCouponUsage({
+        couponCode,
+        userUid: userId,
+        submissionId: submission.id,
+        discountAmount: couponDiscount || 0
+      }).catch(couponError => {
+        console.error('⚠️ Failed to track coupon usage:', couponError);
+      }) : Promise.resolve()
     ]).then(() => {
       console.log('✅ Background tasks completed for submission:', submission.id);
     }).catch(error => {
@@ -1003,7 +1024,17 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         submissionUuid
       }).catch(emailError => {
         console.error('⚠️ Failed to send email:', emailError);
-      })
+      }),
+
+      // Track coupon usage if coupon was applied (only once for multiple poems)
+      couponCode && userId ? storage.trackCouponUsage({
+        couponCode,
+        userUid: userId,
+        submissionId: submissions[0].id, // Use first submission ID
+        discountAmount: couponDiscount ? parseFloat(couponDiscount) : 0
+      }).catch(couponError => {
+        console.error('⚠️ Failed to track coupon usage:', couponError);
+      }) : Promise.resolve()
     ]).then(() => {
       console.log('✅ Background tasks completed for multiple submissions:', submissionUuid);
     }).catch(error => {

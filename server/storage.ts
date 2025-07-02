@@ -232,41 +232,44 @@ export async function trackCouponUsage(usageData: {
     discountAmount: number;
   }) {
     try {
-    console.log('tracking')
-    // First, check if this user has already used this coupon
-    const existingUsage = await checkCouponUsage(usageData.couponCode, usageData.userUid);
-    if (existingUsage) {
-      throw new Error('Coupon code has already been used by this user');
-    }
+      console.log('🎫 Tracking coupon usage:', usageData);
+      
+      // First, check if this user has already used this coupon
+      const existingUsage = await checkCouponUsage(usageData.couponCode, usageData.userUid);
+      if (existingUsage) {
+        console.log('❌ Coupon already used by this user');
+        throw new Error('Coupon code has already been used by this user');
+      }
 
-    // Get user ID if exists
-    let userId = null;
-    try {
-      const user = await getUserByUid(usageData.userUid);
-      userId = user?.id || null;
+      // Get user ID if exists
+      let userId = null;
+      try {
+        const user = await getUserByUid(usageData.userUid);
+        userId = user?.id || null;
+      } catch (error) {
+        console.log('User not found, continuing without userId');
+      }
+
+      // Create usage record
+      const newUsageData = {
+        couponCode: usageData.couponCode.toUpperCase(),
+        userUid: usageData.userUid,
+        userId: userId,
+        submissionId: usageData.submissionId,
+        discountAmount: usageData.discountAmount.toString()
+      };
+
+      const [usageRecord] = await db
+        .insert(couponUsage)
+        .values(newUsageData)
+        .returning();
+
+      console.log('✅ Coupon usage tracked in database:', usageRecord.id);
+      return usageRecord;
     } catch (error) {
-      console.log('User not found, continuing without userId');
+      console.error('❌ Error tracking coupon usage:', error);
+      throw error;
     }
-
-    // Create usage record
-    const newUsageData = {
-      couponCode: usageData.couponCode.toUpperCase(),
-      userUid: usageData.userUid,
-      userId: userId,
-      submissionId: usageData.submissionId,
-      discountAmount: usageData.discountAmount.toString()
-    };
-
-    const [usageRecord] = await db
-      .insert(couponUsage)
-      .values(newUsageData)
-      .returning();
-
-    console.log('✅ Coupon usage tracked in database:', usageRecord.id);
-    return usageRecord;
-  } catch(e) {
-      console.log(e)
-  }
   }
 
   // Check if user has already used a coupon code
