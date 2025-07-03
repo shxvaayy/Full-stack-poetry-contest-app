@@ -29,7 +29,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-lg">
+    <header className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
         <div className="flex justify-between items-center py-2 sm:py-3 gap-1 sm:gap-2">
           {/* Logo Section - Left */}
