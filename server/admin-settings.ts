@@ -1,6 +1,8 @@
 import { client, connectDatabase } from './db.js';
 import { Request, Response } from 'express';
-import { db, adminSettings, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { db } from './db.js';
+import { adminSettings } from './schema.js';
 
 export interface AdminSettings {
   id: number;
@@ -92,27 +94,15 @@ export async function updateAdminSettings(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid settings data - freeTierEnabled must be boolean' });
     }
 
-    // Ensure settings record exists
-    const existingSettings = await db.select().from(adminSettings).where(eq(adminSettings.id, 1));
+    // Update or insert the free tier setting
+    const success = await updateSetting('free_tier_enabled', freeTierEnabled.toString());
 
-    if (existingSettings.length === 0) {
-      // Create initial settings record
-      await db.insert(adminSettings).values({
-        id: 1,
-        freeTierEnabled,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+    if (success) {
+      console.log('Admin settings updated successfully');
+      res.json({ success: true, message: 'Settings updated successfully' });
     } else {
-      // Update existing settings
-      await db.update(adminSettings).set({
-        freeTierEnabled,
-        updatedAt: new Date()
-      }).where(eq(adminSettings.id, 1));
+      res.status(500).json({ error: 'Failed to update settings' });
     }
-
-    console.log('Admin settings updated successfully');
-    res.json({ success: true, message: 'Settings updated successfully' });
   } catch (error) {
     console.error('Error updating admin settings:', error);
     res.status(500).json({ error: 'Failed to update settings' });
