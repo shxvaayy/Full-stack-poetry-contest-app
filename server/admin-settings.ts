@@ -1,8 +1,5 @@
 import { client, connectDatabase } from './db.js';
 import { Request, Response } from 'express';
-import { eq } from 'drizzle-orm';
-import { db } from './db.js';
-import { adminSettings } from './schema.js';
 
 export interface AdminSettings {
   id: number;

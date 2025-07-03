@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Save, Loader2 } from "lucide-react";
+import { Settings, Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/use-auth';
 
 interface AdminSettings {
   free_tier_enabled: string;
@@ -12,13 +14,12 @@ interface AdminSettings {
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>({
     free_tier_enabled: 'true'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-    // Assuming 'user' is available in this scope, you might need to fetch it or pass it as a prop
-    const user = { email: 'example@example.com' }; // Replace with actual user object
 
   // Load current settings
   useEffect(() => {
@@ -187,7 +188,7 @@ export default function AdminSettingsPage() {
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4 mr-2" />
+                    <Settings className="w-4 h-4 mr-2" />
                     Save Settings
                   </>
                 )}
