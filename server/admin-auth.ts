@@ -1,4 +1,3 @@
-
 import { client, connectDatabase } from './db.js';
 
 export interface AdminUser {
@@ -12,34 +11,66 @@ export interface AdminUser {
 // Initialize admin users table
 export async function initializeAdminUsers() {
   try {
+    console.log('👤 Initializing admin users...');
+
     await connectDatabase();
-    
-    // Create admin_users table if it doesn't exist
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS admin_users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        role VARCHAR(50) DEFAULT 'admin' NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
+
+    // Check if admin_users table exists
+    const tableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'admin_users'
+      );
     `);
 
-    // Insert default admin users
-    const adminEmails = [
-      'shiningbhavya.seth@gmail.com',
-      // Add your original admin email here
-    ];
-
-    for (const email of adminEmails) {
+    if (!tableCheck.rows[0].exists) {
+      console.log('❌ admin_users table does not exist, creating it...');
       await client.query(`
-        INSERT INTO admin_users (email, role)
-        VALUES ($1, 'admin')
-        ON CONFLICT (email) DO NOTHING
-      `, [email]);
+        CREATE TABLE admin_users (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) NOT NULL UNIQUE,
+          role VARCHAR(50) DEFAULT 'admin' NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+      `);
+      console.log('✅ admin_users table created');
     }
 
-    console.log('✅ Admin users initialized');
+    // Add default admin users
+    const defaultAdmins = [
+      'writorycontest@gmail.com',
+      'admin@writory.com',
+      'your-email@gmail.com',  // Add your actual email here
+      'shivaaymehra@gmail.com',
+      'shiningbhavya.seth@gmail.com'
+    ];
+
+    for (const email of defaultAdmins) {
+      try {
+        const result = await client.query(`
+          INSERT INTO admin_users (email, role, created_at, updated_at)
+          VALUES ($1, 'admin', NOW(), NOW())
+          ON CONFLICT (email) DO NOTHING
+          RETURNING id
+        `, [email]);
+
+        if (result.rows.length > 0) {
+          console.log(`✅ Admin user added: ${email}`);
+        } else {
+          console.log(`ℹ️ Admin user already exists: ${email}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error adding admin ${email}:`, error);
+      }
+    }
+
+    // Show all admin users
+    const admins = await client.query('SELECT email, role, created_at FROM admin_users ORDER BY created_at');
+    console.log('👥 Current admin users:', admins.rows);
+    console.log(`📊 Total admin users: ${admins.rows.length}`);
+
   } catch (error) {
     console.error('❌ Error initializing admin users:', error);
     throw error;
@@ -49,14 +80,28 @@ export async function initializeAdminUsers() {
 // Check if user is admin
 export async function isAdmin(email: string): Promise<boolean> {
   try {
+    console.log('🔍 Checking admin status for:', email);
+
+    // Ensure database connection
+    await connectDatabase();
+
     const result = await client.query(
-      'SELECT id FROM admin_users WHERE email = $1 AND role = $2',
-      [email, 'admin']
+      'SELECT * FROM admin_users WHERE email = $1',
+      [email]
     );
-    
-    return result.rows.length > 0;
+
+    const isAdminUser = result.rows.length > 0;
+    console.log('Admin check result:', { 
+      email, 
+      isAdmin: isAdminUser, 
+      foundRecords: result.rows.length,
+      adminData: result.rows[0] || 'none' 
+    });
+
+    return isAdminUser;
   } catch (error) {
     console.error('❌ Error checking admin status:', error);
+    console.error('❌ Full error details:', error);
     return false;
   }
 }
@@ -70,7 +115,7 @@ export async function addAdminUser(email: string, role: string = 'admin'): Promi
       ON CONFLICT (email) 
       DO UPDATE SET role = $2, updated_at = NOW()
     `, [email, role]);
-    
+
     console.log(`✅ Added admin user: ${email}`);
     return true;
   } catch (error) {
@@ -83,7 +128,7 @@ export async function addAdminUser(email: string, role: string = 'admin'): Promi
 export async function removeAdminUser(email: string): Promise<boolean> {
   try {
     await client.query('DELETE FROM admin_users WHERE email = $1', [email]);
-    
+
     console.log(`✅ Removed admin user: ${email}`);
     return true;
   } catch (error) {
