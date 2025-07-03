@@ -31,10 +31,10 @@ export default function Header() {
   return (
     <header className="bg-primary text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4 gap-4">
+        <div className="flex justify-between items-center py-3 sm:py-4 gap-2 sm:gap-4">
           {/* Logo Section - Left */}
-          <Link href="/" className="flex items-center flex-shrink-0 mr-6">
-            <div className="w-12 h-12 mr-4">
+          <Link href="/" className="flex items-center flex-shrink-0 mr-2 sm:mr-6">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
@@ -43,7 +43,7 @@ export default function Header() {
             </div>
             {/* Title visible on all screens */}
             <div className="block">
-              <h1 className="text-sm sm:text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
+              <h1 className="text-xs sm:text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
             </div>
           </Link>
 
@@ -65,7 +65,7 @@ export default function Header() {
           </nav>
 
           {/* User Section - Right */}
-          <div className="flex items-center space-x-6 flex-shrink-0 ml-4">
+          <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0 ml-2 sm:ml-4">
             {user ? (
               <div className="hidden lg:flex items-center space-x-4">
                 <Link href="/profile">
@@ -103,10 +103,10 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden text-white p-1"
+              className="lg:hidden text-white p-2 hover:bg-green-700 rounded-md transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>

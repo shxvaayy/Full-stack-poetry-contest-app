@@ -1,7 +1,17 @@
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import { Twitter, Facebook, Instagram, Linkedin } from "lucide-react";
 
 export default function Footer() {
+  const { toast } = useToast();
+
+  const handleNotAvailable = () => {
+    toast({
+      title: "Not Available Yet!",
+      description: "This competition is not available at the moment.",
+    });
+  };
+
   return (
     <footer className="bg-primary text-white py-12">
       <div className="max-w-7xl mx-auto px-4">
@@ -46,14 +56,14 @@ export default function Footer() {
             <h4 className="text-lg font-semibold mb-4">Additional Competitions</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Regional Languages Competition
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Junior Competition
-                </a>
+                </button>
               </li>
               <li>
                 <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
