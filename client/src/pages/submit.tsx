@@ -825,8 +825,7 @@ At Writory, every voice is gold.
               return (
                 <Card 
                   key={tier.id} 
-                  className="cursor-pointer hover:scale-105 transition-all duration-300 border-2 hover:shadow-xl"
-                  style={{ borderColor: tier.borderClass.replace('border-', '') }}
+                  className={`cursor-pointer hover:scale-105 transition-all duration-300 ${tier.borderClass} border-2 hover:shadow-xl`}
                   onClick={() => handleTierSelection(tier)}
                 >
                   <CardContent className="p-6 text-center">
