@@ -212,8 +212,17 @@ router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, r
 // Get free tier status specifically
 router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
   try {
+    // Check if database is connected
+    if (!process.env.DATABASE_URL) {
+      console.log('⚠️ DATABASE_URL not configured, defaulting free tier to enabled');
+      return res.json({
+        success: true,
+        enabled: true
+      });
+    }
+
     const freeTierEnabled = await getSetting('free_tier_enabled');
-    const isEnabled = freeTierEnabled === 'true';
+    const isEnabled = freeTierEnabled === 'true' || freeTierEnabled === null; // Default to true if not set
     
     console.log('🔍 Free tier status check:', { 
       setting: freeTierEnabled, 
@@ -226,9 +235,10 @@ router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
     });
   } catch (error) {
     console.error('❌ Error getting free tier status:', error);
+    // When there's a database error, default to enabled for backward compatibility
     res.json({
       success: true,
-      enabled: true // Default to enabled if there's an error
+      enabled: true
     });
   }
 }));

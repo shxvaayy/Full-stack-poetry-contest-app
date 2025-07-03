@@ -40,6 +40,12 @@ export async function initializeAdminSettings() {
 // Get a setting value
 export async function getSetting(key: string): Promise<string | null> {
   try {
+    // Check if database is connected
+    if (!process.env.DATABASE_URL) {
+      console.log('⚠️ DATABASE_URL not configured, cannot get setting:', key);
+      return null;
+    }
+
     const result = await client.query(
       'SELECT setting_value FROM admin_settings WHERE setting_key = $1',
       [key]
