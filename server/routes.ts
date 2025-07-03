@@ -673,46 +673,81 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
   if (!isFreeTierCode && !isDiscountCode) {
     return res.json({
       valid: false,
-      error: 'Invalid coupon code'
+      error: 'Invalid or already used coupon code'
     });
   }
 
-  // ENHANCED: Check if user has already used this coupon code
+  // ENHANCED: Check coupon usage with different logic for 100% vs 10% codes
   try {
-    let hasUsedCoupon = false;
-
-    if (uid) {
-      // Check by user UID - PRIMARY CHECK
-      const usageCheck = await client.query(`
-        SELECT cu.id, cu.used_at, c.code
+    if (isFreeTierCode) {
+      // For 100% codes: Check if ANY user has used this code
+      const anyUsageCheck = await client.query(`
+        SELECT cu.id, cu.used_at, c.code, s.email, cu.user_uid
         FROM coupon_usage cu
         JOIN coupons c ON cu.coupon_id = c.id
-        WHERE c.code = $1 AND cu.user_uid = $2
-      `, [upperCode, uid]);
+        LEFT JOIN submissions s ON cu.submission_id = s.id
+        WHERE c.code = $1
+        ORDER BY cu.used_at DESC
+        LIMIT 1
+      `, [upperCode]);
 
-      if (usageCheck.rows.length > 0) {
-        const usageDate = new Date(usageCheck.rows[0].used_at).toLocaleDateString();
+      if (anyUsageCheck.rows.length > 0) {
+        const firstUsage = anyUsageCheck.rows[0];
+        const usedByEmail = firstUsage.email;
+        const usedByUid = firstUsage.user_uid;
+
+        // Check if this is the same user trying to reuse
+        const isSameUser = (uid && uid === usedByUid) || (email && email === usedByEmail);
+
+        if (!isSameUser) {
+          // Different user trying to use an already-used 100% code
+          return res.json({
+            valid: false,
+            error: 'Invalid or already used coupon code'
+          });
+        }
+
+        // Same user trying to reuse - still block it
         return res.json({
           valid: false,
-          error: `Coupon already used. You used "${upperCode}" on ${usageDate}.`
+          error: 'Invalid or already used coupon code'
         });
       }
-    } else if (email) {
-      // Check by email as fallback - SECONDARY CHECK
-      const usageCheck = await client.query(`
-        SELECT cu.id, cu.used_at, c.code, s.email
-        FROM coupon_usage cu
-        JOIN coupons c ON cu.coupon_id = c.id
-        JOIN submissions s ON cu.submission_id = s.id
-        WHERE c.code = $1 AND s.email = $2
-      `, [upperCode, email]);
+    } else {
+      // For 10% codes: Check if THIS user has used this code
+      let hasUsedCoupon = false;
 
-      if (usageCheck.rows.length > 0) {
-        const usageDate = new Date(usageCheck.rows[0].used_at).toLocaleDateString();
-        return res.json({
-          valid: false,
-          error: `Coupon already used. This email used "${upperCode}" on ${usageDate}.`
-        });
+      if (uid) {
+        // Check by user UID - PRIMARY CHECK
+        const usageCheck = await client.query(`
+          SELECT cu.id, cu.used_at, c.code
+          FROM coupon_usage cu
+          JOIN coupons c ON cu.coupon_id = c.id
+          WHERE c.code = $1 AND cu.user_uid = $2
+        `, [upperCode, uid]);
+
+        if (usageCheck.rows.length > 0) {
+          return res.json({
+            valid: false,
+            error: 'Invalid or already used coupon code'
+          });
+        }
+      } else if (email) {
+        // Check by email as fallback - SECONDARY CHECK
+        const usageCheck = await client.query(`
+          SELECT cu.id, cu.used_at, c.code, s.email
+          FROM coupon_usage cu
+          JOIN coupons c ON cu.coupon_id = c.id
+          JOIN submissions s ON cu.submission_id = s.id
+          WHERE c.code = $1 AND s.email = $2
+        `, [upperCode, email]);
+
+        if (usageCheck.rows.length > 0) {
+          return res.json({
+            valid: false,
+            error: 'Invalid or already used coupon code'
+          });
+        }
       }
     }
 
@@ -939,31 +974,59 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       console.log('🔍 Double-checking coupon usage for:', upperCouponCode);
 
       try {
+        // Check if this is a 100% discount code
+        const FREE_TIER_CODES = [
+          'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
+          'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
+          'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
+          'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
+          'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
+          'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
+          'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
+          'VERSEUNLOCK', 'QUILLEDPASS', 'FREEMUSE2025', 'WRITYSTREAK', 'RHYMESMILE',
+          'PENMIRACLE', 'GIFTOFVERSE', 'LYRICALENTRY', 'WRTYWAVE', 'MUSEDROP',
+          'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
+        ];
+
+        const isFreeTierCode = FREE_TIER_CODES.includes(upperCouponCode);
         let couponAlreadyUsed = false;
 
-        if (userId) {
-          const usageCheck = await client.query(`
-            SELECT cu.id, cu.used_at
+        if (isFreeTierCode) {
+          // For 100% codes: Check if ANY user has used this code
+          const anyUsageCheck = await client.query(`
+            SELECT cu.id
             FROM coupon_usage cu
             JOIN coupons c ON cu.coupon_id = c.id
-            WHERE c.code = $1 AND cu.user_uid = $2
-          `, [upperCouponCode, userId]);
-          couponAlreadyUsed = usageCheck.rows.length > 0;
-        } else if (email) {
-          const usageCheck = await client.query(`
-            SELECT cu.id, cu.used_at
-            FROM coupon_usage cu
-            JOIN coupons c ON cu.coupon_id = c.id
-            JOIN submissions s ON cu.submission_id = s.id
-            WHERE c.code = $1 AND s.email = $2
-          `, [upperCouponCode, email]);
-          couponAlreadyUsed = usageCheck.rows.length > 0;
+            WHERE c.code = $1
+            LIMIT 1
+          `, [upperCouponCode]);
+          couponAlreadyUsed = anyUsageCheck.rows.length > 0;
+        } else {
+          // For 10% codes: Check if THIS user has used this code
+          if (userId) {
+            const usageCheck = await client.query(`
+              SELECT cu.id, cu.used_at
+              FROM coupon_usage cu
+              JOIN coupons c ON cu.coupon_id = c.id
+              WHERE c.code = $1 AND cu.user_uid = $2
+            `, [upperCouponCode, userId]);
+            couponAlreadyUsed = usageCheck.rows.length > 0;
+          } else if (email) {
+            const usageCheck = await client.query(`
+              SELECT cu.id, cu.used_at
+              FROM coupon_usage cu
+              JOIN coupons c ON cu.coupon_id = c.id
+              JOIN submissions s ON cu.submission_id = s.id
+              WHERE c.code = $1 AND s.email = $2
+            `, [upperCouponCode, email]);
+            couponAlreadyUsed = usageCheck.rows.length > 0;
+          }
         }
 
         if (couponAlreadyUsed) {
           return res.status(400).json({
             success: false,
-            error: `Coupon "${upperCouponCode}" has already been used and cannot be reused.`
+            error: 'Invalid or already used coupon code'
           });
         }
       } catch (error) {
