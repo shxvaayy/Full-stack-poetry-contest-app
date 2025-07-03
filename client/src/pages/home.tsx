@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function HomePage() {
   const { toast } = useToast();
-
+  
   // Fetch total submission count for live poets count
   const { data: statsData } = useQuery({
     queryKey: ['/api/submission-count'],
@@ -34,7 +34,7 @@ export default function HomePage() {
       <section
         className="relative min-h-screen flex items-center justify-center"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
+          backgroundImage: "url('https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -217,7 +217,7 @@ export default function HomePage() {
         </div>
       </section>
 
-
+      
 
       {/* Additional Competitions */}
       <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700">
@@ -248,13 +248,13 @@ export default function HomePage() {
             <Card 
               className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-white/10 backdrop-blur-sm cursor-pointer"
               onClick={() => toast({
-                title: "Not Available Yet",
+                title: "Not Available Yet", 
                 description: "Junior Competition is coming soon! Stay tuned for updates.",
                 duration: 3000,
               })}
             >
               <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                <div className="w-20 h-20 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                   <Star className="text-white" size={32} />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-4">Junior Competition</h3>
