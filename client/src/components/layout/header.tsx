@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
@@ -30,31 +31,33 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-3 sm:py-4 gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="flex justify-between items-center py-2 sm:py-3 lg:py-4">
           {/* Logo Section - Left */}
-          <Link href="/" className="flex items-center flex-shrink-0 mr-2 sm:mr-6">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4">
+          <Link href="/" className="flex items-center flex-shrink-0 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 lg:mr-4 flex-shrink-0">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
                 className="w-full h-full object-contain"
               />
             </div>
-            {/* Title visible on all screens */}
-            <div className="block">
-              <h1 className="text-xs sm:text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
+            {/* Title - responsive sizing */}
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold whitespace-nowrap truncate">
+                WRITORY POETRY CONTEST
+              </h1>
             </div>
           </Link>
 
           {/* Desktop Navigation - Center */}
-          <nav className="hidden lg:flex items-center flex-1 justify-center px-8">
-            <div className="flex items-center space-x-8">
+          <nav className="hidden xl:flex items-center flex-1 justify-center px-4 max-w-4xl">
+            <div className="flex items-center space-x-4 2xl:space-x-6">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm px-2 py-1 ${
+                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-xs 2xl:text-sm px-1 2xl:px-2 py-1 ${
                     location === item.href ? "border-b-2 border-white pb-1" : ""
                   }`}
                 >
@@ -62,103 +65,3 @@ export default function Header() {
                 </Link>
               ))}
             </div>
-          </nav>
-
-          {/* User Section - Right */}
-          <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0 ml-2 sm:ml-4">
-            {user ? (
-              <div className="hidden lg:flex items-center space-x-4">
-                <Link href="/profile">
-                  <button className="flex items-center space-x-3 bg-green-700 rounded-lg px-4 py-2 hover:bg-green-600 transition-colors">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={16} />
-                    </div>
-                    <span className="text-white text-sm font-medium">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
-                    </span>
-                  </button>
-                </Link>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white px-4 py-2 bg-transparent hover:bg-transparent hover:text-white hover:border-white focus:bg-transparent focus:text-white active:bg-transparent active:text-white"
-                >
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <div className="hidden lg:flex items-center">
-                <Link href="/login">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-white hover:bg-white hover:text-primary px-4 py-2"
-                  >
-                    Login
-                  </Button>
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile menu button */}
-            <button
-              className="lg:hidden text-white p-2 hover:bg-green-700 rounded-md transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-primary border-t border-green-600">
-          <div className="px-3 pt-3 pb-4 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-colors ${
-                  location === item.href ? "bg-green-700" : ""
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            ))}
-            {user && (
-              <div className="px-3 py-2 space-y-3 border-t border-green-600 mt-3 pt-4">
-                <Link href="/profile">
-                  <button 
-                    className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={14} />
-                    </div>
-                    <span className="text-white text-sm font-medium">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
-                    </span>
-                  </button>
-                </Link>
-                <Button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-white border-white bg-transparent hover:bg-transparent hover:text-white hover:border-white focus:bg-transparent focus:text-white active:bg-transparent active:text-white"
-                >
-                  Logout
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </header>
-  );
-}
