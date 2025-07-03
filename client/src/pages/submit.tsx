@@ -809,38 +809,25 @@ At Writory, every voice is gold.
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {TIERS.filter((tier) => {
-              // Hide free tier completely if disabled in config file
-              if (tier.id === 'free' && (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER)) {
+              // Hide free tier completely if disabled in config file OR admin settings
+              if (tier.id === 'free' && (
+                !FREE_ENTRY_ENABLED || 
+                !ENABLE_FREE_TIER || 
+                freeTierStatus?.enabled === false
+              )) {
                 return false;
               }
               return true;
             }).map((tier) => {
               const Icon = tier.icon;
-              const isFreeTierDisabled = tier.id === 'free' && (
-                freeTierStatus?.enabled === false || 
-                !FREE_ENTRY_ENABLED || 
-                !ENABLE_FREE_TIER
-              );
+              const isFreeTierDisabled = false; // Since we're filtering it out completely above, this is not needed
 
               return (
                 <Card 
                   key={tier.id} 
-                  className={`${
-                    isFreeTierDisabled 
-                      ? 'opacity-50 cursor-not-allowed' 
-                      : 'cursor-pointer hover:scale-105'
-                  } transition-all duration-300 ${tier.borderClass} border-2 hover:shadow-xl`}
-                  onClick={() => {
-                    if (isFreeTierDisabled) {
-                      toast({
-                        title: "Free Tier Disabled",
-                        description: "Free tier submissions are currently disabled. Please choose a paid tier to submit your poem.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    handleTierSelection(tier);
-                  }}
+                  className="cursor-pointer hover:scale-105 transition-all duration-300 border-2 hover:shadow-xl"
+                  style={{ borderColor: tier.borderClass.replace('border-', '') }}
+                  onClick={() => handleTierSelection(tier)}
                 >
                   <CardContent className="p-6 text-center">
                     <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
@@ -851,11 +838,6 @@ At Writory, every voice is gold.
                     <div className="text-2xl font-bold text-gray-800">
                       {tier.price === 0 ? 'Free' : `₹${tier.price}`}
                     </div>
-                    {isFreeTierDisabled && (
-                      <div className="mt-2 text-sm text-red-600 font-medium">
-                        Currently Disabled
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               );

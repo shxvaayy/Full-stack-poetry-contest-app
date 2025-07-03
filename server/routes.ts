@@ -669,7 +669,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
   ];
 
-  // 10% discount codes for all paid tiers
+  // 10% discount codes for all paid tiers (reusable)
   const DISCOUNT_CODES = [
     'FLOWRHYME10', 'VERSETREAT', 'WRITEJOY10', 'CANTODEAL', 'LYRICSPARK',
     'INKSAVER10', 'WRTYBRIGHT', 'PASSPOETRY', 'MUSEDISCOUNT', 'SONNETSAVE',
@@ -683,21 +683,32 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
   ];
 
+  // 10% discount codes - ONE-TIME USE GLOBALLY (like 100% codes)
+  const RESTRICTED_DISCOUNT_CODES = [
+    'ZLY93DKA1T', 'BQC27XRMP8', 'HNF85VZEKQ', 'TRX49MJDSL', 'WPE18UAKOY',
+    'XKZ07YGMBD', 'FDN63TOIXV', 'MAQ92BLRZH', 'VJG56EMCUW', 'UYT13PLDXQ',
+    'KSD71OWYAG', 'LMF84CZVNB', 'NYJ28RXOQT', 'TBK95DSUEH', 'RXP47GLMJA',
+    'VHW39KUBTL', 'QEM60CZNWF', 'ZJA74TQXVP', 'GDT05MRKLE', 'HPY62NXWUB',
+    'MCL31QZJRY', 'KXP89VMTLC', 'NWF47ODKJB', 'YRA02MGZTS', 'SHQ80ULVXN',
+    'DKT56ZYFOW', 'BQY14LJAVN', 'TXN92KGZCE', 'ZUP37MWFYL', 'HME40RCXAV'
+  ];
+
   // Check if code is valid first
   const isFreeTierCode = FREE_TIER_CODES.includes(upperCode);
   const isDiscountCode = DISCOUNT_CODES.includes(upperCode);
+  const isRestrictedDiscountCode = RESTRICTED_DISCOUNT_CODES.includes(upperCode);
 
-  if (!isFreeTierCode && !isDiscountCode) {
+  if (!isFreeTierCode && !isDiscountCode && !isRestrictedDiscountCode) {
     return res.json({
       valid: false,
       error: 'Invalid or already used coupon code'
     });
   }
 
-  // ENHANCED: Check coupon usage with different logic for 100% vs 10% codes
+  // ENHANCED: Check coupon usage with different logic for 100% vs 10% codes vs restricted 10% codes
   try {
-    if (isFreeTierCode) {
-      // For 100% codes: Check if ANY user has used this code
+    if (isFreeTierCode || isRestrictedDiscountCode) {
+      // For 100% codes AND restricted 10% codes: Check if ANY user has used this code
       const anyUsageCheck = await client.query(`
         SELECT cu.id, cu.used_at, c.code, s.email, cu.user_uid
         FROM coupon_usage cu
@@ -717,7 +728,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
         const isSameUser = (uid && uid === usedByUid) || (email && email === usedByEmail);
 
         if (!isSameUser) {
-          // Different user trying to use an already-used 100% code
+          // Different user trying to use an already-used one-time code
           return res.json({
             valid: false,
             error: 'Invalid or already used coupon code'
@@ -730,8 +741,8 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
           error: 'Invalid or already used coupon code'
         });
       }
-    } else {
-      // For 10% codes: Check if THIS user has used this code
+    } else if (isDiscountCode) {
+      // For regular 10% codes: Check if THIS user has used this code
       let hasUsedCoupon = false;
 
       if (uid) {
@@ -788,7 +799,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
       });
     }
 
-    if (isDiscountCode) {
+    if (isDiscountCode || isRestrictedDiscountCode) {
       const discountAmount = Math.round((amount || 0) * 0.10);
       return res.json({
         valid: true,
@@ -1005,11 +1016,35 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
         ];
 
-        const isFreeTierCode = FREE_TIER_CODES.includes(upperCouponCode);
+        // Define the same code arrays as in validation endpoint
+        const FREE_TIER_CODES_CHECK = [
+          'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
+          'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
+          'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
+          'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
+          'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
+          'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
+          'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
+          'VERSEUNLOCK', 'QUILLEDPASS', 'FREEMUSE2025', 'WRITYSTREAK', 'RHYMESMILE',
+          'PENMIRACLE', 'GIFTOFVERSE', 'LYRICALENTRY', 'WRTYWAVE', 'MUSEDROP',
+          'POEMHERO', 'OPENPOETRY', 'FREEVERSE21', 'POETENTRY', 'UNLOCK2025'
+        ];
+
+        const RESTRICTED_DISCOUNT_CODES_CHECK = [
+          'ZLY93DKA1T', 'BQC27XRMP8', 'HNF85VZEKQ', 'TRX49MJDSL', 'WPE18UAKOY',
+          'XKZ07YGMBD', 'FDN63TOIXV', 'MAQ92BLRZH', 'VJG56EMCUW', 'UYT13PLDXQ',
+          'KSD71OWYAG', 'LMF84CZVNB', 'NYJ28RXOQT', 'TBK95DSUEH', 'RXP47GLMJA',
+          'VHW39KUBTL', 'QEM60CZNWF', 'ZJA74TQXVP', 'GDT05MRKLE', 'HPY62NXWUB',
+          'MCL31QZJRY', 'KXP89VMTLC', 'NWF47ODKJB', 'YRA02MGZTS', 'SHQ80ULVXN',
+          'DKT56ZYFOW', 'BQY14LJAVN', 'TXN92KGZCE', 'ZUP37MWFYL', 'HME40RCXAV'
+        ];
+
+        const isFreeTierCode = FREE_TIER_CODES_CHECK.includes(upperCouponCode);
+        const isRestrictedDiscountCode = RESTRICTED_DISCOUNT_CODES_CHECK.includes(upperCouponCode);
         let couponAlreadyUsed = false;
 
-        if (isFreeTierCode) {
-          // For 100% codes: Check if ANY user has used this code
+        if (isFreeTierCode || isRestrictedDiscountCode) {
+          // For 100% codes AND restricted 10% codes: Check if ANY user has used this code
           const anyUsageCheck = await client.query(`
             SELECT cu.id
             FROM coupon_usage cu
@@ -1019,7 +1054,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           `, [upperCouponCode]);
           couponAlreadyUsed = anyUsageCheck.rows.length > 0;
         } else {
-          // For 10% codes: Check if THIS user has used this code
+          // For regular 10% codes: Check if THIS user has used this code
           if (userId) {
             const usageCheck = await client.query(`
               SELECT cu.id, cu.used_at
