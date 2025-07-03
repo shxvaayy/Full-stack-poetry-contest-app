@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -89,7 +88,7 @@ export default function AdminUpload() {
 
     try {
       console.log('🚀 Starting CSV upload for file:', file.name);
-      
+
       const formData = new FormData();
       formData.append('csvFile', file);
 
@@ -110,7 +109,7 @@ export default function AdminUpload() {
         console.error('❌ Non-JSON response received');
         const textResponse = await response.text();
         console.error('❌ Response body:', textResponse.substring(0, 500));
-        
+
         throw new Error('Server returned non-JSON response. Please check server logs.');
       }
 
@@ -145,14 +144,14 @@ export default function AdminUpload() {
       }
     } catch (error: any) {
       console.error('❌ Upload error:', error);
-      
+
       let errorMessage = 'Network error occurred';
       if (error.message.includes('JSON')) {
         errorMessage = 'Server error - received invalid response format';
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       setResult({
         success: false,
         message: errorMessage,
@@ -174,8 +173,24 @@ export default function AdminUpload() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-green-800 mb-2">Admin CSV Upload</h1>
-          <p className="text-gray-600">Upload AI evaluation results to update poem scores and status.</p>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-green-800 mb-2 flex items-center justify-center">
+              <FileSpreadsheet className="mr-2" size={32} />
+              Admin CSV Upload
+            </h1>
+            <p className="text-lg text-gray-600">
+              Upload AI evaluation results to update poem scores and status.
+            </p>
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = '/admin-settings'}
+                className="mr-3"
+              >
+                Admin Settings
+              </Button>
+            </div>
+          </div>
         </div>
 
         <Card>
