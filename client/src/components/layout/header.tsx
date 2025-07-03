@@ -29,9 +29,7 @@ export default function Header() {
   };
 
   return (
-    <header className="text-white shadow-lg" style={{
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
+    <header className="bg-primary text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-3 sm:py-4 gap-2 sm:gap-4">
           {/* Logo Section - Left */}
@@ -71,9 +69,9 @@ export default function Header() {
             {user ? (
               <div className="hidden lg:flex items-center space-x-4">
                 <Link href="/profile">
-                  <button className="flex items-center space-x-3 bg-purple-700 rounded-lg px-4 py-2 hover:bg-purple-600 transition-colors">
+                  <button className="flex items-center space-x-3 bg-green-700 rounded-lg px-4 py-2 hover:bg-green-600 transition-colors">
                     <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-purple-600" size={16} />
+                      <User className="text-green-600" size={16} />
                     </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
@@ -105,7 +103,7 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden text-white p-2 hover:bg-purple-700 rounded-md transition-colors"
+              className="lg:hidden text-white p-2 hover:bg-green-700 rounded-md transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -116,16 +114,14 @@ export default function Header() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-purple-400" style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        }}>
+        <div className="lg:hidden bg-primary border-t border-green-600">
           <div className="px-3 pt-3 pb-4 space-y-2">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`block px-3 py-2 text-white hover:bg-purple-700 rounded-md transition-colors ${
-                  location === item.href ? "bg-purple-700" : ""
+                className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-colors ${
+                  location === item.href ? "bg-green-700" : ""
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -133,14 +129,14 @@ export default function Header() {
               </Link>
             ))}
             {user && (
-              <div className="px-3 py-2 space-y-3 border-t border-purple-400 mt-3 pt-4">
+              <div className="px-3 py-2 space-y-3 border-t border-green-600 mt-3 pt-4">
                 <Link href="/profile">
                   <button 
-                    className="flex items-center space-x-2 bg-purple-700 rounded-lg px-3 py-2 w-full hover:bg-purple-600 transition-colors"
+                    className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-purple-600" size={14} />
+                      <User className="text-green-600" size={14} />
                     </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
