@@ -15,6 +15,7 @@ import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
 import UserProfilePage from "@/pages/user-profile";
 import AdminUploadPage from "@/pages/admin-upload";
+import AdminSettingsPage from "@/pages/admin-settings";
 import NotFoundPage from "./pages/not-found";
 import TermsPage from "./pages/terms";
 import PrivacyPage from "./pages/privacy";
@@ -34,6 +35,7 @@ function AppContent() {
             <Route path="/contact" component={ContactPage} />
             <Route path="/profile" component={UserProfilePage} />
             <Route path="/admin-upload" component={AdminUploadPage} />
+            <Route path="/admin/settings" component={AdminSettingsPage} />
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />
             <Route component={NotFoundPage} />

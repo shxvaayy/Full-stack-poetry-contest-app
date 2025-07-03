@@ -151,6 +151,26 @@ async function createTables() {
       );
     `);
 
+    console.log('🔨 Creating admin_settings table...');
+    await client.query(`
+      CREATE TABLE admin_settings (
+        id SERIAL PRIMARY KEY,
+        setting_key VARCHAR(100) NOT NULL UNIQUE,
+        setting_value TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    // Insert default settings
+    await client.query(`
+      INSERT INTO admin_settings (setting_key, setting_value, description)
+      VALUES 
+        ('free_tier_enabled', 'true', 'Enable or disable free tier submissions')
+      ON CONFLICT (setting_key) DO NOTHING;
+    `);
+
     console.log('📊 Creating indexes...');
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_uid ON users(uid);
@@ -176,7 +196,7 @@ async function createTables() {
 
     // Create triggers for all tables with updated_at
     console.log('🎯 Creating triggers for updated_at columns...');
-    const tablesWithUpdatedAt = ['users', 'submissions', 'contacts', 'coupons', 'contest_settings'];
+    const tablesWithUpdatedAt = ['users', 'submissions', 'contacts', 'coupons', 'contest_settings', 'admin_settings'];
 
     for (const table of tablesWithUpdatedAt) {
       await client.query(`

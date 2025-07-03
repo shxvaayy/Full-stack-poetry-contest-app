@@ -11,6 +11,7 @@ import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
 import { client } from './db.js';
+import { initializeAdminSettings, getSetting, updateSetting, getAllSettings } from './admin-settings.js';
 
 const router = Router();
 
@@ -108,6 +109,83 @@ router.get('/api/test', (req, res) => {
     email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
   });
 });
+
+// ===== ADMIN SETTINGS ENDPOINTS =====
+
+// Get admin settings
+router.get('/api/admin/settings', asyncHandler(async (req: any, res: any) => {
+  console.log('🔧 Getting admin settings...');
+  
+  try {
+    const settings = await getAllSettings();
+    const settingsObj = settings.reduce((acc, setting) => {
+      acc[setting.setting_key] = setting.setting_value;
+      return acc;
+    }, {} as Record<string, string>);
+    
+    res.json({
+      success: true,
+      settings: settingsObj
+    });
+  } catch (error) {
+    console.error('❌ Error getting admin settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get admin settings'
+    });
+  }
+}));
+
+// Update admin settings
+router.post('/api/admin/settings', asyncHandler(async (req: any, res: any) => {
+  console.log('🔧 Updating admin settings...');
+  const { settings } = req.body;
+  
+  if (!settings || typeof settings !== 'object') {
+    return res.status(400).json({
+      success: false,
+      error: 'Settings object is required'
+    });
+  }
+  
+  try {
+    const results = [];
+    
+    for (const [key, value] of Object.entries(settings)) {
+      const success = await updateSetting(key, String(value));
+      results.push({ key, value, success });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Settings updated successfully',
+      results
+    });
+  } catch (error) {
+    console.error('❌ Error updating admin settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update admin settings'
+    });
+  }
+}));
+
+// Get free tier status specifically
+router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
+  try {
+    const freeTierEnabled = await getSetting('free_tier_enabled');
+    res.json({
+      success: true,
+      enabled: freeTierEnabled === 'true'
+    });
+  } catch (error) {
+    console.error('❌ Error getting free tier status:', error);
+    res.json({
+      success: true,
+      enabled: true // Default to enabled if there's an error
+    });
+  }
+}));
 
 // Debug endpoint to test file uploads
 router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res: any) => {
@@ -789,6 +867,17 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       userUid // Also accept userUid as fallback
     } = req.body;
 
+    // Check if free tier is enabled
+    if (tier === 'free') {
+      const freeTierEnabled = await getSetting('free_tier_enabled');
+      if (freeTierEnabled !== 'true') {
+        return res.status(403).json({
+          success: false,
+          error: 'Free tier submissions are currently disabled. Please try a paid tier or contact support.'
+        });
+      }
+    }
+
     // Use uid or userUid (frontend might send either)
     const userId = uid || userUid;
 
@@ -1103,6 +1192,17 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         success: false,
         error: 'Missing required fields'
       });
+    }
+
+    // Check if free tier is enabled
+    if (tier === 'free') {
+      const freeTierEnabled = await getSetting('free_tier_enabled');
+      if (freeTierEnabled !== 'true') {
+        return res.status(403).json({
+          success: false,
+          error: 'Free tier submissions are currently disabled. Please try a paid tier or contact support.'
+        });
+      }
     }
 
     // Validate tier and poem count

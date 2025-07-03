@@ -298,6 +298,12 @@ export default function SubmitPage() {
     enabled: !!user?.uid,
   });
 
+  const { data: freeTierStatus } = useQuery({
+    queryKey: ['/api/free-tier-status'],
+    queryFn: () => apiRequest('/api/free-tier-status'),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
   const handleTierSelection = (tier: typeof TIERS[0]) => {
     setSelectedTier(tier);
     setDiscountedAmount(tier.price);
@@ -783,11 +789,27 @@ At Writory, every voice is gold.
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {TIERS.map((tier) => {
               const Icon = tier.icon;
+              const isFreeTierDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
+              
               return (
                 <Card 
                   key={tier.id} 
-                  className={`cursor-pointer transition-all duration-300 hover:scale-105 ${tier.borderClass} border-2 hover:shadow-xl`}
-                  onClick={() => handleTierSelection(tier)}
+                  className={`${
+                    isFreeTierDisabled 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : 'cursor-pointer hover:scale-105'
+                  } transition-all duration-300 ${tier.borderClass} border-2 hover:shadow-xl`}
+                  onClick={() => {
+                    if (isFreeTierDisabled) {
+                      toast({
+                        title: "Free Tier Disabled",
+                        description: "Free tier submissions are currently disabled. Please try a paid tier.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    handleTierSelection(tier);
+                  }}
                 >
                   <CardContent className="p-6 text-center">
                     <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
@@ -798,10 +820,28 @@ At Writory, every voice is gold.
                     <div className="text-2xl font-bold text-gray-800">
                       {tier.price === 0 ? 'Free' : `₹${tier.price}`}
                     </div>
+                    {isFreeTierDisabled && (
+                      <div className="mt-2 text-sm text-red-600 font-medium">
+                        Currently Disabled
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
-            })}
+            })}</div>
+
+          {freeTierStatus?.enabled === false && (
+            <div className="text-center mt-6">
+              <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 inline-block">
+                <p className="text-yellow-800 font-medium">
+                  🚫 Free tier submissions are currently disabled by the admin.
+                </p>
+                <p className="text-yellow-700 text-sm mt-1">
+                  Please choose a paid tier to submit your poem.
+                </p>
+              </div>
+            </div>
+          )}
           </div>
 
           <div className="text-center mt-8">

@@ -11,6 +11,7 @@ import { registerRoutes } from './routes.js';
 import { connectDatabase, client } from './db.js';
 import { createTables } from './migrate.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
+import { initializeAdminSettings } from './admin-settings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -163,11 +164,11 @@ async function initializeApp() {
 
     if (isFirstDeploy || isDevelopment) {
       console.log('🔧 Running database migrations...');
-      
+
       // Run coupon table migration
       await migrateCouponTable();
       console.log('✅ Coupon table migration completed');
-      
+
       // Run migrations to fix schema
       const migrationSuccess = await createTables();
 
@@ -399,6 +400,9 @@ async function initializeApp() {
     });
 
     // Step 7: Start the server
+    // Initialize admin settings
+    await initializeAdminSettings();
+
     const server = app.listen(PORT, () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -447,25 +451,25 @@ async function fixUserSubmissionLinks() {
       WHERE user_id IS NULL AND email IS NOT NULL
       ORDER BY submitted_at DESC
     `);
-    
+
     if (unlinkedSubmissions.rows.length === 0) {
       console.log('✅ No unlinked submissions found');
       return;
     }
-    
+
     console.log(`🔍 Found ${unlinkedSubmissions.rows.length} unlinked submissions`);
-    
+
     let linked = 0;
     let usersCreated = 0;
-    
+
     for (const submission of unlinkedSubmissions.rows) {
       // Try to find a user with this email
       let userResult = await client.query(`
         SELECT id, email FROM users WHERE email = $1
       `, [submission.email]);
-      
+
       let user;
-      
+
       if (userResult.rows.length > 0) {
         user = userResult.rows[0];
         console.log(`👤 Found existing user for ${submission.email}`);
@@ -482,7 +486,7 @@ async function fixUserSubmissionLinks() {
             submission.email,
             `${submission.first_name} ${submission.last_name || ''}`.trim()
           ]);
-          
+
           user = newUserResult.rows[0];
           usersCreated++;
           console.log(`✅ Created user account for ${submission.email}`);
@@ -491,7 +495,7 @@ async function fixUserSubmissionLinks() {
           continue; // Skip this submission
         }
       }
-      
+
       if (user) {
         // Link the submission to this user
         await client.query(`
@@ -499,31 +503,31 @@ async function fixUserSubmissionLinks() {
           SET user_id = $1 
           WHERE id = $2
         `, [user.id, submission.id]);
-        
+
         console.log(`✅ Linked submission ${submission.id} to user ${user.email}`);
         linked++;
       }
     }
-    
+
     if (linked > 0 || usersCreated > 0) {
       console.log(`🎉 Successfully processed ${unlinkedSubmissions.rows.length} submissions!`);
       console.log(`👥 Created ${usersCreated} new user accounts`);
       console.log(`🔗 Linked ${linked} submissions to users`);
-      
+
       // Show summary
       const totalLinked = await client.query(`
         SELECT COUNT(*) FROM submissions WHERE user_id IS NOT NULL
       `);
-      
+
       const totalUnlinked = await client.query(`
         SELECT COUNT(*) FROM submissions WHERE user_id IS NULL
       `);
-      
+
       console.log(`📊 Final Summary:`);
       console.log(`- Submissions linked to users: ${totalLinked.rows[0].count}`);
       console.log(`- Submissions without user links: ${totalUnlinked.rows[0].count}`);
     }
-    
+
   } catch (error) {
     console.error('⚠️ Warning: Could not fix user-submission links:', error.message);
     // Don't throw - this shouldn't stop server startup
