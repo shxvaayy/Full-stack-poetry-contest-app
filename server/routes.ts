@@ -212,26 +212,38 @@ router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, r
 // Get free tier status specifically
 router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
   try {
+    console.log('🔍 Checking free tier status...');
+    
     // Check if database is connected
     if (!process.env.DATABASE_URL) {
       console.log('⚠️ DATABASE_URL not configured, defaulting free tier to enabled');
       return res.json({
-        success: true,
+        success: true,e,
         enabled: true
       });
     }
 
+    // Get fresh setting from database
     const freeTierEnabled = await getSetting('free_tier_enabled');
     const isEnabled = freeTierEnabled === 'true' || freeTierEnabled === null; // Default to true if not set
     
     console.log('🔍 Free tier status check:', { 
       setting: freeTierEnabled, 
-      enabled: isEnabled 
+      enabled: isEnabled,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Set no-cache headers to ensure fresh data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
     
     res.json({
       success: true,
-      enabled: isEnabled
+      enabled: isEnabled,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ Error getting free tier status:', error);

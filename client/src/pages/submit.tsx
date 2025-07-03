@@ -308,12 +308,19 @@ export default function SubmitPage() {
     enabled: !!user?.uid,
   });
 
-  const { data: freeTierStatus } = useQuery({
+  const { data: freeTierStatus, refetch: refetchFreeTierStatus } = useQuery({
     queryKey: ['/api/free-tier-status'],
     queryFn: () => apiRequest('/api/free-tier-status'),
     staleTime: 0, // Always fetch fresh data
     cacheTime: 0, // Don't cache the result
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
+
+  // Refetch when component mounts to ensure fresh data
+  useEffect(() => {
+    refetchFreeTierStatus();
+  }, [refetchFreeTierStatus]);
 
   const handleTierSelection = (tier: typeof TIERS[0]) => {
     setSelectedTier(tier);
@@ -809,13 +816,19 @@ At Writory, every voice is gold.
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {TIERS.filter((tier) => {
-              // Hide free tier completely if disabled in config file OR admin settings
-              if (tier.id === 'free' && (
-                !FREE_ENTRY_ENABLED || 
-                !ENABLE_FREE_TIER || 
-                freeTierStatus?.enabled === false
-              )) {
-                return false;
+              // Hide free tier if disabled by admin settings (takes priority)
+              if (tier.id === 'free') {
+                // If admin settings explicitly disable it, hide regardless of config
+                if (freeTierStatus?.enabled === false) {
+                  return false;
+                }
+                // If admin settings not loaded yet or enabled, check config fallback
+                if (freeTierStatus === undefined || freeTierStatus?.enabled === true) {
+                  // Only check config if admin settings allow it or are not loaded
+                  if (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER) {
+                    return false;
+                  }
+                }
               }
               return true;
             }).map((tier) => {
@@ -843,18 +856,27 @@ At Writory, every voice is gold.
             })}
           </div>
 
-          {(freeTierStatus?.enabled === false || !FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER) && (
-            <div className="text-center mt-6">
-              <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 inline-block">
-                <p className="text-yellow-800 font-medium">
-                  🚫 Free tier submissions are currently disabled.
-                </p>
-                <p className="text-yellow-700 text-sm mt-1">
-                  Please choose a paid tier to submit your poem.
-                </p>
-              </div>
-            </div>
-          )}
+          {(() => {
+            // Check if free tier should be hidden and show appropriate message
+            const adminDisabled = freeTierStatus?.enabled === false;
+            const configDisabled = !FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER;
+            
+            if (adminDisabled || (freeTierStatus === undefined && configDisabled)) {
+              return (
+                <div className="text-center mt-6">
+                  <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 inline-block">
+                    <p className="text-yellow-800 font-medium">
+                      🚫 Free tier submissions are currently disabled{adminDisabled ? ' by admin' : ''}.
+                    </p>
+                    <p className="text-yellow-700 text-sm mt-1">
+                      Please choose a paid tier to submit your poem.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <div className="text-center mt-8">
             <p className="text-gray-600">

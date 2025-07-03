@@ -116,8 +116,13 @@ export default function AdminSettingsPage() {
       }
         toast({
           title: "Success",
-          description: "Admin settings updated successfully!",
+          description: "Admin settings updated successfully! Changes are now live.",
         });
+        
+        // Force a reload of the current settings to ensure UI reflects changes
+        setTimeout(() => {
+          loadSettings();
+        }, 500);
     } catch (error: any) {
       console.error('❌ Error saving settings:', error);
       toast({
