@@ -66,7 +66,6 @@ export default function Header() {
               ))}
             </div>
           </nav>
-          </nav>
 
           {/* User Section - Right */}
           <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
