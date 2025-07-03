@@ -1,6 +1,6 @@
 // Coupon codes configuration
-export const IS_FIRST_MONTH = true; // Change this to false for second month onwards
-export const FREE_ENTRY_ENABLED = true; // Set to false to disable free entry tier completely
+export const IS_FIRST_MONTH = false; // Change this to false for second month onwards
+export const FREE_ENTRY_ENABLED = false; // Set to false to disable free entry tier completely
 
 // Free tier control - Set to false to disable free tier for everyone
 export const ENABLE_FREE_TIER = false; // Change this to false to disable free tier completely
