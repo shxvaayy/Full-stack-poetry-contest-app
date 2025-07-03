@@ -71,7 +71,7 @@ export default function Header() {
                 <Link href="/profile">
                   <button className="flex items-center space-x-2 bg-yellow-700 rounded-lg px-2 xl:px-3 py-1 xl:py-2 hover:bg-yellow-600 transition-colors">
                     <div className="w-6 h-6 xl:w-8 xl:h-8 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={14} />
+                      <User className="text-yellow-600" size={14} />
                     </div>
                     <span className="text-white text-xs xl:text-sm font-medium hidden xl:block">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
@@ -136,7 +136,7 @@ export default function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                      <User className="text-green-600" size={14} />
+                      <User className="text-yellow-600" size={14} />
                     </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
