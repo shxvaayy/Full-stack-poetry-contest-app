@@ -14,7 +14,7 @@ export default function Footer() {
 
   return (
     <footer className="text-white py-12" style={{
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)'
     }}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid md:grid-cols-3 gap-8">
@@ -77,7 +77,7 @@ export default function Footer() {
         </div>
 
         {/* Social Media & Copyright */}
-        <div className="border-t border-purple-400 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-green-400 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex space-x-4 mb-4 md:mb-0">
             <a href="https://x.com/writoryofficial" className="text-gray-300 hover:text-white transition-colors">
               <Twitter size={20} />
