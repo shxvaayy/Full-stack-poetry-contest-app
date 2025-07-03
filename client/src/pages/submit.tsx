@@ -311,7 +311,8 @@ export default function SubmitPage() {
   const { data: freeTierStatus } = useQuery({
     queryKey: ['/api/free-tier-status'],
     queryFn: () => apiRequest('/api/free-tier-status'),
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0, // Don't cache the result
   });
 
   const handleTierSelection = (tier: typeof TIERS[0]) => {
@@ -823,7 +824,7 @@ At Writory, every voice is gold.
                     if (isFreeTierDisabled) {
                       toast({
                         title: "Free Tier Disabled",
-                        description: "Free tier submissions are currently disabled. Please try a paid tier.",
+                        description: "Free tier submissions are currently disabled by the admin. Please choose a paid tier to submit your poem.",
                         variant: "destructive",
                       });
                       return;

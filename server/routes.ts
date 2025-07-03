@@ -213,9 +213,16 @@ router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, r
 router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
   try {
     const freeTierEnabled = await getSetting('free_tier_enabled');
+    const isEnabled = freeTierEnabled === 'true';
+    
+    console.log('🔍 Free tier status check:', { 
+      setting: freeTierEnabled, 
+      enabled: isEnabled 
+    });
+    
     res.json({
       success: true,
-      enabled: freeTierEnabled === 'true'
+      enabled: isEnabled
     });
   } catch (error) {
     console.error('❌ Error getting free tier status:', error);
