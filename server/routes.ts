@@ -41,23 +41,37 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   const userEmail = req.headers['x-user-email'];
   
+  console.log('🔐 Admin auth check:', { userEmail, authHeader: !!authHeader });
+  
   if (!userEmail) {
+    console.log('❌ No user email provided');
     return res.status(401).json({
       success: false,
       error: 'User email required for admin access'
     });
   }
 
-  const adminAccess = await isAdmin(userEmail as string);
-  
-  if (!adminAccess) {
-    return res.status(403).json({
+  try {
+    const adminAccess = await isAdmin(userEmail as string);
+    console.log('🔍 Admin access result:', { userEmail, adminAccess });
+    
+    if (!adminAccess) {
+      console.log('❌ Admin access denied for:', userEmail);
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
+    console.log('✅ Admin access granted for:', userEmail);
+    next();
+  } catch (error) {
+    console.error('❌ Admin auth error:', error);
+    return res.status(500).json({
       success: false,
-      error: 'Admin access required'
+      error: 'Authentication error'
     });
   }
-
-  next();
 });
 
 // SAFER: Configure multer with better error handling
@@ -1898,6 +1912,47 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
 
   } catch (error) {
     console.error('❌ Manual linking failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}));
+
+// Debug endpoint to check admin status
+router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) => {
+  const userEmail = req.headers['x-user-email'];
+  
+  try {
+    console.log('🔍 Debug admin status check for:', userEmail);
+    
+    if (!userEmail) {
+      return res.json({
+        success: false,
+        error: 'No user email provided in headers',
+        headers: req.headers
+      });
+    }
+
+    // Check all admin users
+    const allAdmins = await client.query('SELECT email, role, created_at FROM admin_users ORDER BY created_at DESC');
+    
+    // Check specific user
+    const userAdmin = await client.query('SELECT * FROM admin_users WHERE email = $1', [userEmail]);
+    
+    const isAdminUser = await isAdmin(userEmail as string);
+    
+    res.json({
+      success: true,
+      userEmail,
+      isAdmin: isAdminUser,
+      userAdminRecord: userAdmin.rows[0] || null,
+      allAdmins: allAdmins.rows,
+      totalAdmins: allAdmins.rows.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Admin status debug error:', error);
     res.status(500).json({
       success: false,
       error: error.message

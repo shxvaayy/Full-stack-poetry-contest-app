@@ -28,18 +28,27 @@ export default function AdminSettingsPage() {
   const loadSettings = async () => {
     try {
       setLoading(true);
+
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      console.log('🔐 Loading settings with user email:', user.email);
+
       const response = await fetch('/api/admin/settings', {
         headers: {
-          'X-User-Email': user?.email || '',
-        }
+          'x-user-email': user.email,
+        },
       });
       const data = await response.json();
 
-      if (data.success) {
-        setSettings(data.settings);
-      } else {
+      console.log('📊 Load response:', data);
+
+      if (!response.ok) {
         throw new Error(data.error || 'Failed to load settings');
       }
+
+      setSettings(data.settings || {});
     } catch (error: any) {
       console.error('❌ Error loading settings:', error);
       toast({
@@ -53,28 +62,34 @@ export default function AdminSettingsPage() {
   };
 
   const saveSettings = async () => {
-    setSaving(true);
     try {
+      setSaving(true);
+
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      console.log('🔐 Saving settings with user email:', user.email);
+
       const response = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Email': user?.email || '',
+          'x-user-email': user.email,
         },
         body: JSON.stringify({ settings }),
-        credentials: 'same-origin'
       });
 
       const data = await response.json();
+      console.log('📊 Save response:', data);
 
-      if (data.success) {
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save settings');
+      }
         toast({
           title: "Success",
           description: "Admin settings updated successfully!",
         });
-      } else {
-        throw new Error(data.error || 'Failed to save settings');
-      }
     } catch (error: any) {
       console.error('❌ Error saving settings:', error);
       toast({
