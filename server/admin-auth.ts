@@ -41,11 +41,10 @@ export async function initializeAdminUsers() {
 
     // Add default admin users
     const defaultAdmins = [
+      'shivaaymehra2@gmail.com',
+      'shiningbhavya.seth@gmail.com',
       'writorycontest@gmail.com',
-      'admin@writory.com',
-      'your-email@gmail.com',  // Add your actual email here
-      'shivaaymehra@gmail.com',
-      'shiningbhavya.seth@gmail.com'
+      'admin@writory.com'
     ];
 
     for (const email of defaultAdmins) {
@@ -159,9 +158,9 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
   // Define admin emails - add your email here
   const adminEmails = [
-    'admin@writory.com',
+    'shivaaymehra2@gmail.com',
     'shiningbhavya.seth@gmail.com',
-    'shivaaymehra2@gmail.com' // Replace with your actual admin email
+    'admin@writory.com'
   ];
 
   if (!adminEmails.includes(userEmail)) {

@@ -21,6 +21,33 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Check if user is admin
+  const adminEmails = [
+    'shivaaymehra2@gmail.com',
+    'shiningbhavya.seth@gmail.com'
+  ];
+  const isAdmin = user?.email && adminEmails.includes(user.email);
+
+  // Redirect if not admin
+  if (!loading && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Card className="shadow-xl">
+            <CardContent className="p-6 text-center">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p className="text-gray-600 mb-4">You don't have permission to access admin settings.</p>
+              <Button onClick={() => window.location.href = '/'}>
+                Go Home
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   // Load current settings
   useEffect(() => {
     loadSettings();

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
 import ChatbotWidget from "@/components/ChatbotWidget";
+import { Upload, Settings } from 'lucide-react';
 
 export default function HomePage() {
   // Fetch total submission count for live poets count

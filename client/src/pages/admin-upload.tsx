@@ -22,7 +22,11 @@ export default function AdminUpload() {
   const [result, setResult] = useState<UploadResult | null>(null);
 
   // Check if user is admin
-  const isAdmin = user?.email === 'shivaaymehra2@gmail.com';
+  const adminEmails = [
+    'shivaaymehra2@gmail.com',
+    'shiningbhavya.seth@gmail.com'
+  ];
+  const isAdmin = user?.email && adminEmails.includes(user.email);
 
   if (!user) {
     return (
