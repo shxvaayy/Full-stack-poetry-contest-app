@@ -1,9 +1,13 @@
 // Coupon codes configuration
 export const IS_FIRST_MONTH = true; // Change this to false for second month onwards
-export const FREE_ENTRY_ENABLED = true; // Set to false to disable free entry tier completely
 
-// Free tier control - Set to false to disable free tier for everyone
-export const ENABLE_FREE_TIER = true; // Change this to false to disable free tier completely
+// FREE TIER VISIBILITY CONTROLS
+// Set BOTH to false to completely hide the free tier option from all users
+export const FREE_ENTRY_ENABLED = true; // Master control for free tier visibility
+export const ENABLE_FREE_TIER = false; // Secondary control for free tier availability
+
+// Note: If either FREE_ENTRY_ENABLED or ENABLE_FREE_TIER is false, 
+// the free tier will not be visible to users at all
 
 // Free tier unlock codes (now work as 100% discount on ₹50 tier only)
 export const FREE_TIER_CODES = [

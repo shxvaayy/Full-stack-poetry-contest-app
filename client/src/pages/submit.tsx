@@ -11,7 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH } from "./coupon-codes";
+import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
 
 const TIERS = [
   { 
@@ -601,18 +601,15 @@ export default function SubmitPage() {
         // IMMEDIATE success feedback - no waiting for background tasks
         setSubmissionStatus("🎉 Submission complete! Processing confirmation email...");
 
-        // Save submission details BEFORE clearing form data - this is critical
-        const currentSubmissionDetails = {
+        // Save submission details before clearing form data
+        setSubmissionDetails({
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
           poemTitle: formData.poemTitle,
           tier: selectedTier?.name || "",
           amount: discountedAmount,
-        };
-        
-        console.log('💾 Saving submission details:', currentSubmissionDetails);
-        setSubmissionDetails(currentSubmissionDetails);
+        });
 
         // Clear form data immediately after successful submission
         setFormData({
@@ -811,9 +808,19 @@ At Writory, every voice is gold.
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {TIERS.map((tier) => {
+            {TIERS.filter((tier) => {
+              // Hide free tier completely if disabled in config file
+              if (tier.id === 'free' && (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER)) {
+                return false;
+              }
+              return true;
+            }).map((tier) => {
               const Icon = tier.icon;
-              const isFreeTierDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
+              const isFreeTierDisabled = tier.id === 'free' && (
+                freeTierStatus?.enabled === false || 
+                !FREE_ENTRY_ENABLED || 
+                !ENABLE_FREE_TIER
+              );
 
               return (
                 <Card 
@@ -827,7 +834,7 @@ At Writory, every voice is gold.
                     if (isFreeTierDisabled) {
                       toast({
                         title: "Free Tier Disabled",
-                        description: "Free tier submissions are currently disabled by the admin. Please choose a paid tier to submit your poem.",
+                        description: "Free tier submissions are currently disabled. Please choose a paid tier to submit your poem.",
                         variant: "destructive",
                       });
                       return;
@@ -855,11 +862,11 @@ At Writory, every voice is gold.
             })}
           </div>
 
-          {freeTierStatus?.enabled === false && (
+          {(freeTierStatus?.enabled === false || !FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER) && (
             <div className="text-center mt-6">
               <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 inline-block">
                 <p className="text-yellow-800 font-medium">
-                  🚫 Free tier submissions are currently disabled by the admin.
+                  🚫 Free tier submissions are currently disabled.
                 </p>
                 <p className="text-yellow-700 text-sm mt-1">
                   Please choose a paid tier to submit your poem.
