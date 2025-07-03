@@ -12,6 +12,7 @@ import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mai
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
 import { client } from './db.js';
 import { initializeAdminSettings, getSetting, updateSetting, getAllSettings } from './admin-settings.js';
+import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
 const router = Router();
 
@@ -34,6 +35,30 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
     }
   });
 };
+
+// Admin authentication middleware
+const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  const userEmail = req.headers['x-user-email'];
+  
+  if (!userEmail) {
+    return res.status(401).json({
+      success: false,
+      error: 'User email required for admin access'
+    });
+  }
+
+  const adminAccess = await isAdmin(userEmail as string);
+  
+  if (!adminAccess) {
+    return res.status(403).json({
+      success: false,
+      error: 'Admin access required'
+    });
+  }
+
+  next();
+});
 
 // SAFER: Configure multer with better error handling
 const upload = multer({ 
@@ -113,7 +138,7 @@ router.get('/api/test', (req, res) => {
 // ===== ADMIN SETTINGS ENDPOINTS =====
 
 // Get admin settings
-router.get('/api/admin/settings', asyncHandler(async (req: any, res: any) => {
+router.get('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, res: any) => {
   console.log('🔧 Getting admin settings...');
   
   try {
@@ -137,7 +162,7 @@ router.get('/api/admin/settings', asyncHandler(async (req: any, res: any) => {
 }));
 
 // Update admin settings
-router.post('/api/admin/settings', asyncHandler(async (req: any, res: any) => {
+router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, res: any) => {
   console.log('🔧 Updating admin settings...');
   const { settings } = req.body;
   
@@ -1682,7 +1707,7 @@ router.get('/api/legacy-submissions', asyncHandler(async (req: any, res: any) =>
 }));
 
 // Admin CSV upload endpoint
-router.post('/api/admin/upload-csv', upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
+router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
   console.log('📊 Admin CSV upload request received');
 
   if (!req.file) {

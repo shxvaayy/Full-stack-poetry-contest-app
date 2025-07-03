@@ -95,6 +95,9 @@ export default function AdminUpload() {
 
       const response = await fetch('/api/admin/upload-csv', {
         method: 'POST',
+        headers: {
+          'X-User-Email': user?.email || '',
+        },
         body: formData,
       });
 

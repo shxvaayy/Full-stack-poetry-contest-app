@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,8 @@ export default function AdminSettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+    // Assuming 'user' is available in this scope, you might need to fetch it or pass it as a prop
+    const user = { email: 'example@example.com' }; // Replace with actual user object
 
   // Load current settings
   useEffect(() => {
@@ -27,7 +28,11 @@ export default function AdminSettingsPage() {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/settings');
+      const response = await fetch('/api/admin/settings', {
+        headers: {
+          'X-User-Email': user?.email || '',
+        }
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -48,12 +53,13 @@ export default function AdminSettingsPage() {
   };
 
   const saveSettings = async () => {
+    setSaving(true);
     try {
-      setSaving(true);
       const response = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-User-Email': user?.email || '',
         },
         body: JSON.stringify({ settings }),
         credentials: 'same-origin'
@@ -119,7 +125,7 @@ export default function AdminSettingsPage() {
             <CardTitle>Submission Controls</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            
+
             {/* Free Tier Toggle */}
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex-1">

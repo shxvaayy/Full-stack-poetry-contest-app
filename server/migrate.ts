@@ -180,6 +180,7 @@ async function createTables() {
       CREATE INDEX IF NOT EXISTS idx_submissions_uuid ON submissions(submission_uuid);
       CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code);
       CREATE INDEX IF NOT EXISTS idx_coupon_usage_coupon_id ON coupon_usage(coupon_id);
+      CREATE INDEX IF NOT EXISTS idx_admin_settings_key ON admin_settings(setting_key);
     `);
 
     // Create trigger function for updating updated_at columns
@@ -194,9 +195,28 @@ async function createTables() {
       $$ language 'plpgsql';
     `);
 
+    console.log('🔨 Creating admin_users table...');
+    await client.query(`
+      CREATE TABLE admin_users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        role VARCHAR(50) DEFAULT 'admin' NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    // Insert default admin users
+    await client.query(`
+      INSERT INTO admin_users (email, role)
+      VALUES 
+        ('shiningbhavya.seth@gmail.com', 'admin')
+      ON CONFLICT (email) DO NOTHING;
+    `);
+
     // Create triggers for all tables with updated_at
     console.log('🎯 Creating triggers for updated_at columns...');
-    const tablesWithUpdatedAt = ['users', 'submissions', 'contacts', 'coupons', 'contest_settings', 'admin_settings'];
+    const tablesWithUpdatedAt = ['users', 'submissions', 'contacts', 'coupons', 'contest_settings', 'admin_settings', 'admin_users'];
 
     for (const table of tablesWithUpdatedAt) {
       await client.query(`

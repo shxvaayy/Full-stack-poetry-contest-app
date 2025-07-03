@@ -165,6 +165,25 @@ export const adminLogs = pgTable('admin_logs', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// ✅ Admin settings - Store toggle settings
+export const adminSettings = pgTable('admin_settings', {
+  id: serial('id').primaryKey(),
+  settingKey: varchar('setting_key', { length: 100 }).notNull().unique(),
+  settingValue: text('setting_value').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// ✅ Admin users - Store admin user access
+export const adminUsers = pgTable('admin_users', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  role: varchar('role', { length: 50 }).default('admin').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
 // ✅ Define relationships
 export const usersRelations = relations(users, ({ many }) => ({
   submissions: many(submissions),
@@ -213,6 +232,10 @@ export type ContestSettings = typeof contestSettings.$inferSelect;
 export type NewContestSettings = typeof contestSettings.$inferInsert;
 export type AdminLog = typeof adminLogs.$inferSelect;
 export type NewAdminLog = typeof adminLogs.$inferInsert;
+export type AdminSettings = typeof adminSettings.$inferSelect;
+export type NewAdminSettings = typeof adminSettings.$inferInsert;
+export type AdminUsers = typeof adminUsers.$inferSelect;
+export type NewAdminUsers = typeof adminUsers.$inferInsert;
 
 // ✅ Export database schema
 export const schema = {
@@ -223,6 +246,8 @@ export const schema = {
   couponUsage,
   contestSettings,
   adminLogs,
+  adminSettings,
+  adminUsers,
   usersRelations,
   submissionsRelations,
   couponsRelations,

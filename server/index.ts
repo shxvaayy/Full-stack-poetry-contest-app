@@ -401,7 +401,13 @@ async function initializeApp() {
 
     // Step 7: Start the server
     // Initialize admin settings
+    console.log('🔧 Initializing admin settings...');
     await initializeAdminSettings();
+
+    // Initialize admin users
+    console.log('🔧 Initializing admin users...');
+    const { initializeAdminUsers } = await import('./admin-auth.js');
+    await initializeAdminUsers();
 
     const server = app.listen(PORT, () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');

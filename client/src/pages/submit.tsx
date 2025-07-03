@@ -1039,7 +1039,7 @@ At Writory, every voice is gold.
                       privacy policy
                     </a>{" "}
                     *
-                                    </Label>
+                  </Label>
                 </div>
 
                 {/* Submit Buttons */}
