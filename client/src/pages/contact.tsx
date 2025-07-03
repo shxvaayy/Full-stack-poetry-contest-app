@@ -166,7 +166,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold text-gray-900">Updates</h3>
                     <p className="text-sm text-gray-500">
-                      For information regarding result announcements, award ceremonies or updates on the status of books,
+                      For information regarding result announcements, award ceremonies or updates,
                       kindly check our news section under 'About Us'.
                     </p>
                   </div>
