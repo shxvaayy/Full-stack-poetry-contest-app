@@ -30,47 +30,34 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero Section */}
-      <section 
-        className="relative min-h-screen flex items-center justify-center text-white"
+      {/* Hero Section with Poetry-themed Background */}
+      <section
+        className="relative min-h-screen flex items-center justify-center"
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #166534 100%)',
+          backgroundImage: "url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-green-900/30"></div>
-
-        {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-xl"></div>
-          <div className="absolute top-1/3 -left-20 w-60 h-60 bg-white/5 rounded-full blur-2xl"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-        </div>
-
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-blue-900/70 to-indigo-900/80"></div>
+        <div className="relative z-10 text-center text-white px-4">
+          <div className="w-24 h-24 mx-auto mb-6">
             <img 
-              src="/WRITORY_LOGO_edited-removebg-preview_1750599565240.png" 
+              src={logoImage} 
               alt="Writory Logo" 
-              className="h-20 md:h-24 lg:h-28 object-contain"
+              className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
-
-          {/* Main Title */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white">
             WRITORY
           </h1>
+          <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100">Write Your Own Victory</p>
 
-          {/* Main Tagline */}
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-8 text-yellow-300">
-            Write Your Own Victory
-          </h2>
-
-          {/* Animated Tagline */}
-          <div className="mb-8 h-16 flex items-center justify-center">
-            <p className="text-lg md:text-xl lg:text-2xl text-gray-200 animate-pulse">
-              🎭 Poetry Revolution • ✍️ Write Your Own Victory • 🎪 Participate Now • 📚 Celebrate Literature •
-            </p>
+          {/* Moving Tagline */}
+          <div className="overflow-hidden bg-black/40 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/20">
+            <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
+              <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
+            </div>
           </div>
 
           <Link href="/submit">

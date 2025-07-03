@@ -836,18 +836,25 @@ export default function SubmitPage() {
               return (
                 <Card 
                   key={tier.id} 
-                  className={`cursor-pointer hover:scale-105 transition-all duration-300 ${tier.borderClass} border-2 hover:shadow-xl`}
-                  onClick={() => handleTierSelection(tier)}
+                  className={`hover:scale-105 transition-all duration-300 ${tier.borderClass} border-2 hover:shadow-xl overflow-hidden`}
                 >
-                  <CardContent className="p-6 text-center">
-                    <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
-                      <Icon className="w-8 h-8 text-white" />
+                  <CardContent className="p-0">
+                    <div className="p-6 text-center bg-white">
+                      <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
+                        <Icon className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-800 mb-2">{tier.name}</h3>
+                      <div className="text-2xl font-bold text-gray-800 mb-2">
+                        {tier.price === 0 ? '₹0' : `₹${tier.price}`}
+                      </div>
+                      <p className="text-gray-600 mb-4">{tier.description}</p>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">{tier.name}</h3>
-                    <p className="text-gray-600 mb-4">{tier.description}</p>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {tier.price === 0 ? 'Free' : `₹${tier.price}`}
-                    </div>
+                    <button
+                      onClick={() => handleTierSelection(tier)}
+                      className={`w-full py-3 px-4 text-white font-medium ${tier.bgClass} ${tier.hoverClass} transition-colors duration-200`}
+                    >
+                      Submit {tier.id === 'single' ? '1 Poem' : tier.id === 'double' ? '2 Poems' : tier.id === 'bulk' ? '5 Poems' : 'Free Entry'}
+                    </button>
                   </CardContent>
                 </Card>
               );
