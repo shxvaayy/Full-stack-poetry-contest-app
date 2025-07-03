@@ -1,5 +1,6 @@
-
 import { client, connectDatabase } from './db.js';
+import { Request, Response } from 'express';
+import { db, adminSettings, eq } from 'drizzle-orm';
 
 export interface AdminSettings {
   id: number;
@@ -12,7 +13,7 @@ export interface AdminSettings {
 export async function initializeAdminSettings() {
   try {
     await connectDatabase();
-    
+
     // Create admin_settings table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS admin_settings (
@@ -44,7 +45,7 @@ export async function getSetting(key: string): Promise<string | null> {
       'SELECT setting_value FROM admin_settings WHERE setting_key = $1',
       [key]
     );
-    
+
     return result.rows.length > 0 ? result.rows[0].setting_value : null;
   } catch (error) {
     console.error('❌ Error getting setting:', error);
@@ -61,7 +62,7 @@ export async function updateSetting(key: string, value: string): Promise<boolean
       ON CONFLICT (setting_key) 
       DO UPDATE SET setting_value = $2, updated_at = NOW()
     `, [key, value]);
-    
+
     console.log(`✅ Updated setting ${key} to ${value}`);
     return true;
   } catch (error) {
@@ -78,5 +79,42 @@ export async function getAllSettings(): Promise<AdminSettings[]> {
   } catch (error) {
     console.error('❌ Error getting all settings:', error);
     return [];
+  }
+}
+
+export async function updateAdminSettings(req: Request, res: Response) {
+  try {
+    const { freeTierEnabled } = req.body;
+
+    console.log('Received admin settings update:', { freeTierEnabled });
+
+    if (typeof freeTierEnabled !== 'boolean') {
+      return res.status(400).json({ error: 'Invalid settings data - freeTierEnabled must be boolean' });
+    }
+
+    // Ensure settings record exists
+    const existingSettings = await db.select().from(adminSettings).where(eq(adminSettings.id, 1));
+
+    if (existingSettings.length === 0) {
+      // Create initial settings record
+      await db.insert(adminSettings).values({
+        id: 1,
+        freeTierEnabled,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    } else {
+      // Update existing settings
+      await db.update(adminSettings).set({
+        freeTierEnabled,
+        updatedAt: new Date()
+      }).where(eq(adminSettings.id, 1));
+    }
+
+    console.log('Admin settings updated successfully');
+    res.json({ success: true, message: 'Settings updated successfully' });
+  } catch (error) {
+    console.error('Error updating admin settings:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
   }
 }
