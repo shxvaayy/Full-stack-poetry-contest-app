@@ -65,3 +65,121 @@ export default function Header() {
                 </Link>
               ))}
             </div>
+          </nav>
+          </nav>
+
+          {/* User Section - Right */}
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
+            {user ? (
+              <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
+                {/* User Profile Button */}
+                <Link href="/profile">
+                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
+                    <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="text-green-600" size={14} />
+                    </div>
+                    <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
+                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                    </span>
+                  </button>
+                </Link>
+                {/* Logout Button */}
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  size="sm"
+                  className="text-white border-white px-2 lg:px-3 py-1.5 lg:py-2 bg-transparent hover:bg-white hover:text-primary focus:bg-white focus:text-primary text-xs lg:text-sm"
+                >
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center">
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white border-white hover:bg-white hover:text-primary px-2 lg:px-3 py-1.5 lg:py-2 text-xs lg:text-sm"
+                  >
+                    Login
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <button
+              className="xl:hidden text-white p-1.5 sm:p-2 hover:bg-green-700 rounded-md transition-colors flex-shrink-0"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="xl:hidden bg-primary border-t border-green-600">
+          <div className="px-3 pt-3 pb-4 space-y-2">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-colors ${
+                  location === item.href ? "bg-green-700" : ""
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.name}
+              </Link>
+            ))}
+            
+            {/* Mobile User Section */}
+            {user ? (
+              <div className="px-3 py-2 space-y-3 border-t border-green-600 mt-3 pt-4">
+                <Link href="/profile">
+                  <button 
+                    className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                      <User className="text-green-600" size={14} />
+                    </div>
+                    <span className="text-white text-sm font-medium">
+                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                    </span>
+                  </button>
+                </Link>
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-white border-white bg-transparent hover:bg-white hover:text-primary focus:bg-white focus:text-primary"
+                >
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="px-3 py-2 border-t border-green-600 mt-3 pt-4">
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-white border-white hover:bg-white hover:text-primary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Login
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
