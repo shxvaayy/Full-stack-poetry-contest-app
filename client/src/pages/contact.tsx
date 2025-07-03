@@ -135,8 +135,8 @@ export default function ContactPage() {
 
               <div className="space-y-6">
                 <div className="flex items-start">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mr-4 mt-1 shadow-lg">
-                    <Mail className="text-white" size={24} />
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mr-4 mt-1 shadow-lg">
+                    <Mail className="text-white" size={20} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Email</h3>
@@ -146,8 +146,8 @@ export default function ContactPage() {
                 </div>
 
                 <div className="flex items-start">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mr-4 mt-1 shadow-lg">
-                    <Phone className="text-white" size={24} />
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mr-4 mt-1 shadow-lg">
+                    <Phone className="text-white" size={20} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">WhatsApp</h3>
@@ -160,8 +160,8 @@ export default function ContactPage() {
                 </div>
 
                 <div className="flex items-start">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-4 mt-1 shadow-lg">
-                    <Info className="text-white" size={24} />
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mr-4 mt-1 shadow-lg">
+                    <Info className="text-white" size={20} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Theme updates</h3>
