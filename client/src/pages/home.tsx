@@ -34,12 +34,12 @@ export default function HomePage() {
       <section
         className="relative min-h-screen flex items-center justify-center"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
+          backgroundImage: "url('https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-blue-900/70 to-indigo-900/80"></div>
         <div className="relative z-10 text-center text-white px-4">
           <div className="w-24 h-24 mx-auto mb-6">
             <img 
