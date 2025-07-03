@@ -828,7 +828,8 @@ At Writory, every voice is gold.
                   </CardContent>
                 </Card>
               );
-            })}</div>
+            })}
+          </div>
 
           {freeTierStatus?.enabled === false && (
             <div className="text-center mt-6">
@@ -842,7 +843,6 @@ At Writory, every voice is gold.
               </div>
             </div>
           )}
-          </div>
 
           <div className="text-center mt-8">
             <p className="text-gray-600">
