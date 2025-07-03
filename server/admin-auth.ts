@@ -1,4 +1,5 @@
 import { client, connectDatabase } from './db.js';
+import { Request, Response, NextFunction } from 'express';
 
 export interface AdminUser {
   id: number;
@@ -146,4 +147,28 @@ export async function getAllAdminUsers(): Promise<AdminUser[]> {
     console.error('❌ Error getting admin users:', error);
     return [];
   }
+}
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const userId = req.headers['x-user-id'] as string;
+  const userEmail = req.headers['x-user-email'] as string;
+
+  if (!userId || !userEmail) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  // Define admin emails - add your email here
+  const adminEmails = [
+    'admin@writory.com',
+    'shiningbhavya.seth@gmail.com',
+    'shivaaymehra2@gmail.com' // Replace with your actual admin email
+  ];
+
+  if (!adminEmails.includes(userEmail)) {
+    console.log(`Access denied for email: ${userEmail}. Admin emails:`, adminEmails);
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  console.log(`Admin access granted for: ${userEmail}`);
+  next();
 }
