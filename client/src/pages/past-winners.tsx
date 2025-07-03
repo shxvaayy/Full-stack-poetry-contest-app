@@ -21,9 +21,9 @@ export default function PastWinnersPage() {
 
   // Winner data - you can change these names and scores
   const winners = {
-    1: { name: "Winners name", score: 0 },
-    2: { name: "Winners name", score: 0 },
-    3: { name: "Winners name", score: 0 }
+    1: { name: "Winner's name", score: 0 },
+    2: { name: "Winner's name", score: 0 },
+    3: { name: "Winner's name", score: 0 }
   };
 
   useEffect(() => {
