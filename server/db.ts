@@ -1,15 +1,27 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client } from 'pg';
 
-// Database configuration - check will happen during connection
-let connectionString: string;
+// Database configuration
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
 
 console.log('🔍 Database Configuration:');
 console.log('- DATABASE_URL exists:', !!connectionString);
 console.log('- Environment:', process.env.NODE_ENV);
 
-// Create client but don't connect yet - will be initialized in connectDatabase
-let client: Client;
+// Create client but don't connect yet
+const client = new Client({
+  connectionString,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false 
+  } : false,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  query_timeout: 60000,
+});
 
 // Global connection state
 let connectionPromise: Promise<void> | null = null;
@@ -19,14 +31,6 @@ const MAX_CONNECTION_ATTEMPTS = 3;
 
 // Single connection function with retry logic
 async function connectDatabase() {
-  // Check DATABASE_URL here instead of at module import time
-  if (!connectionString) {
-    connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is required');
-    }
-  }
-
   if (isConnected) {
     // Test connection to make sure it's still alive
     try {
@@ -53,19 +57,6 @@ async function connectDatabase() {
 
   connectionPromise = (async () => {
     let lastError;
-
-    // Initialize client if not already done
-    if (!client) {
-      client = new Client({
-        connectionString,
-        ssl: process.env.NODE_ENV === 'production' ? { 
-          rejectUnauthorized: false 
-        } : false,
-        connectionTimeoutMillis: 10000,
-        idleTimeoutMillis: 30000,
-        query_timeout: 60000,
-      });
-    }
 
     for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
       try {
