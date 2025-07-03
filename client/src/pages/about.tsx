@@ -37,7 +37,6 @@ export default function AboutPage() {
                 <p className="text-gray-700 mb-2">
                   We are excited to launch the first-ever POETRY CONTEST in 2025! Submit your original poems in English for a chance to win certificates, recognition, and cash prizes.
                 </p>
-                <p className="text-sm text-gray-500">Published: January 1, 2025</p>
               </div>
 
               <div className="border-l-4 border-blue-500 pl-6">
@@ -45,7 +44,7 @@ export default function AboutPage() {
                 <p className="text-gray-700 mb-2">
                   Celebrating the art of poetry and nurturing emerging voices. Our inaugural competition welcomes poets of all backgrounds to share their unique stories with the world.
                 </p>
-                <p className="text-sm text-gray-500">Published: January 15, 2025</p>
+                
               </div>
 
               <div className="border-l-4 border-green-500 pl-6">
@@ -53,7 +52,7 @@ export default function AboutPage() {
                 <p className="text-gray-700 mb-2">
                   Every participant gets their first poem submission absolutely free! Additional entries are available at affordable rates to encourage multiple submissions.
                 </p>
-                <p className="text-sm text-gray-500">Published: February 1, 2025</p>
+                
               </div>
             </div>
           </CardContent>

@@ -164,9 +164,9 @@ export default function ContactPage() {
                     <Info className="text-white" size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Updates</h3>
+                    <h3 className="font-semibold text-gray-900">Theme updates</h3>
                     <p className="text-sm text-gray-500">
-                      For information regarding result announcements, award ceremonies or updates on the status of books,
+                      For information regarding result announcements, award ceremonies or theme updates on the status of books,
                       kindly check our news section under 'About Us'.
                     </p>
                   </div>

@@ -22,9 +22,9 @@ export default function WinningPoemsPage() {
 
   // Winner data - you can change these names and scores
   const winners = {
-    1: { name: "Sarah Johnson", score: 9.5 },
-    2: { name: "Michael Chen", score: 8.8 },
-    3: { name: "Emily Rodriguez", score: 8.2 }
+    1: { name: "Winners name", score: 9.5 },
+    2: { name: "Winners name", score: 8.8 },
+    3: { name: "Winners name", score: 8.2 }
   };
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function WinningPoemsPage() {
           />
           <div className="mt-3">
             <p className="font-semibold text-gray-900">{winner.name}</p>
-            <p className="text-sm text-gray-600">Score: {winner.score}/10</p>
+            <p className="text-sm text-gray-600">Score: {winner.score}/100</p>
           </div>
         </div>
       );
@@ -70,7 +70,7 @@ export default function WinningPoemsPage() {
         </div>
         <div className="mt-3">
           <p className="font-semibold text-gray-900">{winner.name}</p>
-          <p className="text-sm text-gray-600">Score: {winner.score}/10</p>
+          <p className="text-sm text-gray-600">Score: {winner.score}/100</p>
         </div>
       </div>
     );

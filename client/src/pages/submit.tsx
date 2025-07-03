@@ -806,9 +806,7 @@ export default function SubmitPage() {
             {IS_FIRST_MONTH && (
               <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">
                 <p className="text-yellow-800 font-semibold">
-                  No rules, just heart — let your truth unfold,
-Your words are flames, fierce and bold.
-At Writory, every voice is gold.
+                Remember! The more poems you submit, the greater your chances of winning!
                 </p>
               </div>
             )}
@@ -880,7 +878,7 @@ At Writory, every voice is gold.
 
           <div className="text-center mt-8">
             <p className="text-gray-600">
-              Remember! The more poems you submit, the greater your chances of winning!
+            No rules, just heart — let your truth unfold, Your words are flames, fierce and bold. At Writory, every voice is gold.
             </p>
           </div>
         </div>
