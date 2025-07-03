@@ -13,7 +13,7 @@
   --card-foreground: hsl(20, 14.3%, 4.1%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(250, 84%, 54%);
+  --primary: hsl(142, 76%, 36%);
   --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(60, 4.8%, 95.9%);
   --secondary-foreground: hsl(24, 9.8%, 10%);
@@ -36,7 +36,7 @@
   --card-foreground: hsl(0, 0%, 98%);
   --border: hsl(240, 3.7%, 15.9%);
   --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(250, 84%, 54%);
+  --primary: hsl(142, 76%, 36%);
   --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(240, 3.7%, 15.9%);
   --secondary-foreground: hsl(0, 0%, 98%);
@@ -58,18 +58,18 @@
     overflow-x: hidden;
     max-width: 100vw;
   }
-
+  
   /* Prevent horizontal scroll on mobile */
   body {
     position: relative;
   }
-
+  
   /* Fix container widths on mobile */
   .container {
     max-width: 100vw;
     overflow-x: hidden;
   }
-
+  
   /* Ensure all direct children don't overflow */
   #root > * {
     max-width: 100vw;
