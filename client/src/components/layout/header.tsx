@@ -82,7 +82,7 @@ export default function Header() {
                   onClick={handleLogout}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white px-4 py-2 bg-transparent hover:bg-transparent hover:text-white hover:border-white"
+                  className="text-white border-white px-4 py-2 bg-transparent hover:bg-transparent hover:text-white hover:border-white focus:bg-transparent focus:text-white active:bg-transparent active:text-white"
                 >
                   Logout
                 </Button>
@@ -150,7 +150,7 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="w-full text-white border-white bg-transparent hover:bg-transparent hover:text-white hover:border-white"
+                  className="w-full text-white border-white bg-transparent hover:bg-transparent hover:text-white hover:border-white focus:bg-transparent focus:text-white active:bg-transparent active:text-white"
                 >
                   Logout
                 </Button>
