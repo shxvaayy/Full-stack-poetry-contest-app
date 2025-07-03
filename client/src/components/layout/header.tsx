@@ -41,9 +41,9 @@ export default function Header() {
                 className="w-full h-full object-contain"
               />
             </div>
-            {/* Title always visible on desktop */}
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
+            {/* Title visible on all screens */}
+            <div className="block">
+              <h1 className="text-sm sm:text-lg font-bold whitespace-nowrap">WRITORY POETRY CONTEST</h1>
             </div>
           </Link>
 
@@ -82,7 +82,7 @@ export default function Header() {
                   onClick={handleLogout}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white data-[hover]:bg-transparent data-[hover]:text-white px-4 py-2"
+                  className="text-white border-white hover:bg-white hover:text-green-600 px-4 py-2"
                 >
                   Logout
                 </Button>
@@ -150,7 +150,7 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="w-full text-white border-white data-[hover]:bg-transparent data-[hover]:text-white"
+                  className="w-full text-white border-white hover:bg-white hover:text-green-600"
                 >
                   Logout
                 </Button>

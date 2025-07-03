@@ -7,8 +7,11 @@ import { apiRequest } from "@/lib/queryClient";
 import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
 import ChatbotWidget from "@/components/ChatbotWidget";
 import { Upload, Settings } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 export default function HomePage() {
+  const { toast } = useToast();
+  
   // Fetch total submission count for live poets count
   const { data: statsData } = useQuery({
     queryKey: ['/api/submission-count'],
@@ -45,7 +48,7 @@ export default function HomePage() {
               className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-pink-300 to-purple-300 bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white">
             WRITORY
           </h1>
           <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100">Write Your Own Victory</p>
@@ -162,7 +165,7 @@ export default function HomePage() {
           </h2>
           <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-4 gap-8">
             <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
               <CardContent className="p-8 text-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
@@ -198,74 +201,68 @@ export default function HomePage() {
                 </p>
               </CardContent>
             </Card>
+
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-orange-50 to-red-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Star className="text-white" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">New challenges every month</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Fresh prompts, unique themes, and creative formats are released every month to keep your imagination active and your writing evolving. There's always something new to look forward to!
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Pricing Tiers Preview */}
-      <section className="py-16 bg-gradient-to-br from-slate-900 to-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-4 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-            Submission Options
+      
+
+      {/* Additional Competitions */}
+      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold text-white mb-12">
+            Additional Competitions
           </h2>
-          <p className="text-center text-gray-300 mb-12 text-lg">Choose the option that works best for you</p>
-
-          <div className="grid md:grid-cols-4 gap-6">
-            <Card className="border border-green-500/30 bg-gradient-to-br from-green-900/20 to-emerald-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Pen className="text-white" size={24} />
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card 
+              className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-white/10 backdrop-blur-sm cursor-pointer"
+              onClick={() => toast({
+                title: "Not Available Yet",
+                description: "Regional Languages Competition is coming soon! Stay tuned for updates.",
+                duration: 3000,
+              })}
+            >
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Globe className="text-white" size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-green-400 mb-2">FREE Entry</h3>
-                <p className="text-3xl font-bold text-white mb-2">₹0</p>
-                <p className="text-gray-300 text-sm mb-4">One poem per month</p>
-                <div className="text-green-400 text-sm">Perfect for beginners</div>
+                <h3 className="text-2xl font-bold text-white mb-4">Regional Languages Competition</h3>
+                <p className="text-white/80 leading-relaxed">
+                  Celebrate diversity in poetry with competitions in your native language
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="border border-blue-500/30 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Pen className="text-white" size={24} />
+            <Card 
+              className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-white/10 backdrop-blur-sm cursor-pointer"
+              onClick={() => toast({
+                title: "Not Available Yet", 
+                description: "Junior Competition is coming soon! Stay tuned for updates.",
+                duration: 3000,
+              })}
+            >
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Star className="text-white" size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-blue-400 mb-2">Single Poem</h3>
-                <p className="text-3xl font-bold text-white mb-2">₹50</p>
-                <p className="text-gray-300 text-sm mb-4">1 additional poem</p>
-                <div className="text-blue-400 text-sm">Great for testing waters</div>
+                <h3 className="text-2xl font-bold text-white mb-4">Junior Competition</h3>
+                <p className="text-white/80 leading-relaxed">
+                  Special category for young poets to showcase their talent and creativity
+                </p>
               </CardContent>
             </Card>
-
-            <Card className="border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-violet-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Pen className="text-white" size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-purple-400 mb-2">Double Entry</h3>
-                <p className="text-3xl font-bold text-white mb-2">₹100</p>
-                <p className="text-gray-300 text-sm mb-4">2 additional poems</p>
-                <div className="text-purple-400 text-sm">Popular choice</div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-yellow-500/30 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Trophy className="text-white" size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-yellow-400 mb-2">Bulk Entry</h3>
-                <p className="text-3xl font-bold text-white mb-2">₹480</p>
-                <p className="text-gray-300 text-sm mb-4">5 additional poems</p>
-                <div className="text-yellow-400 text-sm">Best value & most submissions</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-center mt-12">
-            <Link href="/submit">
-              <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
-                Start Submitting Now
-              </Button>
-            </Link>
           </div>
         </div>
       </section>

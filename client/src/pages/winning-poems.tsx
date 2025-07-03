@@ -22,9 +22,9 @@ export default function WinningPoemsPage() {
 
   // Winner data - you can change these names and scores
   const winners = {
-    1: { name: "Winners name", score: 9.5 },
-    2: { name: "Winners name", score: 8.8 },
-    3: { name: "Winners name", score: 8.2 }
+    1: { name: "Winners name", score: 0 },
+    2: { name: "Winners name", score: 0 },
+    3: { name: "Winners name", score: 0 }
   };
 
   useEffect(() => {
