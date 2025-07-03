@@ -95,6 +95,16 @@ export default function SubmitPage() {
     poemTitle: "",
     termsAccepted: false,
   });
+  
+  // Store submission details for success page
+  const [submissionDetails, setSubmissionDetails] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    poemTitle: "",
+    tier: "",
+    amount: 0,
+  });
   const [files, setFiles] = useState({
     poem: null as File | null,
     photo: null as File | null,
@@ -589,6 +599,16 @@ export default function SubmitPage() {
 
         // IMMEDIATE success feedback - no waiting for background tasks
         setSubmissionStatus("🎉 Submission complete! Processing confirmation email...");
+
+        // Save submission details before clearing form data
+        setSubmissionDetails({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          poemTitle: formData.poemTitle,
+          tier: selectedTier?.name || "",
+          amount: discountedAmount,
+        });
 
         // Clear form data immediately after successful submission
         setFormData({
@@ -1250,23 +1270,23 @@ At Writory, every voice is gold.
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Name:</span>
-                    <span>{formData.firstName} {formData.lastName}</span>
+                    <span>{submissionDetails.firstName} {submissionDetails.lastName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Email:</span>
-                    <span>{formData.email}</span>
+                    <span>{submissionDetails.email}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Poem Title:</span>
-                    <span>{formData.poemTitle}</span>
+                    <span>{submissionDetails.poemTitle}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tier:</span>
-                    <span>{selectedTier?.name}</span>
+                    <span>{submissionDetails.tier}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Amount Paid:</span>
-                    <span>₹{discountedAmount}</span>
+                    <span>₹{submissionDetails.amount}</span>
                   </div>
                 </div>
               </div>
