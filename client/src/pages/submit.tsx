@@ -601,15 +601,18 @@ export default function SubmitPage() {
         // IMMEDIATE success feedback - no waiting for background tasks
         setSubmissionStatus("🎉 Submission complete! Processing confirmation email...");
 
-        // Save submission details before clearing form data
-        setSubmissionDetails({
+        // Save submission details BEFORE clearing form data - this is critical
+        const currentSubmissionDetails = {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
           poemTitle: formData.poemTitle,
           tier: selectedTier?.name || "",
           amount: discountedAmount,
-        });
+        };
+        
+        console.log('💾 Saving submission details:', currentSubmissionDetails);
+        setSubmissionDetails(currentSubmissionDetails);
 
         // Clear form data immediately after successful submission
         setFormData({
