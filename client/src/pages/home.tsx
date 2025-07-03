@@ -5,6 +5,7 @@ import { Trophy, Pen, IdCard, Users, Globe, Star, DollarSign, CheckCircle } from
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
+import bgImage from "@/assets/bg.png";
 import ChatbotWidget from "@/components/ChatbotWidget";
 import { Upload, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +35,7 @@ export default function HomePage() {
       <section
         className="relative min-h-screen flex items-center justify-center"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
+          backgroundImage: `url(${bgImage})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
