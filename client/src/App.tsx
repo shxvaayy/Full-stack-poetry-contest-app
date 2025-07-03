@@ -35,7 +35,7 @@ function AppContent() {
             <Route path="/contact" component={ContactPage} />
             <Route path="/profile" component={UserProfilePage} />
             <Route path="/admin-upload" component={AdminUploadPage} />
-            <Route path="/admin/settings" component={AdminSettingsPage} />
+            <Route path="/admin-settings" component={AdminSettingsPage} />
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />
             <Route component={NotFoundPage} />

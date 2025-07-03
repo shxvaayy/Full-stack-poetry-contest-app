@@ -190,15 +190,6 @@ export default function AdminUpload() {
                 Admin Settings
               </Button>
             </div>
-            <div className="mt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.href = '/admin-settings'}
-                className="mr-3"
-              >
-                Admin Settings
-              </Button>
-            </div>
           </div>
         </div>
 
