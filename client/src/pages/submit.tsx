@@ -366,7 +366,7 @@ export default function SubmitPage() {
         setCouponDiscount(data.discount);
         const newAmount = Math.max(0, selectedTier.price - data.discount);
         setDiscountedAmount(newAmount);
-        
+
         toast({
           title: "Coupon Applied Successfully!",
           description: `${data.discountPercentage}% discount applied. ${newAmount === 0 ? "You can now submit for free!" : `New amount: ₹${newAmount}`}`,
@@ -379,7 +379,7 @@ export default function SubmitPage() {
       }
     } catch (error: any) {
       console.error('❌ Coupon validation error:', error);
-      
+
       // Better error messaging
       let errorMessage = "Error validating coupon. Please try again.";
       if (error.message.includes('fetch')) {
@@ -387,7 +387,7 @@ export default function SubmitPage() {
       } else if (error.message.includes('Server error')) {
         errorMessage = "Server error. Please try again in a moment.";
       }
-      
+
       setCouponError(errorMessage);
       setCouponApplied(false);
       setCouponDiscount(0);
@@ -524,14 +524,14 @@ export default function SubmitPage() {
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
       formDataToSend.append('userUid', user?.uid || '');
-      
+
       // Add coupon data if applied
       if (couponApplied && couponCode) {
         formDataToSend.append('couponCode', couponCode.trim().toUpperCase());
         formDataToSend.append('couponDiscount', couponDiscount.toString());
         formDataToSend.append('finalAmount', discountedAmount.toString());
       }
-      
+
       if (actualPaymentData) {
         formDataToSend.append('paymentId', actualPaymentData.razorpay_payment_id || actualPaymentData.paypal_order_id || '');
         formDataToSend.append('paymentMethod', actualPaymentData.payment_method || 'razorpay');
@@ -586,7 +586,7 @@ export default function SubmitPage() {
 
       if (result.success) {
         console.log('✅ Submission successful, immediately showing success');
-        
+
         // IMMEDIATE success feedback - no waiting for background tasks
         setSubmissionStatus("🎉 Submission complete! Processing confirmation email...");
 
@@ -790,7 +790,7 @@ At Writory, every voice is gold.
             {TIERS.map((tier) => {
               const Icon = tier.icon;
               const isFreeTierDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
-              
+
               return (
                 <Card 
                   key={tier.id} 
@@ -868,7 +868,7 @@ At Writory, every voice is gold.
           <Card className="shadow-xl">
             <CardContent className="p-8">
               <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
-                {/* Personal Information */}
+                {/* Form content */}
                 <div className="space-y-4">
                   <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
 
