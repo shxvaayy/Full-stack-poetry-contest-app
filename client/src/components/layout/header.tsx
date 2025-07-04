@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { getProfilePhotoURL } from "@/lib/firebase";
+// Removed Firebase import - now using Cloudinary URLs from database
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
 export default function Header() {
@@ -16,16 +16,21 @@ export default function Header() {
   const loadProfilePicture = async () => {
     if (user?.uid) {
       try {
-        const firebasePhotoURL = await getProfilePhotoURL(user.uid);
-        if (firebasePhotoURL) {
-          const cacheBustedUrl = `${firebasePhotoURL}?v=${Date.now()}`;
-          setProfilePictureUrl(cacheBustedUrl);
-          console.log('Header: Loaded profile picture:', cacheBustedUrl);
+        const response = await fetch(`/api/users/${user.uid}`);
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.profilePictureUrl) {
+            const cacheBustedUrl = `${userData.profilePictureUrl}?v=${Date.now()}`;
+            setProfilePictureUrl(cacheBustedUrl);
+            console.log('Header: Loaded Cloudinary profile picture:', cacheBustedUrl);
+          } else {
+            setProfilePictureUrl(null);
+          }
         } else {
           setProfilePictureUrl(null);
         }
       } catch (error) {
-        console.log('No Firebase photo found or error loading profile picture');
+        console.log('Error loading profile picture from database:', error);
         setProfilePictureUrl(null);
       }
     }
@@ -61,16 +66,19 @@ export default function Header() {
         if (updatedUser.profilePictureUrl) {
           const cacheBustedUrl = `${updatedUser.profilePictureUrl}?header_v=${Date.now()}`;
           setProfilePictureUrl(cacheBustedUrl);
-          console.log('Header: Profile picture updated from profile event:', cacheBustedUrl);
+          console.log('Header: Cloudinary profile picture updated from profile event:', cacheBustedUrl);
 
           // Double-ensure the update by setting again after a short delay
           setTimeout(() => {
             setProfilePictureUrl(`${updatedUser.profilePictureUrl}?delayed_v=${Date.now()}`);
           }, 50);
+        } else if (updatedUser.profilePictureUrl === null) {
+          setProfilePictureUrl(null);
+          console.log('Header: Profile picture removed');
         }
       }
 
-      // Also reload from Firebase as fallback
+      // Also reload from database as fallback
       setTimeout(() => {
         if (user?.uid) {
           loadProfilePicture();
@@ -78,38 +86,26 @@ export default function Header() {
       }, 300);
     };
 
-    const handleFirebasePhotoUpdate = (event: CustomEvent) => {
-      console.log('Header: Firebase photo update event received:', event.detail);
-      const { url } = event.detail;
-      if (url) {
-        const cacheBustedUrl = `${url}?firebase_v=${Date.now()}`;
-        setProfilePictureUrl(cacheBustedUrl);
-        console.log('Header: Firebase photo updated:', cacheBustedUrl);
-      }
-    };
-
     window.addEventListener('profileUpdated', handleProfileUpdate);
-    window.addEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
 
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
-      window.removeEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
     };
   }, []);
 
-  // Listen for Firebase storage changes
+  // Listen for profile picture changes
   useEffect(() => {
-    const handleStorageChange = () => {
-      console.log('Header: Storage change detected, reloading profile picture');
+    const handleProfilePictureChange = () => {
+      console.log('Header: Profile picture change detected, reloading');
       if (user?.uid) {
         setTimeout(loadProfilePicture, 500); // Small delay to ensure upload is complete
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('profilePictureUpdated', handleProfilePictureChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureChange);
     };
   }, [user]);
 

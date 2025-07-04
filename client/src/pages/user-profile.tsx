@@ -304,6 +304,11 @@ export default function UserProfile() {
           detail: updatedUser
         }));
 
+        // Also dispatch specific profile picture event
+        window.dispatchEvent(new CustomEvent('profilePictureUpdated', {
+          detail: { url: updatedUser.profilePictureUrl }
+        }));
+
         console.log('✅ Profile update events dispatched');
 
         toast({
