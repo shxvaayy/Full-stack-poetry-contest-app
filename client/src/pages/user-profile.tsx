@@ -334,15 +334,15 @@ export default function UserProfile() {
                     {submissions.length > 0 ? (
                       <div className="space-y-3">
                         {submissions.slice(0, 5).map((submission) => {
-                          // Determine actual status - check if poem has been evaluated
-                          const actualStatus = (submission.score !== undefined && submission.score !== null) 
-                            ? 'Evaluated' 
-                            : (submission.status || 'Pending');
-                          
                           return (
                             <div key={submission.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                               <div>
-                                <div className="font-medium">{submission.poemTitle}</div>
+                                <div className="font-medium">
+                                  {submission.poems && submission.poems.length > 1 
+                                    ? `${submission.poems.length} Poems Submission` 
+                                    : submission.poems?.[0]?.title || submission.poemTitle || 'Poem Submission'
+                                  }
+                                </div>
                                 <div className="text-sm text-gray-600">
                                   {formatDate(submission.submittedAt)}
                                 </div>
@@ -351,10 +351,31 @@ export default function UserProfile() {
                                 <Badge className={getTierColor(submission.tier)}>
                                   {submission.tier}
                                 </Badge>
-                                <Badge className={getStatusColor(actualStatus)}>
-                                  {getStatusIcon(actualStatus)}
-                                  <span className="ml-1">{actualStatus}</span>
-                                </Badge>
+                                {/* Show individual poem statuses */}
+                                {submission.poems && submission.poems.length > 0 ? (
+                                  <div className="flex flex-col space-y-1">
+                                    {submission.poems.map((poem: any, index: number) => {
+                                      // Determine actual status for each poem
+                                      const actualStatus = poem.status === 'Evaluated' || 
+                                        (poem.score !== undefined && poem.score !== null) 
+                                        ? 'Evaluated' 
+                                        : (poem.status || 'Pending');
+                                      
+                                      return (
+                                        <Badge key={index} className={getStatusColor(actualStatus)} size="sm">
+                                          {getStatusIcon(actualStatus)}
+                                          <span className="ml-1">{actualStatus}</span>
+                                          {submission.poems.length > 1 && <span className="ml-1">({index + 1})</span>}
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <Badge className={getStatusColor('Pending')}>
+                                    {getStatusIcon('Pending')}
+                                    <span className="ml-1">Pending</span>
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           );
