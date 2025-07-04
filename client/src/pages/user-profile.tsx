@@ -77,119 +77,242 @@ export default function UserProfile() {
     try {
       setLoading(true);
 
-      // First, get basic user data with no-cache headers
-      const userResponse = await fetch(`/api/users/${user!.uid}`, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-
-        // Always try to get the latest Firebase photo first
-        let finalProfilePictureUrl = userData.profilePictureUrl;
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ Fetch timeout reached, stopping loading state');
+        setLoading(false);
         
-        try {
-          const firebasePhotoURL = await getProfilePhotoURL(user!.uid);
-          if (firebasePhotoURL) {
-            finalProfilePictureUrl = firebasePhotoURL;
-          }
-        } catch (error) {
-          console.log('No Firebase photo found, using database URL');
+        // Set default user data if no response
+        if (!backendUser && user) {
+          setBackendUser({
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || user.email?.split('@')[0] || 'User',
+            phone: user.phoneNumber || null,
+            id: null,
+            createdAt: new Date().toISOString(),
+            profilePictureUrl: user.photoURL,
+            _renderKey: Date.now()
+          });
+          setDisplayName(user.displayName || user.email?.split('@')[0] || 'User');
         }
-
-        // Set user data with the most recent profile picture
-        const userDataWithPhoto = {
-          ...userData,
-          profilePictureUrl: finalProfilePictureUrl,
-          _renderKey: Date.now()
-        };
-
-        setBackendUser(userDataWithPhoto);
-
-        // Initialize display name
-        setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
-
-      } else if (userResponse.status === 404) {
-        // User not found in database - set default data from Firebase
-        console.log('User not found in database, using Firebase data');
-
-        let firebasePhotoURL = user?.photoURL;
-        try {
-          const latestFirebasePhoto = await getProfilePhotoURL(user!.uid);
-          if (latestFirebasePhoto) {
-            firebasePhotoURL = latestFirebasePhoto;
-          }
-        } catch (error) {
-          console.log('No Firebase photo found for new user');
-        }
-
-        setBackendUser({
-          uid: user!.uid,
-          email: user!.email || '',
-          name: user!.displayName || '',
-          phone: user!.phoneNumber || null,
-          id: null,
-          createdAt: new Date().toISOString(),
-          profilePictureUrl: firebasePhotoURL,
-          _renderKey: Date.now()
+        
+        toast({
+          title: "Connection Issue",
+          description: "Using cached profile data. Some features may be limited.",
+          variant: "destructive",
         });
-      }
+      }, 10000); // 10 second timeout
 
-      // Load submissions and status in parallel after basic user data
-      const [submissionsResponse, statusResponse] = await Promise.allSettled([
-        fetch(`/api/users/${user!.uid}/submissions`),
-        fetch(`/api/users/${user!.uid}/submission-status`)
-      ]);
+      try {
+        // First, get basic user data with no-cache headers
+        const userResponse = await fetch(`/api/users/${user!.uid}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
 
-      // Handle submissions data
-      if (submissionsResponse.status === 'fulfilled' && submissionsResponse.value.ok) {
-        const submissionsData = await submissionsResponse.value.json();
+        clearTimeout(timeoutId); // Clear timeout if request succeeds
 
-        // Optimize grouping with Map for better performance
-        const groupedSubmissionsMap = new Map();
-        submissionsData.forEach((submission: any) => {
-          const uuid = submission.submissionUuid || `single-${submission.id}`;
-          if (!groupedSubmissionsMap.has(uuid)) {
-            groupedSubmissionsMap.set(uuid, {
-              id: submission.id,
-              name: submission.name,
-              tier: submission.tier,
-              amount: submission.amount,
-              submittedAt: submission.submittedAt,
-              submissionUuid: uuid,
-              poems: []
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+
+          // Always try to get the latest Firebase photo first
+          let finalProfilePictureUrl = userData.profilePictureUrl;
+          
+          try {
+            const firebasePhotoURL = await getProfilePhotoURL(user!.uid);
+            if (firebasePhotoURL) {
+              finalProfilePictureUrl = firebasePhotoURL;
+            }
+          } catch (error) {
+            console.log('No Firebase photo found, using database URL');
+          }
+
+          // Set user data with the most recent profile picture
+          const userDataWithPhoto = {
+            ...userData,
+            profilePictureUrl: finalProfilePictureUrl,
+            _renderKey: Date.now()
+          };
+
+          setBackendUser(userDataWithPhoto);
+
+          // Initialize display name
+          setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
+
+        } else if (userResponse.status === 404) {
+          // User not found in database - set default data from Firebase
+          console.log('User not found in database, using Firebase data');
+
+          let firebasePhotoURL = user?.photoURL;
+          try {
+            const latestFirebasePhoto = await getProfilePhotoURL(user!.uid);
+            if (latestFirebasePhoto) {
+              firebasePhotoURL = latestFirebasePhoto;
+            }
+          } catch (error) {
+            console.log('No Firebase photo found for new user');
+          }
+
+          setBackendUser({
+            uid: user!.uid,
+            email: user!.email || '',
+            name: user!.displayName || '',
+            phone: user!.phoneNumber || null,
+            id: null,
+            createdAt: new Date().toISOString(),
+            profilePictureUrl: firebasePhotoURL,
+            _renderKey: Date.now()
+          });
+          setDisplayName(user!.displayName || user!.email?.split('@')[0] || 'User');
+        } else {
+          // Server error - use Firebase data as fallback
+          console.log('Server error, using Firebase data as fallback');
+          setBackendUser({
+            uid: user!.uid,
+            email: user!.email || '',
+            name: user!.displayName || '',
+            phone: user!.phoneNumber || null,
+            id: null,
+            createdAt: new Date().toISOString(),
+            profilePictureUrl: user!.photoURL,
+            _renderKey: Date.now()
+          });
+          setDisplayName(user!.displayName || user!.email?.split('@')[0] || 'User');
+        }
+
+        // Load submissions and status in parallel after basic user data
+        try {
+          const [submissionsResponse, statusResponse] = await Promise.allSettled([
+            fetch(`/api/users/${user!.uid}/submissions`),
+            fetch(`/api/users/${user!.uid}/submission-status`)
+          ]);
+
+          // Handle submissions data
+          if (submissionsResponse.status === 'fulfilled' && submissionsResponse.value.ok) {
+            const submissionsData = await submissionsResponse.value.json();
+
+            // Optimize grouping with Map for better performance
+            const groupedSubmissionsMap = new Map();
+            submissionsData.forEach((submission: any) => {
+              const uuid = submission.submissionUuid || `single-${submission.id}`;
+              if (!groupedSubmissionsMap.has(uuid)) {
+                groupedSubmissionsMap.set(uuid, {
+                  id: submission.id,
+                  name: submission.name,
+                  tier: submission.tier,
+                  amount: submission.amount,
+                  submittedAt: submission.submittedAt,
+                  submissionUuid: uuid,
+                  poems: []
+                });
+              }
+              groupedSubmissionsMap.get(uuid).poems.push({
+                id: submission.id,
+                title: submission.poemTitle,
+                score: submission.score,
+                status: submission.status,
+                type: submission.type,
+                isWinner: submission.isWinner,
+                winnerPosition: submission.winnerPosition,
+                scoreBreakdown: submission.scoreBreakdown
+              });
+            });
+
+            setSubmissions(Array.from(groupedSubmissionsMap.values()));
+          } else {
+            console.log('Failed to fetch submissions, setting empty array');
+            setSubmissions([]);
+          }
+
+          // Handle submission status
+          if (statusResponse.status === 'fulfilled' && statusResponse.value.ok) {
+            const statusData = await statusResponse.value.json();
+            setSubmissionStatus(statusData);
+          } else {
+            console.log('Failed to fetch submission status, using defaults');
+            setSubmissionStatus({
+              freeSubmissionUsed: false,
+              totalSubmissions: 0,
+              contestMonth: new Date().toISOString().slice(0, 7),
+              allTimeSubmissions: 0
             });
           }
-          groupedSubmissionsMap.get(uuid).poems.push({
-            id: submission.id,
-            title: submission.poemTitle,
-            score: submission.score,
-            status: submission.status,
-            type: submission.type,
-            isWinner: submission.isWinner,
-            winnerPosition: submission.winnerPosition,
-            scoreBreakdown: submission.scoreBreakdown
+        } catch (submissionError) {
+          console.log('Error fetching submissions, using defaults:', submissionError);
+          setSubmissions([]);
+          setSubmissionStatus({
+            freeSubmissionUsed: false,
+            totalSubmissions: 0,
+            contestMonth: new Date().toISOString().slice(0, 7),
+            allTimeSubmissions: 0
           });
+        }
+
+      } catch (networkError) {
+        clearTimeout(timeoutId);
+        console.error('Network error fetching user data:', networkError);
+        
+        // Use Firebase data as complete fallback
+        if (user) {
+          setBackendUser({
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || user.email?.split('@')[0] || 'User',
+            phone: user.phoneNumber || null,
+            id: null,
+            createdAt: new Date().toISOString(),
+            profilePictureUrl: user.photoURL,
+            _renderKey: Date.now()
+          });
+          setDisplayName(user.displayName || user.email?.split('@')[0] || 'User');
+          setSubmissions([]);
+          setSubmissionStatus({
+            freeSubmissionUsed: false,
+            totalSubmissions: 0,
+            contestMonth: new Date().toISOString().slice(0, 7),
+            allTimeSubmissions: 0
+          });
+        }
+        
+        toast({
+          title: "Connection Error",
+          description: "Unable to connect to server. Using offline profile data.",
+          variant: "destructive",
         });
-
-        setSubmissions(Array.from(groupedSubmissionsMap.values()));
-      }
-
-      // Handle submission status
-      if (statusResponse.status === 'fulfilled' && statusResponse.value.ok) {
-        const statusData = await statusResponse.value.json();
-        setSubmissionStatus(statusData);
       }
 
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Unexpected error fetching user data:', error);
+      
+      // Final fallback using Firebase data
+      if (user) {
+        setBackendUser({
+          uid: user.uid,
+          email: user.email || '',
+          name: user.displayName || user.email?.split('@')[0] || 'User',
+          phone: user.phoneNumber || null,
+          id: null,
+          createdAt: new Date().toISOString(),
+          profilePictureUrl: user.photoURL,
+          _renderKey: Date.now()
+        });
+        setDisplayName(user.displayName || user.email?.split('@')[0] || 'User');
+        setSubmissions([]);
+        setSubmissionStatus({
+          freeSubmissionUsed: false,
+          totalSubmissions: 0,
+          contestMonth: new Date().toISOString().slice(0, 7),
+          allTimeSubmissions: 0
+        });
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to load profile data",
+        description: "Failed to load profile data. Using basic profile information.",
         variant: "destructive",
       });
     } finally {
