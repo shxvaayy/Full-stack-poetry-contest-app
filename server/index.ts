@@ -198,17 +198,13 @@ async function initializeApp() {
     await fixUsersTable();
     console.log('✅ Users table structure verified');
 
-    // Step 3.5: Fix user-submission links (with timeout)
-    console.log('🔗 Fixing user-submission links...');
-    try {
-      await Promise.race([
-        fixUserSubmissionLinks(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
-      ]);
-      console.log('✅ User-submission links verified');
-    } catch (error) {
-      console.log('⚠️ User-submission linking skipped:', error.message);
-    }
+    // Step 3.5: Schedule user-submission links fix for background (non-blocking)
+    console.log('🔗 Scheduling user-submission links check for background...');
+    setImmediate(() => {
+      fixUserSubmissionLinks().catch(error => {
+        console.log('⚠️ Background user-submission linking failed:', error.message);
+      });
+    });
 
     // Step 4: Register API routes FIRST (before static files)
     console.log('🛣️  Registering API routes...');
@@ -442,14 +438,17 @@ async function initializeApp() {
     await initializeAdminUsers();
 
     console.log(`🚀 Starting server on port ${PORT}...`);
+    console.log(`🔌 Binding to 0.0.0.0:${PORT} for external access...`);
     
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'www.writoryofficial.com' : `http://localhost:${PORT}`}`);
+      console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'https://writory.com' : `http://localhost:${PORT}`}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🚀 Port: ${PORT} (bound to 0.0.0.0)`);
+      console.log(`🚀 Port: ${PORT} (bound to 0.0.0.0 - EXTERNALLY ACCESSIBLE)`);
       console.log(`📅 Started: ${new Date().toISOString()}`);
+      console.log(`🔍 Server address: 0.0.0.0:${PORT}`);
+      console.log(`💡 Port ${PORT} should now be detected by deployment platform`);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ Database schema fixed - updated_at columns added');
       console.log('✅ API routes active and ready');
@@ -457,6 +456,10 @@ async function initializeApp() {
       console.log('✅ React SPA routing enabled');
       console.log('🎯 Poetry contest platform is ready to accept submissions!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      
+      // Force flush logs to ensure visibility
+      process.stdout.write('');
+      process.stderr.write('');
     });
 
     // Server error handling
