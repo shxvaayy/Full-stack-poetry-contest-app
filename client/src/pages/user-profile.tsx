@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2 } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
 interface BackendUser {
@@ -55,6 +57,9 @@ export default function UserProfile() {
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -141,6 +146,56 @@ export default function UserProfile() {
     }
   };
 
+  const updateUserProfile = async () => {
+    if (!user?.uid || !editName.trim()) {
+      toast({
+        title: "Error",
+        description: "Name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/users/${user.uid}/update-profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editName.trim()
+        })
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setBackendUser(updatedUser);
+        setIsEditDialogOpen(false);
+        toast({
+          title: "Success",
+          description: "Profile updated successfully!",
+        });
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const openEditDialog = () => {
+    setEditName(backendUser?.name || user?.displayName || '');
+    setIsEditDialogOpen(true);
+  };
+
   const getTierColor = (tier: string) => {
     switch (tier) {
       case 'free': return 'bg-green-100 text-green-800';
@@ -221,9 +276,72 @@ export default function UserProfile() {
                 <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <User className="text-white" size={32} />
                 </div>
-                <CardTitle className="text-xl">
-                  {user.displayName || backendUser?.name || 'User'}
-                </CardTitle>
+                <div className="flex items-center justify-center gap-2">
+                  <CardTitle className="text-xl">
+                    {user.displayName || backendUser?.name || 'User'}
+                  </CardTitle>
+                  <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={openEditDialog}
+                        className="p-1 h-8 w-8"
+                      >
+                        <Edit2 size={14} />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Edit Profile</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="name" className="text-right">
+                            Name
+                          </Label>
+                          <Input
+                            id="name"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="col-span-3"
+                            placeholder="Enter your name"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label className="text-right text-sm text-gray-500">
+                            Email
+                          </Label>
+                          <div className="col-span-3 text-sm text-gray-600">
+                            {user.email}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsEditDialogOpen(false)}
+                          disabled={isUpdating}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={updateUserProfile}
+                          disabled={isUpdating || !editName.trim()}
+                        >
+                          {isUpdating ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            'Save Changes'
+                          )}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <p className="text-gray-600 text-sm">{user.email}</p>
               </CardHeader>
               <CardContent className="space-y-4">

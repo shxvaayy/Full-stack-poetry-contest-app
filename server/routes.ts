@@ -317,6 +317,43 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// Update user profile
+router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: any) => {
+  const { uid } = req.params;
+  const { name } = req.body;
+  
+  console.log('🔄 Updating user profile for UID:', uid, 'with name:', name);
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+
+  try {
+    const user = await storage.getUserByUid(uid);
+
+    if (!user) {
+      console.log('❌ User not found for UID:', uid);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update user name in database
+    await client.query(`
+      UPDATE users 
+      SET name = $1, updated_at = NOW()
+      WHERE uid = $2
+    `, [name.trim(), uid]);
+
+    // Get updated user
+    const updatedUser = await storage.getUserByUid(uid);
+    
+    console.log('✅ User profile updated:', updatedUser?.email);
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('❌ Error updating user profile:', error);
+    res.status(500).json({ error: 'Failed to update user profile' });
+  }
+}));
+
 // Get user submissions - FIXED VERSION
 router.get('/api/users/:uid/submissions', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
