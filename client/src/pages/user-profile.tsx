@@ -333,25 +333,32 @@ export default function UserProfile() {
                   <CardContent>
                     {submissions.length > 0 ? (
                       <div className="space-y-3">
-                        {submissions.slice(0, 5).map((submission) => (
-                          <div key={submission.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <div className="font-medium">{submission.poemTitle}</div>
-                              <div className="text-sm text-gray-600">
-                                {formatDate(submission.submittedAt)}
+                        {submissions.slice(0, 5).map((submission) => {
+                          // Determine actual status - check if poem has been evaluated
+                          const actualStatus = (submission.score !== undefined && submission.score !== null) 
+                            ? 'Evaluated' 
+                            : (submission.status || 'Pending');
+                          
+                          return (
+                            <div key={submission.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div>
+                                <div className="font-medium">{submission.poemTitle}</div>
+                                <div className="text-sm text-gray-600">
+                                  {formatDate(submission.submittedAt)}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge className={getTierColor(submission.tier)}>
+                                  {submission.tier}
+                                </Badge>
+                                <Badge className={getStatusColor(actualStatus)}>
+                                  {getStatusIcon(actualStatus)}
+                                  <span className="ml-1">{actualStatus}</span>
+                                </Badge>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge className={getTierColor(submission.tier)}>
-                                {submission.tier}
-                              </Badge>
-                              <Badge className={getStatusColor(submission.status || 'Pending')}>
-                                {getStatusIcon(submission.status || 'Pending')}
-                                <span className="ml-1">{submission.status || 'Pending'}</span>
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-center py-8">
