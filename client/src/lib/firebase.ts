@@ -13,8 +13,16 @@ import {
   RecaptchaVerifier,
   ConfirmationResult,
   PhoneAuthProvider,
-  linkWithCredential
+  linkWithCredential,
+  updateProfile
 } from "firebase/auth";
+import { 
+  getStorage, 
+  ref, 
+  uploadBytes, 
+  getDownloadURL,
+  deleteObject 
+} from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-key",
@@ -28,6 +36,45 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
+
+// Profile photo upload function
+export const uploadProfilePhoto = async (userId: string, file: File): Promise<string> => {
+  const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
+  
+  // Upload file
+  await uploadBytes(storageRef, file);
+  
+  // Get download URL with cache buster
+  const downloadURL = await getDownloadURL(storageRef);
+  return `${downloadURL}?v=${Date.now()}`;
+};
+
+// Get current profile photo URL
+export const getProfilePhotoURL = async (userId: string): Promise<string | null> => {
+  try {
+    const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
+    const downloadURL = await getDownloadURL(storageRef);
+    return `${downloadURL}?v=${Date.now()}`;
+  } catch (error) {
+    console.log('No profile photo found:', error);
+    return null;
+  }
+};
+
+// Delete profile photo
+export const deleteProfilePhoto = async (userId: string): Promise<void> => {
+  const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
+  await deleteObject(storageRef);
+};
+
+// Update user profile with photo URL
+export const updateUserProfile = async (photoURL: string): Promise<void> => {
+  const user = auth.currentUser;
+  if (user) {
+    await updateProfile(user, { photoURL });
+  }
+};
 
 // --- GOOGLE AUTH ---
 const googleProvider = new GoogleAuthProvider();

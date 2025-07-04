@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2, Camera, Upload } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
+import { uploadProfilePhoto, getProfilePhotoURL, updateUserProfile as updateFirebaseProfile } from '../lib/firebase';
 
 interface BackendUser {
   id: number;
@@ -86,17 +87,43 @@ export default function UserProfile() {
       });
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        setBackendUser(userData);
+        
+        // Try to get the latest Firebase photo URL
+        let firebasePhotoURL = null;
+        try {
+          firebasePhotoURL = await getProfilePhotoURL(user!.uid);
+        } catch (error) {
+          console.log('No Firebase photo found, using database URL');
+        }
+        
+        // Use Firebase photo URL if available, otherwise use database URL
+        const finalPhotoURL = firebasePhotoURL || userData.profilePictureUrl || user?.photoURL;
+        
+        setBackendUser({
+          ...userData,
+          profilePictureUrl: finalPhotoURL,
+          _renderKey: Date.now()
+        });
       } else if (userResponse.status === 404) {
         // User not found in database - set default data from Firebase
         console.log('User not found in database, using Firebase data');
+        
+        // Check for Firebase photo
+        let firebasePhotoURL = null;
+        try {
+          firebasePhotoURL = await getProfilePhotoURL(user!.uid);
+        } catch (error) {
+          console.log('No Firebase photo found for new user');
+        }
+        
         setBackendUser({
           uid: user!.uid,
           email: user!.email || '',
           name: user!.displayName || '',
           phone: user!.phoneNumber || null,
           id: null,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          profilePictureUrl: firebasePhotoURL || user?.photoURL
         });
       }
 
@@ -198,20 +225,44 @@ export default function UserProfile() {
 
     setIsUpdating(true);
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('name', editName.trim());
-      formData.append('email', editEmail.trim());
-      
+      let firebasePhotoURL = null;
+
+      // Handle profile picture upload to Firebase Storage
       if (profilePicture) {
-        formData.append('profilePicture', profilePicture);
+        console.log('📸 Uploading profile picture to Firebase Storage...');
+        try {
+          firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
+          
+          // Update Firebase Auth profile
+          await updateFirebaseProfile(firebasePhotoURL);
+          
+          console.log('✅ Profile picture uploaded to Firebase:', firebasePhotoURL);
+        } catch (uploadError) {
+          console.error('❌ Failed to upload profile picture to Firebase:', uploadError);
+          toast({
+            title: "Upload Failed",
+            description: "Failed to upload profile picture. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
+
+      // Update user data in database (without profile picture file)
+      const updateData = {
+        name: editName.trim(),
+        email: editEmail.trim(),
+        profilePictureUrl: firebasePhotoURL || backendUser?.profilePictureUrl
+      };
 
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
 
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
         credentials: 'same-origin'
       });
 
@@ -221,33 +272,29 @@ export default function UserProfile() {
         const updatedUser = await response.json();
         console.log('Updated user data:', updatedUser);
         
+        // If we uploaded a new photo, use Firebase URL, otherwise use existing
+        const finalPhotoURL = firebasePhotoURL || updatedUser.profilePictureUrl;
+        
         // Close dialog and reset form first
         setIsEditDialogOpen(false);
         setProfilePicture(null);
         setProfilePicturePreview("");
         
-        // Update state with cache-busted URL
-        const updatedUserWithCacheBust = {
+        // Update state with Firebase photo URL
+        const updatedUserWithFirebasePhoto = {
           ...updatedUser,
-          profilePictureUrl: updatedUser.profilePictureUrl ? 
-            `${updatedUser.profilePictureUrl}?t=${Date.now()}` : 
-            updatedUser.profilePictureUrl
+          profilePictureUrl: finalPhotoURL,
+          _renderKey: Date.now()
         };
         
-        setBackendUser(updatedUserWithCacheBust);
+        setBackendUser(updatedUserWithFirebasePhoto);
         
         // Dispatch profile update event to notify header and other components
         window.dispatchEvent(new CustomEvent('profileUpdated', { 
-          detail: updatedUserWithCacheBust 
+          detail: updatedUserWithFirebasePhoto 
         }));
         
-        // Force immediate re-render by updating key
-        setBackendUser(prev => ({
-          ...updatedUserWithCacheBust,
-          _renderKey: Date.now()
-        }));
-        
-        // Refresh data after a short delay to ensure consistency
+        // Refresh data to ensure consistency
         setTimeout(async () => {
           await fetchUserData();
         }, 500);
@@ -262,7 +309,6 @@ export default function UserProfile() {
           const responseText = await response.text();
           console.log('Raw response text:', responseText);
           
-          // Try to parse as JSON
           try {
             errorData = JSON.parse(responseText);
           } catch (jsonError) {
@@ -274,9 +320,7 @@ export default function UserProfile() {
         
         console.error('Update profile error response:', errorData);
         
-        // Better error handling for specific cases
         if (response.status === 400) {
-          // Handle specific validation errors
           const errorMessage = errorData.error || errorData.message || "Validation error";
           
           if (errorMessage.toLowerCase().includes('email') && errorMessage.toLowerCase().includes('taken')) {
@@ -313,7 +357,6 @@ export default function UserProfile() {
     } catch (error) {
       console.error('Error updating profile:', error);
       
-      // More specific error messages
       let errorMessage = "Failed to update profile. Please try again.";
       
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -439,7 +482,7 @@ export default function UserProfile() {
                   {backendUser?.profilePictureUrl ? (
                     <>
                       <img 
-                        src={`${backendUser.profilePictureUrl}?t=${Date.now()}&v=${backendUser._renderKey || ''}`} 
+                        src={backendUser.profilePictureUrl} 
                         alt="Profile" 
                         className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
                         onError={(e) => {
@@ -448,7 +491,7 @@ export default function UserProfile() {
                           const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                           if (fallback) fallback.style.display = 'flex';
                         }}
-                        key={`profile-main-${backendUser.profilePictureUrl}-${backendUser._renderKey || Date.now()}`}
+                        key={`profile-main-${backendUser._renderKey || Date.now()}`}
                       />
                       <div 
                         className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center"

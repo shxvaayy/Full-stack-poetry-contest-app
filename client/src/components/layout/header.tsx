@@ -1,21 +1,21 @@
+
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { getProfilePhotoURL } from "@/lib/firebase";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const [userProfilePicture, setUserProfilePicture] = useState<string | null>(null);
-  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
-  const [backendUser, setBackendUser] = useState<any>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.uid) {
-      fetchUserData();
+      loadProfilePicture();
     }
   }, [user]);
 
@@ -23,10 +23,12 @@ export default function Header() {
   useEffect(() => {
     const handleProfileUpdate = () => {
       console.log('Header: Profile update event received');
-      // Force refresh user data after profile update
-      setTimeout(() => {
-        fetchUserData();
-      }, 500); // Small delay to ensure backend has processed the update
+      if (user?.uid) {
+        // Small delay to ensure Firebase has processed the update
+        setTimeout(() => {
+          loadProfilePicture();
+        }, 1000);
+      }
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
@@ -36,24 +38,24 @@ export default function Header() {
     };
   }, [user]);
 
-  const fetchUserData = async () => {
+  const loadProfilePicture = async () => {
     if (!user?.uid) return;
 
     try {
-      const response = await fetch(`/api/users/${user.uid}`, {
-        // Add cache-busting to ensure fresh data
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setBackendUser(userData);
-        console.log('Header: User data fetched:', userData);
+      // Try to get from Firebase Auth first
+      if (user.photoURL) {
+        setProfilePictureUrl(user.photoURL);
+        return;
+      }
+
+      // Try to get from Firebase Storage
+      const url = await getProfilePhotoURL(user.uid);
+      if (url) {
+        setProfilePictureUrl(url);
       }
     } catch (error) {
-      console.error('Header: Error fetching user data:', error);
+      console.log('Header: No profile picture found in Firebase Storage');
+      setProfilePictureUrl(null);
     }
   };
 
@@ -69,7 +71,6 @@ export default function Header() {
     { name: "CONTACT US", href: "/contact" },
     ...(isAdmin ? [{ name: "ADMIN UPLOAD", href: "/admin-upload" }] : []),
   ];
-
 
   const handleLogout = async () => {
     console.log("Header logout clicked");
@@ -121,24 +122,25 @@ export default function Header() {
                 {/* User Profile Button */}
                 <Link href="/profile">
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
-                   {backendUser?.profilePictureUrl ? (
-                    <img 
-                      src={`${backendUser.profilePictureUrl}?t=${Date.now()}`} 
-                      alt="Profile" 
-                      className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
-                      key={`${backendUser.profilePictureUrl}-${Date.now()}`}
-                      onError={(e) => {
-                        console.log('Header: Profile picture failed to load:', backendUser.profilePictureUrl);
-                        e.currentTarget.style.display = 'none';
-                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                    {profilePictureUrl ? (
+                      <img 
+                        src={`${profilePictureUrl}?v=${Date.now()}`} 
+                        alt="Profile" 
+                        className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
+                        onError={(e) => {
+                          console.log('Header: Profile picture failed to load:', profilePictureUrl);
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div 
+                      className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ display: profilePictureUrl ? 'none' : 'flex' }}
+                    >
                       <User className="text-green-600" size={14} />
                     </div>
-                  )}
                     <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
@@ -204,9 +206,9 @@ export default function Header() {
                     className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {backendUser?.profilePictureUrl ? (
+                    {profilePictureUrl ? (
                       <img
-                        src={`${backendUser.profilePictureUrl}?t=${Date.now()}`}
+                        src={`${profilePictureUrl}?v=${Date.now()}`}
                         alt="Profile"
                         className="w-7 h-7 rounded-full object-cover"
                       />

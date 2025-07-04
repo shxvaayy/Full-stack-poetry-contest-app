@@ -327,28 +327,22 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 }));
 
 // Update user profile
-router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (req: any, res: any) => {
+router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
-  const { name, email } = req.body;
+  const { name, email, profilePictureUrl } = req.body;
 
-  console.log('🔄 Updating user profile for UID:', uid, 'with data:', { name, email });
-  console.log('📁 Files received:', req.files?.map((f: any) => ({ fieldname: f.fieldname, originalname: f.originalname })));
+  console.log('📝 Profile update request received for UID:', uid);
+  console.log('Request body:', { name, email, profilePictureUrl: !!profilePictureUrl });
 
-  if (!uid) {
-    return res.status(400).json({ error: 'User ID is required' });
-  }
-
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
-
-  if (!email || !email.trim()) {
-    return res.status(400).json({ error: 'Email is required' });
+  if (!uid || !name?.trim() || !email?.trim()) {
+    console.log('❌ Missing required fields:', { uid: !!uid, name: !!name?.trim(), email: !!email?.trim() });
+    return res.status(400).json({ error: 'UID, name, and email are required' });
   }
 
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.trim())) {
+  if (!emailRegex.test(email?.trim() || '')) {
+    console.log('❌ Invalid email format:', email);
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
@@ -357,34 +351,6 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
     await connectDatabase();
 
     let user = null;
-    let profilePictureUrl = null;
-
-    // Handle profile picture upload first (if any)
-    const profilePictureFile = req.files?.find((f: any) => f.fieldname === 'profilePicture');
-    if (profilePictureFile) {
-      console.log('☁️ Uploading profile picture to Google Drive...');
-
-      try {
-        // Convert multer file to buffer
-        const profilePictureBuffer = fs.readFileSync(profilePictureFile.path);
-
-        // Upload to Google Drive using the existing photo upload function
-        profilePictureUrl = await uploadPhotoFile(
-          profilePictureBuffer,
-          email.trim(),
-          `profile_${uid}_${Date.now()}_${profilePictureFile.originalname}`
-        );
-
-        console.log('✅ Profile picture uploaded:', profilePictureUrl);
-
-        // Clean up temp file
-        fs.unlinkSync(profilePictureFile.path);
-      } catch (uploadError) {
-        console.error('❌ Failed to upload profile picture:', uploadError);
-        // Continue with profile update even if picture upload fails
-        profilePictureUrl = null;
-      }
-    }
 
     // Try to get existing user
     try {
