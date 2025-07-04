@@ -12,6 +12,7 @@ import { connectDatabase, client } from './db.js';
 import { createTables } from './migrate.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { initializeAdminSettings } from './admin-settings.js';
+import paypalRoutes from './paypal';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -195,6 +196,10 @@ async function initializeApp() {
     registerRoutes(app);
     console.log('✅ API routes registered successfully');
 
+    // API routes
+    app.use('/api', registerRoutes(app));
+    app.use('/api/paypal', paypalRoutes);
+
     // Step 5: Configure static file serving
     const publicPath = path.join(__dirname, '../dist/public');
     console.log('📂 Static files configuration:');
@@ -290,7 +295,7 @@ async function initializeApp() {
 
       if (fs.existsSync(indexPath)) {
         console.log('✅ index.html found, serving React app for route:', req.path);
-        
+
         // Set headers for HTML delivery
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -315,11 +320,11 @@ async function initializeApp() {
       } else {
         console.error('❌ index.html not found at:', indexPath);
         console.error('📂 Public directory exists:', fs.existsSync(publicPath));
-        
+
         // Provide detailed error information
         const publicExists = fs.existsSync(publicPath);
         const files = publicExists ? fs.readdirSync(publicPath).slice(0, 20) : [];
-        
+
         if (publicExists) {
           console.error('📁 Files in public directory:', files.join(', '));
         }

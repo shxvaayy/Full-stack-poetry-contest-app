@@ -3,11 +3,11 @@ import { Router } from 'express';
 const router = Router();
 
 // PayPal configuration
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || 'demo_client_id';
+const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || 'demo_client_secret';
 const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://api.paypal.com' 
-  : 'https://api.sandbox.paypal.com';
+  ? 'https://api-m.paypal.com' 
+  : 'https://api-m.sandbox.paypal.com';
 
 console.log('🔧 PayPal Configuration Check:');
 console.log('- Client ID exists:', !!PAYPAL_CLIENT_ID);
@@ -18,14 +18,14 @@ console.log('- Environment:', process.env.NODE_ENV);
 // Get PayPal access token
 async function getPayPalAccessToken() {
   try {
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
+    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET || PAYPAL_CLIENT_ID === 'demo_client_id') {
       throw new Error('PayPal credentials not configured properly');
     }
 
     const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
-    
+
     console.log('🔑 Requesting PayPal access token...');
-    
+
     const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
@@ -116,7 +116,7 @@ router.post('/api/create-paypal-order', async (req, res) => {
         usdAmount = (amount * 0.012).toFixed(2);
       }
     }
-    
+
     console.log(`💰 Converting ₹${amount} to $${usdAmount} USD`);
 
     // Determine the correct base URL for callbacks
@@ -181,9 +181,9 @@ router.post('/api/create-paypal-order', async (req, res) => {
 
     if (response.ok && order.id) {
       console.log('✅ PayPal order created successfully:', order.id);
-      
+
       const approvalUrl = order.links?.find((link: any) => link.rel === 'approve')?.href;
-      
+
       if (!approvalUrl) {
         console.error('❌ No approval URL found in PayPal response');
         console.log('Available links:', order.links);
@@ -208,7 +208,7 @@ router.post('/api/create-paypal-order', async (req, res) => {
       });
     } else {
       console.error('❌ PayPal order creation failed:', order);
-      
+
       let errorMessage = 'Failed to create PayPal order';
       let errorDetails = order;
 
@@ -269,7 +269,7 @@ router.post('/api/verify-paypal-payment', async (req, res) => {
 
     if (response.ok && orderData.status === 'APPROVED') {
       console.log('✅ PayPal order verified and approved:', orderId);
-      
+
       // Capture the payment
       console.log('🔄 Capturing PayPal payment...');
       const captureResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
@@ -373,6 +373,15 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
     });
   }
+});
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    configured: !!(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET && PAYPAL_CLIENT_ID !== 'demo_client_id'),
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 export { router as paypalRouter };
