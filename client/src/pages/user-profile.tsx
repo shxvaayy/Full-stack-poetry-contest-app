@@ -148,7 +148,13 @@ export default function UserProfile() {
   };
 
   const updateUserProfile = async () => {
-    if (!user?.uid || !editName.trim() || !editEmail.trim()) {
+    console.log('Update profile called with:', { 
+      editName: editName?.trim(), 
+      editEmail: editEmail?.trim(),
+      userUid: user?.uid 
+    });
+
+    if (!user?.uid || !editName?.trim() || !editEmail?.trim()) {
       toast({
         title: "Error",
         description: "Name and email cannot be empty",
@@ -159,7 +165,7 @@ export default function UserProfile() {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editEmail.trim())) {
+    if (!emailRegex.test(editEmail?.trim() || '')) {
       toast({
         title: "Error",
         description: "Please enter a valid email address",
@@ -206,8 +212,13 @@ export default function UserProfile() {
   };
 
   const openEditDialog = () => {
-    setEditName(backendUser?.name || user?.displayName || '');
-    setEditEmail(backendUser?.email || user?.email || '');
+    const currentName = backendUser?.name || user?.displayName || '';
+    const currentEmail = backendUser?.email || user?.email || '';
+    
+    console.log('Opening edit dialog with:', { currentName, currentEmail });
+    
+    setEditName(currentName);
+    setEditEmail(currentEmail);
     setIsEditDialogOpen(true);
   };
 
@@ -306,37 +317,33 @@ export default function UserProfile() {
                         <Edit2 size={14} />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-[500px]">
                       <DialogHeader>
                         <DialogTitle>Edit Profile</DialogTitle>
                       </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="name" className="text-right">
-                            Name
-                          </Label>
+                      <div className="grid gap-6 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Name</Label>
                           <Input
                             id="name"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="col-span-3"
+                            className="w-full"
                             placeholder="Enter your name"
                           />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="email" className="text-right">
-                            Email
-                          </Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
                           <Input
                             id="email"
                             type="email"
                             value={editEmail}
                             onChange={(e) => setEditEmail(e.target.value)}
-                            className="col-span-3"
+                            className="w-full"
                             placeholder="Enter your email"
                           />
                         </div>
-                        <div className="col-span-4 text-xs text-gray-500 mt-2">
+                        <div className="text-xs text-gray-500 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                           <p>⚠️ <strong>Important:</strong> Email is used for poem submissions and must be unique. Changing it will affect future submissions.</p>
                         </div>
                       </div>
@@ -350,7 +357,7 @@ export default function UserProfile() {
                         </Button>
                         <Button
                           onClick={updateUserProfile}
-                          disabled={isUpdating || !editName.trim() || !editEmail.trim()}
+                          disabled={isUpdating || !editName?.trim() || !editEmail?.trim()}
                         >
                           {isUpdating ? (
                             <>
