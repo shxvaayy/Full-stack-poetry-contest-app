@@ -3,43 +3,80 @@ import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { getProfilePhotoURL } from "@/lib/firebase";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
-  const { user, logout } = useAuth();
-  const [userProfilePicture, setUserProfilePicture] = useState<string | null>(null);
-  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+  const { user, logout, dbUser } = useAuth();
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>('');
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user?.uid) {
-        try {
-          const response = await fetch(`/api/users/${user.uid}`);
-          if (response.ok) {
-            const userData = await response.json();
-            setUserProfilePicture(userData.profilePictureUrl || null);
-          } else {
-            console.error('Failed to fetch user profile');
-            setUserProfilePicture(null);
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          setUserProfilePicture(null);
+  const loadProfilePicture = async () => {
+    if (user?.uid) {
+      try {
+        const firebasePhotoURL = await getProfilePhotoURL(user.uid);
+        if (firebasePhotoURL) {
+          const cacheBustedUrl = `${firebasePhotoURL}?v=${Date.now()}`;
+          setProfilePictureUrl(cacheBustedUrl);
+          console.log('Header: Loaded profile picture:', cacheBustedUrl);
+        } else {
+          setProfilePictureUrl(null);
         }
-      } else {
-        setUserProfilePicture(null);
+      } catch (error) {
+        console.log('No Firebase photo found or error loading profile picture');
+        setProfilePictureUrl(null);
       }
-    };
+    }
+  };
 
-    fetchUserProfile();
-  }, [user, profileRefreshKey]);
-
-  // Listen for profile updates
+  // Initialize display name from user data
   useEffect(() => {
-    const handleProfileUpdate = () => {
-      setProfileRefreshKey(prev => prev + 1);
+    if (user) {
+      const initialName = dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User';
+      setDisplayName(initialName);
+      console.log('Header: Initial display name set:', initialName);
+    }
+  }, [user, dbUser]);
+
+  // Load profile picture on user change
+  useEffect(() => {
+    if (user?.uid) {
+      loadProfilePicture();
+    } else {
+      setProfilePictureUrl(null);
+      setDisplayName('');
+    }
+  }, [user?.uid]);
+
+  // Listen for profile updates from user-profile page
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent) => {
+      console.log('Header: Profile updated event received:', event.detail);
+      const updatedUser = event.detail;
+
+      // Force update profile picture with cache busting
+      if (updatedUser.profilePictureUrl) {
+        const newUrl = `${updatedUser.profilePictureUrl}?v=${Date.now()}&updated=${Date.now()}`;
+        setProfilePictureUrl(newUrl);
+        console.log('Header: Updated profile picture URL:', newUrl);
+      } else if (updatedUser.profilePictureUrl === null) {
+        // Handle case where profile picture was removed
+        setProfilePictureUrl(null);
+        console.log('Header: Profile picture removed');
+      }
+
+      // Update user name display
+      if (updatedUser.name) {
+        setDisplayName(updatedUser.name);
+        console.log('Header: Updated display name:', updatedUser.name);
+      }
+
+      // Force re-render by triggering a state update
+      setTimeout(() => {
+        loadProfilePicture();
+      }, 100);
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
@@ -47,6 +84,33 @@ export default function Header() {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
   }, []);
+
+  // Listen for Firebase storage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      console.log('Header: Storage change detected, reloading profile picture');
+      if (user?.uid) {
+        setTimeout(loadProfilePicture, 500); // Small delay to ensure upload is complete
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom Firebase photo update events
+    const handleFirebasePhotoUpdate = () => {
+      console.log('Header: Firebase photo update event received');
+      if (user?.uid) {
+        setTimeout(loadProfilePicture, 1000); // Longer delay for Firebase
+      }
+    };
+
+    window.addEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
+    };
+  }, [user]);
 
   // Check if user is admin
   const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'shiningbhavya.seth@gmail.com';
@@ -60,7 +124,6 @@ export default function Header() {
     { name: "CONTACT US", href: "/contact" },
     ...(isAdmin ? [{ name: "ADMIN UPLOAD", href: "/admin-upload" }] : []),
   ];
-
 
   const handleLogout = async () => {
     console.log("Header logout clicked");
@@ -112,11 +175,16 @@ export default function Header() {
                 {/* User Profile Button */}
                 <Link href="/profile">
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
-                    {userProfilePicture ? (
-                      <img
-                        src={userProfilePicture}
-                        alt="Profile"
+                    {profilePictureUrl ? (
+                      <img 
+                        src={profilePictureUrl} 
+                        alt="Profile" 
                         className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
+                        onError={(e) => {
+                          console.log('Header: Profile picture failed to load:', profilePictureUrl);
+                          setProfilePictureUrl(null); // Reset to show fallback
+                        }}
+                        key={`header-profile-${profilePictureUrl}`} // Force re-render on URL change
                       />
                     ) : (
                       <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
@@ -124,7 +192,7 @@ export default function Header() {
                       </div>
                     )}
                     <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>
@@ -188,11 +256,13 @@ export default function Header() {
                     className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {userProfilePicture ? (
+                    {profilePictureUrl ? (
                       <img
-                        src={userProfilePicture}
+                        src={profilePictureUrl}
                         alt="Profile"
                         className="w-7 h-7 rounded-full object-cover"
+                        onError={() => setProfilePictureUrl(null)}
+                        key={`mobile-profile-${profilePictureUrl}`}
                       />
                     ) : (
                       <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
@@ -200,7 +270,7 @@ export default function Header() {
                       </div>
                     )}
                     <span className="text-white text-sm font-medium">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>
