@@ -198,10 +198,17 @@ async function initializeApp() {
     await fixUsersTable();
     console.log('✅ Users table structure verified');
 
-    // Step 3.5: Fix user-submission links
+    // Step 3.5: Fix user-submission links (with timeout)
     console.log('🔗 Fixing user-submission links...');
-    await fixUserSubmissionLinks();
-    console.log('✅ User-submission links verified');
+    try {
+      await Promise.race([
+        fixUserSubmissionLinks(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+      ]);
+      console.log('✅ User-submission links verified');
+    } catch (error) {
+      console.log('⚠️ User-submission linking skipped:', error.message);
+    }
 
     // Step 4: Register API routes FIRST (before static files)
     console.log('🛣️  Registering API routes...');
@@ -434,7 +441,7 @@ async function initializeApp() {
     const { initializeAdminUsers } = await import('./admin-auth.js');
     await initializeAdminUsers();
 
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'www.writoryofficial.com' : `http://localhost:${PORT}`}`);
