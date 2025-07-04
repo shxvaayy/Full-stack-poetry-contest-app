@@ -108,19 +108,8 @@ export default function Header() {
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Also listen for custom Firebase photo update events
-    const handleFirebasePhotoUpdate = () => {
-      console.log('Header: Firebase photo update event received');
-      if (user?.uid) {
-        setTimeout(loadProfilePicture, 1000); // Longer delay for Firebase
-      }
-    };
-
-    window.addEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
     };
   }, [user]);
 

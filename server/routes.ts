@@ -3,7 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
-// Firebase Storage is now handled on the frontend
+import multer from 'multer';
+import { uploadProfilePhotoToCloudinary } from './cloudinary.js';
 import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
@@ -14,6 +15,21 @@ import { initializeAdminSettings, getSetting, updateSetting, getAllSettings } fr
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
 const router = Router();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // MINIMAL FIX: Only set JSON header for API routes
 router.use('/api/*', (req, res, next) => {
@@ -95,17 +111,16 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
 
 // SAFER: Wrapper function for upload.any() with better error handling
 const safeUploadAny = (req: any, res: any, next: any) => {
-  // upload.any()(req, res, (error) => {  // Commented out because upload is not defined
-  //   if (error) {
-  //     console.error('❌ Multer error:', error);
-  //     return res.status(400).json({
-  //       success: false,
-  //       error: error.message
-  //     });
-  //   }
-  //   next();
-  // });
-  next(); // Added to allow the code to continue execution
+  upload.any()(req, res, (error) => {
+    if (error) {
+      console.error('❌ Multer error:', error);
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+    next();
+  });
 };
 
 // Define field configurations
@@ -297,17 +312,18 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Update user profile
-router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: any) => {
+// Update user profile with Cloudinary photo upload
+router.put('/api/users/:uid/update-profile', upload.single('profilePicture'), asyncHandler(async (req: any, res: any) => {
   try {
     const { uid } = req.params;
-    const { name, email, profilePictureUrl } = req.body;
+    const { name, email } = req.body;
+    const profilePictureFile = req.file;
 
     console.log('📝 Update profile request:', {
       uid,
       name,
       email,
-      hasProfilePictureUrl: !!profilePictureUrl
+      hasProfilePictureFile: !!profilePictureFile
     });
 
     if (!uid || !name?.trim() || !email?.trim()) {
@@ -329,6 +345,26 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
       await connectDatabase();
 
       let user = null;
+      let profilePictureUrl = null;
+
+      // Handle profile picture upload to Cloudinary
+      if (profilePictureFile) {
+        try {
+          console.log('📸 Uploading profile picture to Cloudinary...');
+          profilePictureUrl = await uploadProfilePhotoToCloudinary(
+            profilePictureFile.buffer,
+            uid,
+            profilePictureFile.originalname
+          );
+          console.log('✅ Profile picture uploaded to Cloudinary:', profilePictureUrl);
+        } catch (uploadError) {
+          console.error('❌ Cloudinary upload failed:', uploadError);
+          return res.status(500).json({
+            error: 'Failed to upload profile picture',
+            message: uploadError.message
+          });
+        }
+      }
 
       // Try to get existing user
       try {
@@ -343,7 +379,6 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
       if (!user) {
         console.log('⚠️ User not found for UID:', uid, '- Creating new user');
         try {
-          // Use direct database query instead of storage function to avoid issues
           const createResult = await client.query(`
             INSERT INTO users (uid, email, name, phone, profile_picture_url, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
@@ -358,7 +393,6 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
           user = createResult.rows[0];
           console.log('✅ Created/Updated user:', user.email);
 
-          // Transform to match expected format
           const transformedUser = {
             id: user.id,
             uid: user.uid,
@@ -374,7 +408,6 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
         } catch (createError) {
           console.error('❌ Failed to create user:', createError);
 
-          // Handle specific constraint errors
           if (createError.code === '23505' && createError.constraint?.includes('email')) {
             return res.status(400).json({ 
               error: 'Email already taken',
@@ -406,24 +439,27 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
             }
           } catch (emailCheckError) {
             console.error('❌ Error checking email uniqueness:', emailCheckError);
-            // Continue with update if email check fails
           }
         }
 
-        // Update user in database
-        const updateQuery = `
+        // Update user in database (only update profile picture if new one was uploaded)
+        const updateQuery = profilePictureUrl ? `
           UPDATE users 
           SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW()
           WHERE uid = $4 
           RETURNING *
+        ` : `
+          UPDATE users 
+          SET name = $1, email = $2, updated_at = NOW()
+          WHERE uid = $3 
+          RETURNING *
         `;
 
-        const updateResult = await client.query(updateQuery, [
-          name.trim(), 
-          email.trim(), 
-          profilePictureUrl,
-          uid
-        ]);
+        const updateParams = profilePictureUrl ? 
+          [name.trim(), email.trim(), profilePictureUrl, uid] :
+          [name.trim(), email.trim(), uid];
+
+        const updateResult = await client.query(updateQuery, updateParams);
 
         if (updateResult.rows.length === 0) {
           return res.status(404).json({ error: 'User not found for update' });
@@ -432,27 +468,23 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
         const updatedUser = updateResult.rows[0];
         console.log('✅ User profile updated successfully:', updatedUser.email);
 
-        // Transform to match expected format with cache-busted URL
         const transformedUser = {
           id: updatedUser.id,
           uid: updatedUser.uid,
           email: updatedUser.email,
           name: updatedUser.name,
           phone: updatedUser.phone,
-          profilePictureUrl: updatedUser.profile_picture_url ? 
-            `${updatedUser.profile_picture_url}?updated=${Date.now()}` : 
-            updatedUser.profile_picture_url,
+          profilePictureUrl: updatedUser.profile_picture_url,
           createdAt: updatedUser.created_at,
           updatedAt: updatedUser.updated_at
         };
 
-        console.log('✅ Returning transformed user with cache-busted URL:', transformedUser);
+        console.log('✅ Returning transformed user:', transformedUser);
         return res.json(transformedUser);
       }
     } catch (updateError) {
       console.error('❌ Error updating user profile:', updateError);
 
-      // Handle specific database errors
       if (updateError.code === '23505' && updateError.constraint?.includes('email')) {
         return res.status(400).json({ 
           error: 'Email already taken',

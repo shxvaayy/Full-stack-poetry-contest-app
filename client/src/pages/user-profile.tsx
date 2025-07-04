@@ -9,7 +9,6 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2, Camera, Upload } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
-import { uploadProfilePhoto, getProfilePhotoURL, updateUserProfile as updateFirebaseProfile } from '../lib/firebase';
 
 interface BackendUser {
   id: number;
@@ -78,7 +77,7 @@ export default function UserProfile() {
       setLoading(true);
       console.log('🔄 Starting to fetch user data for:', user?.uid);
 
-      // Set up fallback user data first (NO Firebase photo)
+      // Set up fallback user data first
       const fallbackUser = {
         uid: user!.uid,
         email: user!.email || '',
@@ -86,7 +85,7 @@ export default function UserProfile() {
         phone: user!.phoneNumber || null,
         id: null,
         createdAt: new Date().toISOString(),
-        profilePictureUrl: null, // Start with no photo
+        profilePictureUrl: null,
       };
 
       // Set fallback data immediately to prevent infinite loading
@@ -124,7 +123,7 @@ export default function UserProfile() {
           const userData = await userResponse.json();
           console.log('✅ User data fetched:', userData.email);
 
-          // Update with real data (only use database photo, ignore Firebase)
+          // Update with real data (use Cloudinary URL directly)
           const finalUserData = {
             ...userData,
             profilePictureUrl: userData.profilePictureUrl || null,
@@ -262,62 +261,16 @@ export default function UserProfile() {
     }, 15000); // 15 second timeout
 
     try {
-      let finalProfilePictureUrl = backendUser?.profilePictureUrl;
-
-      // Handle profile picture upload with better error handling
+      // Prepare FormData for multipart upload
+      const formData = new FormData();
+      formData.append('name', editName.trim());
+      formData.append('email', editEmail.trim());
+      
       if (profilePicture) {
-        console.log('📸 Starting profile picture upload...');
-
-        try {
-          // Check if Firebase is configured
-          const isFirebaseConfigured = import.meta.env.VITE_FIREBASE_PROJECT_ID && 
-                                     import.meta.env.VITE_FIREBASE_API_KEY &&
-                                     import.meta.env.VITE_FIREBASE_PROJECT_ID !== "demo-project";
-
-          if (!isFirebaseConfigured) {
-            console.warn('⚠️ Firebase not configured, skipping photo upload');
-            toast({
-              title: "Photo Upload Unavailable",
-              description: "Profile photos are not available. Please contact support.",
-              variant: "destructive",
-            });
-            // Continue without photo
-            finalProfilePictureUrl = backendUser?.profilePictureUrl;
-          } else {
-            // Only try Firebase upload if configured
-            const firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
-            console.log('✅ Firebase upload completed:', firebasePhotoURL);
-
-            // Update Firebase Auth profile
-            await updateFirebaseProfile(firebasePhotoURL);
-            console.log('✅ Firebase Auth profile updated');
-
-            finalProfilePictureUrl = firebasePhotoURL;
-          }
-
-        } catch (uploadError) {
-          console.error('❌ Profile photo upload failed:', uploadError);
-
-          toast({
-            title: "Photo Upload Failed",
-            description: "Could not upload your photo. Your profile will be updated without the photo.",
-            variant: "destructive",
-          });
-
-          // Continue with existing profile picture
-          finalProfilePictureUrl = backendUser?.profilePictureUrl;
-        }
+        formData.append('profilePicture', profilePicture);
       }
 
-      // Prepare update data
-      const updateData = {
-        name: editName.trim(),
-        email: editEmail.trim(),
-        profilePictureUrl: finalProfilePictureUrl
-      };
-
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
-      console.log('Update data:', updateData);
 
       // Add timeout for API call
       const controller = new AbortController();
@@ -325,10 +278,7 @@ export default function UserProfile() {
 
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
+        body: formData, // Use FormData instead of JSON
         credentials: 'same-origin',
         signal: controller.signal
       });
