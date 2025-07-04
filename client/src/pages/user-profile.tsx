@@ -299,9 +299,12 @@ export default function UserProfile() {
         setBackendUser(finalUser);
         
         // Dispatch profile update event to notify header and other components
-        window.dispatchEvent(new CustomEvent('profileUpdated', { 
-          detail: finalUser 
-        }));
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('profileUpdated', { 
+            detail: finalUser 
+          }));
+          console.log('Profile update event dispatched:', finalUser);
+        }, 100);
         
         toast({
           title: "Profile Updated!",

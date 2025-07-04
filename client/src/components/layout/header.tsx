@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
@@ -19,45 +18,44 @@ export default function Header() {
     }
   }, [user]);
 
-  // Listen for profile updates
   useEffect(() => {
-    const handleProfileUpdate = () => {
-      console.log('Header: Profile update event received');
-      if (user?.uid) {
-        // Small delay to ensure Firebase has processed the update
-        setTimeout(() => {
-          loadProfilePicture();
-        }, 1000);
+    const handleProfileUpdate = (event: CustomEvent) => {
+      console.log('Header: Profile updated event received:', event.detail);
+      const updatedUser = event.detail;
+
+      // Force update profile picture with cache busting
+      if (updatedUser.profilePictureUrl) {
+        const newUrl = `${updatedUser.profilePictureUrl}?v=${Date.now()}`;
+        setProfilePictureUrl(newUrl);
+        console.log('Header: Updated profile picture URL:', newUrl);
+      }
+
+      // Update user name display
+      if (updatedUser.name) {
+        setDisplayName(updatedUser.name);
+        console.log('Header: Updated display name:', updatedUser.name);
       }
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
-
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
+  }, []);
+
+  // Also listen for storage changes to catch Firebase photo updates
+  useEffect(() => {
+    const handleStorageChange = () => {
+      if (user?.uid) {
+        loadProfilePicture();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [user]);
-
-  const loadProfilePicture = async () => {
-    if (!user?.uid) return;
-
-    try {
-      // Try to get from Firebase Auth first
-      if (user.photoURL) {
-        setProfilePictureUrl(user.photoURL);
-        return;
-      }
-
-      // Try to get from Firebase Storage
-      const url = await getProfilePhotoURL(user.uid);
-      if (url) {
-        setProfilePictureUrl(url);
-      }
-    } catch (error) {
-      console.log('Header: No profile picture found in Firebase Storage');
-      setProfilePictureUrl(null);
-    }
-  };
 
   // Check if user is admin
   const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'shiningbhavya.seth@gmail.com';
