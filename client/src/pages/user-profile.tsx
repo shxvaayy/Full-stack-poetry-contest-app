@@ -199,7 +199,6 @@ export default function UserProfile() {
       
       if (profilePicture) {
         formData.append('profilePicture', profilePicture);
-        console.log('📸 Profile picture file attached:', profilePicture.name, profilePicture.size);
       }
 
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
@@ -216,19 +215,15 @@ export default function UserProfile() {
         const updatedUser = await response.json();
         console.log('Updated user data:', updatedUser);
         
-        // Force immediate UI update with the server response
+        // Immediately update the backend user state
         setBackendUser(updatedUser);
         
-        // Update the edit form with the actual saved values
-        setEditName(updatedUser.name || '');
-        setEditEmail(updatedUser.email || '');
-        
-        // Clear form state
+        // Close dialog and reset form
         setIsEditDialogOpen(false);
         setProfilePicture(null);
-        setProfilePicturePreview(updatedUser.profilePictureUrl || "");
+        setProfilePicturePreview("");
         
-        // Force a fresh data fetch to ensure UI is in sync
+        // Force a complete refresh of all data
         setTimeout(async () => {
           await fetchUserData();
         }, 500);
@@ -314,14 +309,11 @@ export default function UserProfile() {
   };
 
   const handleProfilePictureChange = (file: File | null) => {
-    console.log('📸 Profile picture changed:', file?.name, file?.size);
     setProfilePicture(file);
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string;
-        console.log('📸 Preview generated, length:', result?.length);
-        setProfilePicturePreview(result);
+        setProfilePicturePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     } else {
@@ -426,19 +418,23 @@ export default function UserProfile() {
                       alt="Profile" 
                       className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
                       onError={(e) => {
-                        console.log('❌ Profile image failed to load:', backendUser.profilePictureUrl);
-                        e.target.style.display = 'none';
+                        console.log('Profile picture failed to load:', backendUser.profilePictureUrl);
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                  ) : (
-                    <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
-                      <User className="text-white" size={32} />
-                    </div>
-                  )}
+                  ) : null}
+                  <div 
+                    className={`w-20 h-20 bg-green-600 rounded-full flex items-center justify-center ${
+                      backendUser?.profilePictureUrl ? 'hidden' : ''
+                    }`}
+                  >
+                    <User className="text-white" size={32} />
+                  </div>
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CardTitle className="text-xl">
-                    {user.displayName || backendUser?.name || 'User'}
+                    {backendUser?.name || user?.displayName || 'User'}
                   </CardTitle>
                   <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                     <DialogTrigger asChild>
@@ -466,10 +462,6 @@ export default function UserProfile() {
                                   src={profilePicturePreview} 
                                   alt="Profile Preview" 
                                   className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    console.log('❌ Preview image failed to load');
-                                    setProfilePicturePreview("");
-                                  }}
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -541,7 +533,7 @@ export default function UserProfile() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                <p className="text-gray-600 text-sm">{user.email}</p>
+                <p className="text-gray-600 text-sm">{backendUser?.email || user?.email}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center text-gray-600">
