@@ -79,8 +79,9 @@ export default function UserProfile() {
       // Fetch user details with cache busting
       const userResponse = await fetch(`/api/users/${user!.uid}?t=${Date.now()}`, {
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
       if (userResponse.ok) {
@@ -220,24 +221,36 @@ export default function UserProfile() {
         const updatedUser = await response.json();
         console.log('Updated user data:', updatedUser);
         
-        // Immediately update the backend user state
-        setBackendUser(updatedUser);
-        
-        // Close dialog and reset form
+        // Close dialog and reset form first
         setIsEditDialogOpen(false);
         setProfilePicture(null);
         setProfilePicturePreview("");
         
-        // Force immediate UI update
-        setBackendUser(updatedUser);
+        // Update state with cache-busted URL
+        const updatedUserWithCacheBust = {
+          ...updatedUser,
+          profilePictureUrl: updatedUser.profilePictureUrl ? 
+            `${updatedUser.profilePictureUrl}?t=${Date.now()}` : 
+            updatedUser.profilePictureUrl
+        };
         
-        // Dispatch profile update event to notify header
-        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        setBackendUser(updatedUserWithCacheBust);
         
-        // Force a complete refresh of all data after a delay
+        // Dispatch profile update event to notify header and other components
+        window.dispatchEvent(new CustomEvent('profileUpdated', { 
+          detail: updatedUserWithCacheBust 
+        }));
+        
+        // Force immediate re-render by updating key
+        setBackendUser(prev => ({
+          ...updatedUserWithCacheBust,
+          _renderKey: Date.now()
+        }));
+        
+        // Refresh data after a short delay to ensure consistency
         setTimeout(async () => {
           await fetchUserData();
-        }, 1000);
+        }, 500);
         
         toast({
           title: "Profile Updated!",
@@ -426,7 +439,7 @@ export default function UserProfile() {
                   {backendUser?.profilePictureUrl ? (
                     <>
                       <img 
-                        src={`${backendUser.profilePictureUrl}?t=${Date.now()}`} 
+                        src={`${backendUser.profilePictureUrl}?t=${Date.now()}&v=${backendUser._renderKey || ''}`} 
                         alt="Profile" 
                         className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
                         onError={(e) => {
@@ -435,7 +448,7 @@ export default function UserProfile() {
                           const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                           if (fallback) fallback.style.display = 'flex';
                         }}
-                        key={`${backendUser.profilePictureUrl}-${Date.now()}`}
+                        key={`profile-main-${backendUser.profilePictureUrl}-${backendUser._renderKey || Date.now()}`}
                       />
                       <div 
                         className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center"
@@ -480,6 +493,7 @@ export default function UserProfile() {
                                   src={profilePicturePreview} 
                                   alt="Profile Preview" 
                                   className="w-full h-full object-cover"
+                                  key={`preview-${Date.now()}`}
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">

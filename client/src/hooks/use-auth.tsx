@@ -162,6 +162,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return unsubscribe;
   }, []);
 
+  // Fetch user data from backend
+  const fetchDbUser = async (uid: string) => {
+    try {
+      const response = await apiRequest("GET", `/api/users/${uid}`);
+      if (response.ok) {
+        const userData = await response.json();
+        setDbUser(userData);
+      } else {
+        console.error("Failed to fetch user data:", response);
+        setDbUser(null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+      setDbUser(null);
+    }
+  };
+
+  // Fetch user data from backend when Firebase user changes
+  useEffect(() => {
+    if (user?.uid) {
+      fetchDbUser(user.uid);
+    } else {
+      setDbUser(null);
+    }
+  }, [user]);
+
+  // Listen for profile updates from other components
+  useEffect(() => {
+    const handleProfileUpdate = (event: any) => {
+      console.log('Profile update event received in auth hook', event.detail);
+      if (event.detail) {
+        setDbUser(event.detail);
+      } else if (user?.uid) {
+        fetchDbUser(user.uid);
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ user, loading, dbUser, logout }}>
       {children}

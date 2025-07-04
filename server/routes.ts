@@ -492,19 +492,21 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         const updatedUser = updateResult.rows[0];
         console.log('✅ User profile updated successfully:', updatedUser.email);
 
-        // Transform to match expected format
+        // Transform to match expected format with cache-busted URL
         const transformedUser = {
           id: updatedUser.id,
           uid: updatedUser.uid,
           email: updatedUser.email,
           name: updatedUser.name,
           phone: updatedUser.phone,
-          profilePictureUrl: updatedUser.profile_picture_url,
+          profilePictureUrl: updatedUser.profile_picture_url ? 
+            `${updatedUser.profile_picture_url}?updated=${Date.now()}` : 
+            updatedUser.profile_picture_url,
           createdAt: updatedUser.created_at,
           updatedAt: updatedUser.updated_at
         };
 
-        console.log('✅ Returning transformed user:', transformedUser);
+        console.log('✅ Returning transformed user with cache-busted URL:', transformedUser);
         return res.json(transformedUser);
       } catch (updateError) {
         console.error('❌ Error updating user profile:', updateError);
