@@ -492,26 +492,18 @@ export default function UserProfile() {
               <CardHeader className="text-center">
                 <div className="relative w-20 h-20 mx-auto mb-4">
                   {backendUser?.profilePictureUrl ? (
-                    <>
-                      <img 
-                        src={backendUser.profilePictureUrl} 
-                        alt="Profile" 
-                        className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                        key={`profile-main-${backendUser._renderKey || Date.now()}`}
-                      />
-                      <div 
-                        className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center"
-                        style={{ display: 'none' }}
-                      >
-                        <User className="text-white" size={32} />
-                      </div>
-                    </>
+                    <img 
+                      src={backendUser.profilePictureUrl} 
+                      alt="Profile" 
+                      className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
+                      loading="lazy"
+                      onError={(e) => {
+                        // Hide the broken image and update state to show fallback
+                        e.currentTarget.style.display = 'none';
+                        setBackendUser(prev => prev ? { ...prev, profilePictureUrl: null } : null);
+                      }}
+                      key={`profile-main-${backendUser._renderKey || Date.now()}`}
+                    />
                   ) : (
                     <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
                       <User className="text-white" size={32} />
