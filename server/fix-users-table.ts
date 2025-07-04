@@ -85,4 +85,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     });
 }
 
-export { fixUsersTable };
+//The duplicate export has been removed

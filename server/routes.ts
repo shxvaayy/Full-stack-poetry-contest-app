@@ -919,8 +919,7 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
     'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
     'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
-    'PASSWRTY1',```
- PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
+    'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
     'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
     'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
     'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
@@ -1731,8 +1730,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         paymentId: paymentId || null, // Same payment ID for all poems
         paymentMethod: paymentMethod || 'free',
         poemFileUrl: poemFileUrls[i] || null,
-        photoFileUrl: photoFileUrl, // Same photo for all poems
-```
+        photoFileUrl: photoFileUrl, // Same photo forms
         submissionUuid,
         poemIndex: i + 1,
         totalPoemsInSubmission: titles.length,
