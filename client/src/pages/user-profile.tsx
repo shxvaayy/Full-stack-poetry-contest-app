@@ -177,10 +177,10 @@ export default function UserProfile() {
     }
   };
 
-  // ✅ Check if results are announced (only show results if there are winners or evaluated poems with actual scores)
+  // ✅ Check if results are announced (only show results if there are winners or evaluated poems with actual scores > 0)
   const hasAnnouncedResults = submissions.some(s => 
     s.poems.some((p: any) => 
-      (p.status === 'Evaluated' && (p.score !== undefined && p.score !== null)) || 
+      (p.status === 'Evaluated' && p.score !== undefined && p.score !== null && p.score > 0) || 
       p.isWinner
     )
   );
@@ -316,7 +316,7 @@ export default function UserProfile() {
                         <div className="text-2xl font-bold text-purple-600">
                           {submissions.reduce((count, s) => 
                             count + s.poems.filter((p: any) => 
-                              p.status === 'Evaluated' && p.score !== undefined && p.score !== null
+                              p.status === 'Evaluated' && p.score !== undefined && p.score !== null && p.score > 0
                             ).length, 0
                           )}
                         </div>
@@ -355,11 +355,13 @@ export default function UserProfile() {
                                 {submission.poems && submission.poems.length > 0 ? (
                                   <div className="flex flex-col space-y-1">
                                     {submission.poems.map((poem: any, index: number) => {
-                                      // Determine actual status for each poem
-                                      const actualStatus = poem.status === 'Evaluated' || 
-                                        (poem.score !== undefined && poem.score !== null) 
+                                      // Fix: Only show 'Evaluated' if status is explicitly 'Evaluated' AND has a real score
+                                      const actualStatus = (poem.status === 'Evaluated' && 
+                                        poem.score !== undefined && 
+                                        poem.score !== null && 
+                                        poem.score > 0) 
                                         ? 'Evaluated' 
-                                        : (poem.status || 'Pending');
+                                        : 'Pending';
                                       
                                       return (
                                         <Badge key={index} className={getStatusColor(actualStatus)} size="sm">
@@ -520,12 +522,12 @@ export default function UserProfile() {
                       )}
 
                       {/* Evaluated Poems */}
-                      {submissions.some(s => s.poems.some((p: any) => p.status === 'Evaluated' && !p.isWinner)) && (
+                      {submissions.some(s => s.poems.some((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner)) && (
                         <div>
                           <h3 className="font-semibold text-lg mb-3">📊 Evaluated Poems</h3>
                           <div className="space-y-3">
                             {submissions.map(submission => 
-                              submission.poems.filter((p: any) => p.status === 'Evaluated' && !p.isWinner).map((poem: any) => (
+                              submission.poems.filter((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner).map((poem: any) => (
                                 <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
                                   <div className="flex items-center justify-between">
                                     <div>
@@ -593,7 +595,7 @@ export default function UserProfile() {
                         </div>
                       )}
 
-                      {!submissions.some(s => s.poems.some((p: any) => p.isWinner || (p.status === 'Evaluated' && p.score !== undefined))) && (
+                      {!submissions.some(s => s.poems.some((p: any) => p.isWinner || (p.status === 'Evaluated' && p.score !== undefined && p.score > 0))) && (
                         <div className="text-center py-8">
                           <Clock className="mx-auto text-gray-400 mb-4" size={48} />
                           <p className="text-gray-600">Results not yet available for your submissions.</p>
