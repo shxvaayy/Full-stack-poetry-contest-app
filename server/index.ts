@@ -441,12 +441,14 @@ async function initializeApp() {
     const { initializeAdminUsers } = await import('./admin-auth.js');
     await initializeAdminUsers();
 
-    const server = app.listen(PORT, () => {
+    console.log(`🚀 Starting server on port ${PORT}...`);
+    
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'www.writoryofficial.com' : `http://localhost:${PORT}`}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🚀 Port: ${PORT}`);
+      console.log(`🚀 Port: ${PORT} (bound to 0.0.0.0)`);
       console.log(`📅 Started: ${new Date().toISOString()}`);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ Database schema fixed - updated_at columns added');
@@ -479,96 +481,99 @@ async function initializeApp() {
   }
 }
 
-// Fix user-submission links function (integrated from fix-user-submissions.ts)
+// Fix user-submission links function (optimized for quick startup)
 async function fixUserSubmissionLinks() {
   try {
-    // Get all submissions that don't have a user_id but have email addresses
-    const unlinkedSubmissions = await client.query(`
-      SELECT id, email, first_name, last_name 
+    // Quick check first - limit to recent submissions only
+    const recentUnlinked = await client.query(`
+      SELECT COUNT(*) 
       FROM submissions 
       WHERE user_id IS NULL AND email IS NOT NULL
-      ORDER BY submitted_at DESC
+      AND submitted_at > NOW() - INTERVAL '7 days'
     `);
 
-    if (unlinkedSubmissions.rows.length === 0) {
-      console.log('✅ No unlinked submissions found');
+    const recentCount = parseInt(recentUnlinked.rows[0].count);
+    
+    if (recentCount === 0) {
+      console.log('✅ No recent unlinked submissions found');
       return;
     }
 
-    console.log(`🔍 Found ${unlinkedSubmissions.rows.length} unlinked submissions`);
+    console.log(`🔍 Found ${recentCount} recent unlinked submissions - will process in background`);
+    
+    // Process in background after server starts
+    setImmediate(async () => {
+      try {
+        console.log('🔄 Background: Processing user-submission links...');
+        
+        const unlinkedSubmissions = await client.query(`
+          SELECT id, email, first_name, last_name 
+          FROM submissions 
+          WHERE user_id IS NULL AND email IS NOT NULL
+          ORDER BY submitted_at DESC
+          LIMIT 50
+        `);
 
-    let linked = 0;
-    let usersCreated = 0;
+        let linked = 0;
+        let usersCreated = 0;
 
-    for (const submission of unlinkedSubmissions.rows) {
-      // Try to find a user with this email
-      let userResult = await client.query(`
-        SELECT id, email FROM users WHERE email = $1
-      `, [submission.email]);
+        for (const submission of unlinkedSubmissions.rows) {
+          try {
+            // Try to find a user with this email
+            let userResult = await client.query(`
+              SELECT id, email FROM users WHERE email = $1
+            `, [submission.email]);
 
-      let user;
+            let user;
 
-      if (userResult.rows.length > 0) {
-        user = userResult.rows[0];
-        console.log(`👤 Found existing user for ${submission.email}`);
-      } else {
-        // Create a user account for this submission
-        console.log(`👤 Creating user account for ${submission.email}`);
-        try {
-          const newUserResult = await client.query(`
-            INSERT INTO users (uid, email, name, created_at)
-            VALUES ($1, $2, $3, NOW())
-            RETURNING id, email
-          `, [
-            `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique UID
-            submission.email,
-            `${submission.first_name} ${submission.last_name || ''}`.trim()
-          ]);
+            if (userResult.rows.length > 0) {
+              user = userResult.rows[0];
+            } else {
+              // Create a user account for this submission
+              const newUserResult = await client.query(`
+                INSERT INTO users (uid, email, name, created_at)
+                VALUES ($1, $2, $3, NOW())
+                ON CONFLICT (email) DO NOTHING
+                RETURNING id, email
+              `, [
+                `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                submission.email,
+                `${submission.first_name} ${submission.last_name || ''}`.trim()
+              ]);
 
-          user = newUserResult.rows[0];
-          usersCreated++;
-          console.log(`✅ Created user account for ${submission.email}`);
-        } catch (createError) {
-          console.error(`❌ Failed to create user for ${submission.email}:`, createError.message);
-          continue; // Skip this submission
+              if (newUserResult.rows.length > 0) {
+                user = newUserResult.rows[0];
+                usersCreated++;
+              }
+            }
+
+            if (user) {
+              // Link the submission to this user
+              await client.query(`
+                UPDATE submissions 
+                SET user_id = $1 
+                WHERE id = $2
+              `, [user.id, submission.id]);
+
+              linked++;
+            }
+          } catch (linkError) {
+            console.error(`⚠️ Failed to link submission ${submission.id}:`, linkError.message);
+          }
         }
+
+        if (linked > 0 || usersCreated > 0) {
+          console.log(`🎉 Background: Processed ${unlinkedSubmissions.rows.length} submissions!`);
+          console.log(`👥 Background: Created ${usersCreated} new user accounts`);
+          console.log(`🔗 Background: Linked ${linked} submissions to users`);
+        }
+      } catch (backgroundError) {
+        console.error('⚠️ Background user-submission linking failed:', backgroundError.message);
       }
-
-      if (user) {
-        // Link the submission to this user
-        await client.query(`
-          UPDATE submissions 
-          SET user_id = $1 
-          WHERE id = $2
-        `, [user.id, submission.id]);
-
-        console.log(`✅ Linked submission ${submission.id} to user ${user.email}`);
-        linked++;
-      }
-    }
-
-    if (linked > 0 || usersCreated > 0) {
-      console.log(`🎉 Successfully processed ${unlinkedSubmissions.rows.length} submissions!`);
-      console.log(`👥 Created ${usersCreated} new user accounts`);
-      console.log(`🔗 Linked ${linked} submissions to users`);
-
-      // Show summary
-      const totalLinked = await client.query(`
-        SELECT COUNT(*) FROM submissions WHERE user_id IS NOT NULL
-      `);
-
-      const totalUnlinked = await client.query(`
-        SELECT COUNT(*) FROM submissions WHERE user_id IS NULL
-      `);
-
-      console.log(`📊 Final Summary:`);
-      console.log(`- Submissions linked to users: ${totalLinked.rows[0].count}`);
-      console.log(`- Submissions without user links: ${totalUnlinked.rows[0].count}`);
-    }
+    });
 
   } catch (error) {
-    console.error('⚠️ Warning: Could not fix user-submission links:', error.message);
-    // Don't throw - this shouldn't stop server startup
+    console.error('⚠️ Warning: Could not check user-submission links:', error.message);
   }
 }
 
