@@ -40,9 +40,9 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
 const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   const userEmail = req.headers['x-user-email'];
-  
+
   console.log('🔐 Admin auth check:', { userEmail, authHeader: !!authHeader });
-  
+
   if (!userEmail) {
     console.log('❌ No user email provided');
     return res.status(401).json({
@@ -59,20 +59,20 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
       'writorycontest@gmail.com',
       'admin@writory.com'
     ];
-    
+
     const isHardcodedAdmin = hardcodedAdmins.includes(userEmail as string);
     console.log('🔍 Hardcoded admin check:', { userEmail, isHardcodedAdmin });
-    
+
     if (isHardcodedAdmin) {
       console.log('✅ Admin access granted (hardcoded) for:', userEmail);
       next();
       return;
     }
-    
+
     // Check database admin status
     const adminAccess = await isAdmin(userEmail as string);
     console.log('🔍 Database admin access result:', { userEmail, adminAccess });
-    
+
     if (!adminAccess) {
       console.log('❌ Admin access denied for:', userEmail);
       return res.status(403).json({
@@ -174,14 +174,14 @@ router.get('/api/test', (req, res) => {
 // Get admin settings
 router.get('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, res: any) => {
   console.log('🔧 Getting admin settings...');
-  
+
   try {
     const settings = await getAllSettings();
     const settingsObj = settings.reduce((acc, setting) => {
       acc[setting.setting_key] = setting.setting_value;
       return acc;
     }, {} as Record<string, string>);
-    
+
     res.json({
       success: true,
       settings: settingsObj
@@ -199,22 +199,22 @@ router.get('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, re
 router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, res: any) => {
   console.log('🔧 Updating admin settings...');
   const { settings } = req.body;
-  
+
   if (!settings || typeof settings !== 'object') {
     return res.status(400).json({
       success: false,
       error: 'Settings object is required'
     });
   }
-  
+
   try {
     const results = [];
-    
+
     for (const [key, value] of Object.entries(settings)) {
       const success = await updateSetting(key, String(value));
       results.push({ key, value, success });
     }
-    
+
     res.json({
       success: true,
       message: 'Settings updated successfully',
@@ -233,7 +233,7 @@ router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, r
 router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
   try {
     console.log('🔍 Checking free tier status...');
-    
+
     // Check if database is connected
     if (!process.env.DATABASE_URL) {
       console.log('⚠️ DATABASE_URL not configured, defaulting free tier to enabled');
@@ -246,20 +246,20 @@ router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
     // Get fresh setting from database
     const freeTierEnabled = await getSetting('free_tier_enabled');
     const isEnabled = freeTierEnabled === 'true' || freeTierEnabled === null; // Default to true if not set
-    
+
     console.log('🔍 Free tier status check:', { 
       setting: freeTierEnabled, 
       enabled: isEnabled,
       timestamp: new Date().toISOString()
     });
-    
+
     // Set no-cache headers to ensure fresh data
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0'
     });
-    
+
     res.json({
       success: true,
       enabled: isEnabled,
@@ -330,7 +330,7 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   const { name, email } = req.body;
-  
+
   console.log('🔄 Updating user profile for UID:', uid, 'with data:', { name, email });
   console.log('📁 Files received:', req.files?.map((f: any) => ({ fieldname: f.fieldname, originalname: f.originalname })));
 
@@ -356,20 +356,20 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
     const profilePictureFile = req.files?.find((f: any) => f.fieldname === 'profilePicture');
     if (profilePictureFile) {
       console.log('☁️ Uploading profile picture to Google Drive...');
-      
+
       try {
         // Convert multer file to buffer
         const profilePictureBuffer = fs.readFileSync(profilePictureFile.path);
-        
+
         // Upload to Google Drive using the existing photo upload function
         profilePictureUrl = await uploadPhotoFile(
           profilePictureBuffer,
           email.trim(),
           `profile_${uid}_${profilePictureFile.originalname}`
         );
-        
+
         console.log('✅ Profile picture uploaded:', profilePictureUrl);
-        
+
         // Clean up temp file
         fs.unlinkSync(profilePictureFile.path);
       } catch (uploadError) {
@@ -407,17 +407,44 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
       const updateQuery = profilePictureUrl 
         ? `UPDATE users SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW() WHERE uid = $4`
         : `UPDATE users SET name = $1, email = $2, updated_at = NOW() WHERE uid = $3`;
-      
+
       const updateParams = profilePictureUrl 
         ? [name.trim(), email.trim(), profilePictureUrl, uid]
         : [name.trim(), email.trim(), uid];
 
-      await client.query(updateQuery, updateParams);
+      try {
+        await client.query(updateQuery, updateParams);
 
-      // Get updated user
-      user = await storage.getUserByUid(uid);
+        // Get updated user
+        user = await storage.getUserByUid(uid);
+
+        console.log('✅ User profile updated:', user?.email);
+        res.json(user);
+      } catch (error) {
+        console.error('❌ Error updating user profile:', error);
+
+        // Provide more specific error messages
+        if (error.code === 'ECONNREFUSED') {
+          return res.status(503).json({ 
+            error: 'Database connection failed',
+            message: 'Unable to connect to database. Please check your DATABASE_URL configuration.' 
+          });
+        }
+
+        if (error.code === '42P01') { // Table doesn't exist
+          return res.status(503).json({ 
+            error: 'Database not initialized',
+            message: 'User table does not exist. Please run database migrations.' 
+          });
+        }
+
+        res.status(500).json({ 
+          error: 'Failed to update user profile',
+          message: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message 
+        });
+      }
     }
-    
+
     console.log('✅ User profile updated:', user?.email);
     res.json(user);
   } catch (error) {
@@ -2050,7 +2077,7 @@ router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asy
         const winnerValue = winner?.trim().toLowerCase();
         const isWinner = winnerValue === 'true' || winnerValue === '1' || winnerValue === 'yes' || winnerValue === 'winner';
         let winnerPosition = null;
-        
+
         // Check if winner value is a position number (1, 2, 3)
         if (winnerValue && ['1', '2', '3'].includes(winnerValue)) {
           winnerPosition = parseInt(winnerValue);
@@ -2204,16 +2231,16 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
 router.post('/api/admin/update-winner/:id', requireAdmin, asyncHandler(async (req: any, res: any) => {
   const submissionId = parseInt(req.params.id);
   const { isWinner, winnerPosition, winnerCategory } = req.body;
-  
+
   try {
     console.log('🏆 Updating winner status for submission:', submissionId);
-    
+
     await storage.updateSubmissionEvaluation(submissionId, {
       isWinner: isWinner || false,
       winnerPosition: winnerPosition || null,
       winnerCategory: winnerCategory || null
     });
-    
+
     res.json({
       success: true,
       message: 'Winner status updated successfully'
@@ -2230,10 +2257,10 @@ router.post('/api/admin/update-winner/:id', requireAdmin, asyncHandler(async (re
 // Debug endpoint to check specific user admin status
 router.get('/api/debug/check-admin/:email', asyncHandler(async (req: any, res: any) => {
   const { email } = req.params;
-  
+
   try {
     console.log('🔍 Checking admin status for:', email);
-    
+
     // Check hardcoded admins
     const hardcodedAdmins = [
       'shivaaymehra2@gmail.com',
@@ -2241,15 +2268,15 @@ router.get('/api/debug/check-admin/:email', asyncHandler(async (req: any, res: a
       'writorycontest@gmail.com',
       'admin@writory.com'
     ];
-    
+
     const isHardcodedAdmin = hardcodedAdmins.includes(email);
-    
+
     // Check database
     const isDatabaseAdmin = await isAdmin(email);
-    
+
     // Check all admin users in database
     const allAdmins = await client.query('SELECT email, role, created_at FROM admin_users ORDER BY created_at DESC');
-    
+
     res.json({
       success: true,
       email,
@@ -2259,7 +2286,7 @@ router.get('/api/debug/check-admin/:email', asyncHandler(async (req: any, res: a
       allDatabaseAdmins: allAdmins.rows,
       hardcodedAdmins
     });
-    
+
   } catch (error) {
     console.error('❌ Admin check error:', error);
     res.status(500).json({
@@ -2272,10 +2299,10 @@ router.get('/api/debug/check-admin/:email', asyncHandler(async (req: any, res: a
 // Debug endpoint to check admin status
 router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) => {
   const userEmail = req.headers['x-user-email'];
-  
+
   try {
     console.log('🔍 Debug admin status check for:', userEmail);
-    
+
     if (!userEmail) {
       return res.json({
         success: false,
@@ -2286,12 +2313,12 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
 
     // Check all admin users
     const allAdmins = await client.query('SELECT email, role, created_at FROM admin_users ORDER BY created_at DESC');
-    
+
     // Check specific user
     const userAdmin = await client.query('SELECT * FROM admin_users WHERE email = $1', [userEmail]);
-    
+
     const isAdminUser = await isAdmin(userEmail as string);
-    
+
     res.json({
       success: true,
       userEmail,
@@ -2300,7 +2327,7 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
       allAdmins: allAdmins.rows,
       totalAdmins: allAdmins.rows.length
     });
-    
+
   } catch (error) {
     console.error('❌ Admin status debug error:', error);
     res.status(500).json({
@@ -2314,27 +2341,27 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
 router.get('/api/debug/winners', asyncHandler(async (req: any, res: any) => {
   try {
     const { email } = req.query;
-    
+
     let query = `
       SELECT id, email, first_name, last_name, poem_title, is_winner, winner_position, 
              score, status, submission_uuid, submitted_at
       FROM submissions 
     `;
-    
+
     let params = [];
-    
+
     if (email) {
       query += ` WHERE email = $1`;
       params.push(email);
     }
-    
+
     query += ` ORDER BY submitted_at DESC`;
-    
+
     const result = await client.query(query, params);
-    
+
     const winners = result.rows.filter(row => row.is_winner);
     const totalWins = winners.length;
-    
+
     res.json({
       success: true,
       totalSubmissions: result.rows.length,
