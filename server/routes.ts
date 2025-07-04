@@ -124,6 +124,8 @@ const uploadFields = upload.fields([
 
 // Note: Using database storage instead of in-memory for persistence
 
+import { paypalRouter } from './paypal.js';
+
 // Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
