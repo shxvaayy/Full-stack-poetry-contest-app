@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -76,7 +77,7 @@ export default function UserProfile() {
       const submissionsResponse = await fetch(`/api/users/${user!.uid}/submissions`);
       if (submissionsResponse.ok) {
         const submissionsData = await submissionsResponse.json();
-        
+
         // Group submissions by submissionUuid
         const groupedSubmissions = submissionsData.reduce((groups: { [key: string]: any }, submission: any) => {
           const uuid = submission.submissionUuid || `single-${submission.id}`;
@@ -282,10 +283,10 @@ export default function UserProfile() {
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-  <TabsTrigger value="overview">Overview</TabsTrigger>
-  <TabsTrigger value="submissions">My Submissions</TabsTrigger>
-  <TabsTrigger value="results">Results</TabsTrigger>
-</TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+                <TabsTrigger value="results">Results</TabsTrigger>
+              </TabsList>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
@@ -362,7 +363,7 @@ export default function UserProfile() {
                                         poem.score > 0) 
                                         ? 'Evaluated' 
                                         : 'Pending';
-                                      
+
                                       return (
                                         <Badge key={index} className={getStatusColor(actualStatus)} size="sm">
                                           {getStatusIcon(actualStatus)}
@@ -412,59 +413,57 @@ export default function UserProfile() {
                     {submissions.length > 0 ? (
                       <div className="space-y-4">
                         {submissions.map((submission) => (
-            <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">{submission.poems.length > 1 
-                      ? `${submission.poems.length} Poems Submission` 
-                      : submission.poems[0]?.title || 'Poem Submission'
-                    }</h3>
-                  <p className="text-gray-600 text-sm mb-2">
-                    Submitted on {formatDate(submission.submittedAt)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-green-600">
-                    ₹{submission.amount}
-                  </p>
+                          <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h3 className="font-semibold text-lg">{submission.poems.length > 1 
+                                    ? `${submission.poems.length} Poems Submission` 
+                                    : submission.poems[0]?.title || 'Poem Submission'
+                                  }</h3>
+                                <p className="text-gray-600 text-sm mb-2">
+                                  Submitted on {formatDate(submission.submittedAt)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-semibold text-green-600">
+                                  ₹{submission.amount}
+                                </p>
+                              </div>
+                            </div>
 
-                </div>
-              </div>
+                            {/* Show all poems in this submission */}
+                            <div className="mb-4">
+                              <h4 className="font-medium mb-2">
+                                Poem{submission.poems.length > 1 ? 's' : ''} ({submission.poems.length}):
+                              </h4>
+                              <div className="space-y-2">
+                                {submission.poems.map((poem, index) => (
+                                  <div key={poem.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="text-sm font-medium">
+                                      {index + 1}. {poem.title}
+                                    </span>
+                                    {poem.fileUrl && (
+                                      <a 
+                                        href={poem.fileUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 text-sm"
+                                      >
+                                        View File
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
 
-              {/* Show all poems in this submission */}
-              <div className="mb-4">
-                <h4 className="font-medium mb-2">
-                  Poem{submission.poems.length > 1 ? 's' : ''} ({submission.poems.length}):
-                </h4>
-                <div className="space-y-2">
-                  {submission.poems.map((poem, index) => (
-                    <div key={poem.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm font-medium">
-                        {index + 1}. {poem.title}
-                      </span>
-                      {poem.fileUrl && (
-                        <a 
-                          href={poem.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          View File
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Badge className={getTierColor(submission.tier)}>
-                  {submission.tier}
-                </Badge>
-
-              </div>
-            </Card>
-          ))}
+                            <div className="flex flex-wrap gap-2">
+                              <Badge className={getTierColor(submission.tier)}>
+                                {submission.tier}
+                              </Badge>
+                            </div>
+                          </Card>
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-8">

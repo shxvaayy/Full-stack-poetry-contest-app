@@ -125,6 +125,7 @@ export async function updateSubmissionEvaluation(submissionId: number, evaluatio
   scoreBreakdown: string;
   isWinner: boolean;
   winnerPosition: number | null;
+  winnerCategory: string | null;
 }) {
   try {
     console.log('🔄 Updating submission evaluation:', submissionId, evaluationData);
@@ -137,6 +138,7 @@ export async function updateSubmissionEvaluation(submissionId: number, evaluatio
         scoreBreakdown: evaluationData.scoreBreakdown,
         isWinner: evaluationData.isWinner,
         winnerPosition: evaluationData.winnerPosition,
+        winnerCategory: evaluationData.winnerCategory,
         evaluatedAt: new Date(),
         updatedAt: new Date()
       })

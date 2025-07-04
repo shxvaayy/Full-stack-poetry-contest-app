@@ -1896,7 +1896,7 @@ router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asy
           continue;
         }
 
-        const [email, poemTitle, score, type, originality, emotion, structure, language, theme, status] = values;
+        const [email, poemTitle, score, type, originality, emotion, structure, language, theme, status, winner] = values;
 
         // Find the submission to update
         const submissions = await storage.getSubmissionsByEmailAndTitle(email.trim(), poemTitle.trim());
@@ -1904,6 +1904,16 @@ router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asy
         if (submissions.length === 0) {
           errors.push(`Line ${i + 1}: No submission found for ${email} - ${poemTitle}`);
           continue;
+        }
+
+        // Parse winner information
+        const winnerValue = winner?.trim().toLowerCase();
+        const isWinner = winnerValue === 'true' || winnerValue === '1' || winnerValue === 'yes' || winnerValue === 'winner';
+        let winnerPosition = null;
+        
+        // Check if winner value is a position number (1, 2, 3)
+        if (winnerValue && ['1', '2', '3'].includes(winnerValue)) {
+          winnerPosition = parseInt(winnerValue);
         }
 
         // Update the submission
@@ -1919,8 +1929,8 @@ router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asy
               theme: parseInt(theme) || 0
             }),
             status: status.trim() || 'Evaluated',
-            isWinner: false,
-            winnerPosition: null
+            isWinner: isWinner,
+            winnerPosition: winnerPosition
           });
         }
 
@@ -2046,6 +2056,33 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+}));
+
+// Admin endpoint to update winner status
+router.post('/api/admin/update-winner/:id', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  const submissionId = parseInt(req.params.id);
+  const { isWinner, winnerPosition, winnerCategory } = req.body;
+  
+  try {
+    console.log('🏆 Updating winner status for submission:', submissionId);
+    
+    await storage.updateSubmissionEvaluation(submissionId, {
+      isWinner: isWinner || false,
+      winnerPosition: winnerPosition || null,
+      winnerCategory: winnerCategory || null
+    });
+    
+    res.json({
+      success: true,
+      message: 'Winner status updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error updating winner status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update winner status'
     });
   }
 }));
