@@ -271,7 +271,7 @@ async function initializeApp() {
 
     console.log('✅ Static file serving configured with enhanced caching');
 
-    // Step 5: React SPA catch-all handler with better error handling
+    // Step 5: React SPA catch-all handler - SINGLE ROUTE with comprehensive diagnostics
     app.get('*', (req, res) => {
       // Skip API routes - they should have been handled already
       if (req.path.startsWith('/api/')) {
@@ -285,9 +285,12 @@ async function initializeApp() {
       }
 
       const indexPath = path.join(publicPath, 'index.html');
-      console.log('📄 Serving React SPA for route:', req.path);
+      console.log('📄 Attempting to serve React SPA for route:', req.path);
+      console.log('📂 Looking for index.html at:', indexPath);
 
       if (fs.existsSync(indexPath)) {
+        console.log('✅ index.html found, serving React app for route:', req.path);
+        
         // Set headers for HTML delivery
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -297,22 +300,29 @@ async function initializeApp() {
         // Send the React app
         res.sendFile(indexPath, (err) => {
           if (err) {
-            console.error('❌ Error serving React app:', err);
-            res.status(500).json({
-              error: 'Failed to load application',
-              message: 'The frontend application could not be served',
-              timestamp: new Date().toISOString()
-            });
+            console.error('❌ Error serving React app for route:', req.path, 'Error:', err.message);
+            if (!res.headersSent) {
+              res.status(500).json({
+                error: 'Failed to load application',
+                message: 'The frontend application could not be served',
+                timestamp: new Date().toISOString()
+              });
+            }
           } else {
-            console.log('✅ React app served successfully for:', req.path);
+            console.log('✅ React app served successfully for route:', req.path);
           }
         });
       } else {
-        console.error('❌ React app index.html not found at:', indexPath);
-
+        console.error('❌ index.html not found at:', indexPath);
+        console.error('📂 Public directory exists:', fs.existsSync(publicPath));
+        
         // Provide detailed error information
         const publicExists = fs.existsSync(publicPath);
         const files = publicExists ? fs.readdirSync(publicPath).slice(0, 20) : [];
+        
+        if (publicExists) {
+          console.error('📁 Files in public directory:', files.join(', '));
+        }
 
         res.status(404).send(`
           <!DOCTYPE html>
@@ -364,14 +374,16 @@ async function initializeApp() {
                 <h3>How to Fix:</h3>
                 <ol>
                   <li>Ensure your React app is built with <code>npm run build</code></li>
-                  <li>Check that build files are in the correct directory</li>
+                  <li>Check that build files are in the correct directory: <code>dist/public</code></li>
                   <li>Verify the build output includes an <code>index.html</code> file</li>
                   <li>Restart the server after building</li>
+                  <li>Check that vite.config.ts has correct build.outDir setting</li>
                 </ol>
               </div>
 
               <div class="info">
                 <p><strong>Server Status:</strong> <span class="status warning">RUNNING</span> (API endpoints are functional)</p>
+                <p><strong>Requested Route:</strong> ${req.path}</p>
                 <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
               </div>
             </div>
