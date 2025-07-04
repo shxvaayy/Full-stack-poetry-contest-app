@@ -334,6 +334,10 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
   console.log('🔄 Updating user profile for UID:', uid, 'with data:', { name, email });
   console.log('📁 Files received:', req.files?.map((f: any) => ({ fieldname: f.fieldname, originalname: f.originalname })));
 
+  if (!uid) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -375,6 +379,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
       } catch (uploadError) {
         console.error('❌ Failed to upload profile picture:', uploadError);
         // Continue with profile update even if picture upload fails
+        profilePictureUrl = null;
       }
     }
 
@@ -390,66 +395,81 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
           profilePictureUrl: profilePictureUrl
         });
         console.log('✅ Created new user:', user.email);
+        
+        // Return the newly created user
+        return res.json(user);
       } catch (createError) {
         console.error('❌ Failed to create user:', createError);
-        return res.status(500).json({ error: 'Failed to create user profile' });
+        return res.status(500).json({ error: 'Failed to create user profile: ' + createError.message });
       }
     } else {
       // Check if email is already taken by another user
       if (email.trim() !== user.email) {
-        const existingUser = await storage.getUserByEmail(email.trim());
-        if (existingUser && existingUser.uid !== uid) {
-          return res.status(400).json({ error: 'Email is already taken by another user' });
+        try {
+          const existingUser = await storage.getUserByEmail(email.trim());
+          if (existingUser && existingUser.uid !== uid) {
+            return res.status(400).json({ error: 'Email is already taken by another user' });
+          }
+        } catch (emailCheckError) {
+          console.error('❌ Error checking email uniqueness:', emailCheckError);
+          // Continue with update if email check fails
         }
       }
 
-      // Update existing user
-      const updateQuery = profilePictureUrl 
-        ? `UPDATE users SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW() WHERE uid = $4`
-        : `UPDATE users SET name = $1, email = $2, updated_at = NOW() WHERE uid = $3`;
-
-      const updateParams = profilePictureUrl 
-        ? [name.trim(), email.trim(), profilePictureUrl, uid]
-        : [name.trim(), email.trim(), uid];
-
+      // Update existing user using the storage function instead of direct SQL
       try {
-        await client.query(updateQuery, updateParams);
+        const updateData = {
+          name: name.trim(),
+          email: email.trim(),
+          ...(profilePictureUrl && { profilePictureUrl })
+        };
 
-        // Get updated user
-        user = await storage.getUserByUid(uid);
+        // Use storage.updateUser function
+        const updatedUser = await storage.updateUser(uid, updateData);
 
-        console.log('✅ User profile updated:', user?.email);
-        res.json(user);
-      } catch (error) {
-        console.error('❌ Error updating user profile:', error);
+        if (!updatedUser) {
+          return res.status(500).json({ error: 'Failed to update user profile - no data returned' });
+        }
+
+        console.log('✅ User profile updated:', updatedUser.email);
+        return res.json(updatedUser);
+      } catch (updateError) {
+        console.error('❌ Error updating user profile:', updateError);
 
         // Provide more specific error messages
-        if (error.code === 'ECONNREFUSED') {
+        if (updateError.code === 'ECONNREFUSED') {
           return res.status(503).json({ 
             error: 'Database connection failed',
             message: 'Unable to connect to database. Please check your DATABASE_URL configuration.' 
           });
         }
 
-        if (error.code === '42P01') { // Table doesn't exist
+        if (updateError.code === '42P01') { // Table doesn't exist
           return res.status(503).json({ 
             error: 'Database not initialized',
             message: 'User table does not exist. Please run database migrations.' 
           });
         }
 
-        res.status(500).json({ 
+        if (updateError.code === '23505') { // Unique constraint violation
+          return res.status(400).json({ 
+            error: 'Email already exists',
+            message: 'This email is already taken by another user.' 
+          });
+        }
+
+        return res.status(500).json({ 
           error: 'Failed to update user profile',
-          message: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message 
+          message: process.env.NODE_ENV === 'production' ? 'Internal server error' : updateError.message 
         });
       }
     }
-
-    console.log('✅ User profile updated:', user?.email);
-    res.json(user);
   } catch (error) {
     console.error('❌ Error updating user profile:', error);
-    res.status(500).json({ error: 'Failed to update user profile' });
+    return res.status(500).json({ 
+      error: 'Failed to update user profile',
+      message: error.message
+    });
   } finally {
     // Clean up any remaining temp files
     if (req.files) {

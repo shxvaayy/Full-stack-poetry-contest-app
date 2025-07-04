@@ -201,15 +201,24 @@ export default function UserProfile() {
         formData.append('profilePicture', profilePicture);
       }
 
+      console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
+
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
-        body: formData // Use FormData instead of JSON for file uploads
+        body: formData
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
 
       if (response.ok) {
         const updatedUser = await response.json();
+        console.log('Updated user data:', updatedUser);
+        
         setBackendUser(updatedUser);
         setIsEditDialogOpen(false);
+        setProfilePicture(null);
+        setProfilePicturePreview("");
         
         // Refresh all user data after successful update
         await fetchUserData();
@@ -219,7 +228,13 @@ export default function UserProfile() {
           description: "Profile updated successfully!",
         });
       } else {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
         console.error('Update profile error response:', errorData);
         
         // Better error handling for specific cases
@@ -229,17 +244,41 @@ export default function UserProfile() {
             description: "Setting up your profile for the first time...",
           });
           // Try again - the backend should create the user now
-          setTimeout(() => updateUserProfile(), 1000);
+          setTimeout(() => updateUserProfile(), 2000);
+          return;
+        } else if (response.status === 400) {
+          toast({
+            title: "Validation Error",
+            description: errorData.error || "Please check your input data",
+            variant: "destructive",
+          });
+          return;
+        } else if (response.status === 500) {
+          toast({
+            title: "Server Error",
+            description: "Database connection issue. Please try again in a moment.",
+            variant: "destructive",
+          });
           return;
         }
         
-        throw new Error(errorData.error || 'Failed to update profile');
+        throw new Error(errorData.error || `Failed to update profile (${response.status})`);
       }
     } catch (error) {
       console.error('Error updating profile:', error);
+      
+      // More specific error messages
+      let errorMessage = "Failed to update profile. Please try again.";
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: "Error", 
-        description: error.message || "Failed to update profile. Please try again.",
+        title: "Update Failed", 
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

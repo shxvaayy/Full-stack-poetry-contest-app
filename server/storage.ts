@@ -201,7 +201,7 @@ export async function createSubmission(submissionData: any) {
 
 export async function updateUser(uid: string, userData: any) {
   try {
-    console.log('🔄 Updating user:', uid);
+    console.log('🔄 Updating user:', uid, 'with data:', userData);
 
     const result = await db.update(users)
       .set({
@@ -211,7 +211,12 @@ export async function updateUser(uid: string, userData: any) {
       .where(eq(users.uid, uid))
       .returning();
 
-    console.log('✅ User updated:', uid);
+    if (result.length === 0) {
+      console.error('❌ No user found with UID:', uid);
+      throw new Error('User not found');
+    }
+
+    console.log('✅ User updated successfully:', result[0].email);
     return result[0];
   } catch (error) {
     console.error('❌ Error updating user:', error);
