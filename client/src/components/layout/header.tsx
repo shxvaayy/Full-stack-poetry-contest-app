@@ -12,7 +12,7 @@ export default function Header() {
   const { user, logout } = useAuth();
 
   // Check if user is admin
-  const isAdmin = user?.email === 'shivaaymehra2@gmail.com';
+  const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'shiningbhavya.seth@gmail.com';
 
   const navigation = [
     { name: "HOME", href: "/" },
