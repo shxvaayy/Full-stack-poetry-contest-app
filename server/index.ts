@@ -12,7 +12,7 @@ import { connectDatabase, client } from './db.js';
 import { createTables } from './migrate.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { initializeAdminSettings } from './admin-settings.js';
-import paypalRoutes from './paypal';
+import { paypalRouter } from './paypal.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -195,10 +195,6 @@ async function initializeApp() {
     console.log('🛣️  Registering API routes...');
     registerRoutes(app);
     console.log('✅ API routes registered successfully');
-
-    // API routes
-    app.use('/api', registerRoutes(app));
-    app.use('/api/paypal', paypalRoutes);
 
     // Step 5: Configure static file serving
     const publicPath = path.join(__dirname, '../dist/public');
