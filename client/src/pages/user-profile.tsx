@@ -223,10 +223,13 @@ export default function UserProfile() {
         setProfilePicture(null);
         setProfilePicturePreview("");
         
+        // Dispatch profile update event to notify header
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        
         // Force a complete refresh of all data
         setTimeout(async () => {
           await fetchUserData();
-        }, 500);
+        }, 100);
         
         toast({
           title: "Profile Updated!",
@@ -413,24 +416,31 @@ export default function UserProfile() {
               <CardHeader className="text-center">
                 <div className="relative w-20 h-20 mx-auto mb-4">
                   {backendUser?.profilePictureUrl ? (
-                    <img 
-                      src={backendUser.profilePictureUrl} 
-                      alt="Profile" 
-                      className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
-                      onError={(e) => {
-                        console.log('Profile picture failed to load:', backendUser.profilePictureUrl);
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <div 
-                    className={`w-20 h-20 bg-green-600 rounded-full flex items-center justify-center ${
-                      backendUser?.profilePictureUrl ? 'hidden' : ''
-                    }`}
-                  >
-                    <User className="text-white" size={32} />
-                  </div>
+                    <>
+                      <img 
+                        src={backendUser.profilePictureUrl} 
+                        alt="Profile" 
+                        className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
+                        onError={(e) => {
+                          console.log('Profile picture failed to load:', backendUser.profilePictureUrl);
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                        key={backendUser.profilePictureUrl}
+                      />
+                      <div 
+                        className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center"
+                        style={{ display: 'none' }}
+                      >
+                        <User className="text-white" size={32} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
+                      <User className="text-white" size={32} />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CardTitle className="text-xl">
