@@ -10,7 +10,7 @@ import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_175059956524
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, dbUser } = useAuth();
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function Header() {
                       <User className="text-green-600" size={14} />
                     </div>
                     <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                      {dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>
@@ -218,7 +218,7 @@ export default function Header() {
                       </div>
                     )}
                     <span className="text-white text-sm font-medium">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                      {dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>
