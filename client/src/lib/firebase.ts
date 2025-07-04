@@ -34,20 +34,49 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "demo-measurement-id"
 };
 
+// Validate Firebase configuration for storage operations
+const validateFirebaseConfig = () => {
+  if (!import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID === "demo-project") {
+    console.warn('Firebase Storage: Using demo configuration. Set VITE_FIREBASE_PROJECT_ID for production.');
+    return false;
+  }
+  return true;
+};
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
 // Profile photo upload function
 export const uploadProfilePhoto = async (userId: string, file: File): Promise<string> => {
-  const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
-  
-  // Upload file
-  await uploadBytes(storageRef, file);
-  
-  // Get download URL with cache buster
-  const downloadURL = await getDownloadURL(storageRef);
-  return `${downloadURL}?v=${Date.now()}`;
+  try {
+    // Check Firebase configuration
+    if (!validateFirebaseConfig()) {
+      throw new Error('Firebase Storage not properly configured');
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('File size must be less than 5MB');
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Only image files are allowed');
+    }
+
+    const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
+    
+    // Upload file
+    await uploadBytes(storageRef, file);
+    
+    // Get download URL with cache buster
+    const downloadURL = await getDownloadURL(storageRef);
+    return `${downloadURL}?v=${Date.now()}`;
+  } catch (error) {
+    console.error('Firebase Storage upload error:', error);
+    throw error;
+  }
 };
 
 // Get current profile photo URL

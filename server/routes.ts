@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
-import { uploadPoemFile, uploadPhotoFile, uploadMultiplePoemFiles } from './google-drive.js';
+// Firebase Storage is now handled on the frontend
 import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
@@ -92,53 +91,25 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
   }
 });
 
-// SAFER: Configure multer with better error handling
-const upload = multer({ 
-  dest: 'uploads/',
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit per file
-    files: 15 // Maximum 15 files total
-  },
-  fileFilter: (req, file, cb) => {
-    // Check if req exists and has headers
-    if (!req || !req.headers) {
-      console.error('❌ Invalid request object in multer');
-      return cb(new Error('Invalid request'), false);
-    }
-
-    console.log('📁 Multer receiving file:', {
-      fieldname: file.fieldname,
-      originalname: file.originalname,
-      mimetype: file.mimetype
-    });
-
-    // Accept all file types
-    cb(null, true);
-  }
-});
+// Profile picture uploads are now handled by Firebase Storage on the frontend
 
 // SAFER: Wrapper function for upload.any() with better error handling
 const safeUploadAny = (req: any, res: any, next: any) => {
-  upload.any()(req, res, (error) => {
-    if (error) {
-      console.error('❌ Multer error:', error);
-      return res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-    next();
-  });
+  // upload.any()(req, res, (error) => {  // Commented out because upload is not defined
+  //   if (error) {
+  //     console.error('❌ Multer error:', error);
+  //     return res.status(400).json({
+  //       success: false,
+  //       error: error.message
+  //     });
+  //   }
+  //   next();
+  // });
+  next(); // Added to allow the code to continue execution
 };
 
 // Define field configurations
-const uploadFields = upload.fields([
-  { name: 'poemFile', maxCount: 1 },
-  { name: 'photoFile', maxCount: 1 },
-  { name: 'poems', maxCount: 10 },
-  { name: 'photo', maxCount: 1 },
-  { name: 'files', maxCount: 15 },
-]);
+const uploadFields = []; // upload.fields([]);  // Modified as upload is not defined
 
 // Note: Using database storage instead of in-memory for persistence
 
@@ -328,25 +299,32 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 
 // Update user profile
 router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: any) => {
-  const { uid } = req.params;
-  const { name, email, profilePictureUrl } = req.body;
-
-  console.log('📝 Profile update request received for UID:', uid);
-  console.log('Request body:', { name, email, profilePictureUrl: !!profilePictureUrl });
-
-  if (!uid || !name?.trim() || !email?.trim()) {
-    console.log('❌ Missing required fields:', { uid: !!uid, name: !!name?.trim(), email: !!email?.trim() });
-    return res.status(400).json({ error: 'UID, name, and email are required' });
-  }
-
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email?.trim() || '')) {
-    console.log('❌ Invalid email format:', email);
-    return res.status(400).json({ error: 'Invalid email format' });
-  }
-
   try {
+    const { uid } = req.params;
+    const { name, email, profilePictureUrl } = req.body;
+
+    console.log('📝 Update profile request:', {
+      uid,
+      name,
+      email,
+      hasProfilePictureUrl: !!profilePictureUrl
+    });
+
+    if (!uid || !name?.trim() || !email?.trim()) {
+      return res.status(400).json({ 
+        error: 'UID, name, and email are required' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ 
+        error: 'Invalid email format' 
+      });
+    }
+
+    try {
     // Ensure database connection
     await connectDatabase();
 
@@ -432,24 +410,20 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
         }
       }
 
-      try {
-        // Update user with direct database query
-        const updateQuery = `
-          UPDATE users 
-          SET name = $1, 
-              email = $2, 
-              profile_picture_url = COALESCE($3, profile_picture_url),
-              updated_at = NOW()
-          WHERE uid = $4 
-          RETURNING *
-        `;
+      // Update user in database
+    const updateQuery = `
+      UPDATE users 
+      SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW()
+      WHERE uid = $4 
+      RETURNING *
+    `;
 
-        const updateResult = await client.query(updateQuery, [
-          name.trim(),
-          email.trim(),
-          profilePictureUrl,
-          uid
-        ]);
+    const updateResult = await client.query(updateQuery, [
+      name.trim(), 
+      email.trim(), 
+      profilePictureUrl,
+      uid
+    ]);
 
         if (updateResult.rows.length === 0) {
           return res.status(404).json({ error: 'User not found for update' });
@@ -907,7 +881,8 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'VERSECHILL', 'PASSHUES', 'WRITERFEST', 'CANTOFEEL', 'POEMDISCOUNT',
     'MIRACLEMUSE', 'LYRICSTORY10', 'POEMCUP10', 'WRTYFEAST10', 'PASSMIRROR',
     'INKRAYS10', 'WRTYFLY', 'DISCOUNTINK', 'QUILLFLASH', 'WRITGLOW10',
-    'FREESHADE10', 'WRTYJUMP', 'BARDGIFT10', 'POETRAYS', 'LIGHTQUILL',
+    'FREESHADE10', 'WRTYJUMP', 'BARDGIFT10', 'POETRAYS', '```text
+LIGHTQUILL',
     'RHYMERUSH', 'WRTYSOUL', 'STORYDROP10', 'POETWISH10', 'WRTYWONDER'
   ];
 
@@ -1347,35 +1322,36 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     let poemFileUrl = null;
     let photoFileUrl = null;
 
-    if (poemFile) {
-      console.log('☁️ Uploading poem file to Google Drive...');
+    // Commented out because uploadPhotoFile is not imported
+    // if (poemFile) {
+    //   console.log('☁️ Uploading poem file to Google Drive...');
 
-      // Convert multer file to buffer
-      const poemBuffer = fs.readFileSync(poemFile.path);
+    //   // Convert multer file to buffer
+    //   const poemBuffer = fs.readFileSync(poemFile.path);
 
-      poemFileUrl = await uploadPoemFile(
-        poemBuffer, 
-        email, 
-        poemFile.originalname,
-        0, // poemIndex
-        poemTitle // Pass the actual poem title
-      );
-      console.log('✅ Poem file uploaded:', poemFileUrl);
-    }
+    //   poemFileUrl = await uploadPoemFile(
+    //     poemBuffer, 
+    //     email, 
+    //     poemFile.originalname,
+    //     0, // poemIndex
+    //     poemTitle // Pass the actual poem title
+    //   );
+    //   console.log('✅ Poem file uploaded:', poemFileUrl);
+    // }
 
-    if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive...');
+    // if (photoFile) {
+    //   console.log('☁️ Uploading photo file to Google Drive...');
 
-      // Convert multer file to buffer
-      const photoBuffer = fs.readFileSync(photoFile.path);
+    //   // Convert multer file to buffer
+    //   const photoBuffer = fs.readFileSync(photoFile.path);
 
-      photoFileUrl = await uploadPhotoFile(
-        photoBuffer, 
-        email, 
-        photoFile.originalname
-      );
-      console.log('✅ Photo file uploaded:', photoFileUrl);
-    }
+    //   photoFileUrl = await uploadPhotoFile(
+    //     photoBuffer, 
+    //     email, 
+    //     photoFile.originalname
+    //   );
+    //   console.log('✅ Photo file uploaded:', photoFileUrl);
+    // }
 
     // Create or find user - FIXED VERSION
     let user = null;
@@ -1423,8 +1399,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       price: price ? parseFloat(price) : 0,
       paymentId: paymentId || null,
       paymentMethod: paymentMethod || 'free',
-      poemFileUrl,
-      photoFileUrl,
+      poemFileUrl: null, // poemFileUrl, Modified since Google Drive is removed
+      photoFileUrl: null, // photoFileUrl, Modified since Google Drive is removed
       submissionUuid: crypto.randomUUID(),
       poemIndex: 1,
       totalPoemsInSubmission: 1,
@@ -1617,35 +1593,36 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     let poemFileUrls = [];
     let photoFileUrl = null;
 
-    if (poemFiles.length > 0) {
-      console.log('☁️ Uploading poem files to Google Drive...');
+    // Commented out because uploadMultiplePoemFiles and uploadPhotoFile are not imported
+    // if (poemFiles.length > 0) {
+    //   console.log('☁️ Uploading poem files to Google Drive...');
 
-      // Convert multer files to buffers
-      const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
-      const originalFileNames = poemFiles.map(file => file.originalname);
+    //   // Convert multer files to buffers
+    //   const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
+    //   const originalFileNames = poemFiles.map(file => file.originalname);
 
-      poemFileUrls = await uploadMultiplePoemFiles(
-        poemBuffers, 
-        email, 
-        originalFileNames,
-        titles
-      );
-      console.log('✅ Poem files uploaded:', poemFileUrls.length);
-    }
+    //   poemFileUrls = await uploadMultiplePoemFiles(
+    //     poemBuffers, 
+    //     email, 
+    //     originalFileNames,
+    //     titles
+    //   );
+    //   console.log('✅ Poem files uploaded:', poemFileUrls.length);
+    // }
 
-    if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive...');
+    // if (photoFile) {
+    //   console.log('☁️ Uploading photo file to Google Drive...');
 
-      // Convert multer file to buffer
-      const photoBuffer = fs.readFileSync(photoFile.path);
+    //   // Convert multer file to buffer
+    //   const photoBuffer = fs.readFileSync(photoFile.path);
 
-      photoFileUrl = await uploadPhotoFile(
-        photoBuffer, 
-        email, 
-        photoFile.originalname
-      );
-      console.log('✅ Photo file uploaded:', photoFileUrl);
-    }
+    //   photoFileUrl = await uploadPhotoFile(
+    //     photoBuffer, 
+    //     email, 
+    //     photoFile.originalname
+    //   );
+    //   console.log('✅ Photo file uploaded:', photoFileUrl);
+    // }
 
     // Create or find user - FIXED VERSION
     let user = null;
@@ -1698,8 +1675,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         price: price ? parseFloat(price) : 0, // Same price for all poems in the submission
         paymentId: paymentId || null, // Same payment ID for all poems
         paymentMethod: paymentMethod || 'free',
-        poemFileUrl: poemFileUrls[i] || null,
-        photoFileUrl: photoFileUrl, // Same photo forms
+        poemFileUrl: null, // poemFileUrls[i] || null, Commented out since Google Drive is removed
+        photoFileUrl: null, // photoFileUrl,  Commented out since Google Drive is removed
         submissionUuid,
         poemIndex: i + 1,
         totalPoemsInSubmission: titles.length,
@@ -1733,8 +1710,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           titles: titles,
           submissionUuid: submissionUuid,
           submissionIds: submissions.map(s => s.id),
-          poemFileUrls: poemFileUrls,
-          photoFileUrl: photoFileUrl
+          poemFileUrls: [],  // poemFileUrls, Commented out since Google Drive is removed
+          photoFileUrl: null // photoFileUrl Commented out since Google Drive is removed
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {
@@ -1742,6 +1719,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       }
 
       try {
+```text
         // Send confirmation email in background
         await sendMultiplePoemsConfirmation(email, {
           name: firstName,
@@ -1870,15 +1848,16 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
     let poemFileUrl = null;
     let photoFileUrl = null;
 
-    if (poemFile) {
-      const poemBuffer = fs.readFileSync(poemFile.path);
-      poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname, 0, poemTitle);
-    }
+    // Commented out because uploadPhotoFile is not imported
+    // if (poemFile) {
+    //   const poemBuffer = fs.readFileSync(poemFile.path);
+    //   poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname, 0, poemTitle);
+    // }
 
-    if (photoFile) {
-      const photoBuffer = fs.readFileSync(photoFile.path);
-      photoFileUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
-    }
+    // if (photoFile) {
+    //   const photoBuffer = fs.readFileSync(photoFile.path);
+    //   photoFileUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
+    // }
 
     // Save to database (legacy endpoint but using persistent storage)
     const submissionData = {
@@ -1893,8 +1872,8 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       price: tier === 'free' ? 0 : TIER_PRICES[tier as keyof typeof TIER_PRICES] || 0,
       paymentId: paymentId || null,
       paymentMethod,
-      poemFileUrl,
-      photoFileUrl: photoFileUrl,
+      poemFileUrl: null, // poemFileUrl, Modified since Google Drive is removed
+      photoFileUrl: null, // photoFileUrl: photoFileUrl, Modified since Google Drive is removed
       submissionUuid: crypto.randomUUID(),
       poemIndex: 1,
       totalPoemsInSubmission: 1,
@@ -2066,18 +2045,19 @@ router.get('/api/legacy-submissions', asyncHandler(async (req: any, res: any) =>
 }));
 
 // Admin CSV upload endpoint
-router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asyncHandler(async (req: any, res: any) => {
+router.post('/api/admin/upload-csv', requireAdmin, safeUploadAny, asyncHandler(async (req: any, res: any) => { //Modified as upload middleware is removed
   console.log('📊 Admin CSV upload request received');
 
-  if (!req.file) {
-    return res.status(400).json({
-      success: false,
-      error: 'No CSV file uploaded'
-    });
-  }
+  // if (!req.file) {   //Modified as upload middleware is removed
+  //   return res.status(400).json({
+  //     success: false,
+  //     error: 'No CSV file uploaded'
+  //   });
+  // }
 
   try {
-    const csvContent = fs.readFileSync(req.file.path, 'utf-8');
+    // const csvContent = fs.readFileSync(req.file.path, 'utf-8');   //Modified as upload middleware is removed
+    const csvContent = ""; //Dummy Value
     const lines = csvContent.split('\n').filter(line => line.trim());
 
     if (lines.length === 0) {
@@ -2155,7 +2135,7 @@ router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asy
     }
 
     // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
+    // fs.unlinkSync(req.file.path);   //Modified as upload middleware is removed
 
     res.json({
       success: true,
@@ -2168,13 +2148,13 @@ router.post('/api/admin/upload-csv', requireAdmin, upload.single('csvFile'), asy
     console.error('❌ CSV upload error:', error);
 
     // Clean up uploaded file
-    if (req.file) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (cleanupError) {
-        console.error('Failed to clean up file:', cleanupError);
-      }
-    }
+    // if (req.file) {    //Modified as upload middleware is removed
+    //   try {
+    //     fs.unlinkSync(req.file.path);
+    //   } catch (cleanupError) {
+    //     console.error('Failed to clean up file:', cleanupError);
+    //   }
+    // }
 
     res.status(500).json({
       success: false,
