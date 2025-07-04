@@ -197,6 +197,7 @@ async function initializeApp() {
     const { fixUsersTable } = await import('./fix-users-table.js');
     await fixUsersTable();
     console.log('✅ Users table structure verified');
+    console.log('🔄 Continuing to API route registration...');
 
     // Step 4: Register API routes FIRST (before static files)
     console.log('🛣️  Registering API routes...');
@@ -419,19 +420,23 @@ async function initializeApp() {
       });
     });
 
-    // Step 7: Start the server
-    // Initialize admin settings
+    // Step 7: Initialize admin components
     console.log('🔧 Initializing admin settings...');
     await initializeAdminSettings();
+    console.log('✅ Admin settings initialized');
 
-    // Initialize admin users
     console.log('🔧 Initializing admin users...');
     const { initializeAdminUsers } = await import('./admin-auth.js');
     await initializeAdminUsers();
+    console.log('✅ Admin users initialized');
 
-    console.log(`🚀 Starting server on port ${PORT}...`);
-    console.log(`🔌 Binding to 0.0.0.0:${PORT} for external access...`);
-    console.log(`🌐 Server will be accessible on port ${PORT}`);
+    // Step 8: START THE SERVER - CRITICAL SECTION
+
+    console.log('\n🚀 STARTING EXPRESS SERVER...');
+    console.log(`📍 Port: ${PORT}`);
+    console.log(`📍 Host: 0.0.0.0`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+    console.log('📍 About to call app.listen()...');
     
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
