@@ -223,8 +223,10 @@ export default function UserProfile() {
         setProfilePicture(null);
         setProfilePicturePreview("");
         
-        // Dispatch profile update event to notify header
-        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        // Dispatch profile update event to notify header with the new data
+        window.dispatchEvent(new CustomEvent('profileUpdated', { 
+          detail: { profilePictureUrl: updatedUser.profilePictureUrl } 
+        }));
         
         // Force a complete refresh of all data
         setTimeout(async () => {

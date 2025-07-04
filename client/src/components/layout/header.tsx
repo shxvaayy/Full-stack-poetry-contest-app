@@ -9,7 +9,46 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const [userProfilePicture, setUserProfilePicture] = useState(null);
+  const [userProfilePicture, setUserProfilePicture] = useState<string | null>(null);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.uid) {
+        try {
+          // Add cache-busting parameter to ensure fresh data
+          const response = await fetch(`/api/users/${user.uid}?t=${Date.now()}`);
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('Header: Fetched user profile:', userData);
+            setUserProfilePicture(userData.profilePictureUrl || null);
+          } else {
+            console.error('Failed to fetch user profile');
+            setUserProfilePicture(null);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setUserProfilePicture(null);
+        }
+      } else {
+        setUserProfilePicture(null);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user, profileRefreshKey]);
+
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setProfileRefreshKey(prev => prev + 1);
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
 
   // Check if user is admin
   const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'shiningbhavya.seth@gmail.com';
@@ -24,26 +63,6 @@ export default function Header() {
     ...(isAdmin ? [{ name: "ADMIN UPLOAD", href: "/admin-upload" }] : []),
   ];
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user?.uid) {
-        try {
-          // Assuming you have an endpoint to fetch user data by UID
-          const response = await fetch(`/api/users/${user.uid}`);
-          if (response.ok) {
-            const userData = await response.json();
-            setUserProfilePicture(userData.profilePictureUrl || null);
-          } else {
-            console.error('Failed to fetch user profile');
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
-      }
-    };
-
-    fetchUserProfile();
-  }, [user]);
 
   const handleLogout = async () => {
     console.log("Header logout clicked");
@@ -100,12 +119,21 @@ export default function Header() {
                         src={userProfilePicture}
                         alt="Profile"
                         className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
+                        key={userProfilePicture} // Force re-render when URL changes
+                        onError={(e) => {
+                          console.log('Header: Profile picture failed to load:', userProfilePicture);
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="text-green-600" size={14} />
-                      </div>
-                    )}
+                    ) : null}
+                    <div 
+                      className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ display: userProfilePicture ? 'none' : 'flex' }}
+                    >
+                      <User className="text-green-600" size={14} />
+                    </div>
                     <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
@@ -176,12 +204,21 @@ export default function Header() {
                         src={userProfilePicture}
                         alt="Profile"
                         className="w-7 h-7 rounded-full object-cover"
+                        key={userProfilePicture} // Force re-render when URL changes
+                        onError={(e) => {
+                          console.log('Header mobile: Profile picture failed to load:', userProfilePicture);
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                        <User className="text-green-600" size={14} />
-                      </div>
-                    )}
+                    ) : null}
+                    <div 
+                      className="w-7 h-7 bg-white rounded-full flex items-center justify-center"
+                      style={{ display: userProfilePicture ? 'none' : 'flex' }}
+                    >
+                      <User className="text-green-600" size={14} />
+                    </div>
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
