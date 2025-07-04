@@ -353,10 +353,13 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
   }
 
   try {
-    let user = await storage.getUserByUid(uid);
+    // Ensure database connection
+    await connectDatabase();
+    
+    let user = null;
     let profilePictureUrl = null;
 
-    // Handle profile picture upload
+    // Handle profile picture upload first (if any)
     const profilePictureFile = req.files?.find((f: any) => f.fieldname === 'profilePicture');
     if (profilePictureFile) {
       console.log('☁️ Uploading profile picture to Google Drive...');
@@ -383,32 +386,79 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
       }
     }
 
+    // Try to get existing user
+    try {
+      user = await storage.getUserByUid(uid);
+      console.log('🔍 Found existing user:', user?.email || 'none');
+    } catch (getUserError) {
+      console.log('⚠️ Could not find user, will create new one');
+      user = null;
+    }
+
     // If user doesn't exist, create them first
     if (!user) {
       console.log('⚠️ User not found for UID:', uid, '- Creating new user');
       try {
-        user = await storage.createUser({
-          uid: uid,
-          email: email.trim(),
-          name: name.trim(),
-          phone: null,
-          profilePictureUrl: profilePictureUrl
-        });
-        console.log('✅ Created new user:', user.email);
+        // Use direct database query instead of storage function to avoid issues
+        const createResult = await client.query(`
+          INSERT INTO users (uid, email, name, phone, profile_picture_url, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          ON CONFLICT (uid) DO UPDATE SET
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            profile_picture_url = COALESCE(EXCLUDED.profile_picture_url, users.profile_picture_url),
+            updated_at = NOW()
+          RETURNING *
+        `, [uid, email.trim(), name.trim(), null, profilePictureUrl]);
 
-        // Return the newly created user
-        return res.json(user);
+        user = createResult.rows[0];
+        console.log('✅ Created/Updated user:', user.email);
+
+        // Transform to match expected format
+        const transformedUser = {
+          id: user.id,
+          uid: user.uid,
+          email: user.email,
+          name: user.name,
+          phone: user.phone,
+          profilePictureUrl: user.profile_picture_url,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at
+        };
+
+        return res.json(transformedUser);
       } catch (createError) {
         console.error('❌ Failed to create user:', createError);
-        return res.status(500).json({ error: 'Failed to create user profile: ' + createError.message });
+        
+        // Handle specific constraint errors
+        if (createError.code === '23505' && createError.constraint?.includes('email')) {
+          return res.status(400).json({ 
+            error: 'Email already taken',
+            message: 'This email is already registered to another user.' 
+          });
+        }
+        
+        return res.status(500).json({ 
+          error: 'Failed to create user profile',
+          message: createError.message 
+        });
       }
     } else {
-      // Only check email uniqueness if email is being changed
+      // Update existing user
+      console.log('🔄 Updating existing user:', user.email);
+
+      // Check email uniqueness only if email is being changed
       if (email.trim() !== user.email) {
         try {
-          const existingUser = await storage.getUserByEmail(email.trim());
-          if (existingUser && existingUser.uid !== uid) {
-            return res.status(400).json({ error: 'Email is already taken by another user' });
+          const emailCheckResult = await client.query(`
+            SELECT id, uid FROM users WHERE email = $1 AND uid != $2
+          `, [email.trim(), uid]);
+
+          if (emailCheckResult.rows.length > 0) {
+            return res.status(400).json({ 
+              error: 'Email already taken',
+              message: 'This email is already registered to another user.' 
+            });
           }
         } catch (emailCheckError) {
           console.error('❌ Error checking email uniqueness:', emailCheckError);
@@ -416,59 +466,59 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         }
       }
 
-      // Update existing user - names can be duplicate, only check email uniqueness
       try {
-        const updateData = {
-          name: name.trim(), // Any name is allowed - no uniqueness check
-          email: email.trim(),
-          ...(profilePictureUrl && { profilePictureUrl })
-        };
+        // Update user with direct database query
+        const updateQuery = `
+          UPDATE users 
+          SET name = $1, 
+              email = $2, 
+              profile_picture_url = COALESCE($3, profile_picture_url),
+              updated_at = NOW()
+          WHERE uid = $4 
+          RETURNING *
+        `;
 
-        // Use storage.updateUser function
-        const updatedUser = await storage.updateUser(uid, updateData);
+        const updateResult = await client.query(updateQuery, [
+          name.trim(),
+          email.trim(),
+          profilePictureUrl,
+          uid
+        ]);
 
-        if (!updatedUser) {
-          return res.status(500).json({ error: 'Failed to update user profile - no data returned' });
+        if (updateResult.rows.length === 0) {
+          return res.status(404).json({ error: 'User not found for update' });
         }
 
-        console.log('✅ User profile updated successfully:', updatedUser.email, 'Name:', updatedUser.name);
-        return res.json(updatedUser);
+        const updatedUser = updateResult.rows[0];
+        console.log('✅ User profile updated successfully:', updatedUser.email);
+
+        // Transform to match expected format
+        const transformedUser = {
+          id: updatedUser.id,
+          uid: updatedUser.uid,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          phone: updatedUser.phone,
+          profilePictureUrl: updatedUser.profile_picture_url,
+          createdAt: updatedUser.created_at,
+          updatedAt: updatedUser.updated_at
+        };
+
+        return res.json(transformedUser);
       } catch (updateError) {
         console.error('❌ Error updating user profile:', updateError);
 
         // Handle specific database errors
-        if (updateError.code === 'ECONNREFUSED') {
-          return res.status(503).json({ 
-            error: 'Database connection failed',
-            message: 'Unable to connect to database. Please check your DATABASE_URL configuration.' 
-          });
-        }
-
-        if (updateError.code === '42P01') { // Table doesn't exist
-          return res.status(503).json({ 
-            error: 'Database not initialized',
-            message: 'User table does not exist. Please run database migrations.' 
-          });
-        }
-
-        if (updateError.code === '23505') { // Unique constraint violation
-          // Check if it's email or other field causing the issue
-          if (updateError.constraint && updateError.constraint.includes('email')) {
-            return res.status(400).json({ 
-              error: 'Email already exists',
-              message: 'This email is already taken by another user.' 
-            });
-          }
-          // For any other unique constraint (shouldn't happen with names)
+        if (updateError.code === '23505' && updateError.constraint?.includes('email')) {
           return res.status(400).json({ 
-            error: 'Data conflict',
-            message: 'Profile update failed due to data conflict. Please try again.' 
+            error: 'Email already taken',
+            message: 'This email is already registered to another user.' 
           });
         }
 
         return res.status(500).json({ 
           error: 'Failed to update user profile',
-          message: process.env.NODE_ENV === 'production' ? 'Internal server error' : updateError.message 
+          message: updateError.message
         });
       }
     }
@@ -476,7 +526,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
     console.error('❌ Error updating user profile:', error);
     return res.status(500).json({ 
       error: 'Failed to update user profile',
-      message: error.message
+      message: error.message || 'Internal server error'
     });
   } finally {
     // Clean up any remaining temp files

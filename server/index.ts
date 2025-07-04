@@ -192,6 +192,12 @@ async function initializeApp() {
       console.log('📊 Preserving existing user data and submissions');
     }
 
+    // Step 2.5: Always fix users table structure (safe operation)
+    console.log('🔧 Ensuring users table has correct structure...');
+    const { fixUsersTable } = await import('./fix-users-table.js');
+    await fixUsersTable();
+    console.log('✅ Users table structure verified');
+
     // Step 3.5: Fix user-submission links
     console.log('🔗 Fixing user-submission links...');
     await fixUserSubmissionLinks();

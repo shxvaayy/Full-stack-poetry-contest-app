@@ -205,7 +205,8 @@ export default function UserProfile() {
 
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
-        body: formData
+        body: formData,
+        credentials: 'same-origin'
       });
 
       console.log('Response status:', response.status);
@@ -223,13 +224,21 @@ export default function UserProfile() {
         await fetchUserData();
         
         toast({
-          title: "Success",
-          description: "Profile updated successfully! Name and photo changes saved.",
+          title: "Profile Updated!",
+          description: "Your profile has been successfully updated.",
         });
       } else {
         let errorData;
         try {
-          errorData = await response.json();
+          const responseText = await response.text();
+          console.log('Raw response text:', responseText);
+          
+          // Try to parse as JSON
+          try {
+            errorData = JSON.parse(responseText);
+          } catch (jsonError) {
+            errorData = { error: responseText || `HTTP ${response.status}: ${response.statusText}` };
+          }
         } catch (parseError) {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
         }
@@ -237,17 +246,11 @@ export default function UserProfile() {
         console.error('Update profile error response:', errorData);
         
         // Better error handling for specific cases
-        if (response.status === 404) {
-          toast({
-            title: "Account Setup",
-            description: "Setting up your profile for the first time...",
-          });
-          // Try again - the backend should create the user now
-          setTimeout(() => updateUserProfile(), 2000);
-          return;
-        } else if (response.status === 400) {
+        if (response.status === 400) {
           // Handle specific validation errors
-          if (errorData.error?.includes('Email is already taken')) {
+          const errorMessage = errorData.error || errorData.message || "Validation error";
+          
+          if (errorMessage.toLowerCase().includes('email') && errorMessage.toLowerCase().includes('taken')) {
             toast({
               title: "Email Already Taken",
               description: "This email is already registered to another user. Please use a different email.",
@@ -256,12 +259,18 @@ export default function UserProfile() {
           } else {
             toast({
               title: "Validation Error",
-              description: errorData.error || "Please check your input data",
+              description: errorMessage,
               variant: "destructive",
             });
           }
           return;
-        } else if (response.status === 500) {
+        } else if (response.status === 404) {
+          toast({
+            title: "User Not Found",
+            description: "Creating your profile... Please try again in a moment.",
+          });
+          return;
+        } else if (response.status === 500 || response.status >= 500) {
           toast({
             title: "Server Error",
             description: "There was a server issue. Please try again in a moment.",
@@ -270,7 +279,7 @@ export default function UserProfile() {
           return;
         }
         
-        throw new Error(errorData.error || `Failed to update profile (${response.status})`);
+        throw new Error(errorData.error || errorData.message || `Failed to update profile (${response.status})`);
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -280,7 +289,7 @@ export default function UserProfile() {
       
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         errorMessage = "Network error. Please check your connection and try again.";
-      } else if (error.message) {
+      } else if (error.message && !error.message.includes('Failed to update profile')) {
         errorMessage = error.message;
       }
       
