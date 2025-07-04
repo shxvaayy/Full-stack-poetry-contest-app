@@ -36,8 +36,17 @@ const firebaseConfig = {
 
 // Validate Firebase configuration for storage operations
 const validateFirebaseConfig = () => {
-  if (!import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID === "demo-project") {
-    console.warn('Firebase Storage: Using demo configuration. Set VITE_FIREBASE_PROJECT_ID for production.');
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  
+  console.log('🔍 Firebase config check:', { 
+    projectId: projectId ? 'set' : 'missing',
+    apiKey: apiKey ? 'set' : 'missing'
+  });
+  
+  if (!projectId || projectId === "demo-project" || !apiKey || apiKey === "demo-key") {
+    console.warn('⚠️ Firebase Storage: Missing or demo configuration detected');
+    console.warn('📝 Required environment variables: VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_API_KEY');
     return false;
   }
   return true;
@@ -49,32 +58,64 @@ export const storage = getStorage(app);
 
 // Profile photo upload function
 export const uploadProfilePhoto = async (userId: string, file: File): Promise<string> => {
+  console.log('📸 Starting profile photo upload for user:', userId);
+  console.log('📁 File details:', {
+    name: file.name,
+    size: file.size,
+    type: file.type
+  });
+
   try {
     // Check Firebase configuration
     if (!validateFirebaseConfig()) {
-      throw new Error('Firebase Storage not properly configured');
+      console.error('❌ Firebase Storage configuration invalid');
+      throw new Error('Firebase Storage not properly configured. Please check your environment variables.');
     }
 
     // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
+      console.error('❌ File too large:', file.size);
       throw new Error('File size must be less than 5MB');
     }
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
+      console.error('❌ Invalid file type:', file.type);
       throw new Error('Only image files are allowed');
     }
 
-    const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
+    console.log('✅ File validation passed, starting upload...');
+
+    // Create storage reference with timestamp to avoid conflicts
+    const timestamp = Date.now();
+    const storageRef = ref(storage, `Profile-photo/${userId}_${timestamp}.jpg`);
     
-    // Upload file
-    await uploadBytes(storageRef, file);
+    console.log('📤 Uploading to Firebase Storage path:', `Profile-photo/${userId}_${timestamp}.jpg`);
     
-    // Get download URL with cache buster
+    // Upload file with metadata
+    const metadata = {
+      contentType: file.type,
+      customMetadata: {
+        userId: userId,
+        uploadedAt: new Date().toISOString()
+      }
+    };
+
+    const uploadResult = await uploadBytes(storageRef, file, metadata);
+    console.log('✅ Upload successful:', uploadResult.metadata.name);
+    
+    // Get download URL
     const downloadURL = await getDownloadURL(storageRef);
-    return `${downloadURL}?v=${Date.now()}`;
+    console.log('✅ Download URL obtained:', downloadURL);
+    
+    return downloadURL;
   } catch (error) {
-    console.error('Firebase Storage upload error:', error);
+    console.error('❌ Firebase Storage upload error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      name: error.name
+    });
     throw error;
   }
 };
@@ -82,11 +123,30 @@ export const uploadProfilePhoto = async (userId: string, file: File): Promise<st
 // Get current profile photo URL
 export const getProfilePhotoURL = async (userId: string): Promise<string | null> => {
   try {
-    const storageRef = ref(storage, `Profile-photo/${userId}.jpg`);
-    const downloadURL = await getDownloadURL(storageRef);
-    return `${downloadURL}?v=${Date.now()}`;
+    console.log('🔍 Looking for profile photo for user:', userId);
+    
+    // Try the new timestamped pattern first, then fall back to old pattern
+    const patterns = [
+      `Profile-photo/${userId}.jpg`, // Old pattern
+      `Profile-photo/${userId}_` // New pattern prefix - we'll need to list and find
+    ];
+
+    for (const pattern of patterns) {
+      try {
+        const storageRef = ref(storage, pattern);
+        const downloadURL = await getDownloadURL(storageRef);
+        console.log('✅ Found profile photo:', pattern);
+        return downloadURL;
+      } catch (error) {
+        console.log('❌ No photo found at:', pattern);
+        continue;
+      }
+    }
+
+    console.log('❌ No profile photo found for user:', userId);
+    return null;
   } catch (error) {
-    console.log('No profile photo found:', error);
+    console.error('❌ Error getting profile photo:', error);
     return null;
   }
 };

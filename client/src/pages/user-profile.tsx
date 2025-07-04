@@ -379,33 +379,56 @@ export default function UserProfile() {
 
       // Handle profile picture upload to Firebase Storage FIRST
       if (profilePicture) {
-        console.log('📸 Uploading profile picture to Firebase Storage...');
+        console.log('📸 Starting Firebase Storage upload process...');
 
         try {
+          console.log('🔍 Firebase config status:');
+          console.log('- Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'set' : 'NOT SET');
+          console.log('- API Key:', import.meta.env.VITE_FIREBASE_API_KEY ? 'set' : 'NOT SET');
+          console.log('- Storage Bucket:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` : 'NOT SET');
+
           // Add timeout for Firebase upload
           const uploadPromise = uploadProfilePhoto(user.uid, profilePicture);
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Firebase upload timeout')), 20000)
+            setTimeout(() => reject(new Error('Firebase upload timeout after 30 seconds')), 30000)
           );
 
+          console.log('⏳ Waiting for Firebase upload...');
           const firebasePhotoURL = await Promise.race([uploadPromise, timeoutPromise]);
+          
+          console.log('✅ Firebase upload completed:', firebasePhotoURL);
+          
+          // Update Firebase Auth profile
           await updateFirebaseProfile(firebasePhotoURL);
+          console.log('✅ Firebase Auth profile updated');
 
-          // Use the actual Firebase URL with a cache buster
-          finalProfilePictureUrl = `${firebasePhotoURL}?uploaded=${Date.now()}`;
-          console.log('✅ Profile picture uploaded to Firebase:', finalProfilePictureUrl);
+          // Use the actual Firebase URL
+          finalProfilePictureUrl = firebasePhotoURL;
+          console.log('✅ Final profile picture URL set:', finalProfilePictureUrl);
+          
         } catch (uploadError) {
-          console.error('❌ Failed to upload profile picture to Firebase:', uploadError);
-          clearTimeout(timeoutId);
-          setIsUpdating(false);
+          console.error('❌ Firebase upload failed:', {
+            error: uploadError,
+            message: uploadError.message,
+            code: uploadError.code,
+            name: uploadError.name
+          });
+
+          // Don't stop the entire update process - just continue without the photo
+          console.warn('⚠️ Continuing profile update without photo upload');
+          
           toast({
-            title: "Photo Upload Failed",
+            title: "Photo Upload Issue",
             description: uploadError.message.includes('timeout') 
-              ? "Photo upload timed out. Please try again with a smaller image."
-              : "Failed to upload photo. Please try again.",
+              ? "Photo upload timed out. Your profile will be updated without the photo."
+              : uploadError.message.includes('configuration') || uploadError.message.includes('environment')
+              ? "Firebase Storage not configured properly. Contact support."
+              : "Failed to upload photo. Your profile will be updated without the photo.",
             variant: "destructive",
           });
-          return; // Stop the update if photo upload fails
+          
+          // Continue with the existing profile picture URL
+          finalProfilePictureUrl = backendUser?.profilePictureUrl;
         }
       }
 
@@ -794,6 +817,27 @@ export default function UserProfile() {
                   className="w-full"
                 >
                   Refresh Data
+                </Button>
+                
+                <Button 
+                  onClick={() => {
+                    console.log('🔍 Firebase Configuration Debug:');
+                    console.log('- Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID || 'NOT SET');
+                    console.log('- API Key:', import.meta.env.VITE_FIREBASE_API_KEY ? 'SET' : 'NOT SET');
+                    console.log('- Auth Domain:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com` : 'NOT SET');
+                    console.log('- Storage Bucket:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` : 'NOT SET');
+                    console.log('- User UID:', user?.uid || 'NOT LOGGED IN');
+                    
+                    toast({
+                      title: "Debug Info",
+                      description: "Check browser console for Firebase configuration details",
+                    });
+                  }} 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                >
+                  Debug Firebase
                 </Button>
               </CardContent>
             </Card>
