@@ -121,7 +121,7 @@ router.post('/api/create-paypal-order', async (req, res) => {
 
     // Determine the correct base URL for callbacks
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://writory.onrender.com'
+      ? 'www.writoryofficial.com'
       : `${req.protocol}://${req.get('host')}`;
 
     console.log('🌐 Using base URL for callbacks:', baseUrl);

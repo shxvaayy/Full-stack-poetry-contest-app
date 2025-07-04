@@ -23,7 +23,7 @@ export default function TermsPage() {
           <CardContent className="p-8 prose prose-gray max-w-none">
             <p className="text-gray-700 mb-6">
               These terms and conditions outline the rules and regulations for the use of Writory's website, 
-              located at <a href="https://writory.onrender.com" className="text-green-600">https://writory.onrender.com</a>.
+              located at <a href="www.writoryofficial.com" className="text-green-600">www.writoryofficial.com</a>.
             </p>
 
             <p className="text-gray-700 mb-6">

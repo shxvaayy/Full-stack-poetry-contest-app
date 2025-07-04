@@ -41,7 +41,7 @@ console.log('📊 Environment:', process.env.NODE_ENV || 'development');
 // Enhanced CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://writory.onrender.com', 'https://writory.com'] 
+    ? ['www.writoryofficial.com', 'https://writory.com'] 
     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000', 'http://localhost:8080'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -425,7 +425,7 @@ async function initializeApp() {
     const server = app.listen(PORT, () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'https://writory.onrender.com' : `http://localhost:${PORT}`}`);
+      console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'www.writoryofficial.com' : `http://localhost:${PORT}`}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🚀 Port: ${PORT}`);
       console.log(`📅 Started: ${new Date().toISOString()}`);
