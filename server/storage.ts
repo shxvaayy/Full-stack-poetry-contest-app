@@ -22,7 +22,49 @@ export async function getUserByUid(uid: string) {
 
 // Get submissions by user ID
 export async function getSubmissionsByUser(userId: number) {
-  return await db.select().from(submissions).where(eq(submissions.userId, userId));
+  try {
+    return await db.select({
+      id: submissions.id,
+      firstName: submissions.firstName,
+      lastName: submissions.lastName,
+      email: submissions.email,
+      phone: submissions.phone,
+      age: submissions.age,
+      poemTitle: submissions.poemTitle,
+      poemContent: submissions.poemContent,
+      tier: submissions.tier,
+      price: submissions.price,
+      paymentId: submissions.paymentId,
+      paymentMethod: submissions.paymentMethod,
+      paymentStatus: submissions.paymentStatus,
+      sessionId: submissions.sessionId,
+      termsAccepted: submissions.termsAccepted,
+      poemFileUrl: submissions.poemFileUrl,
+      photoFileUrl: submissions.photoFileUrl,
+      driveFileId: submissions.driveFileId,
+      drivePhotoId: submissions.drivePhotoId,
+      poemIndex: submissions.poemIndex,
+      submissionUuid: submissions.submissionUuid,
+      totalPoemsInSubmission: submissions.totalPoemsInSubmission,
+      score: submissions.score,
+      type: submissions.type,
+      status: submissions.status,
+      scoreBreakdown: submissions.scoreBreakdown,
+      isWinner: submissions.isWinner,
+      winnerPosition: submissions.winnerPosition,
+      winnerCategory: submissions.winnerCategory,
+      contestMonth: submissions.contestMonth,
+      contestYear: submissions.contestYear,
+      submittedAt: submissions.submittedAt,
+      evaluatedAt: submissions.evaluatedAt,
+      createdAt: submissions.createdAt,
+      updatedAt: submissions.updatedAt,
+      userId: submissions.userId
+    }).from(submissions).where(eq(submissions.userId, userId));
+  } catch (error) {
+    console.error('❌ Error getting submissions by user ID:', error);
+    throw error;
+  }
 }
 
 export async function getSubmissionCountByUser(userId: number): Promise<number> {
@@ -193,9 +235,44 @@ export async function getSubmissionsByEmail(email: string) {
 export async function getAllSubmissions() {
   try {
     console.log('🔍 Getting all submissions');
-    const result = await db.select()
-      .from(submissions)
-      .orderBy(desc(submissions.submittedAt));
+    const result = await db.select({
+      id: submissions.id,
+      firstName: submissions.firstName,
+      lastName: submissions.lastName,
+      email: submissions.email,
+      phone: submissions.phone,
+      age: submissions.age,
+      poemTitle: submissions.poemTitle,
+      poemContent: submissions.poemContent,
+      tier: submissions.tier,
+      price: submissions.price,
+      paymentId: submissions.paymentId,
+      paymentMethod: submissions.paymentMethod,
+      paymentStatus: submissions.paymentStatus,
+      sessionId: submissions.sessionId,
+      termsAccepted: submissions.termsAccepted,
+      poemFileUrl: submissions.poemFileUrl,
+      photoFileUrl: submissions.photoFileUrl,
+      driveFileId: submissions.driveFileId,
+      drivePhotoId: submissions.drivePhotoId,
+      poemIndex: submissions.poemIndex,
+      submissionUuid: submissions.submissionUuid,
+      totalPoemsInSubmission: submissions.totalPoemsInSubmission,
+      score: submissions.score,
+      type: submissions.type,
+      status: submissions.status,
+      scoreBreakdown: submissions.scoreBreakdown,
+      isWinner: submissions.isWinner,
+      winnerPosition: submissions.winnerPosition,
+      winnerCategory: submissions.winnerCategory,
+      contestMonth: submissions.contestMonth,
+      contestYear: submissions.contestYear,
+      submittedAt: submissions.submittedAt,
+      evaluatedAt: submissions.evaluatedAt,
+      createdAt: submissions.createdAt,
+      updatedAt: submissions.updatedAt,
+      userId: submissions.userId
+    }).from(submissions).orderBy(desc(submissions.submittedAt));
 
     console.log(`✅ Found ${result.length} total submissions`);
     return result;
