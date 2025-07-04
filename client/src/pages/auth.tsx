@@ -454,7 +454,7 @@ export default function AuthPage() {
               </span>
               <button
                 type="button"
-                className="text-accent hover:text-blue-600 font-medium"
+                className="text-accent font-medium cursor-default"
                 onClick={() => {
                   setIsSignIn(!isSignIn);
                   setPassword(""); // Clear password when switching modes
