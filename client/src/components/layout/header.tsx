@@ -58,9 +58,13 @@ export default function Header() {
 
       // Force update profile picture with cache busting
       if (updatedUser.profilePictureUrl) {
-        const newUrl = `${updatedUser.profilePictureUrl}?v=${Date.now()}&updated=${Date.now()}`;
+        const newUrl = `${updatedUser.profilePictureUrl}?header_v=${Date.now()}`;
         setProfilePictureUrl(newUrl);
         console.log('Header: Updated profile picture URL:', newUrl);
+      } else if (updatedUser.profilePictureUrl === null) {
+        // Handle case where profile picture was removed
+        setProfilePictureUrl(null);
+        console.log('Header: Profile picture removed');
       }
 
       // Update user name display
@@ -68,11 +72,29 @@ export default function Header() {
         setDisplayName(updatedUser.name);
         console.log('Header: Updated display name:', updatedUser.name);
       }
+
+      // Force re-render by triggering a state update after a delay
+      setTimeout(() => {
+        loadProfilePicture();
+      }, 200);
+    };
+
+    const handleFirebasePhotoUpdate = (event: CustomEvent) => {
+      console.log('Header: Firebase photo update event received:', event.detail);
+      const { url } = event.detail;
+      if (url) {
+        const cacheBustedUrl = `${url}?firebase_v=${Date.now()}`;
+        setProfilePictureUrl(cacheBustedUrl);
+        console.log('Header: Firebase photo updated:', cacheBustedUrl);
+      }
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
+    
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
     };
   }, []);
 

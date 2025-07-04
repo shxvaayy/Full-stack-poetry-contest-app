@@ -230,53 +230,40 @@ export default function UserProfile() {
 
     setIsUpdating(true);
     try {
-      let updateData = {
-        name: editName.trim(),
-        email: editEmail.trim(),
-        profilePictureUrl: backendUser?.profilePictureUrl
-      };
+      let finalProfilePictureUrl = backendUser?.profilePictureUrl;
 
-      // Handle profile picture upload to Firebase Storage
+      // Handle profile picture upload to Firebase Storage FIRST
       if (profilePicture) {
         console.log('📸 Uploading profile picture to Firebase Storage...');
-
-        // Show optimistic update first
-        const tempPhotoURL = profilePicturePreview;
-        const optimisticUser = {
-          ...backendUser,
-          name: editName.trim(),
-          email: editEmail.trim(),
-          profilePictureUrl: tempPhotoURL,
-          _renderKey: Date.now()
-        };
-        setBackendUser(optimisticUser);
-
-        // Close dialog immediately for better UX
-        setIsEditDialogOpen(false);
-        setProfilePicture(null);
-        setProfilePicturePreview("");
 
         try {
           const firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
           await updateFirebaseProfile(firebasePhotoURL);
 
-          updateData.profilePictureUrl = `${firebasePhotoURL}?uploaded=${Date.now()}`;
-          console.log('✅ Profile picture uploaded to Firebase:', firebasePhotoURL);
+          // Use the actual Firebase URL with a cache buster
+          finalProfilePictureUrl = `${firebasePhotoURL}?uploaded=${Date.now()}`;
+          console.log('✅ Profile picture uploaded to Firebase:', finalProfilePictureUrl);
         } catch (uploadError) {
           console.error('❌ Failed to upload profile picture to Firebase:', uploadError);
           toast({
             title: "Photo Upload Failed",
-            description: "Profile updated but photo upload failed. Please try uploading the photo again.",
+            description: "Failed to upload photo. Please try again.",
             variant: "destructive",
           });
-          // Continue with profile update even if photo fails
+          setIsUpdating(false);
+          return; // Stop the update if photo upload fails
         }
-      } else {
-        // If no photo change, close dialog immediately
-        setIsEditDialogOpen(false);
       }
 
+      // Prepare update data with the actual Firebase URL
+      const updateData = {
+        name: editName.trim(),
+        email: editEmail.trim(),
+        profilePictureUrl: finalProfilePictureUrl
+      };
+
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
+      console.log('Update data:', updateData);
 
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
@@ -291,28 +278,44 @@ export default function UserProfile() {
 
       if (response.ok) {
         const updatedUser = await response.json();
-        console.log('Updated user data:', updatedUser);
+        console.log('Updated user data from server:', updatedUser);
 
-        // Update state with final data
+        // Create final user object with fresh render key
         const finalUser = {
           ...updatedUser,
           _renderKey: Date.now()
         };
 
+        // Update local state immediately
         setBackendUser(finalUser);
 
-        // Dispatch profile update event to notify header and other components
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('profileUpdated', { 
-            detail: finalUser 
-          }));
-          console.log('Profile update event dispatched:', finalUser);
-        }, 100);
+        // Close dialog and reset form
+        setIsEditDialogOpen(false);
+        setProfilePicture(null);
+        setProfilePicturePreview("");
+
+        // Force header and other components to update immediately
+        window.dispatchEvent(new CustomEvent('profileUpdated', { 
+          detail: finalUser 
+        }));
+
+        // Also trigger Firebase photo update event for header
+        window.dispatchEvent(new CustomEvent('firebasePhotoUpdated', {
+          detail: { url: finalUser.profilePictureUrl }
+        }));
+
+        console.log('✅ Profile update events dispatched');
 
         toast({
           title: "Profile Updated!",
           description: "Your profile has been successfully updated.",
         });
+
+        // Force a refresh of user data to ensure persistence
+        setTimeout(() => {
+          fetchUserData();
+        }, 500);
+
       } else {
         let errorData;
         try {
