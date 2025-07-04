@@ -238,7 +238,7 @@ router.get('/api/free-tier-status', asyncHandler(async (req: any, res: any) => {
     if (!process.env.DATABASE_URL) {
       console.log('⚠️ DATABASE_URL not configured, defaulting free tier to enabled');
       return res.json({
-        success: true,e,
+        success: true,
         enabled: true
       });
     }
@@ -369,7 +369,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         profilePictureUrl = await uploadPhotoFile(
           profilePictureBuffer,
           email.trim(),
-          `profile_${uid}_${profilePictureFile.originalname}`
+          `profile_${uid}_${Date.now()}_${profilePictureFile.originalname}`
         );
 
         console.log('✅ Profile picture uploaded:', profilePictureUrl);
@@ -395,7 +395,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
           profilePictureUrl: profilePictureUrl
         });
         console.log('✅ Created new user:', user.email);
-        
+
         // Return the newly created user
         return res.json(user);
       } catch (createError) {
@@ -403,7 +403,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         return res.status(500).json({ error: 'Failed to create user profile: ' + createError.message });
       }
     } else {
-      // Check if email is already taken by another user
+      // Only check email uniqueness if email is being changed
       if (email.trim() !== user.email) {
         try {
           const existingUser = await storage.getUserByEmail(email.trim());
@@ -416,10 +416,10 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         }
       }
 
-      // Update existing user using the storage function instead of direct SQL
+      // Update existing user - names can be duplicate, only check email uniqueness
       try {
         const updateData = {
-          name: name.trim(),
+          name: name.trim(), // Any name is allowed - no uniqueness check
           email: email.trim(),
           ...(profilePictureUrl && { profilePictureUrl })
         };
@@ -431,12 +431,12 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
           return res.status(500).json({ error: 'Failed to update user profile - no data returned' });
         }
 
-        console.log('✅ User profile updated:', updatedUser.email);
+        console.log('✅ User profile updated successfully:', updatedUser.email, 'Name:', updatedUser.name);
         return res.json(updatedUser);
       } catch (updateError) {
         console.error('❌ Error updating user profile:', updateError);
 
-        // Provide more specific error messages
+        // Handle specific database errors
         if (updateError.code === 'ECONNREFUSED') {
           return res.status(503).json({ 
             error: 'Database connection failed',
@@ -452,9 +452,17 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         }
 
         if (updateError.code === '23505') { // Unique constraint violation
+          // Check if it's email or other field causing the issue
+          if (updateError.constraint && updateError.constraint.includes('email')) {
+            return res.status(400).json({ 
+              error: 'Email already exists',
+              message: 'This email is already taken by another user.' 
+            });
+          }
+          // For any other unique constraint (shouldn't happen with names)
           return res.status(400).json({ 
-            error: 'Email already exists',
-            message: 'This email is already taken by another user.' 
+            error: 'Data conflict',
+            message: 'Profile update failed due to data conflict. Please try again.' 
           });
         }
 

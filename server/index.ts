@@ -22,8 +22,14 @@ const PORT = process.env.PORT || 3000;
 
 // Environment validation
 console.log('🔍 Checking environment variables...');
+console.log('🔍 Available environment keys:', Object.keys(process.env).filter(key => key.includes('DATABASE')));
+console.log('🔍 DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('🔍 DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
+
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL environment variable is required');
+  console.error('💡 Please check your Secrets configuration in Replit');
+  console.error('💡 Current environment:', process.env.NODE_ENV);
   process.exit(1);
 }
 

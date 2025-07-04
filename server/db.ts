@@ -5,6 +5,8 @@ import { Client } from 'pg';
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
+  console.error('❌ DATABASE_URL environment variable is required');
+  console.error('💡 Please check your Secrets configuration in Replit');
   throw new Error('DATABASE_URL environment variable is required');
 }
 

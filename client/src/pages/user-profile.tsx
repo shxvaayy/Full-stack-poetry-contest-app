@@ -209,7 +209,6 @@ export default function UserProfile() {
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
 
       if (response.ok) {
         const updatedUser = await response.json();
@@ -225,7 +224,7 @@ export default function UserProfile() {
         
         toast({
           title: "Success",
-          description: "Profile updated successfully!",
+          description: "Profile updated successfully! Name and photo changes saved.",
         });
       } else {
         let errorData;
@@ -240,23 +239,32 @@ export default function UserProfile() {
         // Better error handling for specific cases
         if (response.status === 404) {
           toast({
-            title: "Account Setup Required",
+            title: "Account Setup",
             description: "Setting up your profile for the first time...",
           });
           // Try again - the backend should create the user now
           setTimeout(() => updateUserProfile(), 2000);
           return;
         } else if (response.status === 400) {
-          toast({
-            title: "Validation Error",
-            description: errorData.error || "Please check your input data",
-            variant: "destructive",
-          });
+          // Handle specific validation errors
+          if (errorData.error?.includes('Email is already taken')) {
+            toast({
+              title: "Email Already Taken",
+              description: "This email is already registered to another user. Please use a different email.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Validation Error",
+              description: errorData.error || "Please check your input data",
+              variant: "destructive",
+            });
+          }
           return;
         } else if (response.status === 500) {
           toast({
             title: "Server Error",
-            description: "Database connection issue. Please try again in a moment.",
+            description: "There was a server issue. Please try again in a moment.",
             variant: "destructive",
           });
           return;
