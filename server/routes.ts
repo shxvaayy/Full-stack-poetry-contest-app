@@ -1718,7 +1718,6 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       }
 
       try {
-```text
         // Send confirmation email in background
         await sendMultiplePoemsConfirmation(email, {
           name: firstName,
