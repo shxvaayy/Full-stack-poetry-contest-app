@@ -11,44 +11,51 @@ export default function Header() {
   const { user, logout } = useAuth();
   const [userProfilePicture, setUserProfilePicture] = useState<string | null>(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+  const [backendUser, setBackendUser] = useState<any>(null);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user?.uid) {
-        try {
-          // Add cache-busting parameter to ensure fresh data
-          const response = await fetch(`/api/users/${user.uid}?t=${Date.now()}`);
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('Header: Fetched user profile:', userData);
-            setUserProfilePicture(userData.profilePictureUrl || null);
-          } else {
-            console.error('Failed to fetch user profile');
-            setUserProfilePicture(null);
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          setUserProfilePicture(null);
-        }
-      } else {
-        setUserProfilePicture(null);
-      }
-    };
-
-    fetchUserProfile();
-  }, [user, profileRefreshKey]);
+    if (user?.uid) {
+      fetchUserData();
+    }
+  }, [user]);
 
   // Listen for profile updates
   useEffect(() => {
     const handleProfileUpdate = () => {
-      setProfileRefreshKey(prev => prev + 1);
+      console.log('Header: Profile update event received');
+      // Force refresh user data after profile update
+      setTimeout(() => {
+        fetchUserData();
+      }, 500); // Small delay to ensure backend has processed the update
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
+
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, []);
+  }, [user]);
+
+  const fetchUserData = async () => {
+    if (!user?.uid) return;
+
+    try {
+      const response = await fetch(`/api/users/${user.uid}`, {
+        // Add cache-busting to ensure fresh data
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setBackendUser(userData);
+        console.log('Header: User data fetched:', userData);
+      }
+    } catch (error) {
+      console.error('Header: Error fetching user data:', error);
+    }
+  };
 
   // Check if user is admin
   const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'shiningbhavya.seth@gmail.com';
@@ -114,26 +121,24 @@ export default function Header() {
                 {/* User Profile Button */}
                 <Link href="/profile">
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
-                    {userProfilePicture ? (
-                      <img
-                        src={userProfilePicture}
-                        alt="Profile"
-                        className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
-                        key={userProfilePicture} // Force re-render when URL changes
-                        onError={(e) => {
-                          console.log('Header: Profile picture failed to load:', userProfilePicture);
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div 
-                      className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ display: userProfilePicture ? 'none' : 'flex' }}
-                    >
+                   {backendUser?.profilePictureUrl ? (
+                    <img 
+                      src={`${backendUser.profilePictureUrl}?t=${Date.now()}`} 
+                      alt="Profile" 
+                      className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
+                      key={`${backendUser.profilePictureUrl}-${Date.now()}`}
+                      onError={(e) => {
+                        console.log('Header: Profile picture failed to load:', backendUser.profilePictureUrl);
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
                       <User className="text-green-600" size={14} />
                     </div>
+                  )}
                     <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
@@ -199,26 +204,17 @@ export default function Header() {
                     className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {userProfilePicture ? (
+                    {backendUser?.profilePictureUrl ? (
                       <img
-                        src={userProfilePicture}
+                        src={`${backendUser.profilePictureUrl}?t=${Date.now()}`}
                         alt="Profile"
                         className="w-7 h-7 rounded-full object-cover"
-                        key={userProfilePicture} // Force re-render when URL changes
-                        onError={(e) => {
-                          console.log('Header mobile: Profile picture failed to load:', userProfilePicture);
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
                       />
-                    ) : null}
-                    <div 
-                      className="w-7 h-7 bg-white rounded-full flex items-center justify-center"
-                      style={{ display: userProfilePicture ? 'none' : 'flex' }}
-                    >
-                      <User className="text-green-600" size={14} />
-                    </div>
+                    ) : (
+                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                        <User className="text-green-600" size={14} />
+                      </div>
+                    )}
                     <span className="text-white text-sm font-medium">
                       {user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>

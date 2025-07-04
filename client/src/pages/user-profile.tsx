@@ -76,8 +76,13 @@ export default function UserProfile() {
     try {
       setLoading(true);
 
-      // Fetch user details
-      const userResponse = await fetch(`/api/users/${user!.uid}`);
+      // Fetch user details with cache busting
+      const userResponse = await fetch(`/api/users/${user!.uid}?t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       if (userResponse.ok) {
         const userData = await userResponse.json();
         setBackendUser(userData);
@@ -223,15 +228,16 @@ export default function UserProfile() {
         setProfilePicture(null);
         setProfilePicturePreview("");
         
-        // Dispatch profile update event to notify header with the new data
-        window.dispatchEvent(new CustomEvent('profileUpdated', { 
-          detail: { profilePictureUrl: updatedUser.profilePictureUrl } 
-        }));
+        // Force immediate UI update
+        setBackendUser(updatedUser);
         
-        // Force a complete refresh of all data
+        // Dispatch profile update event to notify header
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        
+        // Force a complete refresh of all data after a delay
         setTimeout(async () => {
           await fetchUserData();
-        }, 100);
+        }, 1000);
         
         toast({
           title: "Profile Updated!",
@@ -420,7 +426,7 @@ export default function UserProfile() {
                   {backendUser?.profilePictureUrl ? (
                     <>
                       <img 
-                        src={backendUser.profilePictureUrl} 
+                        src={`${backendUser.profilePictureUrl}?t=${Date.now()}`} 
                         alt="Profile" 
                         className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
                         onError={(e) => {
@@ -429,7 +435,7 @@ export default function UserProfile() {
                           const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                           if (fallback) fallback.style.display = 'flex';
                         }}
-                        key={backendUser.profilePictureUrl}
+                        key={`${backendUser.profilePictureUrl}-${Date.now()}`}
                       />
                       <div 
                         className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center"
