@@ -198,14 +198,6 @@ async function initializeApp() {
     await fixUsersTable();
     console.log('✅ Users table structure verified');
 
-    // Step 3.5: Schedule user-submission links fix for background (non-blocking)
-    console.log('🔗 Scheduling user-submission links check for background...');
-    setImmediate(() => {
-      fixUserSubmissionLinks().catch(error => {
-        console.log('⚠️ Background user-submission linking failed:', error.message);
-      });
-    });
-
     // Step 4: Register API routes FIRST (before static files)
     console.log('🛣️  Registering API routes...');
     registerRoutes(app);
@@ -439,6 +431,7 @@ async function initializeApp() {
 
     console.log(`🚀 Starting server on port ${PORT}...`);
     console.log(`🔌 Binding to 0.0.0.0:${PORT} for external access...`);
+    console.log(`🌐 Server will be accessible on port ${PORT}`);
     
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
@@ -457,7 +450,12 @@ async function initializeApp() {
       console.log('🎯 Poetry contest platform is ready to accept submissions!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
       
-      // Force flush logs to ensure visibility
+      // CRITICAL: Explicit port announcement for deployment platform
+      console.log(`🚨 DEPLOYMENT PLATFORM: SERVER IS LISTENING ON PORT ${PORT}`);
+      console.log(`🚨 EXTERNAL ACCESS: 0.0.0.0:${PORT}`);
+      console.log(`🚨 SERVER STATUS: READY AND ACCEPTING CONNECTIONS`);
+      
+      // Force flush logs to ensure deployment platform sees them
       process.stdout.write('');
       process.stderr.write('');
     });
@@ -484,101 +482,7 @@ async function initializeApp() {
   }
 }
 
-// Fix user-submission links function (optimized for quick startup)
-async function fixUserSubmissionLinks() {
-  try {
-    // Quick check first - limit to recent submissions only
-    const recentUnlinked = await client.query(`
-      SELECT COUNT(*) 
-      FROM submissions 
-      WHERE user_id IS NULL AND email IS NOT NULL
-      AND submitted_at > NOW() - INTERVAL '7 days'
-    `);
-
-    const recentCount = parseInt(recentUnlinked.rows[0].count);
-    
-    if (recentCount === 0) {
-      console.log('✅ No recent unlinked submissions found');
-      return;
-    }
-
-    console.log(`🔍 Found ${recentCount} recent unlinked submissions - will process in background`);
-    
-    // Process in background after server starts
-    setImmediate(async () => {
-      try {
-        console.log('🔄 Background: Processing user-submission links...');
-        
-        const unlinkedSubmissions = await client.query(`
-          SELECT id, email, first_name, last_name 
-          FROM submissions 
-          WHERE user_id IS NULL AND email IS NOT NULL
-          ORDER BY submitted_at DESC
-          LIMIT 50
-        `);
-
-        let linked = 0;
-        let usersCreated = 0;
-
-        for (const submission of unlinkedSubmissions.rows) {
-          try {
-            // Try to find a user with this email
-            let userResult = await client.query(`
-              SELECT id, email FROM users WHERE email = $1
-            `, [submission.email]);
-
-            let user;
-
-            if (userResult.rows.length > 0) {
-              user = userResult.rows[0];
-            } else {
-              // Create a user account for this submission
-              const newUserResult = await client.query(`
-                INSERT INTO users (uid, email, name, created_at)
-                VALUES ($1, $2, $3, NOW())
-                ON CONFLICT (email) DO NOTHING
-                RETURNING id, email
-              `, [
-                `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                submission.email,
-                `${submission.first_name} ${submission.last_name || ''}`.trim()
-              ]);
-
-              if (newUserResult.rows.length > 0) {
-                user = newUserResult.rows[0];
-                usersCreated++;
-              }
-            }
-
-            if (user) {
-              // Link the submission to this user
-              await client.query(`
-                UPDATE submissions 
-                SET user_id = $1 
-                WHERE id = $2
-              `, [user.id, submission.id]);
-
-              linked++;
-            }
-          } catch (linkError) {
-            console.error(`⚠️ Failed to link submission ${submission.id}:`, linkError.message);
-          }
-        }
-
-        if (linked > 0 || usersCreated > 0) {
-          console.log(`🎉 Background: Processed ${unlinkedSubmissions.rows.length} submissions!`);
-          console.log(`👥 Background: Created ${usersCreated} new user accounts`);
-          console.log(`🔗 Background: Linked ${linked} submissions to users`);
-        }
-      } catch (backgroundError) {
-        console.error('⚠️ Background user-submission linking failed:', backgroundError.message);
-      }
-    });
-
-  } catch (error) {
-    console.error('⚠️ Warning: Could not check user-submission links:', error.message);
-  }
-}
+// Removed the problematic fixUserSubmissionLinks function that was causing server hangs
 
 // Enhanced graceful shutdown handling
 const gracefulShutdown = (signal) => {
