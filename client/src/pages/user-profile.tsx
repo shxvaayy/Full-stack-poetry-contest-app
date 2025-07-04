@@ -76,187 +76,109 @@ export default function UserProfile() {
   const fetchUserData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Starting to fetch user data for:', user?.uid);
 
-      // Set a timeout to prevent infinite loading but preserve existing data
-      const timeoutId = setTimeout(() => {
-        console.log('⏰ Fetch timeout reached, stopping loading state');
-        setLoading(false);
-        
-        // Only set default user data if we have NO existing data
-        if (!backendUser && user) {
-          setBackendUser({
-            uid: user.uid,
-            email: user.email || '',
-            name: user.displayName || user.email?.split('@')[0] || 'User',
-            phone: user.phoneNumber || null,
-            id: null,
-            createdAt: new Date().toISOString(),
-            profilePictureUrl: user.photoURL,
-            _renderKey: Date.now()
-          });
-          setDisplayName(user.displayName || user.email?.split('@')[0] || 'User');
-        }
-        
-        // Don't reset submissions and stats if we already have them
-        if (submissions.length === 0) {
-          setSubmissions([]);
-        }
-        if (!submissionStatus) {
-          setSubmissionStatus({
-            freeSubmissionUsed: false,
-            totalSubmissions: 0,
-            contestMonth: new Date().toISOString().slice(0, 7),
-            allTimeSubmissions: 0
-          });
-        }
-        
-        toast({
-          title: "Connection Issue",
-          description: "Using cached profile data. Some features may be limited.",
-          variant: "destructive",
-        });
-      }, 8000); // Reduced timeout to 8 seconds
+      // Simple timeout - 5 seconds max
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       try {
-        // First, get basic user data with no-cache headers
+        // Get user data
         const userResponse = await fetch(`/api/users/${user!.uid}`, {
+          signal: controller.signal,
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
+            'Cache-Control': 'no-cache',
           }
         });
 
-        clearTimeout(timeoutId); // Clear timeout if request succeeds
+        clearTimeout(timeoutId);
 
         if (userResponse.ok) {
           const userData = await userResponse.json();
+          console.log('✅ User data fetched:', userData.email);
 
-          // Always try to get the latest Firebase photo first
-          let finalProfilePictureUrl = userData.profilePictureUrl;
-          
+          // Get Firebase photo in background
+          let firebasePhotoURL = userData.profilePictureUrl;
           try {
-            const firebasePhotoURL = await getProfilePhotoURL(user!.uid);
-            if (firebasePhotoURL) {
-              finalProfilePictureUrl = firebasePhotoURL;
+            const latestPhoto = await getProfilePhotoURL(user!.uid);
+            if (latestPhoto) {
+              firebasePhotoURL = latestPhoto;
             }
-          } catch (error) {
-            console.log('No Firebase photo found, using database URL');
+          } catch (photoError) {
+            console.log('Using database photo URL');
           }
 
-          // Set user data with the most recent profile picture
-          const userDataWithPhoto = {
+          const finalUserData = {
             ...userData,
-            profilePictureUrl: finalProfilePictureUrl,
-            _renderKey: Date.now()
+            profilePictureUrl: firebasePhotoURL,
           };
 
-          setBackendUser(userDataWithPhoto);
-
-          // Initialize display name
+          setBackendUser(finalUserData);
           setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
 
-        } else if (userResponse.status === 404) {
-          // User not found in database - set default data from Firebase
-          console.log('User not found in database, using Firebase data');
-
-          let firebasePhotoURL = user?.photoURL;
-          try {
-            const latestFirebasePhoto = await getProfilePhotoURL(user!.uid);
-            if (latestFirebasePhoto) {
-              firebasePhotoURL = latestFirebasePhoto;
-            }
-          } catch (error) {
-            console.log('No Firebase photo found for new user');
-          }
-
-          setBackendUser({
-            uid: user!.uid,
-            email: user!.email || '',
-            name: user!.displayName || '',
-            phone: user!.phoneNumber || null,
-            id: null,
-            createdAt: new Date().toISOString(),
-            profilePictureUrl: firebasePhotoURL,
-            _renderKey: Date.now()
-          });
-          setDisplayName(user!.displayName || user!.email?.split('@')[0] || 'User');
         } else {
-          // Server error - use Firebase data as fallback
-          console.log('Server error, using Firebase data as fallback');
-          setBackendUser({
+          // Fallback to Firebase user data
+          console.log('User not in database, using Firebase data');
+          const fallbackUser = {
             uid: user!.uid,
             email: user!.email || '',
-            name: user!.displayName || '',
+            name: user!.displayName || user!.email?.split('@')[0] || 'User',
             phone: user!.phoneNumber || null,
             id: null,
             createdAt: new Date().toISOString(),
             profilePictureUrl: user!.photoURL,
-            _renderKey: Date.now()
-          });
-          setDisplayName(user!.displayName || user!.email?.split('@')[0] || 'User');
+          };
+
+          setBackendUser(fallbackUser);
+          setDisplayName(fallbackUser.name);
         }
 
-        // Load submissions and status in parallel after basic user data
-        try {
-          const [submissionsResponse, statusResponse] = await Promise.allSettled([
-            fetch(`/api/users/${user!.uid}/submissions`),
-            fetch(`/api/users/${user!.uid}/submission-status`)
-          ]);
+        // Load submissions and status in parallel
+        const [submissionsRes, statusRes] = await Promise.allSettled([
+          fetch(`/api/users/${user!.uid}/submissions`),
+          fetch(`/api/users/${user!.uid}/submission-status`)
+        ]);
 
-          // Handle submissions data
-          if (submissionsResponse.status === 'fulfilled' && submissionsResponse.value.ok) {
-            const submissionsData = await submissionsResponse.value.json();
-
-            // Optimize grouping with Map for better performance
-            const groupedSubmissionsMap = new Map();
-            submissionsData.forEach((submission: any) => {
-              const uuid = submission.submissionUuid || `single-${submission.id}`;
-              if (!groupedSubmissionsMap.has(uuid)) {
-                groupedSubmissionsMap.set(uuid, {
-                  id: submission.id,
-                  name: submission.name,
-                  tier: submission.tier,
-                  amount: submission.amount,
-                  submittedAt: submission.submittedAt,
-                  submissionUuid: uuid,
-                  poems: []
-                });
-              }
-              groupedSubmissionsMap.get(uuid).poems.push({
-                id: submission.id,
-                title: submission.poemTitle,
-                score: submission.score,
-                status: submission.status,
-                type: submission.type,
-                isWinner: submission.isWinner,
-                winnerPosition: submission.winnerPosition,
-                scoreBreakdown: submission.scoreBreakdown
+        // Handle submissions
+        if (submissionsRes.status === 'fulfilled' && submissionsRes.value.ok) {
+          const submissionsData = await submissionsRes.value.json();
+          const grouped = new Map();
+          
+          submissionsData.forEach((sub: any) => {
+            const uuid = sub.submissionUuid || `single-${sub.id}`;
+            if (!grouped.has(uuid)) {
+              grouped.set(uuid, {
+                id: sub.id,
+                name: sub.name,
+                tier: sub.tier,
+                amount: sub.amount,
+                submittedAt: sub.submittedAt,
+                submissionUuid: uuid,
+                poems: []
               });
+            }
+            grouped.get(uuid).poems.push({
+              id: sub.id,
+              title: sub.poemTitle,
+              score: sub.score,
+              status: sub.status,
+              type: sub.type,
+              isWinner: sub.isWinner,
+              winnerPosition: sub.winnerPosition,
+              scoreBreakdown: sub.scoreBreakdown
             });
+          });
 
-            setSubmissions(Array.from(groupedSubmissionsMap.values()));
-          } else {
-            console.log('Failed to fetch submissions, setting empty array');
-            setSubmissions([]);
-          }
-
-          // Handle submission status
-          if (statusResponse.status === 'fulfilled' && statusResponse.value.ok) {
-            const statusData = await statusResponse.value.json();
-            setSubmissionStatus(statusData);
-          } else {
-            console.log('Failed to fetch submission status, using defaults');
-            setSubmissionStatus({
-              freeSubmissionUsed: false,
-              totalSubmissions: 0,
-              contestMonth: new Date().toISOString().slice(0, 7),
-              allTimeSubmissions: 0
-            });
-          }
-        } catch (submissionError) {
-          console.log('Error fetching submissions, using defaults:', submissionError);
+          setSubmissions(Array.from(grouped.values()));
+        } else {
           setSubmissions([]);
+        }
+
+        // Handle status
+        if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
+          const statusData = await statusRes.value.json();
+          setSubmissionStatus(statusData);
+        } else {
           setSubmissionStatus({
             freeSubmissionUsed: false,
             totalSubmissions: 0,
@@ -265,12 +187,12 @@ export default function UserProfile() {
           });
         }
 
-      } catch (networkError) {
+      } catch (error) {
         clearTimeout(timeoutId);
-        console.error('Network error fetching user data:', networkError);
+        console.error('Error fetching data:', error);
         
-        // Use Firebase data as complete fallback, but preserve existing data
-        if (user && !backendUser) {
+        // Use Firebase fallback
+        if (user) {
           setBackendUser({
             uid: user.uid,
             email: user.email || '',
@@ -279,67 +201,27 @@ export default function UserProfile() {
             id: null,
             createdAt: new Date().toISOString(),
             profilePictureUrl: user.photoURL,
-            _renderKey: Date.now()
           });
           setDisplayName(user.displayName || user.email?.split('@')[0] || 'User');
         }
-        
-        // Only reset if we have no existing data
-        if (submissions.length === 0) {
-          setSubmissions([]);
-        }
-        if (!submissionStatus) {
-          setSubmissionStatus({
-            freeSubmissionUsed: false,
-            totalSubmissions: 0,
-            contestMonth: new Date().toISOString().slice(0, 7),
-            allTimeSubmissions: 0
-          });
-        }
-        
-        toast({
-          title: "Connection Error",
-          description: "Unable to connect to server. Using offline profile data.",
-          variant: "destructive",
-        });
-      }
 
-    } catch (error) {
-      console.error('Unexpected error fetching user data:', error);
-      
-      // Final fallback using Firebase data, preserve existing data
-      if (user && !backendUser) {
-        setBackendUser({
-          uid: user.uid,
-          email: user.email || '',
-          name: user.displayName || user.email?.split('@')[0] || 'User',
-          phone: user.phoneNumber || null,
-          id: null,
-          createdAt: new Date().toISOString(),
-          profilePictureUrl: user.photoURL,
-          _renderKey: Date.now()
-        });
-        setDisplayName(user.displayName || user.email?.split('@')[0] || 'User');
-      }
-      
-      // Only set defaults if we have no existing data
-      if (submissions.length === 0) {
         setSubmissions([]);
-      }
-      if (!submissionStatus) {
         setSubmissionStatus({
           freeSubmissionUsed: false,
           totalSubmissions: 0,
           contestMonth: new Date().toISOString().slice(0, 7),
           allTimeSubmissions: 0
         });
+
+        toast({
+          title: "Connection Issue",
+          description: "Using basic profile data. Try refreshing.",
+          variant: "destructive",
+        });
       }
-      
-      toast({
-        title: "Error",
-        description: "Failed to load profile data. Using basic profile information.",
-        variant: "destructive",
-      });
+
+    } catch (error) {
+      console.error('Fetch user data error:', error);
     } finally {
       setLoading(false);
     }
@@ -488,28 +370,18 @@ export default function UserProfile() {
         const updatedUser = await response.json();
         console.log('Updated user data from server:', updatedUser);
 
-        // Create final user object with fresh render key
-        const finalUser = {
-          ...updatedUser,
-          _renderKey: Date.now()
-        };
-
         // Update local state immediately
-        setBackendUser(finalUser);
+        setBackendUser(updatedUser);
+        setDisplayName(updatedUser.name);
 
         // Close dialog and reset form
         setIsEditDialogOpen(false);
         setProfilePicture(null);
         setProfilePicturePreview("");
 
-        // Force header and other components to update immediately
+        // Notify header to update
         window.dispatchEvent(new CustomEvent('profileUpdated', { 
-          detail: finalUser 
-        }));
-
-        // Also trigger Firebase photo update event for header
-        window.dispatchEvent(new CustomEvent('firebasePhotoUpdated', {
-          detail: { url: finalUser.profilePictureUrl }
+          detail: updatedUser
         }));
 
         console.log('✅ Profile update events dispatched');
@@ -707,16 +579,15 @@ export default function UserProfile() {
                 <div className="relative w-20 h-20 mx-auto mb-4">
                   {backendUser?.profilePictureUrl ? (
                     <img 
-                      src={backendUser.profilePictureUrl} 
+                      src={`${backendUser.profilePictureUrl}?t=${Date.now()}`}
                       alt="Profile" 
                       className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
                       loading="lazy"
                       onError={(e) => {
-                        // Hide the broken image and update state to show fallback
+                        console.log('Profile image failed to load');
                         e.currentTarget.style.display = 'none';
                         setBackendUser(prev => prev ? { ...prev, profilePictureUrl: null } : null);
                       }}
-                      key={`profile-main-${backendUser._renderKey || Date.now()}`}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
