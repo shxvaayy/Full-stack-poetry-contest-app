@@ -320,12 +320,22 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 // Update user profile
 router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
-  const { name } = req.body;
+  const { name, email } = req.body;
   
-  console.log('🔄 Updating user profile for UID:', uid, 'with name:', name);
+  console.log('🔄 Updating user profile for UID:', uid, 'with data:', { name, email });
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Name is required' });
+  }
+
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    return res.status(400).json({ error: 'Invalid email format' });
   }
 
   try {
@@ -336,12 +346,20 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update user name in database
+    // Check if email is already taken by another user
+    if (email.trim() !== user.email) {
+      const existingUser = await storage.getUserByEmail(email.trim());
+      if (existingUser && existingUser.uid !== uid) {
+        return res.status(400).json({ error: 'Email is already taken by another user' });
+      }
+    }
+
+    // Update user name and email in database
     await client.query(`
       UPDATE users 
-      SET name = $1, updated_at = NOW()
-      WHERE uid = $2
-    `, [name.trim(), uid]);
+      SET name = $1, email = $2, updated_at = NOW()
+      WHERE uid = $3
+    `, [name.trim(), email.trim(), uid]);
 
     // Get updated user
     const updatedUser = await storage.getUserByUid(uid);

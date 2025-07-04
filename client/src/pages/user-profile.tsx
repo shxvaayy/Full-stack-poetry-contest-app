@@ -59,6 +59,7 @@ export default function UserProfile() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -147,10 +148,21 @@ export default function UserProfile() {
   };
 
   const updateUserProfile = async () => {
-    if (!user?.uid || !editName.trim()) {
+    if (!user?.uid || !editName.trim() || !editEmail.trim()) {
       toast({
         title: "Error",
-        description: "Name cannot be empty",
+        description: "Name and email cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editEmail.trim())) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       return;
@@ -164,7 +176,8 @@ export default function UserProfile() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: editName.trim()
+          name: editName.trim(),
+          email: editEmail.trim()
         })
       });
 
@@ -177,13 +190,14 @@ export default function UserProfile() {
           description: "Profile updated successfully!",
         });
       } else {
-        throw new Error('Failed to update profile');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
         title: "Error", 
-        description: "Failed to update profile. Please try again.",
+        description: error.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -193,6 +207,7 @@ export default function UserProfile() {
 
   const openEditDialog = () => {
     setEditName(backendUser?.name || user?.displayName || '');
+    setEditEmail(backendUser?.email || user?.email || '');
     setIsEditDialogOpen(true);
   };
 
@@ -309,12 +324,20 @@ export default function UserProfile() {
                           />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right text-sm text-gray-500">
+                          <Label htmlFor="email" className="text-right">
                             Email
                           </Label>
-                          <div className="col-span-3 text-sm text-gray-600">
-                            {user.email}
-                          </div>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            className="col-span-3"
+                            placeholder="Enter your email"
+                          />
+                        </div>
+                        <div className="col-span-4 text-xs text-gray-500 mt-2">
+                          <p>⚠️ <strong>Important:</strong> Email is used for poem submissions and must be unique. Changing it will affect future submissions.</p>
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
@@ -327,7 +350,7 @@ export default function UserProfile() {
                         </Button>
                         <Button
                           onClick={updateUserProfile}
-                          disabled={isUpdating || !editName.trim()}
+                          disabled={isUpdating || !editName.trim() || !editEmail.trim()}
                         >
                           {isUpdating ? (
                             <>
