@@ -189,8 +189,18 @@ export default function UserProfile() {
 
       if (response.ok) {
         const updatedUser = await response.json();
+        console.log('✅ Profile updated, new user data:', updatedUser);
+        
+        // Update backend user state
         setBackendUser(updatedUser);
+        
+        // Force refresh all user data to ensure consistency
+        await fetchUserData();
+        
+        // Close dialog
         setIsEditDialogOpen(false);
+        
+        // Show success message
         toast({
           title: "Success",
           description: "Profile updated successfully!",
@@ -304,7 +314,7 @@ export default function UserProfile() {
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CardTitle className="text-xl">
-                    {user.displayName || backendUser?.name || 'User'}
+                    {backendUser?.name || user.displayName || 'User'}
                   </CardTitle>
                   <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                     <DialogTrigger asChild>
@@ -372,7 +382,7 @@ export default function UserProfile() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                <p className="text-gray-600 text-sm">{user.email}</p>
+                <p className="text-gray-600 text-sm">{backendUser?.email || user.email}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center text-gray-600">
