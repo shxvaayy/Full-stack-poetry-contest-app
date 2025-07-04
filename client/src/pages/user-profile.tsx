@@ -77,45 +77,55 @@ export default function UserProfile() {
     try {
       setLoading(true);
 
-      // First, get basic user data quickly
+      // First, get basic user data with no-cache headers
       const userResponse = await fetch(`/api/users/${user!.uid}`, {
         headers: {
-          'Cache-Control': 'max-age=300' // Cache for 5 minutes
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
 
-        // Set basic user data immediately
-        setBackendUser({
+        // Always try to get the latest Firebase photo first
+        let finalProfilePictureUrl = userData.profilePictureUrl;
+        
+        try {
+          const firebasePhotoURL = await getProfilePhotoURL(user!.uid);
+          if (firebasePhotoURL) {
+            finalProfilePictureUrl = firebasePhotoURL;
+          }
+        } catch (error) {
+          console.log('No Firebase photo found, using database URL');
+        }
+
+        // Set user data with the most recent profile picture
+        const userDataWithPhoto = {
           ...userData,
-          profilePictureUrl: userData.profilePictureUrl || user?.photoURL,
+          profilePictureUrl: finalProfilePictureUrl,
           _renderKey: Date.now()
-        });
+        };
+
+        setBackendUser(userDataWithPhoto);
 
         // Initialize display name
         setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
 
-        // Load Firebase photo in background if needed
-        if (!userData.profilePictureUrl) {
-          getProfilePhotoURL(user!.uid)
-            .then(firebasePhotoURL => {
-              if (firebasePhotoURL) {
-                setBackendUser(prev => ({
-                  ...prev,
-                  profilePictureUrl: firebasePhotoURL,
-                  _renderKey: Date.now()
-                }));
-              }
-            })
-            .catch(error => {
-              console.log('No Firebase photo found');
-            });
-        }
       } else if (userResponse.status === 404) {
         // User not found in database - set default data from Firebase
         console.log('User not found in database, using Firebase data');
+
+        let firebasePhotoURL = user?.photoURL;
+        try {
+          const latestFirebasePhoto = await getProfilePhotoURL(user!.uid);
+          if (latestFirebasePhoto) {
+            firebasePhotoURL = latestFirebasePhoto;
+          }
+        } catch (error) {
+          console.log('No Firebase photo found for new user');
+        }
 
         setBackendUser({
           uid: user!.uid,
@@ -124,7 +134,8 @@ export default function UserProfile() {
           phone: user!.phoneNumber || null,
           id: null,
           createdAt: new Date().toISOString(),
-          profilePictureUrl: user?.photoURL
+          profilePictureUrl: firebasePhotoURL,
+          _renderKey: Date.now()
         });
       }
 
@@ -229,6 +240,17 @@ export default function UserProfile() {
     }
 
     setIsUpdating(true);
+
+    // Set a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setIsUpdating(false);
+      toast({
+        title: "Request Timeout",
+        description: "The update is taking too long. Please try again.",
+        variant: "destructive",
+      });
+    }, 30000); // 30 second timeout
+
     try {
       let finalProfilePictureUrl = backendUser?.profilePictureUrl;
 
@@ -237,7 +259,13 @@ export default function UserProfile() {
         console.log('📸 Uploading profile picture to Firebase Storage...');
 
         try {
-          const firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
+          // Add timeout for Firebase upload
+          const uploadPromise = uploadProfilePhoto(user.uid, profilePicture);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Firebase upload timeout')), 20000)
+          );
+
+          const firebasePhotoURL = await Promise.race([uploadPromise, timeoutPromise]);
           await updateFirebaseProfile(firebasePhotoURL);
 
           // Use the actual Firebase URL with a cache buster
@@ -245,12 +273,15 @@ export default function UserProfile() {
           console.log('✅ Profile picture uploaded to Firebase:', finalProfilePictureUrl);
         } catch (uploadError) {
           console.error('❌ Failed to upload profile picture to Firebase:', uploadError);
+          clearTimeout(timeoutId);
+          setIsUpdating(false);
           toast({
             title: "Photo Upload Failed",
-            description: "Failed to upload photo. Please try again.",
+            description: uploadError.message.includes('timeout') 
+              ? "Photo upload timed out. Please try again with a smaller image."
+              : "Failed to upload photo. Please try again.",
             variant: "destructive",
           });
-          setIsUpdating(false);
           return; // Stop the update if photo upload fails
         }
       }
@@ -265,15 +296,21 @@ export default function UserProfile() {
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
       console.log('Update data:', updateData);
 
+      // Add timeout for API call
+      const controller = new AbortController();
+      const apiTimeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for API
+
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updateData),
-        credentials: 'same-origin'
+        credentials: 'same-origin',
+        signal: controller.signal
       });
 
+      clearTimeout(apiTimeoutId);
       console.log('Response status:', response.status);
 
       if (response.ok) {
@@ -372,7 +409,9 @@ export default function UserProfile() {
 
       let errorMessage = "Failed to update profile. Please try again.";
 
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      if (error.name === 'AbortError') {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
         errorMessage = "Network error. Please check your connection and try again.";
       } else if (error.message && !error.message.includes('Failed to update profile')) {
         errorMessage = error.message;
@@ -384,6 +423,7 @@ export default function UserProfile() {
         variant: "destructive",
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsUpdating(false);
     }
   };
