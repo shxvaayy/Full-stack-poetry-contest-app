@@ -1142,7 +1142,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       poemFileUrl = await uploadPoemFile(
         poemBuffer, 
         email, 
-        poemFile.originalname
+        poemFile.originalname,
+        0, // poemIndex
+        poemTitle // Pass the actual poem title
       );
       console.log('✅ Poem file uploaded:', poemFileUrl);
     }
@@ -1656,7 +1658,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
 
     if (poemFile) {
       const poemBuffer = fs.readFileSync(poemFile.path);
-      poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname);
+      poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname, 0, poemTitle);
     }
 
     if (photoFile) {

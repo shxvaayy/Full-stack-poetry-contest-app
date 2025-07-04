@@ -142,9 +142,9 @@ export async function uploadPoemFile(
   
   // ✅ NEW: Create filename in format email_poemtitle.pdf
   let fileName: string;
-  if (poemTitle) {
+  if (poemTitle && poemTitle.trim()) {
     // Sanitize poem title for filename use
-    const sanitizedTitle = poemTitle
+    const sanitizedTitle = poemTitle.trim()
       .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
       .replace(/\s+/g, '_') // Replace spaces with underscores
       .substring(0, 50); // Limit title length
@@ -152,7 +152,7 @@ export async function uploadPoemFile(
     fileName = `${email}_${sanitizedTitle}.${fileExtension}`;
   } else {
     // Fallback if no poem title provided
-    if (poemIndex !== undefined && poemIndex > 0) {
+    if (poemIndex !== undefined && poemIndex >= 0) {
       fileName = `${email}_poem_${poemIndex + 1}.${fileExtension}`;
     } else {
       fileName = `${email}_poem.${fileExtension}`;
@@ -162,6 +162,7 @@ export async function uploadPoemFile(
   const mimeType = getMimeType(fileExtension);
   
   console.log(`📤 Uploading poem file: ${fileName}`);
+  console.log(`📝 Using poem title: "${poemTitle}" -> sanitized: "${fileName}"`);
   return uploadFileToDrive(file, fileName, mimeType, 'Poems');
 }
 
