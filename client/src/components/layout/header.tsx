@@ -11,6 +11,20 @@ export default function Header() {
   const [location] = useLocation();
   const { user, logout, dbUser } = useAuth();
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>('');
+
+  const loadProfilePicture = async () => {
+    if (user?.uid) {
+      try {
+        const firebasePhotoURL = await getProfilePhotoURL(user.uid);
+        if (firebasePhotoURL) {
+          setProfilePictureUrl(`${firebasePhotoURL}?v=${Date.now()}`);
+        }
+      } catch (error) {
+        console.log('No Firebase photo found or error loading profile picture');
+      }
+    }
+  };
 
   useEffect(() => {
     if (user?.uid) {

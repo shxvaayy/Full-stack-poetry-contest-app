@@ -66,6 +66,7 @@ export default function UserProfile() {
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>("");
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [displayName, setDisplayName] = useState<string>('');
 
   useEffect(() => {
     if (user?.uid) {
@@ -93,6 +94,9 @@ export default function UserProfile() {
           profilePictureUrl: userData.profilePictureUrl || user?.photoURL,
           _renderKey: Date.now()
         });
+        
+        // Initialize display name
+        setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
         
         // Load Firebase photo in background if needed
         if (!userData.profilePictureUrl) {
