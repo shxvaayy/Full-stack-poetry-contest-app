@@ -325,105 +325,105 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
     }
 
     try {
-    // Ensure database connection
-    await connectDatabase();
+      // Ensure database connection
+      await connectDatabase();
 
-    let user = null;
+      let user = null;
 
-    // Try to get existing user
-    try {
-      user = await storage.getUserByUid(uid);
-      console.log('🔍 Found existing user:', user?.email || 'none');
-    } catch (getUserError) {
-      console.log('⚠️ Could not find user, will create new one');
-      user = null;
-    }
-
-    // If user doesn't exist, create them first
-    if (!user) {
-      console.log('⚠️ User not found for UID:', uid, '- Creating new user');
+      // Try to get existing user
       try {
-        // Use direct database query instead of storage function to avoid issues
-        const createResult = await client.query(`
-          INSERT INTO users (uid, email, name, phone, profile_picture_url, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-          ON CONFLICT (uid) DO UPDATE SET
-            name = EXCLUDED.name,
-            email = EXCLUDED.email,
-            profile_picture_url = COALESCE(EXCLUDED.profile_picture_url, users.profile_picture_url),
-            updated_at = NOW()
-          RETURNING *
-        `, [uid, email.trim(), name.trim(), null, profilePictureUrl]);
-
-        user = createResult.rows[0];
-        console.log('✅ Created/Updated user:', user.email);
-
-        // Transform to match expected format
-        const transformedUser = {
-          id: user.id,
-          uid: user.uid,
-          email: user.email,
-          name: user.name,
-          phone: user.phone,
-          profilePictureUrl: user.profile_picture_url,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at
-        };
-
-        return res.json(transformedUser);
-      } catch (createError) {
-        console.error('❌ Failed to create user:', createError);
-
-        // Handle specific constraint errors
-        if (createError.code === '23505' && createError.constraint?.includes('email')) {
-          return res.status(400).json({ 
-            error: 'Email already taken',
-            message: 'This email is already registered to another user.' 
-          });
-        }
-
-        return res.status(500).json({ 
-          error: 'Failed to create user profile',
-          message: createError.message 
-        });
+        user = await storage.getUserByUid(uid);
+        console.log('🔍 Found existing user:', user?.email || 'none');
+      } catch (getUserError) {
+        console.log('⚠️ Could not find user, will create new one');
+        user = null;
       }
-    } else {
-      // Update existing user
-      console.log('🔄 Updating existing user:', user.email);
 
-      // Check email uniqueness only if email is being changed
-      if (email.trim() !== user.email) {
+      // If user doesn't exist, create them first
+      if (!user) {
+        console.log('⚠️ User not found for UID:', uid, '- Creating new user');
         try {
-          const emailCheckResult = await client.query(`
-            SELECT id, uid FROM users WHERE email = $1 AND uid != $2
-          `, [email.trim(), uid]);
+          // Use direct database query instead of storage function to avoid issues
+          const createResult = await client.query(`
+            INSERT INTO users (uid, email, name, phone, profile_picture_url, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+            ON CONFLICT (uid) DO UPDATE SET
+              name = EXCLUDED.name,
+              email = EXCLUDED.email,
+              profile_picture_url = COALESCE(EXCLUDED.profile_picture_url, users.profile_picture_url),
+              updated_at = NOW()
+            RETURNING *
+          `, [uid, email.trim(), name.trim(), null, profilePictureUrl]);
 
-          if (emailCheckResult.rows.length > 0) {
+          user = createResult.rows[0];
+          console.log('✅ Created/Updated user:', user.email);
+
+          // Transform to match expected format
+          const transformedUser = {
+            id: user.id,
+            uid: user.uid,
+            email: user.email,
+            name: user.name,
+            phone: user.phone,
+            profilePictureUrl: user.profile_picture_url,
+            createdAt: user.created_at,
+            updatedAt: user.updated_at
+          };
+
+          return res.json(transformedUser);
+        } catch (createError) {
+          console.error('❌ Failed to create user:', createError);
+
+          // Handle specific constraint errors
+          if (createError.code === '23505' && createError.constraint?.includes('email')) {
             return res.status(400).json({ 
               error: 'Email already taken',
               message: 'This email is already registered to another user.' 
             });
           }
-        } catch (emailCheckError) {
-          console.error('❌ Error checking email uniqueness:', emailCheckError);
-          // Continue with update if email check fails
+
+          return res.status(500).json({ 
+            error: 'Failed to create user profile',
+            message: createError.message 
+          });
         }
-      }
+      } else {
+        // Update existing user
+        console.log('🔄 Updating existing user:', user.email);
 
-      // Update user in database
-    const updateQuery = `
-      UPDATE users 
-      SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW()
-      WHERE uid = $4 
-      RETURNING *
-    `;
+        // Check email uniqueness only if email is being changed
+        if (email.trim() !== user.email) {
+          try {
+            const emailCheckResult = await client.query(`
+              SELECT id, uid FROM users WHERE email = $1 AND uid != $2
+            `, [email.trim(), uid]);
 
-    const updateResult = await client.query(updateQuery, [
-      name.trim(), 
-      email.trim(), 
-      profilePictureUrl,
-      uid
-    ]);
+            if (emailCheckResult.rows.length > 0) {
+              return res.status(400).json({ 
+                error: 'Email already taken',
+                message: 'This email is already registered to another user.' 
+              });
+            }
+          } catch (emailCheckError) {
+            console.error('❌ Error checking email uniqueness:', emailCheckError);
+            // Continue with update if email check fails
+          }
+        }
+
+        // Update user in database
+        const updateQuery = `
+          UPDATE users 
+          SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW()
+          WHERE uid = $4 
+          RETURNING *
+        `;
+
+        const updateResult = await client.query(updateQuery, [
+          name.trim(), 
+          email.trim(), 
+          profilePictureUrl,
+          uid
+        ]);
 
         if (updateResult.rows.length === 0) {
           return res.status(404).json({ error: 'User not found for update' });
@@ -448,22 +448,22 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
 
         console.log('✅ Returning transformed user with cache-busted URL:', transformedUser);
         return res.json(transformedUser);
-      } catch (updateError) {
-        console.error('❌ Error updating user profile:', updateError);
+      }
+    } catch (updateError) {
+      console.error('❌ Error updating user profile:', updateError);
 
-        // Handle specific database errors
-        if (updateError.code === '23505' && updateError.constraint?.includes('email')) {
-          return res.status(400).json({ 
-            error: 'Email already taken',
-            message: 'This email is already registered to another user.' 
-          });
-        }
-
-        return res.status(500).json({ 
-          error: 'Failed to update user profile',
-          message: updateError.message
+      // Handle specific database errors
+      if (updateError.code === '23505' && updateError.constraint?.includes('email')) {
+        return res.status(400).json({ 
+          error: 'Email already taken',
+          message: 'This email is already registered to another user.' 
         });
       }
+
+      return res.status(500).json({ 
+        error: 'Failed to update user profile',
+        message: updateError.message
+      });
     }
   } catch (error) {
     console.error('❌ Error updating user profile:', error);
