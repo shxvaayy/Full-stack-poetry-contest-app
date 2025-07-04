@@ -53,30 +53,29 @@ export default function Header() {
   // Listen for profile updates from user-profile page
   useEffect(() => {
     const handleProfileUpdate = (event: CustomEvent) => {
-      console.log('Header: Profile updated event received:', event.detail);
-      const updatedUser = event.detail;
+      console.log('Header: Profile update event received:', event.detail);
+      if (event.detail) {
+        const updatedUser = event.detail;
+        setDisplayName(updatedUser.name || user?.displayName || user?.email?.split('@')[0] || 'User');
 
-      // Force update profile picture with cache busting
-      if (updatedUser.profilePictureUrl) {
-        const newUrl = `${updatedUser.profilePictureUrl}?header_v=${Date.now()}`;
-        setProfilePictureUrl(newUrl);
-        console.log('Header: Updated profile picture URL:', newUrl);
-      } else if (updatedUser.profilePictureUrl === null) {
-        // Handle case where profile picture was removed
-        setProfilePictureUrl(null);
-        console.log('Header: Profile picture removed');
+        if (updatedUser.profilePictureUrl) {
+          const cacheBustedUrl = `${updatedUser.profilePictureUrl}?header_v=${Date.now()}`;
+          setProfilePictureUrl(cacheBustedUrl);
+          console.log('Header: Profile picture updated from profile event:', cacheBustedUrl);
+
+          // Double-ensure the update by setting again after a short delay
+          setTimeout(() => {
+            setProfilePictureUrl(`${updatedUser.profilePictureUrl}?delayed_v=${Date.now()}`);
+          }, 50);
+        }
       }
 
-      // Update user name display
-      if (updatedUser.name) {
-        setDisplayName(updatedUser.name);
-        console.log('Header: Updated display name:', updatedUser.name);
-      }
-
-      // Force re-render by triggering a state update after a delay
+      // Also reload from Firebase as fallback
       setTimeout(() => {
-        loadProfilePicture();
-      }, 200);
+        if (user?.uid) {
+          loadProfilePicture();
+        }
+      }, 300);
     };
 
     const handleFirebasePhotoUpdate = (event: CustomEvent) => {
@@ -91,7 +90,7 @@ export default function Header() {
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
     window.addEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
-    
+
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
       window.removeEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
@@ -108,7 +107,7 @@ export default function Header() {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also listen for custom Firebase photo update events
     const handleFirebasePhotoUpdate = () => {
       console.log('Header: Firebase photo update event received');
@@ -190,7 +189,7 @@ export default function Header() {
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
                     {profilePictureUrl ? (
                       <img 
-                        src={profilePictureUrl} 
+                        src={profilePictureUrl}
                         alt="Profile" 
                         className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
                         onError={(e) => {
