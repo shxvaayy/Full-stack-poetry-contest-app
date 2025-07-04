@@ -8,9 +8,15 @@ import { useToast } from '@/hooks/use-toast';
 interface PaymentFormProps {
   amount: number;
   tier: string;
+  userEmail?: string;
   onSuccess: (data: any) => void;
   onError: (error: string) => void;
   onBack: () => void;
+  isProcessing?: boolean;
+  setIsProcessing?: (processing: boolean) => void;
+  isProcessingPayPal?: boolean;
+  setIsProcessingPayPal?: (processing: boolean) => void;
+  onQRPayment?: (qrData: any) => void;
 }
 
 declare global {
@@ -19,11 +25,29 @@ declare global {
   }
 }
 
-export default function PaymentForm({ amount, tier, onSuccess, onError, onBack }: PaymentFormProps) {
+export default function PaymentForm({ 
+  amount, 
+  tier, 
+  userEmail,
+  onSuccess, 
+  onError, 
+  onBack,
+  isProcessing: externalIsProcessing,
+  setIsProcessing: externalSetIsProcessing,
+  isProcessingPayPal: externalIsProcessingPayPal,
+  setIsProcessingPayPal: externalSetIsProcessingPayPal,
+  onQRPayment
+}: PaymentFormProps) {
   const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
+  const [internalIsProcessing, setInternalIsProcessing] = useState(false);
+  const [internalIsProcessingPayPal, setInternalIsProcessingPayPal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use external state if provided, otherwise use internal state
+  const isProcessing = externalIsProcessing !== undefined ? externalIsProcessing : internalIsProcessing;
+  const setIsProcessing = externalSetIsProcessing || setInternalIsProcessing;
+  const isProcessingPayPal = externalIsProcessingPayPal !== undefined ? externalIsProcessingPayPal : internalIsProcessingPayPal;
+  const setIsProcessingPayPal = externalSetIsProcessingPayPal || setInternalIsProcessingPayPal;
 
   // Convert INR to USD (approximate rate)
   const usdAmount = (amount * 0.012).toFixed(2);

@@ -1217,6 +1217,7 @@ export default function SubmitPage() {
                   setIsProcessing={setIsProcessingPayment}
                   isProcessingPayPal={isProcessingPayPal}
                   setIsProcessingPayPal={setIsProcessingPayPal}
+                  onBack={() => setCurrentStep("form")}
                   onQRPayment={(qrData) => {
                     setQrPaymentData(qrData);
                     setShowQRPayment(true);
