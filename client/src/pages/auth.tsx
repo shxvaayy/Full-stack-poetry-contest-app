@@ -462,7 +462,7 @@ export default function AuthPage() {
               >
                 {isSignIn ? "Sign up" : "Sign in"}
               </button>
-            </div></div>
+            </div>
           </CardContent>
         </Card>
         <div id="recaptcha-container"></div>
