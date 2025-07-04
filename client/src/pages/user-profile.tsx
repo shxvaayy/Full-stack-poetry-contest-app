@@ -856,10 +856,254 @@ export default function UserProfile() {
                                           {submission.poems.length > 1 && <span className="ml-1">({index + 1})</span>}
                                         </Badge>
                                       );
-                               ```tool_code
-```tool_code
-Improved data fetching logic to address loading issues by setting a timeout and loading user data sequentially.
-<replit_final_file>
+                                    })}
+                                  </div>
+                                ) : (
+                                  <Badge className={getStatusColor('Pending')}>
+                                    {getStatusIcon('Pending')}
+                                    <span className="ml-1">Pending</span>
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                        <p className="text-gray-600">No submissions yet.</p>
+                        <Button 
+                          className="mt-4"
+                          onClick={() => window.location.href = '/submit'}
+                        >
+                          Submit Your First Poem
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Submissions Tab */}
+              <TabsContent value="submissions" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <FileText className="mr-2" size={20} />
+                      My Submissions ({submissions.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {submissions.length > 0 ? (
+                      <div className="space-y-4">
+                        {submissions.map((submission) => (
+                          <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h3 className="font-semibold text-lg">{submission.poems.length > 1 
+                                    ? `${submission.poems.length} Poems Submission` 
+                                    : submission.poems[0]?.title || 'Poem Submission'
+                                  }</h3>
+                                <p className="text-gray-600 text-sm mb-2">
+                                  Submitted on {formatDate(submission.submittedAt)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-semibold text-green-600">
+                                  ₹{submission.amount}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Show all poems in this submission */}
+                            <div className="mb-4">
+                              <h4 className="font-medium mb-2">
+                                Poem{submission.poems.length > 1 ? 's' : ''} ({submission.poems.length}):
+                              </h4>
+                              <div className="space-y-2">
+                                {submission.poems.map((poem, index) => (
+                                  <div key={poem.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="text-sm font-medium">
+                                      {index + 1}. {poem.title}
+                                    </span>
+                                    {poem.fileUrl && (
+                                      <a 
+                                        href={poem.fileUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 text-sm"
+                                      >
+                                        View File
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Badge className={getTierColor(submission.tier)}>
+                                {submission.tier}
+                              </Badge>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                        <p className="text-gray-600">No submissions yet.</p>
+                        <Button 
+                          className="mt-4"
+                          onClick={() => window.location.href = '/submit'}
+                        >
+                          Submit Your First Poem
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ✅ Results Tab - Only shown if results are announced */}
+              <TabsContent value="results" className="space-y-6">
+                {hasAnnouncedResults ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Trophy className="mr-2 text-yellow-500" size={20} />
+                        Contest Results
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Winners */}
+                      {submissions.some(s => s.poems.some((p: any) => p.isWinner)) && (
+                        <div className="mb-6">
+                          <h3 className="font-semibold text-lg mb-3">🏆 Your Winning Poems</h3>
+                          <div className="space-y-3">
+                            {submissions.map(submission => 
+                              submission.poems.filter((p: any) => p.isWinner).map((winner: any) => (
+                                <div key={winner.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-semibold">{winner.title}</h4>
+                                      <p className="text-sm text-gray-600">Position #{winner.winnerPosition}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      {winner.score && (
+                                        <div className="text-lg font-bold text-yellow-600">
+                                          Score: {winner.score}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Evaluated Poems */}
+                      {submissions.some(s => s.poems.some((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner)) && (
+                        <div>
+                          <h3 className="font-semibold text-lg mb-3">📊 Evaluated Poems</h3>
+                          <div className="space-y-3">
+                            {submissions.map(submission => 
+                              submission.poems.filter((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner).map((poem: any) => (
+                                <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-semibold">{poem.title}</h4>
+                                      <p className="text-sm text-gray-600">Evaluated</p>
+                                      {poem.type && (
+                                        <Badge className={getTypeColor(poem.type)} size="sm">
+                                          {poem.type}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      {poem.score && (
+                                        <div className="text-lg font-bold text-blue-600">
+                                          Score: {poem.score}/100
+                                        </div>
+                                      )}
+                                      {poem.scoreBreakdown && (
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <Button variant="outline" size="sm" className="mt-2">
+                                              View Details
+                                            </Button>
+                                          </DialogTrigger>
+                                          <DialogContent>
+                                            <DialogHeader>
+                                              <DialogTitle>Score Breakdown: {poem.title}</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-3">
+                                              <div className="flex justify-between">
+                                                <span>Originality:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.originality}/25</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Emotion:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.emotion}/25</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Structure:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.structure}/20</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Language:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.language}/20</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span>Theme:</span>
+                                                <span className="font-medium">{poem.scoreBreakdown.theme}/10</span>
+                                              </div>
+                                              <hr />
+                                              <div className="flex justify-between font-bold">
+                                                <span>Total:</span>
+                                                <span>{poem.score}/100</span>
+                                              </div>
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {!submissions.some(s => s.poems.some((p: any) => p.isWinner || (p.status === 'Evaluated' && p.score !== undefined && p.score > 0))) && (
+                        <div className="text-center py-8">
+                          <Clock className="mx-auto text-gray-400 mb-4" size={48} />
+                          <p className="text-gray-600">Results not yet available for your submissions.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="text-center py-8">
+                      <Clock className="mx-auto text-gray-400 mb-4" size={48} />
+                      <h3 className="text-lg font-semibold mb-2">Results Not Yet Available</h3>
+                      <p className="text-gray-600">Contest results will be displayed here once the evaluation process is complete.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
