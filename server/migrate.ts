@@ -1,5 +1,6 @@
 // migrate.ts
 import { client, connectDatabase } from './db.js';
+import { addProfilePictureColumn } from './add-profile-picture-column.js';
 
 async function createTables() {
   try {

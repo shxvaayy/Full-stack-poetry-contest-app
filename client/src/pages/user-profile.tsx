@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2 } from 'lucide-react';
+import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2, Camera, Upload } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
 interface BackendUser {
@@ -18,6 +18,7 @@ interface BackendUser {
   uid: string;
   phone: string | null;
   createdAt: string;
+  profilePictureUrl?: string | null;
 }
 
 interface Submission {
@@ -61,6 +62,9 @@ export default function UserProfile() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string>("");
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -162,7 +166,8 @@ export default function UserProfile() {
     console.log('Update profile called with:', { 
       editName: editName?.trim(), 
       editEmail: editEmail?.trim(),
-      userUid: user?.uid 
+      userUid: user?.uid,
+      hasProfilePicture: !!profilePicture
     });
 
     if (!user?.uid || !editName?.trim() || !editEmail?.trim()) {
@@ -187,15 +192,18 @@ export default function UserProfile() {
 
     setIsUpdating(true);
     try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('name', editName.trim());
+      formData.append('email', editEmail.trim());
+      
+      if (profilePicture) {
+        formData.append('profilePicture', profilePicture);
+      }
+
       const response = await fetch(`/api/users/${user.uid}/update-profile`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: editName.trim(),
-          email: editEmail.trim()
-        })
+        body: formData // Use FormData instead of JSON for file uploads
       });
 
       if (response.ok) {
@@ -239,6 +247,19 @@ export default function UserProfile() {
     }
   };
 
+  const handleProfilePictureChange = (file: File | null) => {
+    setProfilePicture(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePicturePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setProfilePicturePreview("");
+    }
+  };
+
   const openEditDialog = () => {
     const currentName = backendUser?.name || user?.displayName || '';
     const currentEmail = backendUser?.email || user?.email || '';
@@ -247,6 +268,8 @@ export default function UserProfile() {
     
     setEditName(currentName);
     setEditEmail(currentEmail);
+    setProfilePicture(null);
+    setProfilePicturePreview(backendUser?.profilePictureUrl || "");
     setIsEditDialogOpen(true);
   };
 
@@ -327,8 +350,18 @@ export default function UserProfile() {
           <div className="lg:col-span-1">
             <Card>
               <CardHeader className="text-center">
-                <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="text-white" size={32} />
+                <div className="relative w-20 h-20 mx-auto mb-4">
+                  {backendUser?.profilePictureUrl ? (
+                    <img 
+                      src={backendUser.profilePictureUrl} 
+                      alt="Profile" 
+                      className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
+                      <User className="text-white" size={32} />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CardTitle className="text-xl">
@@ -350,6 +383,37 @@ export default function UserProfile() {
                         <DialogTitle>Edit Profile</DialogTitle>
                       </DialogHeader>
                       <div className="grid gap-6 py-4">
+                        {/* Profile Picture Upload */}
+                        <div className="space-y-4">
+                          <Label>Profile Picture</Label>
+                          <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200">
+                              {profilePicturePreview ? (
+                                <img 
+                                  src={profilePicturePreview} 
+                                  alt="Profile Preview" 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                  <User className="text-gray-400" size={20} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleProfilePictureChange(e.target.files?.[0] || null)}
+                                className="w-full"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Upload JPG, PNG, or GIF (max 5MB)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
                         <div className="space-y-2">
                           <Label htmlFor="name">Name</Label>
                           <Input

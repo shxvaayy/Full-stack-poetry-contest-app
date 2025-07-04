@@ -158,6 +158,7 @@ export async function createUser(userData: {
   email: string;
   name: string | null;
   phone: string | null;
+  profilePictureUrl?: string | null;
 }) {
   try {
     console.log('🔄 Creating new user:', userData.email);
@@ -167,6 +168,7 @@ export async function createUser(userData: {
       email: userData.email,
       name: userData.name,
       phone: userData.phone,
+      profilePictureUrl: userData.profilePictureUrl || null,
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning();

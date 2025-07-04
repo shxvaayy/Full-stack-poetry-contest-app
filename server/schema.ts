@@ -25,10 +25,11 @@ export function validateTierPoemCount(tier: string, poemCount: number): boolean 
 // ✅ Users table
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  uid: varchar('uid', { length: 255 }).notNull().unique(), // Firebase/Replit Auth UID
+  uid: varchar('uid', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 255 }),
   phone: varchar('phone', { length: 20 }),
+  profilePictureUrl: text('profile_picture_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
@@ -36,62 +37,62 @@ export const users = pgTable('users', {
 // ✅ Submissions table - Complete with all evaluation fields
 export const submissions = pgTable('submissions', {
   id: serial('id').primaryKey(),
-  
+
   // User relationship
   userId: integer('user_id').references(() => users.id),
-  
+
   // Basic submission info
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }),
   email: varchar('email', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 20 }),
   age: integer('age'),
-  
+
   // Poem details
   poemTitle: varchar('poem_title', { length: 255 }).notNull(),
   poemContent: text('poem_content'), // Store actual poem text if needed
-  
+
   // Submission tier and pricing
   tier: varchar('tier', { length: 50 }).notNull(), // free, single, double, bulk
   price: decimal('price', { precision: 10, scale: 2 }),
-  
+
   // Payment information
   paymentId: varchar('payment_id', { length: 255 }),
   paymentMethod: varchar('payment_method', { length: 50 }), // razorpay, paypal, stripe
   paymentStatus: varchar('payment_status', { length: 50 }), // pending, completed, failed
   sessionId: varchar('session_id', { length: 255 }), // Stripe session ID
-  
+
   // Terms and conditions
   termsAccepted: boolean('terms_accepted').default(false).notNull(),
-  
+
   // File storage
   poemFileUrl: varchar('poem_file_url', { length: 500 }), // Google Drive URL
   photoFileUrl: varchar('photo_file_url', { length: 500 }), // Google Drive URL
   driveFileId: varchar('drive_file_id', { length: 255 }), // Google Drive file ID
   drivePhotoId: varchar('drive_photo_id', { length: 255 }), // Google Drive photo ID
-  
+
   // Multi-poem support
   poemIndex: integer('poem_index').default(1).notNull(), // Which poem in the submission (1, 2, 3, etc.)
   submissionUuid: varchar('submission_uuid', { length: 255 }), // Groups multiple poems together
   totalPoemsInSubmission: integer('total_poems_in_submission').default(1).notNull(),
-  
+
   // ✅ EVALUATION FIELDS - Added by admin CSV upload
   score: integer('score'), // Overall score (0-100)
   type: varchar('type', { length: 50 }).default('Human'), // Human, AI, Copied
   status: varchar('status', { length: 50 }).default('Pending'), // Pending, Evaluated, Rejected
-  
+
   // Detailed score breakdown (JSON string)
   scoreBreakdown: text('score_breakdown'), // JSON: {originality: 25, emotion: 25, structure: 20, language: 20, theme: 10}
-  
+
   // Winner information
   isWinner: boolean('is_winner').default(false).notNull(),
   winnerPosition: integer('winner_position'), // 1st, 2nd, 3rd place
   winnerCategory: varchar('winner_category', { length: 100 }), // Overall, Free Category, etc.
-  
+
   // Contest information
   contestMonth: varchar('contest_month', { length: 7 }), // YYYY-MM format
   contestYear: integer('contest_year'),
-  
+
   // Timestamps
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   evaluatedAt: timestamp('evaluated_at'), // When evaluation was completed

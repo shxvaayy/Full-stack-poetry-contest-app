@@ -327,11 +327,12 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
 }));
 
 // Update user profile
-router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: any) => {
+router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
   const { name, email } = req.body;
   
   console.log('🔄 Updating user profile for UID:', uid, 'with data:', { name, email });
+  console.log('📁 Files received:', req.files?.map((f: any) => ({ fieldname: f.fieldname, originalname: f.originalname })));
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Name is required' });
@@ -349,6 +350,33 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
 
   try {
     let user = await storage.getUserByUid(uid);
+    let profilePictureUrl = null;
+
+    // Handle profile picture upload
+    const profilePictureFile = req.files?.find((f: any) => f.fieldname === 'profilePicture');
+    if (profilePictureFile) {
+      console.log('☁️ Uploading profile picture to Google Drive...');
+      
+      try {
+        // Convert multer file to buffer
+        const profilePictureBuffer = fs.readFileSync(profilePictureFile.path);
+        
+        // Upload to Google Drive using the existing photo upload function
+        profilePictureUrl = await uploadPhotoFile(
+          profilePictureBuffer,
+          email.trim(),
+          `profile_${uid}_${profilePictureFile.originalname}`
+        );
+        
+        console.log('✅ Profile picture uploaded:', profilePictureUrl);
+        
+        // Clean up temp file
+        fs.unlinkSync(profilePictureFile.path);
+      } catch (uploadError) {
+        console.error('❌ Failed to upload profile picture:', uploadError);
+        // Continue with profile update even if picture upload fails
+      }
+    }
 
     // If user doesn't exist, create them first
     if (!user) {
@@ -358,7 +386,8 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
           uid: uid,
           email: email.trim(),
           name: name.trim(),
-          phone: null
+          phone: null,
+          profilePictureUrl: profilePictureUrl
         });
         console.log('✅ Created new user:', user.email);
       } catch (createError) {
@@ -375,11 +404,15 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
       }
 
       // Update existing user
-      await client.query(`
-        UPDATE users 
-        SET name = $1, email = $2, updated_at = NOW()
-        WHERE uid = $3
-      `, [name.trim(), email.trim(), uid]);
+      const updateQuery = profilePictureUrl 
+        ? `UPDATE users SET name = $1, email = $2, profile_picture_url = $3, updated_at = NOW() WHERE uid = $4`
+        : `UPDATE users SET name = $1, email = $2, updated_at = NOW() WHERE uid = $3`;
+      
+      const updateParams = profilePictureUrl 
+        ? [name.trim(), email.trim(), profilePictureUrl, uid]
+        : [name.trim(), email.trim(), uid];
+
+      await client.query(updateQuery, updateParams);
 
       // Get updated user
       user = await storage.getUserByUid(uid);
@@ -390,6 +423,19 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
   } catch (error) {
     console.error('❌ Error updating user profile:', error);
     res.status(500).json({ error: 'Failed to update user profile' });
+  } finally {
+    // Clean up any remaining temp files
+    if (req.files) {
+      req.files.forEach((file: any) => {
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (err) {
+          console.error('Warning: Could not delete temp file:', file.path);
+        }
+      });
+    }
   }
 }));
 

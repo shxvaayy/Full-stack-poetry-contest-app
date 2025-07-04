@@ -590,3 +590,27 @@ initializeApp().catch((error) => {
   console.error('💥 Failed to start application:', error);
   process.exit(1);
 });
+
+// Add profile picture column to users table if it doesn't exist
+async function addProfilePictureColumn() {
+  try {
+    const checkColumnExists = await client.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'profile_picture_url'
+    `);
+
+    if (checkColumnExists.rows.length === 0) {
+      console.log('➕ Adding profile_picture_url column to users table...');
+      await client.query(`
+        ALTER TABLE users
+        ADD COLUMN profile_picture_url VARCHAR(255);
+      `);
+      console.log('✅ profile_picture_url column added successfully');
+    } else {
+      console.log('✅ profile_picture_url column already exists in users table');
+    }
+  } catch (error) {
+    console.error('❌ Error adding profile_picture_url column:', error.message);
+  }
+}
