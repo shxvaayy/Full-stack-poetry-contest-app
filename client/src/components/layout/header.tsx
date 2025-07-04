@@ -18,20 +18,39 @@ export default function Header() {
       try {
         const firebasePhotoURL = await getProfilePhotoURL(user.uid);
         if (firebasePhotoURL) {
-          setProfilePictureUrl(`${firebasePhotoURL}?v=${Date.now()}`);
+          const cacheBustedUrl = `${firebasePhotoURL}?v=${Date.now()}`;
+          setProfilePictureUrl(cacheBustedUrl);
+          console.log('Header: Loaded profile picture:', cacheBustedUrl);
+        } else {
+          setProfilePictureUrl(null);
         }
       } catch (error) {
         console.log('No Firebase photo found or error loading profile picture');
+        setProfilePictureUrl(null);
       }
     }
   };
 
+  // Initialize display name from user data
+  useEffect(() => {
+    if (user) {
+      const initialName = dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User';
+      setDisplayName(initialName);
+      console.log('Header: Initial display name set:', initialName);
+    }
+  }, [user, dbUser]);
+
+  // Load profile picture on user change
   useEffect(() => {
     if (user?.uid) {
       loadProfilePicture();
+    } else {
+      setProfilePictureUrl(null);
+      setDisplayName('');
     }
-  }, [user]);
+  }, [user?.uid]);
 
+  // Listen for profile updates from user-profile page
   useEffect(() => {
     const handleProfileUpdate = (event: CustomEvent) => {
       console.log('Header: Profile updated event received:', event.detail);
@@ -39,7 +58,7 @@ export default function Header() {
 
       // Force update profile picture with cache busting
       if (updatedUser.profilePictureUrl) {
-        const newUrl = `${updatedUser.profilePictureUrl}?v=${Date.now()}`;
+        const newUrl = `${updatedUser.profilePictureUrl}?v=${Date.now()}&updated=${Date.now()}`;
         setProfilePictureUrl(newUrl);
         console.log('Header: Updated profile picture URL:', newUrl);
       }
@@ -57,17 +76,30 @@ export default function Header() {
     };
   }, []);
 
-  // Also listen for storage changes to catch Firebase photo updates
+  // Listen for Firebase storage changes
   useEffect(() => {
     const handleStorageChange = () => {
+      console.log('Header: Storage change detected, reloading profile picture');
       if (user?.uid) {
-        loadProfilePicture();
+        setTimeout(loadProfilePicture, 500); // Small delay to ensure upload is complete
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom Firebase photo update events
+    const handleFirebasePhotoUpdate = () => {
+      console.log('Header: Firebase photo update event received');
+      if (user?.uid) {
+        setTimeout(loadProfilePicture, 1000); // Longer delay for Firebase
+      }
+    };
+
+    window.addEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('firebasePhotoUpdated', handleFirebasePhotoUpdate);
     };
   }, [user]);
 
@@ -136,25 +168,22 @@ export default function Header() {
                   <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
                     {profilePictureUrl ? (
                       <img 
-                        src={`${profilePictureUrl}?v=${Date.now()}`} 
+                        src={profilePictureUrl} 
                         alt="Profile" 
                         className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
                         onError={(e) => {
                           console.log('Header: Profile picture failed to load:', profilePictureUrl);
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
+                          setProfilePictureUrl(null); // Reset to show fallback
                         }}
+                        key={`header-profile-${profilePictureUrl}`} // Force re-render on URL change
                       />
-                    ) : null}
-                    <div 
-                      className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ display: profilePictureUrl ? 'none' : 'flex' }}
-                    >
-                      <User className="text-green-600" size={14} />
-                    </div>
+                    ) : (
+                      <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="text-green-600" size={14} />
+                      </div>
+                    )}
                     <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
-                      {dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
+                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>
@@ -220,9 +249,11 @@ export default function Header() {
                   >
                     {profilePictureUrl ? (
                       <img
-                        src={`${profilePictureUrl}?v=${Date.now()}`}
+                        src={profilePictureUrl}
                         alt="Profile"
                         className="w-7 h-7 rounded-full object-cover"
+                        onError={() => setProfilePictureUrl(null)}
+                        key={`mobile-profile-${profilePictureUrl}`}
                       />
                     ) : (
                       <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
@@ -230,7 +261,7 @@ export default function Header() {
                       </div>
                     )}
                     <span className="text-white text-sm font-medium">
-                      {dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
+                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
                 </Link>

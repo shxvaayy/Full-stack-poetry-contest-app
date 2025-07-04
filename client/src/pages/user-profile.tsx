@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -87,17 +86,17 @@ export default function UserProfile() {
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        
+
         // Set basic user data immediately
         setBackendUser({
           ...userData,
           profilePictureUrl: userData.profilePictureUrl || user?.photoURL,
           _renderKey: Date.now()
         });
-        
+
         // Initialize display name
         setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
-        
+
         // Load Firebase photo in background if needed
         if (!userData.profilePictureUrl) {
           getProfilePhotoURL(user!.uid)
@@ -117,7 +116,7 @@ export default function UserProfile() {
       } else if (userResponse.status === 404) {
         // User not found in database - set default data from Firebase
         console.log('User not found in database, using Firebase data');
-        
+
         setBackendUser({
           uid: user!.uid,
           email: user!.email || '',
@@ -240,7 +239,7 @@ export default function UserProfile() {
       // Handle profile picture upload to Firebase Storage
       if (profilePicture) {
         console.log('📸 Uploading profile picture to Firebase Storage...');
-        
+
         // Show optimistic update first
         const tempPhotoURL = profilePicturePreview;
         const optimisticUser = {
@@ -251,17 +250,17 @@ export default function UserProfile() {
           _renderKey: Date.now()
         };
         setBackendUser(optimisticUser);
-        
+
         // Close dialog immediately for better UX
         setIsEditDialogOpen(false);
         setProfilePicture(null);
         setProfilePicturePreview("");
-        
+
         try {
           const firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
           await updateFirebaseProfile(firebasePhotoURL);
-          
-          updateData.profilePictureUrl = firebasePhotoURL;
+
+          updateData.profilePictureUrl = `${firebasePhotoURL}?uploaded=${Date.now()}`;
           console.log('✅ Profile picture uploaded to Firebase:', firebasePhotoURL);
         } catch (uploadError) {
           console.error('❌ Failed to upload profile picture to Firebase:', uploadError);
@@ -293,15 +292,15 @@ export default function UserProfile() {
       if (response.ok) {
         const updatedUser = await response.json();
         console.log('Updated user data:', updatedUser);
-        
+
         // Update state with final data
         const finalUser = {
           ...updatedUser,
           _renderKey: Date.now()
         };
-        
+
         setBackendUser(finalUser);
-        
+
         // Dispatch profile update event to notify header and other components
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('profileUpdated', { 
@@ -309,7 +308,7 @@ export default function UserProfile() {
           }));
           console.log('Profile update event dispatched:', finalUser);
         }, 100);
-        
+
         toast({
           title: "Profile Updated!",
           description: "Your profile has been successfully updated.",
@@ -319,7 +318,7 @@ export default function UserProfile() {
         try {
           const responseText = await response.text();
           console.log('Raw response text:', responseText);
-          
+
           try {
             errorData = JSON.parse(responseText);
           } catch (jsonError) {
@@ -328,12 +327,12 @@ export default function UserProfile() {
         } catch (parseError) {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
         }
-        
+
         console.error('Update profile error response:', errorData);
-        
+
         if (response.status === 400) {
           const errorMessage = errorData.error || errorData.message || "Validation error";
-          
+
           if (errorMessage.toLowerCase().includes('email') && errorMessage.toLowerCase().includes('taken')) {
             toast({
               title: "Email Already Taken",
@@ -362,20 +361,20 @@ export default function UserProfile() {
           });
           return;
         }
-        
+
         throw new Error(errorData.error || errorData.message || `Failed to update profile (${response.status})`);
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      
+
       let errorMessage = "Failed to update profile. Please try again.";
-      
+
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         errorMessage = "Network error. Please check your connection and try again.";
       } else if (error.message && !error.message.includes('Failed to update profile')) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Update Failed", 
         description: errorMessage,
@@ -402,9 +401,9 @@ export default function UserProfile() {
   const openEditDialog = () => {
     const currentName = backendUser?.name || user?.displayName || '';
     const currentEmail = backendUser?.email || user?.email || '';
-    
+
     console.log('Opening edit dialog with:', { currentName, currentEmail });
-    
+
     setEditName(currentName);
     setEditEmail(currentEmail);
     setProfilePicture(null);
@@ -570,7 +569,7 @@ export default function UserProfile() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="name">Name</Label>
                           <Input
@@ -867,7 +866,7 @@ export default function UserProfile() {
                     ) : (
                       <div className="text-center py-8">
                         <FileText className="mx-auto text-gray-400 mb-4" size={48} />
-                        <p className="text-gray-600">No submissions yet.</p>
+                        <p className="text-gray-600">Nosubmissions yet.</p>
                         <Button 
                           className="mt-4"
                           onClick={() => window.location.href = '/submit'}
