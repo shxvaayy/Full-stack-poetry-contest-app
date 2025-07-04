@@ -454,7 +454,7 @@ export default function AuthPage() {
               </span>
               <button
                 type="button"
-                className="text-accent font-medium cursor-default"
+                className="text-blue-600 hover:text-blue-700 font-medium underline"
                 onClick={() => {
                   setIsSignIn(!isSignIn);
                   setPassword(""); // Clear password when switching modes
@@ -462,7 +462,7 @@ export default function AuthPage() {
               >
                 {isSignIn ? "Sign up" : "Sign in"}
               </button>
-            </div>
+            </div></div>
           </CardContent>
         </Card>
         <div id="recaptcha-container"></div>
