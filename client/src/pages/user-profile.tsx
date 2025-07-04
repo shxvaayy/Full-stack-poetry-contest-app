@@ -77,6 +77,17 @@ export default function UserProfile() {
       if (userResponse.ok) {
         const userData = await userResponse.json();
         setBackendUser(userData);
+      } else if (userResponse.status === 404) {
+        // User not found in database - set default data from Firebase
+        console.log('User not found in database, using Firebase data');
+        setBackendUser({
+          uid: user!.uid,
+          email: user!.email || '',
+          name: user!.displayName || '',
+          phone: user!.phoneNumber || null,
+          id: null,
+          createdAt: new Date().toISOString()
+        });
       }
 
       // Fetch user submissions
@@ -189,24 +200,31 @@ export default function UserProfile() {
 
       if (response.ok) {
         const updatedUser = await response.json();
-        console.log('✅ Profile updated, new user data:', updatedUser);
-        
-        // Update backend user state
         setBackendUser(updatedUser);
-        
-        // Force refresh all user data to ensure consistency
-        await fetchUserData();
-        
-        // Close dialog
         setIsEditDialogOpen(false);
         
-        // Show success message
+        // Refresh all user data after successful update
+        await fetchUserData();
+        
         toast({
           title: "Success",
           description: "Profile updated successfully!",
         });
       } else {
         const errorData = await response.json();
+        console.error('Update profile error response:', errorData);
+        
+        // Better error handling for specific cases
+        if (response.status === 404) {
+          toast({
+            title: "Account Setup Required",
+            description: "Setting up your profile for the first time...",
+          });
+          // Try again - the backend should create the user now
+          setTimeout(() => updateUserProfile(), 1000);
+          return;
+        }
+        
         throw new Error(errorData.error || 'Failed to update profile');
       }
     } catch (error) {
@@ -314,7 +332,7 @@ export default function UserProfile() {
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <CardTitle className="text-xl">
-                    {backendUser?.name || user.displayName || 'User'}
+                    {user.displayName || backendUser?.name || 'User'}
                   </CardTitle>
                   <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                     <DialogTrigger asChild>
@@ -382,7 +400,7 @@ export default function UserProfile() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                <p className="text-gray-600 text-sm">{backendUser?.email || user.email}</p>
+                <p className="text-gray-600 text-sm">{user.email}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center text-gray-600">

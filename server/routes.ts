@@ -302,11 +302,20 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   console.log('🔍 Getting user by UID:', uid);
 
   try {
-    const user = await storage.getUserByUid(uid);
+    let user = await storage.getUserByUid(uid);
 
     if (!user) {
-      console.log('❌ User not found for UID:', uid);
-      return res.status(404).json({ error: 'User not found' });
+      console.log('⚠️ User not found for UID:', uid, '- This might be a new user');
+      // Return a basic user structure instead of error
+      // The frontend can handle this and show appropriate UI
+      return res.json({
+        uid: uid,
+        email: '',
+        name: '',
+        phone: null,
+        id: null,
+        createdAt: new Date().toISOString()
+      });
     }
 
     console.log('✅ User found:', user.email);
@@ -339,33 +348,45 @@ router.put('/api/users/:uid/update-profile', asyncHandler(async (req: any, res: 
   }
 
   try {
-    const user = await storage.getUserByUid(uid);
+    let user = await storage.getUserByUid(uid);
 
+    // If user doesn't exist, create them first
     if (!user) {
-      console.log('❌ User not found for UID:', uid);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Check if email is already taken by another user
-    if (email.trim() !== user.email) {
-      const existingUser = await storage.getUserByEmail(email.trim());
-      if (existingUser && existingUser.uid !== uid) {
-        return res.status(400).json({ error: 'Email is already taken by another user' });
+      console.log('⚠️ User not found for UID:', uid, '- Creating new user');
+      try {
+        user = await storage.createUser({
+          uid: uid,
+          email: email.trim(),
+          name: name.trim(),
+          phone: null
+        });
+        console.log('✅ Created new user:', user.email);
+      } catch (createError) {
+        console.error('❌ Failed to create user:', createError);
+        return res.status(500).json({ error: 'Failed to create user profile' });
       }
+    } else {
+      // Check if email is already taken by another user
+      if (email.trim() !== user.email) {
+        const existingUser = await storage.getUserByEmail(email.trim());
+        if (existingUser && existingUser.uid !== uid) {
+          return res.status(400).json({ error: 'Email is already taken by another user' });
+        }
+      }
+
+      // Update existing user
+      await client.query(`
+        UPDATE users 
+        SET name = $1, email = $2, updated_at = NOW()
+        WHERE uid = $3
+      `, [name.trim(), email.trim(), uid]);
+
+      // Get updated user
+      user = await storage.getUserByUid(uid);
     }
-
-    // Update user name and email in database
-    await client.query(`
-      UPDATE users 
-      SET name = $1, email = $2, updated_at = NOW()
-      WHERE uid = $3
-    `, [name.trim(), email.trim(), uid]);
-
-    // Get updated user
-    const updatedUser = await storage.getUserByUid(uid);
     
-    console.log('✅ User profile updated:', updatedUser?.email);
-    res.json(updatedUser);
+    console.log('✅ User profile updated:', user?.email);
+    res.json(user);
   } catch (error) {
     console.error('❌ Error updating user profile:', error);
     res.status(500).json({ error: 'Failed to update user profile' });
