@@ -307,9 +307,11 @@ export default function UserProfile() {
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
                         <div className="text-2xl font-bold text-blue-600">
-                          {submissions.reduce((count, s) => 
-                            count + s.poems.filter((p: any) => p.isWinner).length, 0
-                          )}
+                          {submissions.reduce((count, s) => {
+                            const winCount = s.poems.filter((p: any) => p.isWinner === true).length;
+                            console.log('Submission:', s.submissionUuid, 'Win count:', winCount, 'Poems:', s.poems.map(p => ({ title: p.title, isWinner: p.isWinner })));
+                            return count + winCount;
+                          }, 0)}
                         </div>
                         <div className="text-sm text-gray-600">Wins</div>
                       </div>

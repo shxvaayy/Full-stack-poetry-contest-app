@@ -52,8 +52,26 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
   }
 
   try {
+    // Check hardcoded admin emails first as fallback
+    const hardcodedAdmins = [
+      'shivaaymehra2@gmail.com',
+      'shiningbhavya.seth@gmail.com',
+      'writorycontest@gmail.com',
+      'admin@writory.com'
+    ];
+    
+    const isHardcodedAdmin = hardcodedAdmins.includes(userEmail as string);
+    console.log('🔍 Hardcoded admin check:', { userEmail, isHardcodedAdmin });
+    
+    if (isHardcodedAdmin) {
+      console.log('✅ Admin access granted (hardcoded) for:', userEmail);
+      next();
+      return;
+    }
+    
+    // Check database admin status
     const adminAccess = await isAdmin(userEmail as string);
-    console.log('🔍 Admin access result:', { userEmail, adminAccess });
+    console.log('🔍 Database admin access result:', { userEmail, adminAccess });
     
     if (!adminAccess) {
       console.log('❌ Admin access denied for:', userEmail);
@@ -63,7 +81,7 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
       });
     }
 
-    console.log('✅ Admin access granted for:', userEmail);
+    console.log('✅ Admin access granted (database) for:', userEmail);
     next();
   } catch (error) {
     console.error('❌ Admin auth error:', error);
@@ -2087,6 +2105,48 @@ router.post('/api/admin/update-winner/:id', requireAdmin, asyncHandler(async (re
   }
 }));
 
+// Debug endpoint to check specific user admin status
+router.get('/api/debug/check-admin/:email', asyncHandler(async (req: any, res: any) => {
+  const { email } = req.params;
+  
+  try {
+    console.log('🔍 Checking admin status for:', email);
+    
+    // Check hardcoded admins
+    const hardcodedAdmins = [
+      'shivaaymehra2@gmail.com',
+      'shiningbhavya.seth@gmail.com',
+      'writorycontest@gmail.com',
+      'admin@writory.com'
+    ];
+    
+    const isHardcodedAdmin = hardcodedAdmins.includes(email);
+    
+    // Check database
+    const isDatabaseAdmin = await isAdmin(email);
+    
+    // Check all admin users in database
+    const allAdmins = await client.query('SELECT email, role, created_at FROM admin_users ORDER BY created_at DESC');
+    
+    res.json({
+      success: true,
+      email,
+      isHardcodedAdmin,
+      isDatabaseAdmin,
+      overallAdminStatus: isHardcodedAdmin || isDatabaseAdmin,
+      allDatabaseAdmins: allAdmins.rows,
+      hardcodedAdmins
+    });
+    
+  } catch (error) {
+    console.error('❌ Admin check error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}));
+
 // Debug endpoint to check admin status
 router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) => {
   const userEmail = req.headers['x-user-email'];
@@ -2125,6 +2185,63 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
       success: false,
       error: error.message
     });
+  }
+}));
+
+// Debug endpoint to check winner data
+router.get('/api/debug/winners', asyncHandler(async (req: any, res: any) => {
+  try {
+    const { email } = req.query;
+    
+    let query = `
+      SELECT id, email, first_name, last_name, poem_title, is_winner, winner_position, 
+             score, status, submission_uuid, submitted_at
+      FROM submissions 
+    `;
+    
+    let params = [];
+    
+    if (email) {
+      query += ` WHERE email = $1`;
+      params.push(email);
+    }
+    
+    query += ` ORDER BY submitted_at DESC`;
+    
+    const result = await client.query(query, params);
+    
+    const winners = result.rows.filter(row => row.is_winner);
+    const totalWins = winners.length;
+    
+    res.json({
+      success: true,
+      totalSubmissions: result.rows.length,
+      totalWinners: totalWins,
+      winners: winners.map(w => ({
+        id: w.id,
+        email: w.email,
+        name: `${w.first_name} ${w.last_name || ''}`.trim(),
+        poemTitle: w.poem_title,
+        isWinner: w.is_winner,
+        winnerPosition: w.winner_position,
+        score: w.score,
+        submittedAt: w.submitted_at
+      })),
+      allSubmissions: result.rows.map(s => ({
+        id: s.id,
+        email: s.email,
+        name: `${s.first_name} ${s.last_name || ''}`.trim(),
+        poemTitle: s.poem_title,
+        isWinner: s.is_winner,
+        winnerPosition: s.winner_position,
+        score: s.score,
+        status: s.status,
+        submittedAt: s.submitted_at
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Winners debug endpoint error:', error);
+    res.status(500).json({ error: 'Debug query failed' });
   }
 }));
 
