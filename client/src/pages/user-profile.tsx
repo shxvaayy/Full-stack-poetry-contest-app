@@ -77,39 +77,40 @@ export default function UserProfile() {
     try {
       setLoading(true);
 
-      // Parallel fetch for better performance
-      const [userResponse, submissionsResponse, statusResponse] = await Promise.allSettled([
-        fetch(`/api/users/${user!.uid}`, {
-          headers: {
-            'Cache-Control': 'max-age=60' // Cache for 1 minute instead of no-cache
-          }
-        }),
-        fetch(`/api/users/${user!.uid}/submissions`),
-        fetch(`/api/users/${user!.uid}/submission-status`)
-      ]);
-
-      // Handle user data
-      if (userResponse.status === 'fulfilled' && userResponse.value.ok) {
-        const userData = await userResponse.value.json();
-        
-        // Only fetch Firebase photo if not already cached
-        let firebasePhotoURL = null;
-        if (!userData.profilePictureUrl) {
-          try {
-            firebasePhotoURL = await getProfilePhotoURL(user!.uid);
-          } catch (error) {
-            console.log('No Firebase photo found, using database URL');
-          }
+      // First, get basic user data quickly
+      const userResponse = await fetch(`/api/users/${user!.uid}`, {
+        headers: {
+          'Cache-Control': 'max-age=300' // Cache for 5 minutes
         }
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
         
-        const finalPhotoURL = firebasePhotoURL || userData.profilePictureUrl || user?.photoURL;
-        
+        // Set basic user data immediately
         setBackendUser({
           ...userData,
-          profilePictureUrl: finalPhotoURL,
+          profilePictureUrl: userData.profilePictureUrl || user?.photoURL,
           _renderKey: Date.now()
         });
-      } else if (userResponse.status === 'fulfilled' && userResponse.value.status === 404) {
+        
+        // Load Firebase photo in background if needed
+        if (!userData.profilePictureUrl) {
+          getProfilePhotoURL(user!.uid)
+            .then(firebasePhotoURL => {
+              if (firebasePhotoURL) {
+                setBackendUser(prev => ({
+                  ...prev,
+                  profilePictureUrl: firebasePhotoURL,
+                  _renderKey: Date.now()
+                }));
+              }
+            })
+            .catch(error => {
+              console.log('No Firebase photo found');
+            });
+        }
+      } else if (userResponse.status === 404) {
         // User not found in database - set default data from Firebase
         console.log('User not found in database, using Firebase data');
         
@@ -123,6 +124,12 @@ export default function UserProfile() {
           profilePictureUrl: user?.photoURL
         });
       }
+
+      // Load submissions and status in parallel after basic user data
+      const [submissionsResponse, statusResponse] = await Promise.allSettled([
+        fetch(`/api/users/${user!.uid}/submissions`),
+        fetch(`/api/users/${user!.uid}/submission-status`)
+      ]);
 
       // Handle submissions data
       if (submissionsResponse.status === 'fulfilled' && submissionsResponse.value.ok) {
@@ -220,35 +227,51 @@ export default function UserProfile() {
 
     setIsUpdating(true);
     try {
-      let firebasePhotoURL = null;
+      let updateData = {
+        name: editName.trim(),
+        email: editEmail.trim(),
+        profilePictureUrl: backendUser?.profilePictureUrl
+      };
 
       // Handle profile picture upload to Firebase Storage
       if (profilePicture) {
         console.log('📸 Uploading profile picture to Firebase Storage...');
+        
+        // Show optimistic update first
+        const tempPhotoURL = profilePicturePreview;
+        const optimisticUser = {
+          ...backendUser,
+          name: editName.trim(),
+          email: editEmail.trim(),
+          profilePictureUrl: tempPhotoURL,
+          _renderKey: Date.now()
+        };
+        setBackendUser(optimisticUser);
+        
+        // Close dialog immediately for better UX
+        setIsEditDialogOpen(false);
+        setProfilePicture(null);
+        setProfilePicturePreview("");
+        
         try {
-          firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
-          
-          // Update Firebase Auth profile
+          const firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
           await updateFirebaseProfile(firebasePhotoURL);
           
+          updateData.profilePictureUrl = firebasePhotoURL;
           console.log('✅ Profile picture uploaded to Firebase:', firebasePhotoURL);
         } catch (uploadError) {
           console.error('❌ Failed to upload profile picture to Firebase:', uploadError);
           toast({
-            title: "Upload Failed",
-            description: "Failed to upload profile picture. Please try again.",
+            title: "Photo Upload Failed",
+            description: "Profile updated but photo upload failed. Please try uploading the photo again.",
             variant: "destructive",
           });
-          return;
+          // Continue with profile update even if photo fails
         }
+      } else {
+        // If no photo change, close dialog immediately
+        setIsEditDialogOpen(false);
       }
-
-      // Update user data in database (without profile picture file)
-      const updateData = {
-        name: editName.trim(),
-        email: editEmail.trim(),
-        profilePictureUrl: firebasePhotoURL || backendUser?.profilePictureUrl
-      };
 
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
 
@@ -267,26 +290,17 @@ export default function UserProfile() {
         const updatedUser = await response.json();
         console.log('Updated user data:', updatedUser);
         
-        // If we uploaded a new photo, use Firebase URL, otherwise use existing
-        const finalPhotoURL = firebasePhotoURL || updatedUser.profilePictureUrl;
-        
-        // Close dialog and reset form first
-        setIsEditDialogOpen(false);
-        setProfilePicture(null);
-        setProfilePicturePreview("");
-        
-        // Update state with Firebase photo URL
-        const updatedUserWithFirebasePhoto = {
+        // Update state with final data
+        const finalUser = {
           ...updatedUser,
-          profilePictureUrl: finalPhotoURL,
           _renderKey: Date.now()
         };
         
-        setBackendUser(updatedUserWithFirebasePhoto);
+        setBackendUser(finalUser);
         
         // Dispatch profile update event to notify header and other components
         window.dispatchEvent(new CustomEvent('profileUpdated', { 
-          detail: updatedUserWithFirebasePhoto 
+          detail: finalUser 
         }));
         
         toast({
