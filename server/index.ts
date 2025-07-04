@@ -434,7 +434,7 @@ async function initializeApp() {
     const { initializeAdminUsers } = await import('./admin-auth.js');
     await initializeAdminUsers();
 
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('\n🎉 SERVER STARTED SUCCESSFULLY!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🌐 Server URL: ${process.env.NODE_ENV === 'production' ? 'www.writoryofficial.com' : `http://localhost:${PORT}`}`);
