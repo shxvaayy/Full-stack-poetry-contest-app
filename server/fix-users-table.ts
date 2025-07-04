@@ -1,12 +1,12 @@
-
 import { client, connectDatabase } from './db.js';
 
-async function fixUsersTable() {
+export async function fixUsersTable() {
   try {
     console.log('🔧 Checking and fixing users table structure...');
-    
+
+    // Connect to database
     await connectDatabase();
-    
+
     // Check if users table exists
     const tableExists = await client.query(`
       SELECT EXISTS (
@@ -15,69 +15,60 @@ async function fixUsersTable() {
         AND table_name = 'users'
       );
     `);
-    
+
     if (!tableExists.rows[0].exists) {
-      console.log('📊 Creating users table...');
-      await client.query(`
-        CREATE TABLE users (
-          id SERIAL PRIMARY KEY,
-          uid VARCHAR(255) NOT NULL UNIQUE,
-          email VARCHAR(255) NOT NULL UNIQUE,
-          name VARCHAR(255),
-          phone VARCHAR(20),
-          profile_picture_url TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-      `);
-      console.log('✅ Users table created successfully');
-    } else {
-      console.log('✅ Users table already exists');
+      console.log('❌ Users table does not exist');
+      return false;
     }
-    
-    // Check if profile_picture_url column exists and add if missing
-    const columnExists = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'users' 
-      AND column_name = 'profile_picture_url'
+
+    console.log('✅ Users table already exists');
+
+    // Check if profile_picture_url column exists
+    const profilePictureColumnExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'profile_picture_url'
+      );
     `);
-    
-    if (columnExists.rows.length === 0) {
+
+    if (!profilePictureColumnExists.rows[0].exists) {
       console.log('➕ Adding profile_picture_url column...');
       await client.query(`
         ALTER TABLE users 
-        ADD COLUMN profile_picture_url TEXT;
+        ADD COLUMN profile_picture_url VARCHAR(255);
       `);
       console.log('✅ profile_picture_url column added');
     } else {
       console.log('✅ profile_picture_url column already exists');
     }
-    
-    // Ensure updated_at column exists
-    const updatedAtExists = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'users' 
-      AND column_name = 'updated_at'
+
+    // Check if updated_at column exists
+    const updatedAtColumnExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        AND column_name = 'updated_at'
+      );
     `);
-    
-    if (updatedAtExists.rows.length === 0) {
+
+    if (!updatedAtColumnExists.rows[0].exists) {
       console.log('➕ Adding updated_at column...');
       await client.query(`
         ALTER TABLE users 
-        ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+        ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
       `);
       console.log('✅ updated_at column added');
     } else {
       console.log('✅ updated_at column already exists');
     }
-    
+
     console.log('🎉 Users table structure verified and fixed!');
-    
+    return true;
+
   } catch (error) {
     console.error('❌ Error fixing users table:', error);
-    throw error;
+    return false;
   }
 }
 

@@ -355,7 +355,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
   try {
     // Ensure database connection
     await connectDatabase();
-    
+
     let user = null;
     let profilePictureUrl = null;
 
@@ -429,7 +429,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         return res.json(transformedUser);
       } catch (createError) {
         console.error('❌ Failed to create user:', createError);
-        
+
         // Handle specific constraint errors
         if (createError.code === '23505' && createError.constraint?.includes('email')) {
           return res.status(400).json({ 
@@ -437,7 +437,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
             message: 'This email is already registered to another user.' 
           });
         }
-        
+
         return res.status(500).json({ 
           error: 'Failed to create user profile',
           message: createError.message 
@@ -919,7 +919,8 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'INKWIN100', 'VERSEGIFT', 'WRITEFREE', 'WRTYGRACE', 'LYRICSPASS',
     'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
     'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
-    'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
+    'PASSWRTY1',```
+ PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
     'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
     'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
     'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
@@ -1731,6 +1732,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         paymentMethod: paymentMethod || 'free',
         poemFileUrl: poemFileUrls[i] || null,
         photoFileUrl: photoFileUrl, // Same photo for all poems
+```
         submissionUuid,
         poemIndex: i + 1,
         totalPoemsInSubmission: titles.length,
@@ -2524,6 +2526,146 @@ router.get('/api/debug/submissions', asyncHandler(async (req: any, res: any) => 
   } catch (error) {
     console.error('❌ Debug endpoint error:', error);
     res.status(500).json({ error: 'Debug query failed' });
+  }
+}));
+
+// This code updates the user profile to allow name changes and handles null values correctly.
+router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
+  console.log('📝 Profile update request received');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+  const { uid, name, email, profilePictureUrl } = req.body;
+
+  if (!uid) {
+    console.log('❌ No UID provided in profile update');
+    return res.status(400).json({ 
+      success: false, 
+      error: 'User ID is required' 
+    });
+  }
+
+  try {
+    console.log(`🔍 Looking for user with UID: ${uid}`);
+
+    // Get current user
+    const currentUser = await client.query(
+      'SELECT * FROM users WHERE uid = $1',
+      [uid]
+    );
+
+    if (currentUser.rows.length === 0) {
+      console.log('❌ User not found with UID:', uid);
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    console.log('✅ Current user found:', currentUser.rows[0].email);
+
+    // Check if email is changing and if new email already exists
+    if (email && email !== currentUser.rows[0].email) {
+      console.log(`📧 Email change requested: ${currentUser.rows[0].email} → ${email}`);
+
+      const emailExists = await client.query(
+        'SELECT id FROM users WHERE email = $1 AND uid != $2',
+        [email, uid]
+      );
+
+      if (emailExists.rows.length > 0) {
+        console.log('❌ Email already exists:', email);
+        return res.status(400).json({
+          success: false,
+          error: 'Email already exists'
+        });
+      }
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+    let valueIndex = 1;
+
+    if (name !== undefined && name !== null) {
+      updates.push(`name = $${valueIndex++}`);
+      values.push(name.trim());
+      console.log('📝 Name will be updated to:', name.trim());
+    }
+
+    if (email !== undefined && email !== null) {
+      updates.push(`email = $${valueIndex++}`);
+      values.push(email.trim());
+      console.log('📧 Email will be updated to:', email.trim());
+    }
+
+    if (profilePictureUrl !== undefined) {
+      updates.push(`profile_picture_url = $${valueIndex++}`);
+      values.push(profilePictureUrl);
+      console.log('🖼️ Profile picture will be updated');
+    }
+
+    // Always update the timestamp
+    updates.push(`updated_at = NOW()`);
+
+    // Add the UID for WHERE clause
+    values.push(uid);
+    const whereIndex = valueIndex;
+
+    if (updates.length === 1) { // Only timestamp update
+      console.log('⚠️ No valid fields to update');
+      return res.status(400).json({
+        success: false,
+        error: 'No valid fields to update'
+      });
+    }
+
+    const updateQuery = `
+      UPDATE users 
+      SET ${updates.join(', ')}
+      WHERE uid = $${whereIndex}
+      RETURNING *
+    `;
+
+    console.log('🔄 Executing update query:', updateQuery);
+    console.log('📊 Query values:', values);
+
+    const result = await client.query(updateQuery, values);
+
+    if (result.rows.length === 0) {
+      console.log('❌ Update failed - no rows affected');
+      return res.status(404).json({
+        success: false,
+        error: 'User not found or update failed'
+      });
+    }
+
+    const updatedUser = result.rows[0];
+    console.log('✅ User profile updated successfully');
+    console.log('📊 Updated user data:', JSON.stringify(updatedUser, null, 2));
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser.id,
+        uid: updatedUser.uid,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        profilePictureUrl: updatedUser.profile_picture_url,
+        createdAt: updatedUser.created_at,
+        updatedAt: updatedUser.updated_at
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating user profile:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update profile',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }));
 
