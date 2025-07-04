@@ -78,7 +78,7 @@ export default function UserProfile() {
       setLoading(true);
       console.log('🔄 Starting to fetch user data for:', user?.uid);
 
-      // Set up fallback user data first
+      // Set up fallback user data first (NO Firebase photo)
       const fallbackUser = {
         uid: user!.uid,
         email: user!.email || '',
@@ -86,7 +86,7 @@ export default function UserProfile() {
         phone: user!.phoneNumber || null,
         id: null,
         createdAt: new Date().toISOString(),
-        profilePictureUrl: user!.photoURL,
+        profilePictureUrl: null, // Start with no photo
       };
 
       // Set fallback data immediately to prevent infinite loading
@@ -124,23 +124,14 @@ export default function UserProfile() {
           const userData = await userResponse.json();
           console.log('✅ User data fetched:', userData.email);
 
-          // Update with real data
+          // Update with real data (only use database photo, ignore Firebase)
           const finalUserData = {
             ...userData,
-            profilePictureUrl: userData.profilePictureUrl || user!.photoURL,
+            profilePictureUrl: userData.profilePictureUrl || null,
           };
 
           setBackendUser(finalUserData);
           setDisplayName(userData.name || user?.displayName || user?.email?.split('@')[0] || 'User');
-
-          // Load Firebase photo in background (don't wait for it)
-          getProfilePhotoURL(user!.uid).then(firebasePhotoURL => {
-            if (firebasePhotoURL) {
-              setBackendUser(prev => prev ? { ...prev, profilePictureUrl: firebasePhotoURL } : null);
-            }
-          }).catch(error => {
-            console.log('Background Firebase photo fetch failed:', error);
-          });
 
           // Load submissions and status sequentially to avoid overwhelming
           try {
@@ -273,62 +264,52 @@ export default function UserProfile() {
     try {
       let finalProfilePictureUrl = backendUser?.profilePictureUrl;
 
-      // Handle profile picture upload to Firebase Storage FIRST
+      // Handle profile picture upload with better error handling
       if (profilePicture) {
-        console.log('📸 Starting Firebase Storage upload process...');
+        console.log('📸 Starting profile picture upload...');
 
         try {
-          console.log('🔍 Firebase config status:');
-          console.log('- Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'set' : 'NOT SET');
-          console.log('- API Key:', import.meta.env.VITE_FIREBASE_API_KEY ? 'set' : 'NOT SET');
-          console.log('- Storage Bucket:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` : 'NOT SET');
+          // Check if Firebase is configured
+          const isFirebaseConfigured = import.meta.env.VITE_FIREBASE_PROJECT_ID && 
+                                     import.meta.env.VITE_FIREBASE_API_KEY &&
+                                     import.meta.env.VITE_FIREBASE_PROJECT_ID !== "demo-project";
 
-          // Add timeout for Firebase upload
-          const uploadPromise = uploadProfilePhoto(user.uid, profilePicture);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Firebase upload timeout after 30 seconds')), 30000)
-          );
+          if (!isFirebaseConfigured) {
+            console.warn('⚠️ Firebase not configured, skipping photo upload');
+            toast({
+              title: "Photo Upload Unavailable",
+              description: "Profile photos are not available. Please contact support.",
+              variant: "destructive",
+            });
+            // Continue without photo
+            finalProfilePictureUrl = backendUser?.profilePictureUrl;
+          } else {
+            // Only try Firebase upload if configured
+            const firebasePhotoURL = await uploadProfilePhoto(user.uid, profilePicture);
+            console.log('✅ Firebase upload completed:', firebasePhotoURL);
 
-          console.log('⏳ Waiting for Firebase upload...');
-          const firebasePhotoURL = await Promise.race([uploadPromise, timeoutPromise]);
+            // Update Firebase Auth profile
+            await updateFirebaseProfile(firebasePhotoURL);
+            console.log('✅ Firebase Auth profile updated');
 
-          console.log('✅ Firebase upload completed:', firebasePhotoURL);
-
-          // Update Firebase Auth profile
-          await updateFirebaseProfile(firebasePhotoURL);
-          console.log('✅ Firebase Auth profile updated');
-
-          // Use the actual Firebase URL
-          finalProfilePictureUrl = firebasePhotoURL;
-          console.log('✅ Final profile picture URL set:', finalProfilePictureUrl);
+            finalProfilePictureUrl = firebasePhotoURL;
+          }
 
         } catch (uploadError) {
-          console.error('❌ Firebase upload failed:', {
-            error: uploadError,
-            message: uploadError.message,
-            code: uploadError.code,
-            name: uploadError.name
-          });
-
-          // Don't stop the entire update process - just continue without the photo
-          console.warn('⚠️ Continuing profile update without photo upload');
+          console.error('❌ Profile photo upload failed:', uploadError);
 
           toast({
-            title: "Photo Upload Issue",
-            description: uploadError.message.includes('timeout') 
-              ? "Photo upload timed out. Your profile will be updated without the photo."
-              : uploadError.message.includes('configuration') || uploadError.message.includes('environment')
-              ? "Firebase Storage not configured properly. Contact support."
-              : "Failed to upload photo. Your profile will be updated without the photo.",
+            title: "Photo Upload Failed",
+            description: "Could not upload your photo. Your profile will be updated without the photo.",
             variant: "destructive",
           });
 
-          // Continue with the existing profile picture URL
+          // Continue with existing profile picture
           finalProfilePictureUrl = backendUser?.profilePictureUrl;
         }
       }
 
-      // Prepare update data with the actual Firebase URL
+      // Prepare update data
       const updateData = {
         name: editName.trim(),
         email: editEmail.trim(),
@@ -702,27 +683,6 @@ export default function UserProfile() {
                   className="w-full"
                 >
                   Refresh Data
-                </Button>
-
-                <Button 
-                  onClick={() => {
-                    console.log('🔍 Firebase Configuration Debug:');
-                    console.log('- Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID || 'NOT SET');
-                    console.log('- API Key:', import.meta.env.VITE_FIREBASE_API_KEY ? 'SET' : 'NOT SET');
-                    console.log('- Auth Domain:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com` : 'NOT SET');
-                    console.log('- Storage Bucket:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` : 'NOT SET');
-                    console.log('- User UID:', user?.uid || 'NOT LOGGED IN');
-
-                    toast({
-                      title: "Debug Info",
-                      description: "Check browser console for Firebase configuration details",
-                    });
-                  }} 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                >
-                  Debug Firebase
                 </Button>
               </CardContent>
             </Card>
