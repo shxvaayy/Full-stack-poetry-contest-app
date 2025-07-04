@@ -10,7 +10,7 @@ import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
-import { client } from './db.js';
+import { client, connectDatabase } from './db.js';
 import { initializeAdminSettings, getSetting, updateSetting, getAllSettings } from './admin-settings.js';
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
