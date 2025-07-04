@@ -2545,6 +2545,9 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
   try {
     console.log(`🔍 Looking for user with UID: ${uid}`);
 
+    // Ensure database connection
+    await connectDatabase();
+
     // Get current user
     const currentUser = await client.query(
       'SELECT * FROM users WHERE uid = $1',
