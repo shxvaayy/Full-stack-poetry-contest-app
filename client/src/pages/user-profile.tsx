@@ -199,6 +199,7 @@ export default function UserProfile() {
       
       if (profilePicture) {
         formData.append('profilePicture', profilePicture);
+        console.log('📸 Profile picture file attached:', profilePicture.name, profilePicture.size);
       }
 
       console.log('Sending update request to:', `/api/users/${user.uid}/update-profile`);
@@ -215,13 +216,22 @@ export default function UserProfile() {
         const updatedUser = await response.json();
         console.log('Updated user data:', updatedUser);
         
+        // Force immediate UI update with the server response
         setBackendUser(updatedUser);
+        
+        // Update the edit form with the actual saved values
+        setEditName(updatedUser.name || '');
+        setEditEmail(updatedUser.email || '');
+        
+        // Clear form state
         setIsEditDialogOpen(false);
         setProfilePicture(null);
-        setProfilePicturePreview("");
+        setProfilePicturePreview(updatedUser.profilePictureUrl || "");
         
-        // Refresh all user data after successful update
-        await fetchUserData();
+        // Force a fresh data fetch to ensure UI is in sync
+        setTimeout(async () => {
+          await fetchUserData();
+        }, 500);
         
         toast({
           title: "Profile Updated!",
@@ -304,11 +314,14 @@ export default function UserProfile() {
   };
 
   const handleProfilePictureChange = (file: File | null) => {
+    console.log('📸 Profile picture changed:', file?.name, file?.size);
     setProfilePicture(file);
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setProfilePicturePreview(e.target?.result as string);
+        const result = e.target?.result as string;
+        console.log('📸 Preview generated, length:', result?.length);
+        setProfilePicturePreview(result);
       };
       reader.readAsDataURL(file);
     } else {
@@ -412,6 +425,10 @@ export default function UserProfile() {
                       src={backendUser.profilePictureUrl} 
                       alt="Profile" 
                       className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
+                      onError={(e) => {
+                        console.log('❌ Profile image failed to load:', backendUser.profilePictureUrl);
+                        e.target.style.display = 'none';
+                      }}
                     />
                   ) : (
                     <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
@@ -449,6 +466,10 @@ export default function UserProfile() {
                                   src={profilePicturePreview} 
                                   alt="Profile Preview" 
                                   className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    console.log('❌ Preview image failed to load');
+                                    setProfilePicturePreview("");
+                                  }}
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">

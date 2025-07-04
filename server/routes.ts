@@ -362,11 +362,16 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
     // Handle profile picture upload first (if any)
     const profilePictureFile = req.files?.find((f: any) => f.fieldname === 'profilePicture');
     if (profilePictureFile) {
-      console.log('☁️ Uploading profile picture to Google Drive...');
+      console.log('☁️ Uploading profile picture to Google Drive...', {
+        fieldname: profilePictureFile.fieldname,
+        originalname: profilePictureFile.originalname,
+        size: profilePictureFile.size
+      });
 
       try {
         // Convert multer file to buffer
         const profilePictureBuffer = fs.readFileSync(profilePictureFile.path);
+        console.log('📸 Profile picture buffer size:', profilePictureBuffer.length);
 
         // Upload to Google Drive using the existing photo upload function
         profilePictureUrl = await uploadPhotoFile(
@@ -375,7 +380,7 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
           `profile_${uid}_${Date.now()}_${profilePictureFile.originalname}`
         );
 
-        console.log('✅ Profile picture uploaded:', profilePictureUrl);
+        console.log('✅ Profile picture uploaded successfully:', profilePictureUrl);
 
         // Clean up temp file
         fs.unlinkSync(profilePictureFile.path);
@@ -384,6 +389,8 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
         // Continue with profile update even if picture upload fails
         profilePictureUrl = null;
       }
+    } else {
+      console.log('⚠️ No profile picture file found in request');
     }
 
     // Try to get existing user
@@ -477,6 +484,13 @@ router.put('/api/users/:uid/update-profile', safeUploadAny, asyncHandler(async (
           WHERE uid = $4 
           RETURNING *
         `;
+
+        console.log('🔄 Executing update query with values:', {
+          name: name.trim(),
+          email: email.trim(),
+          profilePictureUrl: profilePictureUrl || 'null',
+          uid
+        });
 
         const updateResult = await client.query(updateQuery, [
           name.trim(),
