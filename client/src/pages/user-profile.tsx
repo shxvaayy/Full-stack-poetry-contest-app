@@ -852,7 +852,7 @@ export default function UserProfile() {
                                       return (
                                         <Badge key={index} className={getStatusColor(actualStatus)} size="sm">
                                           {getStatusIcon(actualStatus)}
-                                          <span className="ml-1">{actualStatus}<span className="ml-1">{actualStatus}</span>
+                                          <span className="ml-1">{actualStatus}</span>
                                           {submission.poems.length > 1 && <span className="ml-1">({index + 1})</span>}
                                         </Badge>
                                       );
