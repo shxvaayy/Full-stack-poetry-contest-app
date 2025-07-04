@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -77,26 +77,31 @@ export default function UserProfile() {
     try {
       setLoading(true);
 
-      // Fetch user details with cache busting
-      const userResponse = await fetch(`/api/users/${user!.uid}?t=${Date.now()}`, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      // Parallel fetch for better performance
+      const [userResponse, submissionsResponse, statusResponse] = await Promise.allSettled([
+        fetch(`/api/users/${user!.uid}`, {
+          headers: {
+            'Cache-Control': 'max-age=60' // Cache for 1 minute instead of no-cache
+          }
+        }),
+        fetch(`/api/users/${user!.uid}/submissions`),
+        fetch(`/api/users/${user!.uid}/submission-status`)
+      ]);
+
+      // Handle user data
+      if (userResponse.status === 'fulfilled' && userResponse.value.ok) {
+        const userData = await userResponse.value.json();
         
-        // Try to get the latest Firebase photo URL
+        // Only fetch Firebase photo if not already cached
         let firebasePhotoURL = null;
-        try {
-          firebasePhotoURL = await getProfilePhotoURL(user!.uid);
-        } catch (error) {
-          console.log('No Firebase photo found, using database URL');
+        if (!userData.profilePictureUrl) {
+          try {
+            firebasePhotoURL = await getProfilePhotoURL(user!.uid);
+          } catch (error) {
+            console.log('No Firebase photo found, using database URL');
+          }
         }
         
-        // Use Firebase photo URL if available, otherwise use database URL
         const finalPhotoURL = firebasePhotoURL || userData.profilePictureUrl || user?.photoURL;
         
         setBackendUser({
@@ -104,17 +109,9 @@ export default function UserProfile() {
           profilePictureUrl: finalPhotoURL,
           _renderKey: Date.now()
         });
-      } else if (userResponse.status === 404) {
+      } else if (userResponse.status === 'fulfilled' && userResponse.value.status === 404) {
         // User not found in database - set default data from Firebase
         console.log('User not found in database, using Firebase data');
-        
-        // Check for Firebase photo
-        let firebasePhotoURL = null;
-        try {
-          firebasePhotoURL = await getProfilePhotoURL(user!.uid);
-        } catch (error) {
-          console.log('No Firebase photo found for new user');
-        }
         
         setBackendUser({
           uid: user!.uid,
@@ -123,20 +120,20 @@ export default function UserProfile() {
           phone: user!.phoneNumber || null,
           id: null,
           createdAt: new Date().toISOString(),
-          profilePictureUrl: firebasePhotoURL || user?.photoURL
+          profilePictureUrl: user?.photoURL
         });
       }
 
-      // Fetch user submissions
-      const submissionsResponse = await fetch(`/api/users/${user!.uid}/submissions`);
-      if (submissionsResponse.ok) {
-        const submissionsData = await submissionsResponse.json();
+      // Handle submissions data
+      if (submissionsResponse.status === 'fulfilled' && submissionsResponse.value.ok) {
+        const submissionsData = await submissionsResponse.value.json();
 
-        // Group submissions by submissionUuid
-        const groupedSubmissions = submissionsData.reduce((groups: { [key: string]: any }, submission: any) => {
+        // Optimize grouping with Map for better performance
+        const groupedSubmissionsMap = new Map();
+        submissionsData.forEach((submission: any) => {
           const uuid = submission.submissionUuid || `single-${submission.id}`;
-          if (!groups[uuid]) {
-            groups[uuid] = {
+          if (!groupedSubmissionsMap.has(uuid)) {
+            groupedSubmissionsMap.set(uuid, {
               id: submission.id,
               name: submission.name,
               tier: submission.tier,
@@ -144,9 +141,9 @@ export default function UserProfile() {
               submittedAt: submission.submittedAt,
               submissionUuid: uuid,
               poems: []
-            };
+            });
           }
-          groups[uuid].poems.push({
+          groupedSubmissionsMap.get(uuid).poems.push({
             id: submission.id,
             title: submission.poemTitle,
             score: submission.score,
@@ -156,16 +153,14 @@ export default function UserProfile() {
             winnerPosition: submission.winnerPosition,
             scoreBreakdown: submission.scoreBreakdown
           });
-          return groups;
-        }, {});
+        });
 
-        setSubmissions(Object.values(groupedSubmissions));
+        setSubmissions(Array.from(groupedSubmissionsMap.values()));
       }
 
-      // Fetch submission status
-      const statusResponse = await fetch(`/api/users/${user!.uid}/submission-status`);
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
+      // Handle submission status
+      if (statusResponse.status === 'fulfilled' && statusResponse.value.ok) {
+        const statusData = await statusResponse.value.json();
         setSubmissionStatus(statusData);
       }
 
@@ -293,11 +288,6 @@ export default function UserProfile() {
         window.dispatchEvent(new CustomEvent('profileUpdated', { 
           detail: updatedUserWithFirebasePhoto 
         }));
-        
-        // Refresh data to ensure consistency
-        setTimeout(async () => {
-          await fetchUserData();
-        }, 500);
         
         toast({
           title: "Profile Updated!",
@@ -439,11 +429,13 @@ export default function UserProfile() {
   };
 
   // ✅ Check if results are announced (only show results if there are winners or evaluated poems with actual scores > 0)
-  const hasAnnouncedResults = submissions.some(s => 
-    s.poems.some((p: any) => 
-      (p.status === 'Evaluated' && p.score !== undefined && p.score !== null && p.score > 0) || 
-      p.isWinner
-    )
+  const hasAnnouncedResults = useMemo(() => 
+    submissions.some(s => 
+      s.poems.some((p: any) => 
+        (p.status === 'Evaluated' && p.score !== undefined && p.score !== null && p.score > 0) || 
+        p.isWinner
+      )
+    ), [submissions]
   );
 
   if (loading) {
@@ -485,8 +477,8 @@ export default function UserProfile() {
                         src={backendUser.profilePictureUrl} 
                         alt="Profile" 
                         className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
+                        loading="lazy"
                         onError={(e) => {
-                          console.log('Profile picture failed to load:', backendUser.profilePictureUrl);
                           e.currentTarget.style.display = 'none';
                           const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                           if (fallback) fallback.style.display = 'flex';
