@@ -11,27 +11,22 @@ import { useState, useEffect } from "react";
 
 // Simple Hero Carousel Component
 function HeroCarousel({ children }: { children: React.ReactNode }) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const backgrounds = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % backgrounds.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <section 
-      className="relative min-h-screen flex items-center justify-center transition-all duration-1000"
-      style={{ background: backgrounds[currentSlide] }}
+      className="relative min-h-screen flex items-center justify-center"
+      style={{ 
+        backgroundImage: `
+          url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><filter id="paper-texture"><feTurbulence baseFrequency="0.04" numOctaves="5" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="3"/></filter></defs><rect width="1200" height="800" fill="%23f8fafc"/><g opacity="0.1"><path d="M100 200 Q300 100 500 200 T900 200" stroke="%23374151" stroke-width="2" fill="none"/><path d="M150 300 Q350 250 550 300 T950 300" stroke="%23374151" stroke-width="1.5" fill="none"/><path d="M120 400 Q320 350 520 400 T920 400" stroke="%23374151" stroke-width="1.8" fill="none"/><path d="M180 500 Q380 450 580 500 T980 500" stroke="%23374151" stroke-width="1.3" fill="none"/><circle cx="200" cy="150" r="3" fill="%23374151" opacity="0.3"/><circle cx="800" cy="250" r="2" fill="%23374151" opacity="0.2"/><circle cx="400" cy="350" r="2.5" fill="%23374151" opacity="0.25"/><circle cx="600" cy="450" r="2" fill="%23374151" opacity="0.2"/><circle cx="300" cy="550" r="1.5" fill="%23374151" opacity="0.15"/><rect x="0" y="0" width="1200" height="800" fill="url(%23paper-texture)" opacity="0.08"/></g></svg>')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
     >
-      {children}
+      <div className="absolute inset-0 bg-blue-600/30"></div>
+      <div className="relative z-10 w-full">
+        {children}
+      </div>
     </section>
   );
 }
@@ -293,12 +288,19 @@ export default function HomePage() {
       </section>
 
       {/* Poetry Inspiration Carousel */}
-      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700 relative overflow-hidden">
-        <SimpleCarousel slides={carouselSlides} />
+      <section className="py-16 bg-gradient-to-br from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 mb-12">
+          <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Poetry Inspiration
+          </h2>
+        </div>
+        <div className="w-full">
+          <SimpleCarousel slides={carouselSlides} />
+        </div>
       </section>
 
       {/* Call to Action Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden">
+      <section className="py-24 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Share Your Poetry?
