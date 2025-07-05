@@ -496,8 +496,22 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
 
       // Validate form
-      if (!formData.firstName || !formData.email || !formData.poemTitle) {
-        throw new Error('Please fill in all required fields');
+      if (!formData.firstName?.trim()) {
+        throw new Error('Please enter your first name');
+      }
+      
+      if (!formData.email?.trim()) {
+        throw new Error('Please enter your email address');
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        throw new Error('Please enter a valid email address');
+      }
+      
+      if (!formData.poemTitle?.trim()) {
+        throw new Error('Please enter your poem title');
       }
 
       if (!selectedTier) {
@@ -511,7 +525,7 @@ export default function SubmitPage() {
         const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
         const file = i === 0 ? files.poem : multiplePoems.files[i];
 
-        if (!title) {
+        if (!title?.trim()) {
           throw new Error(`Please enter title for poem ${i + 1}`);
         }
         if (!file) {
