@@ -295,14 +295,14 @@ export default function HomePage() {
             Poetry Inspiration
           </h2>
         </div>
-        <div className="w-full">
+        <div className="w-full mb-0">
           <SimpleCarousel slides={carouselSlides} />
         </div>
       </section>
 
       {/* Call to Action Section */}
-      <section className="py-32 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden min-h-[60vh]">
-        <div className="max-w-4xl mx-auto text-center px-4 flex flex-col justify-center h-full">
+      <section className="py-24 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Share Your Poetry?
           </h2>
