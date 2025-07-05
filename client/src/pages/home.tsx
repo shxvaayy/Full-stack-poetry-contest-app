@@ -16,14 +16,15 @@ function HeroCarousel({ children }: { children: React.ReactNode }) {
       className="relative min-h-screen flex items-center justify-center"
       style={{ 
         backgroundImage: `
-          url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><filter id="paper-texture"><feTurbulence baseFrequency="0.04" numOctaves="5" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="3"/></filter></defs><rect width="1200" height="800" fill="%23f8fafc"/><g opacity="0.1"><path d="M100 200 Q300 100 500 200 T900 200" stroke="%23374151" stroke-width="2" fill="none"/><path d="M150 300 Q350 250 550 300 T950 300" stroke="%23374151" stroke-width="1.5" fill="none"/><path d="M120 400 Q320 350 520 400 T920 400" stroke="%23374151" stroke-width="1.8" fill="none"/><path d="M180 500 Q380 450 580 500 T980 500" stroke="%23374151" stroke-width="1.3" fill="none"/><circle cx="200" cy="150" r="3" fill="%23374151" opacity="0.3"/><circle cx="800" cy="250" r="2" fill="%23374151" opacity="0.2"/><circle cx="400" cy="350" r="2.5" fill="%23374151" opacity="0.25"/><circle cx="600" cy="450" r="2" fill="%23374151" opacity="0.2"/><circle cx="300" cy="550" r="1.5" fill="%23374151" opacity="0.15"/><rect x="0" y="0" width="1200" height="800" fill="url(%23paper-texture)" opacity="0.08"/></g></svg>')
+          url('https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1973&q=80')
         `,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
       }}
     >
-      <div className="absolute inset-0 bg-blue-600/30"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/70 via-blue-900/60 to-indigo-900/70"></div>
+      <div className="absolute inset-0 bg-purple-500/15"></div>
       <div className="relative z-10 w-full">
         {children}
       </div>
