@@ -287,9 +287,39 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Poetry Inspiration Carousel */}
-      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700 relative overflow-hidden">
-        <SimpleCarousel slides={carouselSlides} />
+      {/* Poetry Inspiration Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-white">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold text-gray-900 mb-12 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Poetry Inspiration
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-blue-50">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Words That Dance</h3>
+                <p className="text-gray-600 text-lg">Let your verses flow like music across the page</p>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-pink-50 to-red-50">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Echoes of the Heart</h3>
+                <p className="text-gray-600 text-lg">Every poem carries the whispers of your soul</p>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Nature's Symphony</h3>
+                <p className="text-gray-600 text-lg">Find inspiration in the rhythm of the natural world</p>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Legacy of Words</h3>
+                <p className="text-gray-600 text-lg">Join the timeless tradition of poetic expression</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </section>
 
       {/* Call to Action Section */}
