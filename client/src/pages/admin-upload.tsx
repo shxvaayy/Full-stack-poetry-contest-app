@@ -19,7 +19,23 @@ export default function AdminUpload() {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<UploadResult | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+    processed?: number;
+    errors?: string[];
+    updatedSubmissions?: Array<{
+      id: number;
+      email: string;
+      poemTitle: string;
+      poemFileUrl?: string;
+      photoFileUrl?: string;
+      score: number;
+      status: string;
+      isWinner: boolean;
+      winnerPosition?: number;
+    }>;
+  } | null>(null);
 
   // Check if user is admin
   const adminEmails = [
@@ -125,7 +141,8 @@ export default function AdminUpload() {
           success: true,
           message: data.message,
           processed: data.processed || 0,
-          errors: data.errors || []
+          errors: data.errors || [],
+          updatedSubmissions: data.updatedSubmissions || []
         });
 
         toast({
@@ -137,7 +154,8 @@ export default function AdminUpload() {
           success: false,
           message: data.error || data.message || 'Upload failed',
           processed: data.processed || 0,
-          errors: data.errors || []
+          errors: data.errors || [],
+          updatedSubmissions: data.updatedSubmissions || []
         });
 
         toast({
@@ -160,7 +178,8 @@ export default function AdminUpload() {
         success: false,
         message: errorMessage,
         processed: 0,
-        errors: [error.message || 'Unknown error']
+        errors: [error.message || 'Unknown error'],
+        updatedSubmissions: []
       });
 
       toast({
@@ -263,40 +282,87 @@ export default function AdminUpload() {
               </p>
             </div>
 
-            {/* Results Section */}
+            {/* Results Display */}
             {result && (
-              <div className="space-y-4">
-                <Alert className={result.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  {result.success ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <AlertDescription className={result.success ? "text-green-800" : "text-red-800"}>
-                    <strong>{result.success ? 'Success:' : 'Error:'}</strong> {result.message}
-                  </AlertDescription>
-                </Alert>
-
-                {result.success && result.processed > 0 && (
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-green-800 mb-2">Upload Summary</h3>
-                    <p className="text-green-700">
-                      Successfully processed <strong>{result.processed}</strong> records.
+              <Alert className={result.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                {result.success ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-600" />
+                )}
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className={result.success ? "text-green-800" : "text-red-800"}>
+                      {result.message}
                     </p>
-                  </div>
-                )}
+                    {result.processed !== undefined && (
+                      <p className="text-sm text-gray-600">
+                        Records processed: {result.processed}
+                      </p>
+                    )}
 
-                {result.errors && result.errors.length > 0 && (
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-red-800 mb-2">Errors Encountered</h3>
-                    <ul className="text-red-700 text-sm space-y-1">
-                      {result.errors.map((error, index) => (
-                        <li key={index}>• {error}</li>
-                      ))}
-                    </ul>
+                    {/* Show Updated Submissions with File Links */}
+                    {result.updatedSubmissions && result.updatedSubmissions.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-green-800 mb-2">
+                          Updated Submissions (showing first 20):
+                        </h4>
+                        <div className="max-h-64 overflow-y-auto space-y-2">
+                          {result.updatedSubmissions.map((submission: any, index: number) => (
+                            <div key={index} className="p-2 bg-white rounded border text-xs">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium">{submission.email}</p>
+                                  <p className="text-gray-600">{submission.poemTitle}</p>
+                                  <p className="text-green-600">Score: {submission.score} | Status: {submission.status}</p>
+                                  {submission.isWinner && (
+                                    <p className="text-yellow-600 font-medium">
+                                      🏆 Winner {submission.winnerPosition ? `(Position ${submission.winnerPosition})` : ''}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right space-y-1">
+                                  {submission.poemFileUrl && (
+                                    <a 
+                                      href={submission.poemFileUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="block text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                      📄 View Poem
+                                    </a>
+                                  )}
+                                  {submission.photoFileUrl && (
+                                    <a 
+                                      href={submission.photoFileUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="block text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                      📸 View Photo
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {result.errors && result.errors.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-medium text-red-800 mb-1">Errors:</p>
+                        <ul className="text-xs text-red-700 space-y-1">
+                          {result.errors.map((error: string, index: number) => (
+                            <li key={index}>• {error}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>

@@ -1433,6 +1433,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     // Create submission data
+    const submissionUuid = crypto.randomUUID();
     const submissionData = {
       userId: user?.id || null, // CRITICAL: Link to user
       firstName,
@@ -1447,7 +1448,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       paymentMethod: paymentMethod || 'free',
       poemFileUrl: poemFileUrl,
         photoFileUrl: photoFileUrl,
-        submissionUuid: crypto.randomUUID(),
+        submissionUuid: submissionUuid,
       poemIndex: 1,
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
@@ -1727,9 +1728,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         paymentId: paymentId || null, // Same payment ID for all poems
         paymentMethod: paymentMethod || 'free',
         poemFileUrl: poemFileUrls[i] || null,
-        ```text
-        photoFileUrl: photoFileUrl,
-        submissionUuid: crypto.randomUUID(),
+        photoFileUrl: photoFileUrl,        submissionUuid: submissionUuid,
         poemIndex: i + 1,
         totalPoemsInSubmission: titles.length,
         submittedAt: new Date(),
@@ -1918,6 +1917,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
     }
 
     // Save to database (legacy endpoint but using persistent storage)
+    const submissionUuid = crypto.randomUUID();
     const submissionData = {
       userId: null, // Legacy submissions don't have user links
       firstName,
@@ -1932,7 +1932,7 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       paymentMethod,
       poemFileUrl: poemFileUrl,
         photoFileUrl: photoFileUrl,
-        submissionUuid: crypto.randomUUID(),
+        submissionUuid: submissionUuid,
       poemIndex: 1,
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
