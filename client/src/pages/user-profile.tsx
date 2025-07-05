@@ -464,7 +464,8 @@ export default function UserProfile() {
     submissions.some(s => 
       s.poems.some((p: any) => 
         (p.status === 'Evaluated' && p.score !== undefined && p.score !== null && p.score > 0) || 
-        p.isWinner
+        p.isWinner || 
+        p.winnerPosition
       )
     ), [submissions]
   );
@@ -893,40 +894,57 @@ export default function UserProfile() {
                     </CardHeader>
                     <CardContent>
                       {/* Winners */}
-                      {submissions.some(s => s.poems.some((p: any) => p.isWinner)) && (
+                      {submissions.some(s => s.poems.some((p: any) => p.isWinner || p.winnerPosition)) && (
                         <div className="mb-6">
                           <h3 className="font-semibold text-lg mb-3">🏆 Your Winning Poems</h3>
                           <div className="space-y-3">
                             {submissions.map(submission => 
-                              submission.poems.filter((p: any) => p.isWinner).map((winner: any) => (
-                                <div key={winner.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <h4 className="font-semibold">{winner.title}</h4>
-                                      <p className="text-sm text-gray-600">Position #{winner.winnerPosition}</p>
-                                    </div>
-                                    <div className="text-right">
-                                      {winner.score && (
-                                        <div className="text-lg font-bold text-yellow-600">
-                                          Score: {winner.score}
-                                        </div>
-                                      )}
+                              submission.poems.filter((p: any) => p.isWinner || p.winnerPosition).map((winner: any) => {
+                                // Determine position display
+                                const position = winner.winnerPosition || (winner.isWinner ? 1 : null);
+                                const positionText = position ? `Position #${position}` : 'Winner';
+                                
+                                // Color based on position
+                                const bgColor = position === 1 ? 'bg-yellow-50 border-yellow-200' : 
+                                               position === 2 ? 'bg-gray-50 border-gray-200' : 
+                                               position === 3 ? 'bg-orange-50 border-orange-200' : 
+                                               'bg-blue-50 border-blue-200';
+                                
+                                const textColor = position === 1 ? 'text-yellow-600' : 
+                                                 position === 2 ? 'text-gray-600' : 
+                                                 position === 3 ? 'text-orange-600' : 
+                                                 'text-blue-600';
+
+                                return (
+                                  <div key={winner.id} className={`p-4 ${bgColor} border rounded-lg`}>
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <h4 className="font-semibold">{winner.title}</h4>
+                                        <p className="text-sm text-gray-600">{positionText}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        {winner.score && (
+                                          <div className={`text-lg font-bold ${textColor}`}>
+                                            Score: {winner.score}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))
+                                );
+                              })
                             )}
                           </div>
                         </div>
                       )}
 
                       {/* Evaluated Poems */}
-                      {submissions.some(s => s.poems.some((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner)) && (
+                      {submissions.some(s => s.poems.some((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner && !p.winnerPosition)) && (
                         <div>
                           <h3 className="font-semibold text-lg mb-3">📊 Evaluated Poems</h3>
                           <div className="space-y-3">
                             {submissions.map(submission => 
-                              submission.poems.filter((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner).map((poem: any) => (
+                              submission.poems.filter((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner && !p.winnerPosition).map((poem: any) => (
                                 <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
                                   <div className="flex items-center justify-between">
                                     <div>
@@ -994,7 +1012,7 @@ export default function UserProfile() {
                         </div>
                       )}
 
-                      {!submissions.some(s => s.poems.some((p: any) => p.isWinner || (p.status === 'Evaluated' && p.score !== undefined && p.score > 0))) && (
+                      {!submissions.some(s => s.poems.some((p: any) => p.isWinner || p.winnerPosition || (p.status === 'Evaluated' && p.score !== undefined && p.score > 0))) && (
                         <div className="text-center py-8">
                           <Clock className="mx-auto text-gray-400 mb-4" size={48} />
                           <p className="text-gray-600">Results not yet available for your submissions.</p>
