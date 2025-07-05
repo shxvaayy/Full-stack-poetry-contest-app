@@ -11,22 +11,27 @@ import { useState, useEffect } from "react";
 
 // Simple Hero Carousel Component
 function HeroCarousel({ children }: { children: React.ReactNode }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const backgrounds = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % backgrounds.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section 
-      className="relative min-h-screen flex items-center justify-center"
-      style={{ 
-        background: 'linear-gradient(135deg, #6B46C1 0%, #3B82F6 50%, #1E40AF 100%)',
-        backgroundImage: `
-          radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-          radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.2) 0%, transparent 50%)
-        `
-      }}
+      className="relative min-h-screen flex items-center justify-center transition-all duration-1000"
+      style={{ background: backgrounds[currentSlide] }}
     >
-      <div className="absolute inset-0 bg-black/20"></div>
-      <div className="relative z-10 w-full">
-        {children}
-      </div>
+      {children}
     </section>
   );
 }
@@ -287,39 +292,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Poetry Inspiration Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-white">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-12 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Poetry Inspiration
-          </h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-blue-50">
-              <CardContent className="p-8 text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Words That Dance</h3>
-                <p className="text-gray-600 text-lg">Let your verses flow like music across the page</p>
-              </CardContent>
-            </Card>
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-pink-50 to-red-50">
-              <CardContent className="p-8 text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Echoes of the Heart</h3>
-                <p className="text-gray-600 text-lg">Every poem carries the whispers of your soul</p>
-              </CardContent>
-            </Card>
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
-              <CardContent className="p-8 text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Nature's Symphony</h3>
-                <p className="text-gray-600 text-lg">Find inspiration in the rhythm of the natural world</p>
-              </CardContent>
-            </Card>
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50">
-              <CardContent className="p-8 text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Legacy of Words</h3>
-                <p className="text-gray-600 text-lg">Join the timeless tradition of poetic expression</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      {/* Poetry Inspiration Carousel */}
+      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700 relative overflow-hidden">
+        <SimpleCarousel slides={carouselSlides} />
       </section>
 
       {/* Call to Action Section */}
