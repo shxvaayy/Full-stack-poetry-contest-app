@@ -8,10 +8,11 @@ import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_17505976833
 import ChatbotWidget from "@/components/ChatbotWidget";
 import { Upload, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { HeroCarousel } from "@/components/ui/hero-carousel";
 
 export default function HomePage() {
   const { toast } = useToast();
-  
+
   // Fetch total submission count for live poets count
   const { data: statsData } = useQuery({
     queryKey: ['/api/submission-count'],
@@ -30,17 +31,9 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero Section with Poetry-themed Background */}
-      <section
-        className="relative min-h-screen flex items-center justify-center"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-blue-900/70 to-indigo-900/80"></div>
-        <div className="relative z-10 text-center text-white px-4">
+      {/* Hero Section with Rotating Carousel */}
+      <HeroCarousel>
+        <div className="text-center text-white px-4 max-w-6xl mx-auto">
           <div className="w-24 h-24 mx-auto mb-6">
             <img 
               src={logoImage} 
@@ -48,13 +41,13 @@ export default function HomePage() {
               className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white">
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white drop-shadow-2xl">
             WRITORY
           </h1>
-          <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100">Write Your Own Victory</p>
+          <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
 
           {/* Moving Tagline */}
-          <div className="overflow-hidden bg-black/40 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/20">
+          <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
             <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
               <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
             </div>
@@ -68,16 +61,16 @@ export default function HomePage() {
 
           <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
             <div className="text-center">
-              <div className="text-2xl font-bold">{poetsCount}+</div>
-              <div className="text-sm">Poets Joined</div>
+              <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
+              <div className="text-sm drop-shadow-lg">Poets Joined</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">FREE</div>
-              <div className="text-sm">Entry Available</div>
+              <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
+              <div className="text-sm drop-shadow-lg">Entry Available</div>
             </div>
           </div>
         </div>
-      </section>
+      </HeroCarousel>
 
       {/* No Barriers Section */}
       <section className="py-16 bg-gradient-to-br from-white to-blue-50">
@@ -217,53 +210,87 @@ export default function HomePage() {
         </div>
       </section>
 
-      
 
-      {/* Additional Competitions */}
-      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-white mb-12">
-            Additional Competitions
-          </h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card 
-              className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-white/10 backdrop-blur-sm cursor-pointer"
-              onClick={() => toast({
-                title: "Not Available Yet",
-                description: "Regional Languages Competition is coming soon! Stay tuned for updates.",
-                duration: 3000,
-              })}
-            >
-              <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
-                  <Globe className="text-white" size={32} />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4">Regional Languages Competition</h3>
-                <p className="text-white/80 leading-relaxed">
-                  Celebrate diversity in poetry with competitions in your native language
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card 
-              className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-white/10 backdrop-blur-sm cursor-pointer"
-              onClick={() => toast({
-                title: "Not Available Yet", 
-                description: "Junior Competition is coming soon! Stay tuned for updates.",
-                duration: 3000,
-              })}
-            >
-              <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
-                  <Star className="text-white" size={32} />
+      {/* Poetry Inspiration Carousel */}
+      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700 relative overflow-hidden">
+        <div className="relative h-96 w-full">
+          <Swiper
+            modules={[Autoplay, EffectFade]}
+            effect="fade"
+            fadeEffect={{ crossFade: true }}
+            autoplay={{
+              delay: 4000,
+              disableOnInteraction: false,
+            }}
+            loop={true}
+            allowTouchMove={false}
+            className="h-full w-full"
+          >
+            <SwiperSlide>
+              <div 
+                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
+                style={{
+                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/sample.jpg')`
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 to-pink-900/80 flex items-center justify-center">
+                  <div className="text-center text-white px-8 max-w-4xl">
+                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Words That Dance</h3>
+                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Let your verses flow like music across the page</p>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-4">Junior Competition</h3>
-                <p className="text-white/80 leading-relaxed">
-                  Special category for young poets to showcase their talent and creativity
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </SwiperSlide>
+
+            <SwiperSlide>
+              <div 
+                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
+                style={{
+                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/woman.jpg')`
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80 flex items-center justify-center">
+                  <div className="text-center text-white px-8 max-w-4xl">
+                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Echoes of the Heart</h3>
+                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Every poem carries the whispers of your soul</p>
+                  </div>
+                </div>
+              </div>
+            </SwiperSlide>
+
+            <SwiperSlide>
+              <div 
+                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
+                style={{
+                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/nature.jpg')`
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/80 to-teal-900/80 flex items-center justify-center">
+                  <div className="text-center text-white px-8 max-w-4xl">
+                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Nature's Symphony</h3>
+                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Find inspiration in the rhythm of the natural world</p>
+                  </div>
+                </div>
+              </div>
+            </SwiperSlide>
+
+            <SwiperSlide>
+              <div 
+                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
+                style={{
+                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/books.jpg')`
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-900/80 to-red-900/80 flex items-center justify-center">
+                  <div className="text-center text-white px-8 max-w-4xl">
+                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Legacy of Words</h3>
+                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Join the timeless tradition of poetic expression</p>
+                  </div>
+                </div>
+              </div>
+            </SwiperSlide>
+          </Swiper>
         </div>
       </section>
 
