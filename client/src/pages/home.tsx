@@ -1,3 +1,4 @@
+
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,67 @@ import { apiRequest } from "@/lib/queryClient";
 import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
 import ChatbotWidget from "@/components/ChatbotWidget";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+
+// Simple Hero Carousel Component
+function HeroCarousel({ children }: { children: React.ReactNode }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const backgrounds = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % backgrounds.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section 
+      className="relative min-h-screen flex items-center justify-center transition-all duration-1000"
+      style={{ background: backgrounds[currentSlide] }}
+    >
+      {children}
+    </section>
+  );
+}
+
+// Simple Carousel Component for Poetry Inspiration
+function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: string; gradient: string }> }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
+
+  return (
+    <div className="relative h-96 w-full overflow-hidden">
+      {slides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-1000 ${
+            index === currentSlide ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ background: slide.gradient }}
+        >
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-white px-8 max-w-4xl">
+              <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">{slide.title}</h3>
+              <p className="text-xl md:text-2xl font-light drop-shadow-lg">{slide.subtitle}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { toast } = useToast();
@@ -26,6 +88,29 @@ export default function HomePage() {
   });
 
   const poetsCount = statsData?.totalPoets || 0;
+
+  const carouselSlides = [
+    {
+      title: "Words That Dance",
+      subtitle: "Let your verses flow like music across the page",
+      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    },
+    {
+      title: "Echoes of the Heart",
+      subtitle: "Every poem carries the whispers of your soul",
+      gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+    },
+    {
+      title: "Nature's Symphony",
+      subtitle: "Find inspiration in the rhythm of the natural world",
+      gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+    },
+    {
+      title: "Legacy of Words",
+      subtitle: "Join the timeless tradition of poetic expression",
+      gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
+    }
+  ];
 
   return (
     <div>
@@ -208,88 +293,9 @@ export default function HomePage() {
         </div>
       </section>
 
-
-
       {/* Poetry Inspiration Carousel */}
       <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700 relative overflow-hidden">
-        <div className="relative h-96 w-full">
-          <Swiper
-            modules={[Autoplay, EffectFade]}
-            effect="fade"
-            fadeEffect={{ crossFade: true }}
-            autoplay={{
-              delay: 4000,
-              disableOnInteraction: false,
-            }}
-            loop={true}
-            allowTouchMove={false}
-            className="h-full w-full"
-          >
-            <SwiperSlide>
-              <div 
-                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/sample.jpg')`
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 to-pink-900/80 flex items-center justify-center">
-                  <div className="text-center text-white px-8 max-w-4xl">
-                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Words That Dance</h3>
-                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Let your verses flow like music across the page</p>
-                  </div>
-                </div>
-              </div>
-            </SwiperSlide>
-
-            <SwiperSlide>
-              <div 
-                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/woman.jpg')`
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80 flex items-center justify-center">
-                  <div className="text-center text-white px-8 max-w-4xl">
-                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Echoes of the Heart</h3>
-                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Every poem carries the whispers of your soul</p>
-                  </div>
-                </div>
-              </div>
-            </SwiperSlide>
-
-            <SwiperSlide>
-              <div 
-                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/nature.jpg')`
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/80 to-teal-900/80 flex items-center justify-center">
-                  <div className="text-center text-white px-8 max-w-4xl">
-                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Nature's Symphony</h3>
-                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Find inspiration in the rhythm of the natural world</p>
-                  </div>
-                </div>
-              </div>
-            </SwiperSlide>
-
-            <SwiperSlide>
-              <div 
-                className="relative h-full w-full bg-cover bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_auto,h_auto,c_fill/books.jpg')`
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-900/80 to-red-900/80 flex items-center justify-center">
-                  <div className="text-center text-white px-8 max-w-4xl">
-                    <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">Legacy of Words</h3>
-                    <p className="text-xl md:text-2xl font-light drop-shadow-lg">Join the timeless tradition of poetic expression</p>
-                  </div>
-                </div>
-              </div>
-            </SwiperSlide>
-          </Swiper>
-        </div>
+        <SimpleCarousel slides={carouselSlides} />
       </section>
 
       {/* Call to Action */}
