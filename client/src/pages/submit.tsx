@@ -41,7 +41,7 @@ const TIERS = [
   { 
     id: "double", 
     name: "2 Poems", 
-    price: 100, 
+    price: 90, 
     icon: Feather, 
     color: "purple", 
     description: "Submit 2 additional poems",
@@ -53,7 +53,7 @@ const TIERS = [
   { 
     id: "bulk", 
     name: "5 Poems", 
-    price: 480, 
+    price: 230, 
     icon: Crown, 
     color: "yellow", 
     description: "Submit 5 additional poems",

@@ -12,8 +12,8 @@ export const TIER_POEM_COUNTS = {
 export const TIER_PRICES = {
   free: 0,
   single: 50,
-  double: 100,
-  bulk: 480
+  double: 90,
+  bulk: 230
 } as const;
 
 // ✅ VALIDATION FUNCTION
