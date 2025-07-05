@@ -11,27 +11,23 @@ import { useState, useEffect } from "react";
 
 // Simple Hero Carousel Component
 function HeroCarousel({ children }: { children: React.ReactNode }) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const backgrounds = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % backgrounds.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <section 
-      className="relative min-h-screen flex items-center justify-center transition-all duration-1000"
-      style={{ background: backgrounds[currentSlide] }}
+      className="relative min-h-screen flex items-center justify-center"
+      style={{ 
+        backgroundImage: `
+          linear-gradient(135deg, rgba(59, 130, 246, 0.85) 0%, rgba(30, 64, 175, 0.9) 50%, rgba(67, 56, 202, 0.85) 100%),
+          url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="paper" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="%23f8fafc"/><circle cx="2" cy="2" r="0.5" fill="%23e2e8f0"/><circle cx="8" cy="6" r="0.3" fill="%23cbd5e1"/><circle cx="15" cy="3" r="0.4" fill="%23e2e8f0"/><circle cx="5" cy="12" r="0.2" fill="%23cbd5e1"/><circle cx="18" cy="9" r="0.3" fill="%23e2e8f0"/><circle cx="12" cy="16" r="0.4" fill="%23cbd5e1"/><circle cx="3" cy="18" r="0.2" fill="%23e2e8f0"/><circle cx="16" cy="14" r="0.3" fill="%23cbd5e1"/></pattern></defs><rect width="100" height="100" fill="url(%23paper)"/></svg>')
+        `,
+        backgroundSize: 'cover, 100px 100px',
+        backgroundPosition: 'center, 0 0',
+        backgroundRepeat: 'no-repeat, repeat'
+      }}
     >
-      {children}
+      <div className="absolute inset-0 bg-black/20"></div>
+      <div className="relative z-10 w-full">
+        {children}
+      </div>
     </section>
   );
 }
@@ -293,8 +289,13 @@ export default function HomePage() {
       </section>
 
       {/* Poetry Inspiration Carousel */}
-      <section className="py-16 bg-gradient-to-br from-green-600 to-emerald-700 relative overflow-hidden">
-        <SimpleCarousel slides={carouselSlides} />
+      <section className="py-16 bg-gradient-to-br from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center text-gray-900 mb-12 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Poetry Inspiration
+          </h2>
+          <SimpleCarousel slides={carouselSlides} />
+        </div>
       </section>
 
       {/* Call to Action Section */}
