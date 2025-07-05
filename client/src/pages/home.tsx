@@ -1,4 +1,3 @@
-
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,27 +11,22 @@ import { useState, useEffect } from "react";
 
 // Simple Hero Carousel Component
 function HeroCarousel({ children }: { children: React.ReactNode }) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const backgrounds = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % backgrounds.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <section 
-      className="relative min-h-screen flex items-center justify-center transition-all duration-1000"
-      style={{ background: backgrounds[currentSlide] }}
+      className="relative min-h-screen flex items-center justify-center"
+      style={{ 
+        background: 'linear-gradient(135deg, #6B46C1 0%, #3B82F6 50%, #1E40AF 100%)',
+        backgroundImage: `
+          radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.2) 0%, transparent 50%)
+        `
+      }}
     >
-      {children}
+      <div className="absolute inset-0 bg-black/20"></div>
+      <div className="relative z-10 w-full">
+        {children}
+      </div>
     </section>
   );
 }
@@ -298,8 +292,8 @@ export default function HomePage() {
         <SimpleCarousel slides={carouselSlides} />
       </section>
 
-      {/* Call to Action */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600">
+      {/* Call to Action Section */}
+      <section className="py-20 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Share Your Poetry?
