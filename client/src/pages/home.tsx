@@ -6,9 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
 import ChatbotWidget from "@/components/ChatbotWidget";
-import { Upload, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { HeroCarousel } from "@/components/ui/hero-carousel";
 
 export default function HomePage() {
   const { toast } = useToast();
