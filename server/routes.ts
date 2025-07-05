@@ -36,6 +36,14 @@ const upload = multer({
     ) {
       cb(null, true);
     }
+    // Allow CSV files for admin uploads
+    else if (
+      file.mimetype === 'text/csv' ||
+      file.mimetype === 'application/csv' ||
+      file.mimetype === 'application/vnd.ms-excel'
+    ) {
+      cb(null, true);
+    }
     // Reject other file types
     else {
       cb(new Error(`File type not allowed: ${file.mimetype}. Please upload images (JPG, PNG) for photos and documents (PDF, DOC, DOCX, TXT) for poems.`));
@@ -2102,10 +2110,10 @@ router.get('/api/legacy-submissions', asyncHandler(async (req: any, res: any) =>
 }));
 
 // Admin CSV upload endpoint
-router.post('/api/admin/upload-csv', requireAdmin, safeUploadAny, asyncHandler(async (req: any, res: any) => { //Modified as upload middleware is removed
+router.post('/api/admin/upload-csv', requireAdmin, safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📊 Admin CSV upload request received');
 
-  const allowedMimeTypes = ['text/csv', 'application/vnd.ms-excel'];
+  const allowedMimeTypes = ['text/csv', 'application/csv', 'application/vnd.ms-excel'];
 
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({
@@ -2116,10 +2124,16 @@ router.post('/api/admin/upload-csv', requireAdmin, safeUploadAny, asyncHandler(a
 
   const uploadedFile = req.files[0];
 
-  if (!allowedMimeTypes.includes(uploadedFile.mimetype)) {
+  console.log('📁 Uploaded file info:', {
+    mimetype: uploadedFile.mimetype,
+    filename: uploadedFile.originalname,
+    size: uploadedFile.size
+  });
+
+  if (!allowedMimeTypes.includes(uploadedFile.mimetype) && !uploadedFile.originalname?.endsWith('.csv')) {
     return res.status(400).json({
       success: false,
-      error: 'Invalid file type. Only CSV files are allowed'
+      error: `Invalid file type. Only CSV files are allowed. Received: ${uploadedFile.mimetype}`
     });
   }
 
