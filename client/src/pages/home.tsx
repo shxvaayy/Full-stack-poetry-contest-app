@@ -300,7 +300,7 @@ export default function HomePage() {
       </section>
 
       {/* Call to Action Section */}
-      <section className="py-24 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden">
+      <section className="pt-0 pb-24 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Share Your Poetry?
