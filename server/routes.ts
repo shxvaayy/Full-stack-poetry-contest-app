@@ -20,32 +20,31 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit for poem files
   },
   fileFilter: (req, file, cb) => {
+    // Allow images for photos
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
+    }
+    // Allow documents for poem files
+    else if (
+      file.mimetype === 'application/pdf' ||
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.mimetype === 'text/plain'
+    ) {
+      cb(null, true);
+    }
+    // Reject other file types
+    else {
+      cb(new Error(`File type not allowed: ${file.mimetype}. Please upload images (JPG, PNG) for photos and documents (PDF, DOC, DOCX, TXT) for poems.`));
     }
   }
 });
 
-// CORS and headers middleware for API routes
+// MINIMAL FIX: Only set JSON header for API routes
 router.use('/api/*', (req, res, next) => {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-email');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
-  // Set JSON header for API responses
   res.setHeader('Content-Type', 'application/json');
   next();
 });
@@ -1235,41 +1234,11 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     const couponDiscount = req.body.couponDiscount ? parseFloat(req.body.couponDiscount) : 0;
     const finalAmount = req.body.finalAmount ? parseFloat(req.body.finalAmount) : parseFloat(price || '0');
 
-    // Validate required fields with better error messages
-    if (!firstName?.trim()) {
+    // Validate required fields
+    if (!firstName || !email || !poemTitle || !tier) {
       return res.status(400).json({
         success: false,
-        error: 'First name is required'
-      });
-    }
-    
-    if (!email?.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email address is required'
-      });
-    }
-    
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please enter a valid email address'
-      });
-    }
-    
-    if (!poemTitle?.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Poem title is required'
-      });
-    }
-    
-    if (!tier) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please select a submission tier'
+        error: 'Missing required fields: firstName, email, poemTitle, tier'
       });
     }
 
@@ -1392,41 +1361,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     console.log('📁 Identified files:', {
       poemFile: poemFile?.originalname,
       photoFile: photoFile?.originalname
-    });
-
-    // Validate that required files are present
-    if (!poemFile) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please upload your poem file (PDF, DOC, or DOCX)'
-      });
-    }
-
-    if (!photoFile) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please upload your photo (JPG or PNG)'
-      });
-    }
-
-    // Validate file types
-    const allowedPoemTypes = ['.pdf', '.doc', '.docx'];
-    const poemFileExt = poemFile.originalname.toLowerCase().substring(poemFile.originalname.lastIndexOf('.'));
-    if (!allowedPoemTypes.includes(poemFileExt)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Poem file must be PDF, DOC, or DOCX format'
-      });
-    }
-
-    const allowedPhotoTypes = ['.jpg', '.jpeg', '.png'];
-    const photoFileExt = photoFile.originalname.toLowerCase().substring(photoFile.originalname.lastIndexOf('.'));
-    if (!allowedPhotoTypes.includes(photoFileExt)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Photo must be JPG or PNG format'
-      });
-    }    // Upload files to Google Drive
+    });    // Upload files to Google Drive
     let poemFileUrl = null;
     let photoFileUrl = null;
 
