@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Pen, IdCard, Users, Globe, Star, DollarSign, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
+import logoImage from "@/assets/WRITORY_LOGO.png";
 import ChatbotWidget from "@/components/ChatbotWidget";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";

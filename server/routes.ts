@@ -2544,19 +2544,19 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
     console.log('✅ Current user found:', currentUser.rows[0].email);
 
     // Check if email is changing and if new email already exists
-    if (email && email !== currentUser.rows[0].email) {
-      console.log(`📧 Email change requested: ${currentUser.rows[0].email} → ${email}`);
+    if (email && email.trim() !== currentUser.rows[0].email) {
+      console.log(`📧 Email change requested: ${currentUser.rows[0].email} → ${email.trim()}`);
 
       const emailExists = await client.query(
         'SELECT id FROM users WHERE email = $1 AND uid != $2',
-        [email, uid]
+        [email.trim(), uid]
       );
 
       if (emailExists.rows.length > 0) {
-        console.log('❌ Email already exists:', email);
+        console.log('❌ Email already exists:', email.trim());
         return res.status(400).json({
           success: false,
-          error: 'Email already exists'
+          error: 'Email already taken'
         });
       }
     }
@@ -2566,13 +2566,13 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
     const values = [];
     let valueIndex = 1;
 
-    if (name !== undefined && name !== null) {
+    if (name !== undefined && name !== null && name.trim() !== currentUser.rows[0].name) {
       updates.push(`name = $${valueIndex++}`);
       values.push(name.trim());
       console.log('📝 Name will be updated to:', name.trim());
     }
 
-    if (email !== undefined && email !== null) {
+    if (email !== undefined && email !== null && email.trim() !== currentUser.rows[0].email) {
       updates.push(`email = $${valueIndex++}`);
       values.push(email.trim());
       console.log('📧 Email will be updated to:', email.trim());
