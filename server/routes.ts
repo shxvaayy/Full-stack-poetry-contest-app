@@ -1365,36 +1365,39 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     let poemFileUrl = null;
     let photoFileUrl = null;
 
-    // Commented out because uploadPhotoFile is not imported
-    // if (poemFile) {
-    //   console.log('☁️ Uploading poem file to Google Drive...');
+    if (poemFile) {
+      console.log('☁️ Uploading poem file to Google Drive...');
 
-    //   // Convert multer file to buffer
-    //   const poemBuffer = fs.readFileSync(poemFile.path);
+      try {
+        const { uploadPoemFile } = await import('./google-drive.js');
+        poemFileUrl = await uploadPoemFile(
+          poemFile.buffer, 
+          email, 
+          poemFile.originalname,
+          0, // poemIndex
+          poemTitle // Pass the actual poem title
+        );
+        console.log('✅ Poem file uploaded:', poemFileUrl);
+      } catch (error) {
+        console.error('❌ Failed to upload poem file:', error);
+      }
+    }
 
-    //   poemFileUrl = await uploadPoemFile(
-    //     poemBuffer, 
-    //     email, 
-    //     poemFile.originalname,
-    //     0, // poemIndex
-    //     poemTitle // Pass the actual poem title
-    //   );
-    //   console.log('✅ Poem file uploaded:', poemFileUrl);
-    // }
+    if (photoFile) {
+      console.log('☁️ Uploading photo file to Google Drive...');
 
-    // if (photoFile) {
-    //   console.log('☁️ Uploading photo file to Google Drive...');
-
-    //   // Convert multer file to buffer
-    //   const photoBuffer = fs.readFileSync(photoFile.path);
-
-    //   photoFileUrl = await uploadPhotoFile(
-    //     photoBuffer, 
-    //     email, 
-    //     photoFile.originalname
-    //   );
-    //   console.log('✅ Photo file uploaded:', photoFileUrl);
-    // }
+      try {
+        const { uploadPhotoFile } = await import('./google-drive.js');
+        photoFileUrl = await uploadPhotoFile(
+          photoFile.buffer, 
+          email, 
+          photoFile.originalname
+        );
+        console.log('✅ Photo file uploaded:', photoFileUrl);
+      } catch (error) {
+        console.error('❌ Failed to upload photo file:', error);
+      }
+    }
 
     // Create or find user - FIXED VERSION
     let user = null;
@@ -1442,9 +1445,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       price: price ? parseFloat(price) : 0,
       paymentId: paymentId || null,
       paymentMethod: paymentMethod || 'free',
-      poemFileUrl: null, // poemFileUrl, Modified since Google Drive is removed
-      photoFileUrl: null, // photoFileUrl, Modified since Google Drive is removed
-      submissionUuid: crypto.randomUUID(),
+      poemFileUrl: poemFileUrl,
+        photoFileUrl: photoFileUrl,
+        submissionUuid: crypto.randomUUID(),
       poemIndex: 1,
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
@@ -1636,36 +1639,41 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     let poemFileUrls = [];
     let photoFileUrl = null;
 
-    // Commented out because uploadMultiplePoemFiles and uploadPhotoFile are not imported
-    // if (poemFiles.length > 0) {
-    //   console.log('☁️ Uploading poem files to Google Drive...');
+    if (poemFiles.length > 0) {
+      console.log('☁️ Uploading poem files to Google Drive...');
 
-    //   // Convert multer files to buffers
-    //   const poemBuffers = poemFiles.map(file => fs.readFileSync(file.path));
-    //   const originalFileNames = poemFiles.map(file => file.originalname);
+      try {
+        const { uploadMultiplePoemFiles } = await import('./google-drive.js');
+        const poemBuffers = poemFiles.map(file => file.buffer);
+        const originalFileNames = poemFiles.map(file => file.originalname);
 
-    //   poemFileUrls = await uploadMultiplePoemFiles(
-    //     poemBuffers, 
-    //     email, 
-    //     originalFileNames,
-    //     titles
-    //   );
-    //   console.log('✅ Poem files uploaded:', poemFileUrls.length);
-    // }
+        poemFileUrls = await uploadMultiplePoemFiles(
+          poemBuffers, 
+          email, 
+          originalFileNames,
+          titles
+        );
+        console.log('✅ Poem files uploaded:', poemFileUrls.length);
+      } catch (error) {
+        console.error('❌ Failed to upload poem files:', error);
+      }
+    }
 
-    // if (photoFile) {
-    //   console.log('☁️ Uploading photo file to Google Drive...');
+    if (photoFile) {
+      console.log('☁️ Uploading photo file to Google Drive...');
 
-    //   // Convert multer file to buffer
-    //   const photoBuffer = fs.readFileSync(photoFile.path);
-
-    //   photoFileUrl = await uploadPhotoFile(
-    //     photoBuffer, 
-    //     email, 
-    //     photoFile.originalname
-    //   );
-    //   console.log('✅ Photo file uploaded:', photoFileUrl);
-    // }
+      try {
+        const { uploadPhotoFile } = await import('./google-drive.js');
+        photoFileUrl = await uploadPhotoFile(
+          photoFile.buffer, 
+          email, 
+          photoFile.originalname
+        );
+        console.log('✅ Photo file uploaded:', photoFileUrl);
+      } catch (error) {
+        console.error('❌ Failed to upload photo file:', error);
+      }
+    }
 
     // Create or find user - FIXED VERSION
     let user = null;
@@ -1718,9 +1726,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         price: price ? parseFloat(price) : 0, // Same price for all poems in the submission
         paymentId: paymentId || null, // Same payment ID for all poems
         paymentMethod: paymentMethod || 'free',
-        poemFileUrl: null, // poemFileUrls[i] || null, Commented out since Google Drive is removed
-        photoFileUrl: null, // photoFileUrl,  Commented out since Google Drive is removed
-        submissionUuid,
+        poemFileUrl: poemFileUrls[i] || null,
+        ```text
+        photoFileUrl: photoFileUrl,
+        submissionUuid: crypto.randomUUID(),
         poemIndex: i + 1,
         totalPoemsInSubmission: titles.length,
         submittedAt: new Date(),
@@ -1753,8 +1762,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           titles: titles,
           submissionUuid: submissionUuid,
           submissionIds: submissions.map(s => s.id),
-          poemFileUrls: [],  // poemFileUrls, Commented out since Google Drive is removed
-          photoFileUrl: null // photoFileUrl Commented out since Google Drive is removed
+          poemFileUrls: poemFileUrls,
+          photoFileUrl: photoFileUrl
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {
@@ -1890,16 +1899,23 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
     let poemFileUrl = null;
     let photoFileUrl = null;
 
-    // Commented out because uploadPhotoFile is not imported
-    // if (poemFile) {
-    //   const poemBuffer = fs.readFileSync(poemFile.path);
-    //   poemFileUrl = await uploadPoemFile(poemBuffer, email, poemFile.originalname, 0, poemTitle);
-    // }
+    if (poemFile) {
+      try {
+        const { uploadPoemFile } = await import('./google-drive.js');
+        poemFileUrl = await uploadPoemFile(poemFile.buffer, email, poemFile.originalname, 0, poemTitle);
+      } catch (error) {
+        console.error('❌ Failed to upload poem file:', error);
+      }
+    }
 
-    // if (photoFile) {
-    //   const photoBuffer = fs.readFileSync(photoFile.path);
-    //   photoFileUrl = await uploadPhotoFile(photoBuffer, email, photoFile.originalname);
-    // }
+    if (photoFile) {
+      try {
+        const { uploadPhotoFile } = await import('./google-drive.js');
+        photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
+      } catch (error) {
+        console.error('❌ Failed to upload photo file:', error);
+      }
+    }
 
     // Save to database (legacy endpoint but using persistent storage)
     const submissionData = {
@@ -1914,9 +1930,9 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       price: tier === 'free' ? 0 : TIER_PRICES[tier as keyof typeof TIER_PRICES] || 0,
       paymentId: paymentId || null,
       paymentMethod,
-      poemFileUrl: null, // poemFileUrl, Modified since Google Drive is removed
-      photoFileUrl: null, // photoFileUrl: photoFileUrl, Modified since Google Drive is removed
-      submissionUuid: crypto.randomUUID(),
+      poemFileUrl: poemFileUrl,
+        photoFileUrl: photoFileUrl,
+        submissionUuid: crypto.randomUUID(),
       poemIndex: 1,
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
@@ -2090,16 +2106,27 @@ router.get('/api/legacy-submissions', asyncHandler(async (req: any, res: any) =>
 router.post('/api/admin/upload-csv', requireAdmin, safeUploadAny, asyncHandler(async (req: any, res: any) => { //Modified as upload middleware is removed
   console.log('📊 Admin CSV upload request received');
 
-  // if (!req.file) {   //Modified as upload middleware is removed
-  //   return res.status(400).json({
-  //     success: false,
-  //     error: 'No CSV file uploaded'
-  //   });
-  // }
+  const allowedMimeTypes = ['text/csv', 'application/vnd.ms-excel'];
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'No CSV file uploaded'
+    });
+  }
+
+  const uploadedFile = req.files[0];
+
+  if (!allowedMimeTypes.includes(uploadedFile.mimetype)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid file type. Only CSV files are allowed'
+    });
+  }
+
 
   try {
-    // const csvContent = fs.readFileSync(req.file.path, 'utf-8');   //Modified as upload middleware is removed
-    const csvContent = ""; //Dummy Value
+    const csvContent = uploadedFile.buffer.toString('utf-8');   //Modified as upload middleware is removed
     const lines = csvContent.split('\n').filter(line => line.trim());
 
     if (lines.length === 0) {
