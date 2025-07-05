@@ -211,7 +211,7 @@ async function createTables() {
     await client.query(`
       INSERT INTO admin_users (email, role)
       VALUES 
-        ('shiningbhavya.seth@gmail.com', 'admin')
+        ('bhavyaseth2005@gmail.com', 'admin')
       ON CONFLICT (email) DO NOTHING;
     `);
 

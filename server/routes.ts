@@ -70,7 +70,7 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
     // Check hardcoded admin emails first as fallback
     const hardcodedAdmins = [
       'shivaaymehra2@gmail.com',
-      'shiningbhavya.seth@gmail.com',
+      'bhavyaseth2005@gmail.com',
       'writorycontest@gmail.com',
       'admin@writory.com'
     ];
@@ -2321,7 +2321,7 @@ router.get('/api/debug/check-admin/:email', asyncHandler(async (req: any, res: a
     // Check hardcoded admins
     const hardcodedAdmins = [
       'shivaaymehra2@gmail.com',
-      'shiningbhavya.seth@gmail.com',
+      'bhavyaseth2005@gmail.com',
       'writorycontest@gmail.com',
       'admin@writory.com'
     ];

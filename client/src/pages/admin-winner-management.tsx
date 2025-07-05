@@ -34,7 +34,7 @@ export default function AdminWinnerManagement() {
   // Check if user is admin
   const adminEmails = [
     'shivaaymehra2@gmail.com',
-    'shiningbhavya.seth@gmail.com'
+    'bhavyaseth2005@gmail.com'
   ];
   const isAdmin = user?.email && adminEmails.includes(user.email);
 

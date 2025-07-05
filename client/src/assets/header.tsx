@@ -113,7 +113,7 @@ export default function Header() {
   }, [user]);
 
   // Check if user is admin
-  const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'shiningbhavya.seth@gmail.com';
+  const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'bhavyaseth2005@gmail.com';
 
   const navigation = [
     { name: "HOME", href: "/" },

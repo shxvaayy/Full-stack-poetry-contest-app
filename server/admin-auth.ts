@@ -42,7 +42,7 @@ export async function initializeAdminUsers() {
     // Add default admin users
     const defaultAdmins = [
       'shivaaymehra2@gmail.com',
-      'shiningbhavya.seth@gmail.com',
+      'bhavyaseth2005@gmail.com',
       'writorycontest@gmail.com',
       'admin@writory.com'
     ];
@@ -159,7 +159,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   // Define admin emails - add your email here
   const adminEmails = [
     'shivaaymehra2@gmail.com',
-    'shiningbhavya.seth@gmail.com',
+    'bhavyaseth2005@gmail.com',
     'admin@writory.com'
   ];
 
