@@ -290,10 +290,12 @@ export default function HomePage() {
 
       {/* Poetry Inspiration Carousel */}
       <section className="py-16 bg-gradient-to-br from-white to-gray-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-12 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+        <div className="max-w-7xl mx-auto px-4 mb-12">
+          <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             Poetry Inspiration
           </h2>
+        </div>
+        <div className="w-full">
           <SimpleCarousel slides={carouselSlides} />
         </div>
       </section>
