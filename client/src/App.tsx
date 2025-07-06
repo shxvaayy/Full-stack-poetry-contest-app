@@ -22,28 +22,35 @@ import PrivacyPage from "./pages/privacy";
 
 function AppContent() {
   return (
-    <AuthGuard>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow">
-          <Switch>
-            <Route path="/" component={HomePage} />
-            <Route path="/submit" component={SubmitPage} />
-            <Route path="/winning-poems" component={WinningPoemsPage} />
-            <Route path="/past-winners" component={PastWinnersPage} />
-            <Route path="/about" component={AboutPage} />
-            <Route path="/contact" component={ContactPage} />
-            <Route path="/profile" component={UserProfilePage} />
-            <Route path="/admin-upload" component={AdminUploadPage} />
-            <Route path="/admin-settings" component={AdminSettingsPage} />
-            <Route path="/terms" component={TermsPage} />
-            <Route path="/privacy" component={PrivacyPage} />
-            <Route component={NotFoundPage} />
-          </Switch>
-        </main>
-        <Footer />
-      </div>
-    </AuthGuard>
+    <Switch>
+      {/* Public routes - accessible without authentication */}
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      
+      {/* Protected routes - require authentication */}
+      <Route>
+        <AuthGuard>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-grow">
+              <Switch>
+                <Route path="/" component={HomePage} />
+                <Route path="/submit" component={SubmitPage} />
+                <Route path="/winning-poems" component={WinningPoemsPage} />
+                <Route path="/past-winners" component={PastWinnersPage} />
+                <Route path="/about" component={AboutPage} />
+                <Route path="/contact" component={ContactPage} />
+                <Route path="/profile" component={UserProfilePage} />
+                <Route path="/admin-upload" component={AdminUploadPage} />
+                <Route path="/admin-settings" component={AdminSettingsPage} />
+                <Route component={NotFoundPage} />
+              </Switch>
+            </main>
+            <Footer />
+          </div>
+        </AuthGuard>
+      </Route>
+    </Switch>
   );
 }
 

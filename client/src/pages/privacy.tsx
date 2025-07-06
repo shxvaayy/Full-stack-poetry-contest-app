@@ -1,15 +1,29 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 
 export default function PrivacyPage() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleBack = () => {
+    if (user) {
+      window.history.back();
+    } else {
+      // If user is not authenticated, redirect to login (which will show AuthPage)
+      setLocation("/");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => window.history.back()}
+            onClick={handleBack}
             className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
