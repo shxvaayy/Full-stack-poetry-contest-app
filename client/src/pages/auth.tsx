@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useLocation } from "wouter";
 import { 
   signInWithGoogle, 
   signInWithEmail, 
@@ -64,7 +64,7 @@ export default function AuthPage() {
     setShowEmailInput(false);
     setPhoneUserEmail("");
     setShowPhoneSection(false);
-    
+
     // Clear reCAPTCHA
     if (window.recaptchaVerifier) {
       window.recaptchaVerifier.clear();
@@ -74,7 +74,7 @@ export default function AuthPage() {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: "Error",
@@ -144,45 +144,45 @@ export default function AuthPage() {
     try {
       // Clear previous OTP if any
       setOtp("");
-      
+
       // Set up recaptcha (clear existing one first)
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = null;
       }
-      
+
       const recaptchaVerifier = setUpRecaptcha("recaptcha-container");
-      
+
       // Check if user is already signed in (for linking)
       const confirmation = isLinkingPhone 
         ? await linkPhoneToCurrentUser(phone, recaptchaVerifier)
         : await signInWithPhone(phone, recaptchaVerifier);
-      
+
       setConfirmationResult(confirmation);
       setShowOtpInput(true);
-      
+
       // Start 60-second timer
       setOtpTimer(60);
-      
+
       toast({
         title: "OTP Sent",
         description: "Check your phone for verification code",
       });
     } catch (error: any) {
       console.error("Phone auth error:", error);
-      
+
       // Reset states on error
       setShowOtpInput(false);
       setOtp("");
       setConfirmationResult(null);
       setOtpTimer(0);
-      
+
       // Clear reCAPTCHA on error
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = null;
       }
-      
+
       toast({
         title: "Phone Auth Failed",
         description: error.message || "Failed to send OTP. Please try again.",
@@ -209,11 +209,11 @@ export default function AuthPage() {
       } else {
         // Sign in with phone - but now require email
         await confirmationResult.confirm(otp);
-        
+
         // After successful phone verification, ask for email
         setShowOtpInput(false);
         setShowEmailInput(true);
-        
+
         toast({
           title: "Phone Verified",
           description: "Now please provide your email address for poem submissions",
@@ -260,7 +260,7 @@ export default function AuthPage() {
         title: "Sign-in Complete",
         description: "Successfully signed in with phone and email!",
       });
-      
+
       // Reset all forms
       resetPhoneForm();
       setShowEmailInput(false);
@@ -279,6 +279,8 @@ export default function AuthPage() {
 
   // Check if OTP button should be disabled
   const isOtpButtonDisabled = loading || !phone || otpTimer > 0;
+
+    const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -395,7 +397,7 @@ export default function AuthPage() {
                         ← Back
                       </Button>
                     </div>
-                    
+
                     <Input
                       placeholder="+91XXXXXXXXXX"
                       value={phone}
@@ -404,7 +406,7 @@ export default function AuthPage() {
                       disabled={loading}
                       className="h-12"
                     />
-                    
+
                     <div className="flex space-x-2 items-center">
                       <Button
                         variant="outline"
@@ -415,13 +417,13 @@ export default function AuthPage() {
                         <Phone className="h-4 w-4 text-gray-400" />
                         {otpTimer > 0 ? `Send OTP` : "Send OTP"}
                       </Button>
-                      
+
                       {otpTimer > 0 && (
                         <div className="text-sm text-gray-500 font-medium min-w-[60px] text-right">
                           {otpTimer}s
                         </div>
                       )}
-                      
+
                       {(showOtpInput || confirmationResult) && (
                         <Button
                           variant="ghost"
