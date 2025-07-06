@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone } from "lucide-react";
+import { Link } from "react-router-dom";
 import { 
   signInWithGoogle, 
   signInWithEmail, 
@@ -30,6 +31,7 @@ export default function AuthPage() {
   const [otpTimer, setOtpTimer] = useState(0);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [phoneUserEmail, setPhoneUserEmail] = useState("");
+  const [showPhoneSection, setShowPhoneSection] = useState(false);
 
   // Clean up recaptcha on unmount
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function AuthPage() {
     setOtpTimer(0);
     setShowEmailInput(false);
     setPhoneUserEmail("");
+    setShowPhoneSection(false);
     
     // Clear reCAPTCHA
     if (window.recaptchaVerifier) {
@@ -350,9 +353,23 @@ export default function AuthPage() {
               </div>
 
               <div className="mt-6 space-y-3">
+                {/* Continue with Phone Button */}
+                {!showPhoneSection && (
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-3 h-12 text-gray-700 border-gray-300 hover:border-gray-400"
+                    onClick={() => setShowPhoneSection(true)}
+                    disabled={loading}
+                  >
+                    <Phone className="h-5 w-5" />
+                    Continue with phone
+                  </Button>
+                )}
+
+                {/* Continue with Google Button */}
                 <Button
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-3"
+                  className="w-full flex items-center justify-center gap-3 h-12 text-gray-700 border-gray-300 hover:border-gray-400"
                   onClick={handleGoogleAuth}
                   disabled={loading}
                 >
@@ -365,86 +382,103 @@ export default function AuthPage() {
                   Continue with Google
                 </Button>
 
-                <div className="space-y-3">
-                  <Input
-                    placeholder="+91XXXXXXXXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    type="tel"
-                    disabled={loading}
-                  />
-                  
-                  <div className="flex space-x-2 items-center">
-                    <Button
-                      variant="outline"
-                      className="flex-1 flex items-center justify-center gap-2"
-                      onClick={handlePhoneAuth}
-                      disabled={isOtpButtonDisabled}
-                    >
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      {otpTimer > 0 ? `Send OTP` : "Send OTP"}
-                    </Button>
-                    
-                    {otpTimer > 0 && (
-                      <div className="text-sm text-gray-500 font-medium min-w-[60px] text-right">
-                        {otpTimer}s
-                      </div>
-                    )}
-                    
-                    {(showOtpInput || confirmationResult) && (
+                {/* Phone Section - Only shown when Continue with Phone is clicked */}
+                {showPhoneSection && (
+                  <div className="space-y-3 pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={resetPhoneForm}
+                        onClick={() => setShowPhoneSection(false)}
                         disabled={loading}
                       >
-                        Reset
+                        ← Back
                       </Button>
+                    </div>
+                    
+                    <Input
+                      placeholder="+91XXXXXXXXXX"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      type="tel"
+                      disabled={loading}
+                      className="h-12"
+                    />
+                    
+                    <div className="flex space-x-2 items-center">
+                      <Button
+                        variant="outline"
+                        className="flex-1 flex items-center justify-center gap-2 h-12"
+                        onClick={handlePhoneAuth}
+                        disabled={isOtpButtonDisabled}
+                      >
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        {otpTimer > 0 ? `Send OTP` : "Send OTP"}
+                      </Button>
+                      
+                      {otpTimer > 0 && (
+                        <div className="text-sm text-gray-500 font-medium min-w-[60px] text-right">
+                          {otpTimer}s
+                        </div>
+                      )}
+                      
+                      {(showOtpInput || confirmationResult) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={resetPhoneForm}
+                          disabled={loading}
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+
+                    {showOtpInput && (
+                      <div className="space-y-3">
+                        <Input
+                          placeholder="Enter 6-digit OTP"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          type="text"
+                          maxLength={6}
+                          disabled={loading}
+                          className="h-12"
+                        />
+                        <Button 
+                          onClick={handleVerifyOtp} 
+                          disabled={loading || !otp || otp.length !== 6} 
+                          className="w-full h-12"
+                        >
+                          {loading ? "Verifying..." : "Verify Phone"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {showEmailInput && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600 text-center">
+                          📧 Please provide your email for poem submissions
+                        </p>
+                        <Input
+                          placeholder="Enter your email address"
+                          value={phoneUserEmail}
+                          onChange={(e) => setPhoneUserEmail(e.target.value)}
+                          type="email"
+                          disabled={loading}
+                          className="h-12"
+                        />
+                        <Button 
+                          onClick={handleCompletePhoneSignIn} 
+                          disabled={loading || !phoneUserEmail} 
+                          className="w-full h-12"
+                        >
+                          {loading ? "Completing Sign-in..." : "Complete Sign-in"}
+                        </Button>
+                      </div>
                     )}
                   </div>
-
-                  {showOtpInput && (
-                    <div className="space-y-3">
-                      <Input
-                        placeholder="Enter 6-digit OTP"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        type="text"
-                        maxLength={6}
-                        disabled={loading}
-                      />
-                      <Button 
-                        onClick={handleVerifyOtp} 
-                        disabled={loading || !otp || otp.length !== 6} 
-                        className="w-full"
-                      >
-                        {loading ? "Verifying..." : "Verify Phone"}
-                      </Button>
-                    </div>
-                  )}
-
-                  {showEmailInput && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-600 text-center">
-                        📧 Please provide your email for poem submissions
-                      </p>
-                      <Input
-                        placeholder="Enter your email address"
-                        value={phoneUserEmail}
-                        onChange={(e) => setPhoneUserEmail(e.target.value)}
-                        type="email"
-                        disabled={loading}
-                      />
-                      <Button 
-                        onClick={handleCompletePhoneSignIn} 
-                        disabled={loading || !phoneUserEmail} 
-                        className="w-full"
-                      >
-                        {loading ? "Completing Sign-in..." : "Complete Sign-in"}
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
@@ -462,6 +496,23 @@ export default function AuthPage() {
               >
                 {isSignIn ? "Sign up" : "Sign in"}
               </button>
+            </div>
+
+            {/* Terms and Privacy Links */}
+            <div className="mt-8 text-center text-sm text-gray-500">
+              <Link 
+                to="/terms" 
+                className="hover:text-gray-700 transition-colors"
+              >
+                Terms of Use
+              </Link>
+              <span className="mx-2">|</span>
+              <Link 
+                to="/privacy" 
+                className="hover:text-gray-700 transition-colors"
+              >
+                Privacy Policy
+              </Link>
             </div>
           </CardContent>
         </Card>
