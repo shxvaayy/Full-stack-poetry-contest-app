@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import AuthPage from "@/pages/auth";
+import { auth } from "@/firebase"; // Import Firebase auth
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -20,6 +21,13 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!user) {
+    return <AuthPage />;
+  }
+
+  // Check if user signed up with email but hasn't verified
+  if (user.providerData.some(provider => provider.providerId === 'password') && !user.emailVerified) {
+    // Sign out unverified user
+    auth.signOut();
     return <AuthPage />;
   }
 

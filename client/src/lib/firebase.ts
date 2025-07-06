@@ -14,7 +14,9 @@ import {
   ConfirmationResult,
   PhoneAuthProvider,
   linkWithCredential,
-  updateProfile
+  updateProfile,
+  sendEmailVerification,
+  reload
 } from "firebase/auth";
 
 
@@ -49,8 +51,21 @@ export const signInWithEmail = (email: string, password: string) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
 
-export const signUpWithEmail = (email: string, password: string) => {
-  return createUserWithEmailAndPassword(auth, email, password);
+export const signUpWithEmail = async (email: string, password: string) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  await sendEmailVerification(userCredential.user);
+  return userCredential;
+};
+
+// Send email verification
+export const sendEmailVerificationToUser = (user: User) => {
+  return sendEmailVerification(user);
+};
+
+// Check if email is verified
+export const checkEmailVerified = async (user: User) => {
+  await reload(user);
+  return user.emailVerified;
 };
 
 // --- PHONE AUTH ---

@@ -17,8 +17,9 @@ import UserProfilePage from "@/pages/user-profile";
 import AdminUploadPage from "@/pages/admin-upload";
 import AdminSettingsPage from "@/pages/admin-settings";
 import NotFoundPage from "./pages/not-found";
-import TermsPage from "./pages/terms";
-import PrivacyPage from "./pages/privacy";
+import TermsPage from "@/pages/terms";
+import PrivacyPage from "@/pages/privacy";
+import EmailVerifiedPage from "@/pages/email-verified";
 
 function AppContent() {
   return (
@@ -26,7 +27,7 @@ function AppContent() {
       {/* Public routes - accessible without authentication */}
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
-      
+
       {/* Protected routes - require authentication */}
       <Route>
         <AuthGuard>

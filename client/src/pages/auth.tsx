@@ -32,6 +32,8 @@ export default function AuthPage() {
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [phoneUserEmail, setPhoneUserEmail] = useState("");
   const [showPhoneSection, setShowPhoneSection] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
 
   // Clean up recaptcha on unmount
   useEffect(() => {
@@ -87,16 +89,34 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (isSignIn) {
-        await signInWithEmail(email, password);
+        const userCredential = await signInWithEmail(email, password);
+        const user = userCredential.user;
+        
+        // Check if email is verified
+        if (!user.emailVerified) {
+          // Sign out the user
+          await signOut(auth);
+          toast({
+            title: "Email not verified",
+            description: "Please verify your email before logging in. Check your inbox for the verification link.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
           title: "Success",
           description: "Successfully signed in!",
         });
       } else {
         await signUpWithEmail(email, password);
+        setVerificationEmail(email);
+        setShowEmailVerification(true);
+        setEmail("");
+        setPassword("");
         toast({
-          title: "Success",
-          description: "Account created successfully!",
+          title: "Account created!",
+          description: "Please check your email for a verification link before signing in.",
         });
       }
     } catch (error: any) {
@@ -295,7 +315,7 @@ export default function AuthPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">WRITORY</h1>
           <p className="text-gray-600 text-sm mt-1">WRITE YOUR OWN VICTORY</p>
-          
+          <p className="text-gray-500 text-sm mt-2">POETRY CONTEST PLATFORM</p>
         </div>
       </div>
 
@@ -306,43 +326,74 @@ export default function AuthPage() {
               {isSignIn ? "Welcome back" : "Create account"}
             </h2>
 
-            <form onSubmit={handleEmailAuth} className="space-y-6">
-              <div>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  className="border-2 border-accent focus:border-accent"
-                  placeholder="name@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="border-2 border-accent focus:border-accent"
-                  placeholder={isSignIn ? "Enter your password" : "Create a password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-
-              <div>
+            {showEmailVerification ? (
+              <div className="text-center space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                  <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-green-800 mb-2">
+                    Check Your Email
+                  </h3>
+                  <p className="text-green-700 mb-4">
+                    We've sent a verification link to <strong>{verificationEmail}</strong>
+                  </p>
+                  <p className="text-sm text-green-600">
+                    Click the link in the email to verify your account, then return here to sign in.
+                  </p>
+                </div>
                 <Button
-                  type="submit"
+                  variant="outline"
+                  onClick={() => {
+                    setShowEmailVerification(false);
+                    setVerificationEmail("");
+                  }}
                   className="w-full"
-                  disabled={loading}
                 >
-                  {loading ? "Loading..." : (isSignIn ? "Sign in" : "Create account")}
+                  Back to Sign In
                 </Button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleEmailAuth} className="space-y-6">
+                <div>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    className="border-2 border-accent focus:border-accent"
+                    placeholder="name@gmail.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    className="border-2 border-accent focus:border-accent"
+                    placeholder={isSignIn ? "Enter your password" : "Create a password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : (isSignIn ? "Sign in" : "Create account")}
+                  </Button>
+                </div>
+              </form>
+            )}
 
             <div className="mt-6">
               <div className="relative">
