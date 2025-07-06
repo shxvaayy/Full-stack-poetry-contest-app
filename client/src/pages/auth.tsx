@@ -13,6 +13,8 @@ import {
   linkPhoneToCurrentUser,
   verifyPhoneAndLink
 } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
@@ -340,20 +342,36 @@ export default function AuthPage() {
                   <p className="text-green-700 mb-4">
                     We've sent a verification link to <strong>{verificationEmail}</strong>
                   </p>
-                  <p className="text-sm text-green-600">
+                  <p className="text-sm text-green-600 mb-4">
                     Click the link in the email to verify your account, then return here to sign in.
                   </p>
+                  <p className="text-xs text-gray-500">
+                    Didn't receive the email? Check your spam folder or try signing up again.
+                  </p>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowEmailVerification(false);
-                    setVerificationEmail("");
-                  }}
-                  className="w-full"
-                >
-                  Back to Sign In
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEmailVerification(false);
+                      setVerificationEmail("");
+                    }}
+                    className="w-full"
+                  >
+                    Back to Sign In
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowEmailVerification(false);
+                      setVerificationEmail("");
+                      setIsSignIn(false); // Switch back to sign up mode
+                    }}
+                    className="w-full text-sm"
+                  >
+                    Try signing up again
+                  </Button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleEmailAuth} className="space-y-6">
