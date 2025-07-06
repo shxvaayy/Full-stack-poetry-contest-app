@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import AuthPage from "@/pages/auth";
-import { auth } from "@/firebase"; // Import Firebase auth
+import { auth } from "@/lib/firebase"; // Import Firebase auth
 
 interface AuthGuardProps {
   children: React.ReactNode;
