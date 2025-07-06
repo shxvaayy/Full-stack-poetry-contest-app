@@ -34,4 +34,4 @@ server/poem-submission-service.json
 *.json
 !package*.json
 !tsconfig*.json
-!components.json
+!components.jsonvenv/
