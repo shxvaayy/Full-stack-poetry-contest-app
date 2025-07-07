@@ -120,6 +120,27 @@ export default function AuthPage() {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Password length validation
+    if (password.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       if (isSignIn) {
@@ -155,9 +176,28 @@ export default function AuthPage() {
       }
     } catch (error: any) {
       console.error("Email auth error:", error);
+      
+      // Better error handling
+      let errorMessage = "Failed to authenticate";
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email address. Please sign up first.";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password. Please try again or reset your password.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address format.";
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = "This account has been disabled. Please contact support.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "An account with this email already exists. Please sign in instead.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Authentication Error",
-        description: error.message || "Failed to authenticate",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -437,6 +477,7 @@ export default function AuthPage() {
                     onClick={() => {
                       setShowEmailVerification(false);
                       setVerificationEmail("");
+                      setIsSignIn(true);
                     }}
                     className="w-full"
                   >
