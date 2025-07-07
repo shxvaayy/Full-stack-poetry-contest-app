@@ -515,10 +515,14 @@ export default function SubmitPage() {
       setIsSubmitting(true);
       setSubmissionStatus("Validating your submission...");
 
+      // Declare userId at the beginning of the function scope
+      const userId = user?.uid || '';
+
       console.log('🚀 Form submission started');
       console.log('Form data:', formData);
       console.log('Payment data:', actualPaymentData);
       console.log('Selected tier:', selectedTier);
+      console.log('User ID:', userId);
 
       // Validate form
       if (!formData.firstName || !formData.email || !formData.poemTitle) {
@@ -567,8 +571,7 @@ export default function SubmitPage() {
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
       
-      // Add user ID - fix the initialization issue
-      const userId = user?.uid || '';
+      // Add user ID (already declared at function start)
       formDataToSend.append('userUid', userId);
 
       // Add coupon data if applied
