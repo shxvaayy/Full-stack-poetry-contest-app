@@ -113,18 +113,18 @@ export default function AuthPage() {
         
         // Check if email is verified
         if (!user.emailVerified) {
-          // Sign out the user
+          // Sign out the user immediately
           await signOut(auth);
           toast({
-            title: "Email not verified",
-            description: "Please verify your email before logging in. Check your inbox for the verification link.",
+            title: "Account not activated",
+            description: "Please check your email and click the verification link to activate your account before signing in.",
             variant: "destructive",
           });
           return;
         }
 
         toast({
-          title: "Success",
+          title: "Welcome back!",
           description: "Successfully signed in!",
         });
       } else {
@@ -134,8 +134,8 @@ export default function AuthPage() {
         setEmail("");
         setPassword("");
         toast({
-          title: "Account created!",
-          description: "Check your email and click the verification link to complete setup.",
+          title: "Verification email sent!",
+          description: "Check your email and click the verification link to activate your account.",
         });
       }
     } catch (error: any) {
@@ -334,7 +334,7 @@ export default function AuthPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">WRITORY</h1>
           <p className="text-gray-600 text-sm mt-1">WRITE YOUR OWN VICTORY</p>
-          
+          <p className="text-gray-500 text-sm mt-2">POETRY CONTEST PLATFORM</p>
         </div>
       </div>
 
@@ -354,16 +354,16 @@ export default function AuthPage() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-green-800 mb-2">
-                    Check Your Email
+                    Activate Your Account
                   </h3>
                   <p className="text-green-700 mb-4">
-                    We've sent a verification link to <strong>{verificationEmail}</strong>
+                    We've sent an activation link to <strong>{verificationEmail}</strong>
                   </p>
                   <p className="text-sm text-green-600 mb-4">
-                    Click the link in the email to verify your account, then return here to sign in.
+                    Click the link in the email to activate your account. You'll be automatically signed in and redirected to the main site.
                   </p>
                   <p className="text-xs text-gray-500">
-                    Didn't receive the email? Check your spam folder or try signing up again.
+                    Didn't receive the email? Check your spam folder. If still not found, try signing up again.
                   </p>
                 </div>
                 <div className="space-y-2">

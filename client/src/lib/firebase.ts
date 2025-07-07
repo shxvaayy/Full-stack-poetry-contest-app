@@ -53,17 +53,17 @@ export const signInWithEmail = (email: string, password: string) => {
 
 export const signUpWithEmail = async (email: string, password: string) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  
+
   // Store credentials temporarily for auto-login after verification
   localStorage.setItem('pending_verification_email', email);
   localStorage.setItem('pending_verification_password', password);
-  
+
   // Send email verification with custom action URL
   const actionCodeSettings = {
     url: `${window.location.origin}/email-verified`,
     handleCodeInApp: true,
   };
-  
+
   await sendEmailVerification(userCredential.user, actionCodeSettings);
   return userCredential;
 };
@@ -135,10 +135,11 @@ export const logout = async () => {
   try {
     console.log("Firebase logout starting...");
     localStorage.removeItem('demo-session');
-    
+
     // Clear pending verification credentials
     localStorage.removeItem('pending_verification_email');
     localStorage.removeItem('pending_verification_password');
+    localStorage.removeItem('pending_verification_uid');
 
     // Clear reCAPTCHA verifier on logout
     if (window.recaptchaVerifier) {

@@ -36,37 +36,39 @@ export default function EmailVerificationHandler() {
 
           if (storedEmail && storedPassword) {
             try {
-              // Sign out any current user first
+              // Sign out any current user first (if any)
               await signOut(auth);
               
               // Auto-login with stored credentials
-              await signInWithEmailAndPassword(auth, storedEmail, storedPassword);
+              const userCredential = await signInWithEmailAndPassword(auth, storedEmail, storedPassword);
               
               // Clean up stored credentials
               localStorage.removeItem('pending_verification_email');
               localStorage.removeItem('pending_verification_password');
+              localStorage.removeItem('pending_verification_uid');
               
               setAutoLoginAttempted(true);
               
               toast({
-                title: "Welcome to Writory!",
-                description: "Your email has been verified and you're now signed in.",
+                title: "Account Activated!",
+                description: "Your account has been verified and you're now signed in. Welcome to Writory!",
               });
 
-              // Redirect to dashboard/home after a brief delay
+              // Redirect to home page after a brief delay
               setTimeout(() => {
                 setLocation("/");
-              }, 2000);
+              }, 1500);
 
             } catch (loginError: any) {
               console.error('Auto-login failed:', loginError);
               // Clean up credentials even if login fails
               localStorage.removeItem('pending_verification_email');
               localStorage.removeItem('pending_verification_password');
+              localStorage.removeItem('pending_verification_uid');
               
               toast({
-                title: "Email Verified!",
-                description: "Your email has been verified. Please sign in to continue.",
+                title: "Account Activated!",
+                description: "Your account has been verified. Please sign in to continue.",
               });
             }
           } else {
@@ -86,6 +88,7 @@ export default function EmailVerificationHandler() {
         // Clean up any stored credentials on error
         localStorage.removeItem('pending_verification_email');
         localStorage.removeItem('pending_verification_password');
+        localStorage.removeItem('pending_verification_uid');
         
         toast({
           title: "Verification Failed",
@@ -157,10 +160,10 @@ export default function EmailVerificationHandler() {
           {autoLoginAttempted ? (
             <div className="space-y-4">
               <h1 className="text-2xl font-bold text-gray-900">
-                Welcome to Writory!
+                Account Activated!
               </h1>
               <p className="text-gray-600">
-                Your email has been verified and you're now signed in. Redirecting to your dashboard...
+                Your account has been successfully activated and you're now signed in. Redirecting to the homepage...
               </p>
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -169,10 +172,10 @@ export default function EmailVerificationHandler() {
           ) : (
             <div className="space-y-6">
               <h1 className="text-2xl font-bold text-gray-900">
-                Email Verified!
+                Account Activated!
               </h1>
               <p className="text-gray-600">
-                Your email has been successfully verified. You can now sign in to your account.
+                Your account has been successfully activated. You can now sign in to access Writory.
               </p>
               <div className="space-y-3">
                 <Button onClick={handleManualSignIn} className="w-full">
