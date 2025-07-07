@@ -84,8 +84,8 @@ export default function EmailVerificationHandler() {
           setVerified(true);
 
           // Get stored credentials for auto-login
-          const storedEmail = localStorage.getItem('pending_verification_email');
-          const storedPassword = localStorage.getItem('pending_verification_password');
+          const storedEmail = localStorage.getItem('signup_email');
+          const storedPassword = localStorage.getItem('signup_password');
 
           if (storedEmail && storedPassword) {
             try {
@@ -96,8 +96,8 @@ export default function EmailVerificationHandler() {
               const userCredential = await signInWithEmailAndPassword(auth, storedEmail, storedPassword);
               
               // Clean up stored credentials
-              localStorage.removeItem('pending_verification_email');
-              localStorage.removeItem('pending_verification_password');
+              localStorage.removeItem('signup_email');
+              localStorage.removeItem('signup_password');
               localStorage.removeItem('pending_verification_uid');
               
               setAutoLoginAttempted(true);
@@ -109,14 +109,14 @@ export default function EmailVerificationHandler() {
 
               // Redirect to home page immediately
               setTimeout(() => {
-                window.location.href = "/";
+                window.location.href = "/home";
               }, 1000);
 
             } catch (loginError: any) {
               console.error('Auto-login failed:', loginError);
               // Clean up credentials even if login fails
-              localStorage.removeItem('pending_verification_email');
-              localStorage.removeItem('pending_verification_password');
+              localStorage.removeItem('signup_email');
+              localStorage.removeItem('signup_password');
               localStorage.removeItem('pending_verification_uid');
               
               toast({
@@ -130,11 +130,13 @@ export default function EmailVerificationHandler() {
               }, 2000);
             }
           } else {
-            // No stored credentials - just show verification success
+            // No stored credentials - show verification success with manual sign-in prompt
             toast({
               title: "Email Verified!",
               description: "Your email has been verified. Please sign in to continue.",
             });
+            
+            setAutoLoginAttempted(false);
             
             // Redirect to auth page with verified flag
             setTimeout(() => {
@@ -150,8 +152,8 @@ export default function EmailVerificationHandler() {
         setError(error.message || 'Failed to verify email');
         
         // Clean up any stored credentials on error
-        localStorage.removeItem('pending_verification_email');
-        localStorage.removeItem('pending_verification_password');
+        localStorage.removeItem('signup_email');
+        localStorage.removeItem('signup_password');
         localStorage.removeItem('pending_verification_uid');
         
         toast({
@@ -236,10 +238,10 @@ export default function EmailVerificationHandler() {
           ) : (
             <div className="space-y-6">
               <h1 className="text-2xl font-bold text-gray-900">
-                Account Activated!
+                Email Verified!
               </h1>
               <p className="text-gray-600">
-                Your account has been successfully activated. You can now sign in to access Writory.
+                Your email has been successfully verified. Please sign in with your credentials to access Writory.
               </p>
               <div className="space-y-3">
                 <Button onClick={handleManualSignIn} className="w-full">

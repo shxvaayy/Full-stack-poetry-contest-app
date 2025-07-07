@@ -29,14 +29,14 @@ export default function AuthPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const verified = urlParams.get('verified');
-    
+
     if (verified === 'true') {
       setIsSignIn(true); // Switch to sign-in mode
       toast({
         title: "Email Verified!",
         description: "Your email has been verified. Please sign in to continue.",
       });
-      
+
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -110,7 +110,7 @@ export default function AuthPage() {
       if (isSignIn) {
         const userCredential = await signInWithEmail(email, password);
         const user = userCredential.user;
-        
+
         // Check if email is verified
         if (!user.emailVerified) {
           // Sign out the user immediately
@@ -321,6 +321,12 @@ export default function AuthPage() {
 
     const [, setLocation] = useLocation();
 
+     useEffect(() => {
+    // Clear pending verification credentials
+    localStorage.removeItem('signup_email');
+    localStorage.removeItem('signup_password');
+  }, [isSignIn]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -334,7 +340,7 @@ export default function AuthPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">WRITORY</h1>
           <p className="text-gray-600 text-sm mt-1">WRITE YOUR OWN VICTORY</p>
-          
+
         </div>
       </div>
 

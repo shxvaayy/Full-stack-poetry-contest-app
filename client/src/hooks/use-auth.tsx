@@ -37,6 +37,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Clear demo session
       localStorage.removeItem('demo-session');
 
+      // Clear pending verification credentials
+      localStorage.removeItem('signup_email');
+      localStorage.removeItem('signup_password');
+      localStorage.removeItem('pending_verification_uid');
+
       // Clear states
       setUser(null);
       setDbUser(null);
@@ -55,6 +60,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Logout error:', error);
       // Force clear anyway
       localStorage.removeItem('demo-session');
+      localStorage.removeItem('signup_email');
+      localStorage.removeItem('signup_password');
       setUser(null);
       setDbUser(null);
       window.location.href = '/';

@@ -57,8 +57,8 @@ export const signUpWithEmail = async (email: string, password: string) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
   // Store credentials temporarily for auto-login after verification
-  localStorage.setItem('pending_verification_email', email);
-  localStorage.setItem('pending_verification_password', password);
+  localStorage.setItem('signup_email', email);
+  localStorage.setItem('signup_password', password);
 
   // Send email verification with Firebase default action URL for better compatibility
   const actionCodeSettings = {
@@ -149,8 +149,8 @@ export const logout = async () => {
     localStorage.removeItem('demo-session');
 
     // Clear pending verification credentials
-    localStorage.removeItem('pending_verification_email');
-    localStorage.removeItem('pending_verification_password');
+    localStorage.removeItem('signup_email');
+    localStorage.removeItem('signup_password');
     localStorage.removeItem('pending_verification_uid');
 
     // Clear reCAPTCHA verifier on logout
@@ -172,8 +172,8 @@ export const logout = async () => {
 
 // --- VERIFICATION CLEANUP ---
 export const clearVerificationCredentials = () => {
-  localStorage.removeItem('pending_verification_email');
-  localStorage.removeItem('pending_verification_password');
+  localStorage.removeItem('signup_email');
+  localStorage.removeItem('signup_password');
 };
 
 // --- AUTH STATE LISTENER ---
