@@ -21,6 +21,7 @@ import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import EmailVerifiedPage from "@/pages/email-verified";
 import EmailVerificationHandler from "@/pages/email-verification-handler";
+import PasswordResetHandler from "@/pages/password-reset-handler";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 function AppContent() {
@@ -33,6 +34,7 @@ function AppContent() {
       <Route path="/email-verification-handler" component={EmailVerificationHandler} />
       <Route path="/__/auth/action" component={EmailVerificationHandler} />
       <Route path="/auth/action" component={EmailVerificationHandler} />
+      <Route path="/password-reset-handler" component={PasswordResetHandler} />
 
       {/* Protected routes - require authentication */}
       <Route>

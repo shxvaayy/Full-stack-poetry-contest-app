@@ -440,7 +440,7 @@ export default function SubmitPage() {
     if (field === 'age') {
       // Only allow numeric input and max 2 digits
       const numericValue = value.replace(/\D/g, '');
-      if (numericValue.length <= 2) {
+      if (numericValue.length <= 2 && parseInt(numericValue) <= 99) {
         setFormData(prev => ({ ...prev, [field]: numericValue }));
       }
       return;
@@ -1001,7 +1001,7 @@ export default function SubmitPage() {
                         placeholder="Enter 10-digit phone number"
                         type="tel"
                         maxLength={10}
-                        pattern="[0-9]{10}"
+                        inputMode="numeric"
                       />
                       <p className="text-xs text-gray-500 mt-1">Numbers only, exactly 10 digits</p>
                     </div>
@@ -1012,10 +1012,9 @@ export default function SubmitPage() {
                         value={formData.age}
                         onChange={(e) => handleFormData('age', e.target.value)}
                         placeholder="Enter your age"
-                        type="number"
+                        type="text"
                         maxLength={2}
-                        max={99}
-                        min={1}
+                        inputMode="numeric"
                       />
                       <p className="text-xs text-gray-500 mt-1">Numbers only, maximum 2 digits</p>
                     </div>

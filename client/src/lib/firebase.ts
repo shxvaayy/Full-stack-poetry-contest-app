@@ -146,7 +146,12 @@ export async function verifyPhoneAndLink(confirmationResult: any, otp: string) {
 
 export async function sendPasswordResetEmail(email: string) {
   try {
-    await firebaseSendPasswordResetEmail(auth, email);
+    const actionCodeSettings = {
+      url: `${window.location.origin}/password-reset-handler`,
+      handleCodeInApp: false,
+    };
+    
+    await firebaseSendPasswordResetEmail(auth, email, actionCodeSettings);
     console.log('✅ Password reset email sent successfully');
   } catch (error) {
     console.error('❌ Error sending password reset email:', error);

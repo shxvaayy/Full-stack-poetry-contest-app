@@ -30,12 +30,24 @@ export default function AuthPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const verified = urlParams.get('verified');
+    const reset = urlParams.get('reset');
 
     if (verified === 'true') {
       setIsSignIn(true); // Switch to sign-in mode
       toast({
         title: "Email Verified!",
         description: "Your email has been verified. Please sign in to continue.",
+      });
+
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (reset === 'success') {
+      setIsSignIn(true); // Switch to sign-in mode
+      toast({
+        title: "Password Reset Successful!",
+        description: "Your password has been updated. Please sign in with your new password.",
       });
 
       // Clean up URL
