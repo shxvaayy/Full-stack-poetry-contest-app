@@ -95,7 +95,7 @@ export default function PasswordResetHandler() {
 
       // Redirect to auth page with success message
       setTimeout(() => {
-        setLocation('/auth?reset=success');
+        window.location.href = '/auth?reset=success';
       }, 2000);
 
     } catch (error: any) {

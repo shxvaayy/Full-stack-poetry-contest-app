@@ -52,7 +52,10 @@ function AppContent() {
                 <Route path="/profile" component={UserProfilePage} />
                 <Route path="/admin-upload" component={AdminUploadPage} />
                 <Route path="/admin-settings" component={AdminSettingsPage} />
-                <Route component={NotFoundPage} />
+                <Route path="/not-found" component={NotFoundPage} />
+                <Route path="*">
+                  <NotFoundPage />
+                </Route>
               </Switch>
             </main>
             <Footer />
