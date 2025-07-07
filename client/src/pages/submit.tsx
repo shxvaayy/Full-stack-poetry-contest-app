@@ -440,8 +440,11 @@ export default function SubmitPage() {
     if (field === 'age') {
       // Only allow numeric input and max 2 digits
       const numericValue = value.replace(/\D/g, '');
-      if (numericValue.length <= 2 && parseInt(numericValue) <= 99) {
-        setFormData(prev => ({ ...prev, [field]: numericValue }));
+      if (numericValue.length <= 2) {
+        const age = parseInt(numericValue);
+        if (isNaN(age) || age <= 99) {
+          setFormData(prev => ({ ...prev, [field]: numericValue }));
+        }
       }
       return;
     }
@@ -777,6 +780,16 @@ export default function SubmitPage() {
       return false;
     }
 
+    // Validate phone number if provided
+    if (formData.phone && (formData.phone.length !== 10 || !/^\d{10}$/.test(formData.phone))) {
+      return false;
+    }
+
+    // Validate age if provided
+    if (formData.age && (formData.age.length > 2 || !/^\d+$/.test(formData.age))) {
+      return false;
+    }
+
     const poemCount = getPoemCount(selectedTier.id);
 
     // Check all poem titles and files
@@ -1002,8 +1015,12 @@ export default function SubmitPage() {
                         type="tel"
                         maxLength={10}
                         inputMode="numeric"
+                        className={formData.phone && formData.phone.length > 0 && formData.phone.length !== 10 ? 'border-red-500' : ''}
                       />
                       <p className="text-xs text-gray-500 mt-1">Numbers only, exactly 10 digits</p>
+                      {formData.phone && formData.phone.length > 0 && formData.phone.length !== 10 && (
+                        <p className="text-xs text-red-500 mt-1">Phone number must be exactly 10 digits</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="age">Age</Label>
@@ -1015,8 +1032,12 @@ export default function SubmitPage() {
                         type="text"
                         maxLength={2}
                         inputMode="numeric"
+                        className={formData.age && formData.age.length > 0 && !/^\d+$/.test(formData.age) ? 'border-red-500' : ''}
                       />
                       <p className="text-xs text-gray-500 mt-1">Numbers only, maximum 2 digits</p>
+                      {formData.age && formData.age.length > 0 && !/^\d+$/.test(formData.age) && (
+                        <p className="text-xs text-red-500 mt-1">Age must be numbers only</p>
+                      )}
                     </div>
                   </div>
                 </div>
