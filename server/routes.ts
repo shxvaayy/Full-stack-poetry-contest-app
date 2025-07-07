@@ -1728,8 +1728,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       // Try to find user by email as fallback
       console.log('⚠️ No UID provided, trying to find user by email:', email);
       try {
-        const existingUsers = await storage.getAllUsers?.()```javascript
- || [];
+        const existingUsers = await storage.getAllUsers?.() || [];
         user = existingUsers.find(u => u.email === email) || null;
         if (user) {
           console.log('✅ Found user by email:', user.email);
