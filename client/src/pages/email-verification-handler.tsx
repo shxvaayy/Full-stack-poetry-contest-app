@@ -18,28 +18,40 @@ export default function EmailVerificationHandler() {
   useEffect(() => {
     const handleEmailVerification = async () => {
       try {
-        // Get URL parameters from both search params and hash (for Firebase deep links)
+        // Parse URL parameters more comprehensively
         const fullUrl = window.location.href;
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const url = new URL(fullUrl);
         
-        let mode = urlParams.get('mode') || hashParams.get('mode');
-        let oobCode = urlParams.get('oobCode') || hashParams.get('oobCode');
-
-        // Try extracting from the full URL as well (some Firebase links encode differently)
+        // Check both search params and hash
+        let mode = url.searchParams.get('mode');
+        let oobCode = url.searchParams.get('oobCode');
+        
+        // If not found in search params, check hash
         if (!mode || !oobCode) {
-          const urlMatch = fullUrl.match(/[?&]mode=([^&]+)/);
-          const codeMatch = fullUrl.match(/[?&]oobCode=([^&]+)/);
-          mode = mode || (urlMatch ? urlMatch[1] : null);
-          oobCode = oobCode || (codeMatch ? codeMatch[1] : null);
+          const hashString = url.hash.substring(1);
+          if (hashString) {
+            const hashParams = new URLSearchParams(hashString);
+            mode = mode || hashParams.get('mode');
+            oobCode = oobCode || hashParams.get('oobCode');
+          }
         }
 
-        console.log('URL analysis:', { 
+        // Try manual extraction as fallback
+        if (!mode || !oobCode) {
+          const modeMatch = fullUrl.match(/[?&#]mode=([^&]+)/);
+          const codeMatch = fullUrl.match(/[?&#]oobCode=([^&]+)/);
+          mode = mode || (modeMatch ? decodeURIComponent(modeMatch[1]) : null);
+          oobCode = oobCode || (codeMatch ? decodeURIComponent(codeMatch[1]) : null);
+        }
+
+        console.log('Email verification URL analysis:', { 
           fullUrl, 
           mode, 
-          oobCode, 
-          search: window.location.search, 
-          hash: window.location.hash 
+          oobCode,
+          hasMode: !!mode,
+          hasCode: !!oobCode,
+          search: url.search,
+          hash: url.hash 
         });
 
         if (mode === 'verifyEmail' && oobCode) {
