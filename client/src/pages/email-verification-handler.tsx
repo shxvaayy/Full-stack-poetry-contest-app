@@ -18,40 +18,61 @@ export default function EmailVerificationHandler() {
   useEffect(() => {
     const handleEmailVerification = async () => {
       try {
-        // Parse URL parameters more comprehensively
+        // Get the complete URL for debugging
         const fullUrl = window.location.href;
-        const url = new URL(fullUrl);
+        console.log('Full URL received:', fullUrl);
         
-        // Check both search params and hash
-        let mode = url.searchParams.get('mode');
-        let oobCode = url.searchParams.get('oobCode');
+        // Parse URL using multiple methods to catch all Firebase URL formats
+        let mode = null;
+        let oobCode = null;
         
-        // If not found in search params, check hash
+        // Method 1: Standard URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        mode = urlParams.get('mode');
+        oobCode = urlParams.get('oobCode');
+        
+        // Method 2: Hash-based params (common in Firebase deep links)
         if (!mode || !oobCode) {
-          const hashString = url.hash.substring(1);
-          if (hashString) {
-            const hashParams = new URLSearchParams(hashString);
+          const hash = window.location.hash;
+          if (hash.startsWith('#')) {
+            const hashParams = new URLSearchParams(hash.substring(1));
             mode = mode || hashParams.get('mode');
             oobCode = oobCode || hashParams.get('oobCode');
           }
         }
-
-        // Try manual extraction as fallback
+        
+        // Method 3: Manual extraction with regex (handles encoded URLs)
         if (!mode || !oobCode) {
-          const modeMatch = fullUrl.match(/[?&#]mode=([^&]+)/);
-          const codeMatch = fullUrl.match(/[?&#]oobCode=([^&]+)/);
-          mode = mode || (modeMatch ? decodeURIComponent(modeMatch[1]) : null);
-          oobCode = oobCode || (codeMatch ? decodeURIComponent(codeMatch[1]) : null);
+          const modeRegex = /[?&#]mode=([^&\s]+)/i;
+          const codeRegex = /[?&#]oobCode=([^&\s]+)/i;
+          
+          const modeMatch = fullUrl.match(modeRegex);
+          const codeMatch = fullUrl.match(codeRegex);
+          
+          if (modeMatch) mode = mode || decodeURIComponent(modeMatch[1]);
+          if (codeMatch) oobCode = oobCode || decodeURIComponent(codeMatch[1]);
+        }
+        
+        // Method 4: Handle special Firebase formats
+        if (!mode || !oobCode) {
+          // Some Firebase links come in format: domain/__/auth/action?mode=...&oobCode=...
+          const actionMatch = fullUrl.match(/__\/auth\/action\?(.+)/);
+          if (actionMatch) {
+            const actionParams = new URLSearchParams(actionMatch[1]);
+            mode = mode || actionParams.get('mode');
+            oobCode = oobCode || actionParams.get('oobCode');
+          }
         }
 
-        console.log('Email verification URL analysis:', { 
-          fullUrl, 
-          mode, 
+        console.log('URL parsing results:', {
+          fullUrl,
+          mode,
           oobCode,
           hasMode: !!mode,
           hasCode: !!oobCode,
-          search: url.search,
-          hash: url.hash 
+          search: window.location.search,
+          hash: window.location.hash,
+          pathname: window.location.pathname
         });
 
         if (mode === 'verifyEmail' && oobCode) {

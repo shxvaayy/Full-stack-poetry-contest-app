@@ -32,6 +32,7 @@ function AppContent() {
       <Route path="/email-verified" component={EmailVerifiedPage} />
       <Route path="/email-verification-handler" component={EmailVerificationHandler} />
       <Route path="/__/auth/action" component={EmailVerificationHandler} />
+      <Route path="/auth/action" component={EmailVerificationHandler} />
 
       {/* Protected routes - require authentication */}
       <Route>

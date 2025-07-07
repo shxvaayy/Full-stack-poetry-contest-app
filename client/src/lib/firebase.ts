@@ -60,9 +60,9 @@ export const signUpWithEmail = async (email: string, password: string) => {
   localStorage.setItem('pending_verification_email', email);
   localStorage.setItem('pending_verification_password', password);
 
-  // Send email verification with custom action URL
+  // Send email verification with Firebase default action URL for better compatibility
   const actionCodeSettings = {
-    url: `${window.location.origin}/email-verification-handler`,
+    url: `${window.location.origin}/__/auth/action`,
     handleCodeInApp: true,
   };
 
