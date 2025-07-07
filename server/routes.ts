@@ -1223,7 +1223,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       userUid // Also accept userUid as fallback
     } = req.body;
 
-    // Check if free tier is enabled
+    // Check if free tier is enabled and user hasn't used it before
     if (tier === 'free') {
       const freeTierEnabled = await getSetting('free_tier_enabled');
       if (freeTierEnabled !== 'true') {
@@ -1231,6 +1231,26 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           success: false,
           error: 'Free tier submissions are currently disabled. Please try a paid tier or contact support.'
         });
+      }
+
+      // Check if user has already used free tier
+      if (userId) {
+        try {
+          const user = await storage.getUserByUid(userId);
+          if (user) {
+            const existingSubmissions = await storage.getSubmissionsByUser(user.id);
+            const hasUsedFreeTier = existingSubmissions.some(sub => sub.tier === 'free');
+
+            if (hasUsedFreeTier) {
+              return res.status(403).json({
+                success: false,
+                error: 'You have already used the free tier once. Please choose a paid tier.'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error checking free tier usage:', error);
+        }
       }
     }
 

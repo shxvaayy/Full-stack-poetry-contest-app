@@ -317,6 +317,9 @@ export default function SubmitPage() {
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
+  // Check if user has already used free tier
+  const hasUsedFreeTier = userSubmissionStatus?.freeSubmissionUsed || false;
+
   // Refetch when component mounts to ensure fresh data
   useEffect(() => {
     refetchFreeTierStatus();
@@ -424,6 +427,25 @@ export default function SubmitPage() {
   };
 
   const handleFormData = (field: string, value: any) => {
+    // Input validation for phone and age
+    if (field === 'phone') {
+      // Only allow numeric input and max 10 digits
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 10) {
+        setFormData(prev => ({ ...prev, [field]: numericValue }));
+      }
+      return;
+    }
+    
+    if (field === 'age') {
+      // Only allow numeric input and max 2 digits
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 2) {
+        setFormData(prev => ({ ...prev, [field]: numericValue }));
+      }
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -813,50 +835,74 @@ export default function SubmitPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {TIERS.filter((tier) => {
-              // Hide free tier if disabled by admin settings (takes priority)
-              if (tier.id === 'free') {
-                // If admin settings explicitly disable it, hide regardless of config
-                if (freeTierStatus?.enabled === false) {
-                  return false;
-                }
-                // If admin settings not loaded yet or enabled, check config fallback
-                if (freeTierStatus === undefined || freeTierStatus?.enabled === true) {
-                  // Only check config if admin settings allow it or are not loaded
-                  if (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER) {
-                    return false;
-                  }
-                }
-              }
-              return true;
-            }).map((tier) => {
+            {TIERS.map((tier) => {
               const Icon = tier.icon;
-              const isFreeTierDisabled = false; // Since we're filtering it out completely above, this is not needed
+              
+              // Check if free tier should be disabled
+              const isFreeTierAdminDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
+              const isFreeTierConfigDisabled = tier.id === 'free' && (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER);
+              const isFreeTierAlreadyUsed = tier.id === 'free' && hasUsedFreeTier;
+              
+              // Hide free tier completely if config disabled
+              if (tier.id === 'free' && isFreeTierConfigDisabled && freeTierStatus !== undefined) {
+                return null;
+              }
+              
+              const isDisabled = isFreeTierAdminDisabled || isFreeTierAlreadyUsed;
+              const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : '';
 
               return (
-                <Card 
-                  key={tier.id} 
-                  className={`hover:scale-105 transition-all duration-300 ${tier.borderClass} border-2 hover:shadow-xl overflow-hidden`}
-                >
-                  <CardContent className="p-0">
-                    <div className="p-6 text-center bg-white">
-                      <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
-                        <Icon className="w-8 h-8 text-white" />
+                <div key={tier.id} className="relative">
+                  <Card 
+                    className={`transition-all duration-300 ${tier.borderClass} border-2 overflow-hidden ${
+                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-xl'
+                    }`}
+                  >
+                    <CardContent className="p-0">
+                      <div className="p-6 text-center bg-white">
+                        <div className={`w-16 h-16 mx-auto mb-4 ${tier.bgClass} rounded-full flex items-center justify-center`}>
+                          <Icon className="w-8 h-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">{tier.name}</h3>
+                        <div className="text-2xl font-bold text-gray-800 mb-2">
+                          {tier.price === 0 ? '₹0' : `₹${tier.price}`}
+                        </div>
+                        <p className="text-gray-600 mb-4">{tier.description}</p>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">{tier.name}</h3>
-                      <div className="text-2xl font-bold text-gray-800 mb-2">
-                        {tier.price === 0 ? '₹0' : `₹${tier.price}`}
-                      </div>
-                      <p className="text-gray-600 mb-4">{tier.description}</p>
+                      <button
+                        onClick={() => !isDisabled && handleTierSelection(tier)}
+                        disabled={isDisabled}
+                        className={`w-full py-3 px-4 text-white font-medium transition-colors duration-200 ${
+                          isDisabled 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : `${tier.bgClass} ${tier.hoverClass}`
+                        }`}
+                      >
+                        {isFreeTierAlreadyUsed && tier.id === 'free' 
+                          ? 'Already Used' 
+                          : `Submit ${tier.id === 'single' ? '1 Poem' : tier.id === 'double' ? '2 Poems' : tier.id === 'bulk' ? '5 Poems' : 'Free Entry'}`
+                        }
+                      </button>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Warning messages below cards */}
+                  {isFreeTierAdminDisabled && tier.id === 'free' && (
+                    <div className="mt-2 text-center">
+                      <p className="text-sm text-red-600 font-medium">
+                        🚫 Free tier is not available right now.
+                      </p>
                     </div>
-                    <button
-                      onClick={() => handleTierSelection(tier)}
-                      className={`w-full py-3 px-4 text-white font-medium ${tier.bgClass} ${tier.hoverClass} transition-colors duration-200`}
-                    >
-                      Submit {tier.id === 'single' ? '1 Poem' : tier.id === 'double' ? '2 Poems' : tier.id === 'bulk' ? '5 Poems' : 'Free Entry'}
-                    </button>
-                  </CardContent>
-                </Card>
+                  )}
+                  
+                  {isFreeTierAlreadyUsed && tier.id === 'free' && (
+                    <div className="mt-2 text-center">
+                      <p className="text-sm text-orange-600 font-medium">
+                        ⚠️ You have already used the free trial once.
+                      </p>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -952,8 +998,12 @@ export default function SubmitPage() {
                         id="phone"
                         value={formData.phone}
                         onChange={(e) => handleFormData('phone', e.target.value)}
-                        placeholder="Enter your phone number"
+                        placeholder="Enter 10-digit phone number"
+                        type="tel"
+                        maxLength={10}
+                        pattern="[0-9]{10}"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Numbers only, exactly 10 digits</p>
                     </div>
                     <div>
                       <Label htmlFor="age">Age</Label>
@@ -962,7 +1012,12 @@ export default function SubmitPage() {
                         value={formData.age}
                         onChange={(e) => handleFormData('age', e.target.value)}
                         placeholder="Enter your age"
+                        type="number"
+                        maxLength={2}
+                        max={99}
+                        min={1}
                       />
+                      <p className="text-xs text-gray-500 mt-1">Numbers only, maximum 2 digits</p>
                     </div>
                   </div>
                 </div>

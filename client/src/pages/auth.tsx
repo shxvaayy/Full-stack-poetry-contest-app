@@ -11,7 +11,8 @@ import {
   setUpRecaptcha,
   signInWithPhone,
   linkPhoneToCurrentUser,
-  verifyPhoneAndLink
+  verifyPhoneAndLink,
+  sendPasswordResetEmail
 } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -53,6 +54,8 @@ export default function AuthPage() {
   const [showPhoneSection, setShowPhoneSection] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
   // Clean up recaptcha on unmount
   useEffect(() => {
@@ -316,6 +319,50 @@ export default function AuthPage() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!forgotPasswordEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotPasswordEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(forgotPasswordEmail);
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for instructions to reset your password.",
+      });
+      setShowForgotPassword(false);
+      setForgotPasswordEmail("");
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Password Reset Failed",
+        description: error.message || "Failed to send password reset email",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Check if OTP button should be disabled
   const isOtpButtonDisabled = loading || !phone || otpTimer > 0;
 
@@ -396,6 +443,50 @@ export default function AuthPage() {
                   </Button>
                 </div>
               </div>
+            ) : showForgotPassword ? (
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Reset Your Password</h3>
+                  <p className="text-sm text-gray-600">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                </div>
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div>
+                    <Input
+                      id="forgotEmail"
+                      name="forgotEmail"
+                      type="email"
+                      required
+                      className="border-2 border-accent focus:border-accent"
+                      placeholder="Enter your email address"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={loading}
+                    >
+                      {loading ? "Sending..." : "Send Reset Email"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setForgotPasswordEmail("");
+                      }}
+                      className="w-full"
+                      disabled={loading}
+                    >
+                      Back to Sign In
+                    </Button>
+                  </div>
+                </form>
+              </div>
             ) : (
               <form onSubmit={handleEmailAuth} className="space-y-6">
                 <div>
@@ -433,6 +524,18 @@ export default function AuthPage() {
                     {loading ? "Loading..." : (isSignIn ? "Sign in" : "Create account")}
                   </Button>
                 </div>
+
+                {isSignIn && (
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 hover:text-blue-700 underline"
+                      onClick={() => setShowForgotPassword(true)}
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                )}
               </form>
             )}
 

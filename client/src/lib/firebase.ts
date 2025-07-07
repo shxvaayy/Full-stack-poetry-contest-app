@@ -1,9 +1,9 @@
 import { initializeApp } from "firebase/app";
-import {
+import { 
   getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signInWithEmailAndPassword,
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -18,7 +18,8 @@ import {
   sendEmailVerification,
   reload,
   applyActionCode,
-  checkActionCode
+  checkActionCode,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail
 } from "firebase/auth";
 
 
@@ -132,15 +133,26 @@ export const linkPhoneToCurrentUser = async (phoneNumber: string, recaptchaVerif
   return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
 };
 
-export const verifyPhoneAndLink = async (confirmationResult: ConfirmationResult, verificationCode: string) => {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error('No user is currently signed in');
+export async function verifyPhoneAndLink(confirmationResult: any, otp: string) {
+  try {
+    const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, otp);
+    await linkWithCredential(auth.currentUser!, credential);
+    console.log('✅ Phone number linked successfully');
+  } catch (error) {
+    console.error('❌ Error linking phone number:', error);
+    throw error;
   }
+}
 
-  const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, verificationCode);
-  return linkWithCredential(user, credential);
-};
+export async function sendPasswordResetEmail(email: string) {
+  try {
+    await firebaseSendPasswordResetEmail(auth, email);
+    console.log('✅ Password reset email sent successfully');
+  } catch (error) {
+    console.error('❌ Error sending password reset email:', error);
+    throw error;
+  }
+}
 
 // --- LOGOUT ---
 export const logout = async () => {
