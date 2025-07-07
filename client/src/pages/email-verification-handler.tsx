@@ -19,13 +19,28 @@ export default function EmailVerificationHandler() {
     const handleEmailVerification = async () => {
       try {
         // Get URL parameters from both search params and hash (for Firebase deep links)
+        const fullUrl = window.location.href;
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         
-        const mode = urlParams.get('mode') || hashParams.get('mode');
-        const oobCode = urlParams.get('oobCode') || hashParams.get('oobCode');
+        let mode = urlParams.get('mode') || hashParams.get('mode');
+        let oobCode = urlParams.get('oobCode') || hashParams.get('oobCode');
 
-        console.log('URL params:', { mode, oobCode, search: window.location.search, hash: window.location.hash });
+        // Try extracting from the full URL as well (some Firebase links encode differently)
+        if (!mode || !oobCode) {
+          const urlMatch = fullUrl.match(/[?&]mode=([^&]+)/);
+          const codeMatch = fullUrl.match(/[?&]oobCode=([^&]+)/);
+          mode = mode || (urlMatch ? urlMatch[1] : null);
+          oobCode = oobCode || (codeMatch ? codeMatch[1] : null);
+        }
+
+        console.log('URL analysis:', { 
+          fullUrl, 
+          mode, 
+          oobCode, 
+          search: window.location.search, 
+          hash: window.location.hash 
+        });
 
         if (mode === 'verifyEmail' && oobCode) {
           // First, verify the action code is valid
