@@ -515,14 +515,11 @@ export default function SubmitPage() {
       setIsSubmitting(true);
       setSubmissionStatus("Validating your submission...");
 
-      // Declare userId at the beginning of the function scope
-      const userId = user?.uid || '';
-
       console.log('🚀 Form submission started');
       console.log('Form data:', formData);
       console.log('Payment data:', actualPaymentData);
       console.log('Selected tier:', selectedTier);
-      console.log('User ID:', userId);
+      console.log('User:', user);
 
       // Validate form
       if (!formData.firstName || !formData.email || !formData.poemTitle) {
@@ -531,6 +528,11 @@ export default function SubmitPage() {
 
       if (!selectedTier) {
         throw new Error('Please select a tier');
+      }
+
+      // Ensure user is authenticated
+      if (!user?.uid) {
+        throw new Error('User not authenticated. Please sign in and try again.');
       }
 
       const poemCount = getPoemCount(selectedTier.id);
@@ -571,8 +573,8 @@ export default function SubmitPage() {
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
       
-      // Add user ID (already declared at function start)
-      formDataToSend.append('userUid', userId);
+      // Add user ID - use user.uid directly
+      formDataToSend.append('userUid', user.uid);
 
       // Add coupon data if applied
       if (couponApplied && couponCode) {
