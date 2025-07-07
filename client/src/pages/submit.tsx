@@ -302,10 +302,14 @@ export default function SubmitPage() {
     }
   };
 
-  const { data: userSubmissionStatus } = useQuery({
+  const { data: userSubmissionStatus, refetch: refetchSubmissionStatus } = useQuery({
     queryKey: ['/api/users', user?.uid, 'submission-status'],
     queryFn: () => apiRequest(`/api/users/${user?.uid}/submission-status`),
     enabled: !!user?.uid,
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0, // Don't cache the result
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const { data: freeTierStatus, refetch: refetchFreeTierStatus } = useQuery({
@@ -324,6 +328,13 @@ export default function SubmitPage() {
   useEffect(() => {
     refetchFreeTierStatus();
   }, [refetchFreeTierStatus]);
+
+  // Refetch submission status when free tier status changes
+  useEffect(() => {
+    if (user?.uid && freeTierStatus) {
+      refetchSubmissionStatus();
+    }
+  }, [freeTierStatus, user?.uid, refetchSubmissionStatus]);
 
   const handleTierSelection = (tier: typeof TIERS[0]) => {
     setSelectedTier(tier);

@@ -1201,6 +1201,20 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
 
 // ===== SUBMISSION ENDPOINTS =====
 
+// Helper function to get the free tier reset timestamp
+async function getFreeTierResetTimestamp(): Promise<Date | null> {
+  try {
+    const resetTimestamp = await getSetting('free_tier_reset_timestamp');
+    if (resetTimestamp) {
+      return new Date(resetTimestamp);
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting free tier reset timestamp:', error);
+    return null;
+  }
+}
+
 // Single poem submission with proper file handling - FIXED VERSION
 router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res: any) => {
   console.log('📝 Single poem submission received');
@@ -1233,16 +1247,23 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         });
       }
 
-      // Check if user has already used free tier
+      // Check if user has already used free tier after the last reset
       const userId = uid || userUid;
       if (userId) {
         try {
           const user = await storage.getUserByUid(userId);
           if (user) {
             const existingSubmissions = await storage.getSubmissionsByUser(user.id);
-            const hasUsedFreeTier = existingSubmissions.some(sub => sub.tier === 'free');
+            const resetTimestamp = await getFreeTierResetTimestamp();
 
-            if (hasUsedFreeTier) {
+            // Filter free tier submissions to only those after the last reset
+            const freeSubmissionsAfterReset = existingSubmissions.filter(sub => {
+              if (sub.tier !== 'free') return false;
+              if (!resetTimestamp) return true; // No reset timestamp means check all submissions
+              return new Date(sub.submittedAt) > resetTimestamp;
+            });
+
+            if (freeSubmissionsAfterReset.length > 0) {
               return res.status(403).json({
                 success: false,
                 error: 'You have already used the free tier once. Please choose a paid tier.'
@@ -1639,6 +1660,34 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           success: false,
           error: 'Free tier submissions are currently disabled. Please try a paid tier or contact support.'
         });
+      }
+
+      // Check if user has already used free tier after the last reset
+      const userId = uid || userUid;
+      if (userId) {
+        try {
+          const user = await storage.getUserByUid(userId);
+          if (user) {
+            const existingSubmissions = await storage.getSubmissionsByUser(user.id);
+            const resetTimestamp = await getFreeTierResetTimestamp();
+
+            // Filter free tier submissions to only those after the last reset
+            const freeSubmissionsAfterReset = existingSubmissions.filter(sub => {
+              if (sub.tier !== 'free') return false;
+              if (!resetTimestamp) return true; // No reset timestamp means check all submissions
+              return new Date(sub.submittedAt) > resetTimestamp;
+            });
+
+            if (freeSubmissionsAfterReset.length > 0) {
+              return res.status(403).json({
+                success: false,
+                error: 'You have already used the free tier once. Please choose a paid tier.'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error checking free tier usage:', error);
+        }
       }
     }
 
@@ -2224,8 +2273,7 @@ router.post('/api/admin/upload-csv', requireAdmin, safeUploadAny, asyncHandler(a
               originality: parseInt(originality) || 0,
               emotion: parseInt(emotion) || 0,
               structure: parseInt(structure) || 0,
-              language: parseInt(language) || 0,
-              theme: parseInt(theme) || 0
+              language: parseInt(language) || 0
             }),
             status: status.trim() || 'Evaluated',
             isWinner: isWinner,

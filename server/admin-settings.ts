@@ -26,14 +26,34 @@ export async function initializeAdminSettings() {
     // Insert default settings if they don't exist
     await client.query(`
       INSERT INTO admin_settings (setting_key, setting_value)
-      VALUES ('free_tier_enabled', 'true')
+      VALUES 
+        ('free_tier_enabled', 'true'),
+        ('free_tier_reset_timestamp', $1)
       ON CONFLICT (setting_key) DO NOTHING
-    `);
+    `, [new Date().toISOString()]);
 
     console.log('✅ Admin settings initialized');
   } catch (error) {
     console.error('❌ Error initializing admin settings:', error);
     throw error;
+  }
+}
+
+// Get the last free tier reset timestamp
+export async function getFreeTierResetTimestamp(): Promise<Date | null> {
+  try {
+    const result = await client.query(
+      'SELECT setting_value FROM admin_settings WHERE setting_key = $1',
+      ['free_tier_reset_timestamp']
+    );
+
+    if (result.rows.length > 0) {
+      return new Date(result.rows[0].setting_value);
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting free tier reset timestamp:', error);
+    return null;
   }
 }
 
@@ -67,6 +87,19 @@ export async function updateSetting(key: string, value: string): Promise<boolean
       ON CONFLICT (setting_key) 
       DO UPDATE SET setting_value = $2, updated_at = NOW()
     `, [key, value]);
+
+    // Special handling for free tier toggle - track reset timestamp
+    if (key === 'free_tier_enabled' && value === 'true') {
+      // When re-enabling free tier, set a reset timestamp
+      await client.query(`
+        INSERT INTO admin_settings (setting_key, setting_value, updated_at)
+        VALUES ('free_tier_reset_timestamp', $1, NOW())
+        ON CONFLICT (setting_key) 
+        DO UPDATE SET setting_value = $1, updated_at = NOW()
+      `, [new Date().toISOString()]);
+
+      console.log(`✅ Free tier reset timestamp updated: ${new Date().toISOString()}`);
+    }
 
     console.log(`✅ Updated setting ${key} to ${value}`);
     return true;
