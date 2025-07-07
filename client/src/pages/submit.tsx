@@ -566,7 +566,10 @@ export default function SubmitPage() {
       // Add tier and payment data
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
-      formDataToSend.append('userUid', user?.uid || '');
+      
+      // Add user ID - fix the initialization issue
+      const userId = user?.uid || '';
+      formDataToSend.append('userUid', userId);
 
       // Add coupon data if applied
       if (couponApplied && couponCode) {
