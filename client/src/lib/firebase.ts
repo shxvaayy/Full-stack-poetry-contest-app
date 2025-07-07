@@ -60,7 +60,7 @@ export const signUpWithEmail = async (email: string, password: string) => {
 
   // Send email verification with custom action URL
   const actionCodeSettings = {
-    url: `${window.location.origin}/email-verified`,
+    url: `${window.location.origin}/email-verification-handler`,
     handleCodeInApp: true,
   };
 

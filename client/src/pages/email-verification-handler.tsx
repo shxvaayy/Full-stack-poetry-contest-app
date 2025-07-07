@@ -54,10 +54,10 @@ export default function EmailVerificationHandler() {
                 description: "Your account has been verified and you're now signed in. Welcome to Writory!",
               });
 
-              // Redirect to home page after a brief delay
+              // Redirect to home page immediately
               setTimeout(() => {
-                setLocation("/");
-              }, 1500);
+                window.location.href = "/";
+              }, 1000);
 
             } catch (loginError: any) {
               console.error('Auto-login failed:', loginError);
@@ -70,6 +70,11 @@ export default function EmailVerificationHandler() {
                 title: "Account Activated!",
                 description: "Your account has been verified. Please sign in to continue.",
               });
+              
+              // Redirect to auth page with verified flag
+              setTimeout(() => {
+                window.location.href = "/?verified=true";
+              }, 2000);
             }
           } else {
             // No stored credentials - just show verification success
@@ -77,6 +82,11 @@ export default function EmailVerificationHandler() {
               title: "Email Verified!",
               description: "Your email has been verified. Please sign in to continue.",
             });
+            
+            // Redirect to auth page with verified flag
+            setTimeout(() => {
+              window.location.href = "/?verified=true";
+            }, 2000);
           }
         } else {
           throw new Error('Invalid verification link');
