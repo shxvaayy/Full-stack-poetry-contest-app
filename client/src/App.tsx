@@ -20,6 +20,8 @@ import NotFoundPage from "./pages/not-found";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import EmailVerifiedPage from "@/pages/email-verified";
+import EmailVerificationHandler from "@/pages/email-verification-handler";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 function AppContent() {
   return (
@@ -27,6 +29,7 @@ function AppContent() {
       {/* Public routes - accessible without authentication */}
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/verify-email" component={EmailVerificationHandler} />
 
       {/* Protected routes - require authentication */}
       <Route>

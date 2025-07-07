@@ -68,6 +68,19 @@ function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: s
 export default function HomePage() {
   const { toast } = useToast();
 
+  // Check for verification success message
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('verified') === 'true') {
+      toast({
+        title: "Welcome to Writory!",
+        description: "Your email has been verified. You can now submit poems and participate in contests.",
+      });
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
+
   // Fetch total submission count for live poets count
   const { data: statsData } = useQuery({
     queryKey: ['/api/submission-count'],

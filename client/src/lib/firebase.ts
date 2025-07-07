@@ -53,7 +53,14 @@ export const signInWithEmail = (email: string, password: string) => {
 
 export const signUpWithEmail = async (email: string, password: string) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await sendEmailVerification(userCredential.user);
+  
+  // Send email verification with custom action URL
+  const actionCodeSettings = {
+    url: `${window.location.origin}/verify-email`,
+    handleCodeInApp: true,
+  };
+  
+  await sendEmailVerification(userCredential.user, actionCodeSettings);
   return userCredential;
 };
 
