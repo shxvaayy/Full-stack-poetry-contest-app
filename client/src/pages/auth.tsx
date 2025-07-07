@@ -25,6 +25,23 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // Check for verified parameter in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const verified = urlParams.get('verified');
+    
+    if (verified === 'true') {
+      setIsSignIn(true); // Switch to sign-in mode
+      toast({
+        title: "Email Verified!",
+        description: "Your email has been verified. Please sign in to continue.",
+      });
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
+
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
@@ -118,7 +135,7 @@ export default function AuthPage() {
         setPassword("");
         toast({
           title: "Account created!",
-          description: "Please check your email for a verification link before signing in.",
+          description: "Check your email and click the verification link to complete setup.",
         });
       }
     } catch (error: any) {

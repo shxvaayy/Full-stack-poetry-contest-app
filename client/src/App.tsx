@@ -29,7 +29,8 @@ function AppContent() {
       {/* Public routes - accessible without authentication */}
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
-      <Route path="/verify-email" component={EmailVerificationHandler} />
+      <Route path="/verify-email" component={EmailVerifiedPage} />
+      <Route path="/email-verified" component={EmailVerificationHandler} />
 
       {/* Protected routes - require authentication */}
       <Route>

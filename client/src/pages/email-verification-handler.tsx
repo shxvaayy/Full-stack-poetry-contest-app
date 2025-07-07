@@ -4,13 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { auth } from "@/lib/firebase";
-import { applyActionCode, checkActionCode } from "firebase/auth";
+import { applyActionCode, checkActionCode, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function EmailVerificationHandler() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -22,23 +23,70 @@ export default function EmailVerificationHandler() {
         const oobCode = urlParams.get('oobCode');
 
         if (mode === 'verifyEmail' && oobCode) {
-          // Verify the action code is valid
+          // First, verify the action code is valid
           await checkActionCode(auth, oobCode);
           
           // Apply the email verification
           await applyActionCode(auth, oobCode);
-          
           setVerified(true);
-          toast({
-            title: "Email Verified!",
-            description: "Your email has been successfully verified. You can now sign in.",
-          });
+
+          // Get stored credentials for auto-login
+          const storedEmail = localStorage.getItem('pending_verification_email');
+          const storedPassword = localStorage.getItem('pending_verification_password');
+
+          if (storedEmail && storedPassword) {
+            try {
+              // Sign out any current user first
+              await signOut(auth);
+              
+              // Auto-login with stored credentials
+              await signInWithEmailAndPassword(auth, storedEmail, storedPassword);
+              
+              // Clean up stored credentials
+              localStorage.removeItem('pending_verification_email');
+              localStorage.removeItem('pending_verification_password');
+              
+              setAutoLoginAttempted(true);
+              
+              toast({
+                title: "Welcome to Writory!",
+                description: "Your email has been verified and you're now signed in.",
+              });
+
+              // Redirect to dashboard/home after a brief delay
+              setTimeout(() => {
+                setLocation("/");
+              }, 2000);
+
+            } catch (loginError: any) {
+              console.error('Auto-login failed:', loginError);
+              // Clean up credentials even if login fails
+              localStorage.removeItem('pending_verification_email');
+              localStorage.removeItem('pending_verification_password');
+              
+              toast({
+                title: "Email Verified!",
+                description: "Your email has been verified. Please sign in to continue.",
+              });
+            }
+          } else {
+            // No stored credentials - just show verification success
+            toast({
+              title: "Email Verified!",
+              description: "Your email has been verified. Please sign in to continue.",
+            });
+          }
         } else {
           throw new Error('Invalid verification link');
         }
       } catch (error: any) {
         console.error('Email verification error:', error);
         setError(error.message || 'Failed to verify email');
+        
+        // Clean up any stored credentials on error
+        localStorage.removeItem('pending_verification_email');
+        localStorage.removeItem('pending_verification_password');
+        
         toast({
           title: "Verification Failed",
           description: error.message || 'Invalid or expired verification link',
@@ -50,10 +98,14 @@ export default function EmailVerificationHandler() {
     };
 
     handleEmailVerification();
-  }, [toast]);
+  }, [toast, setLocation]);
 
-  const handleContinue = () => {
+  const handleManualSignIn = () => {
     setLocation("/?verified=true");
+  };
+
+  const handleGoToHome = () => {
+    setLocation("/");
   };
 
   if (loading) {
@@ -67,43 +119,69 @@ export default function EmailVerificationHandler() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-8 px-6 text-center">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Verification Failed
+            </h1>
+            <p className="text-gray-600 mb-6">
+              {error}
+            </p>
+            <Button onClick={handleManualSignIn} className="w-full">
+              Go to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
       <Card className="max-w-md w-full">
         <CardContent className="py-8 px-6 text-center">
-          {verified ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
+          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          
+          {autoLoginAttempted ? (
+            <div className="space-y-4">
               <h1 className="text-2xl font-bold text-gray-900">
-                Email Verified Successfully!
+                Welcome to Writory!
               </h1>
               <p className="text-gray-600">
-                Your email has been verified. You can now sign in to your account and start submitting poems.
+                Your email has been verified and you're now signed in. Redirecting to your dashboard...
               </p>
-              <Button onClick={handleContinue} className="w-full">
-                Continue to Sign In
-              </Button>
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Verification Failed
+                Email Verified!
               </h1>
               <p className="text-gray-600">
-                {error || "The verification link is invalid or has expired. Please try signing up again."}
+                Your email has been successfully verified. You can now sign in to your account.
               </p>
-              <Button onClick={handleContinue} variant="outline" className="w-full">
-                Back to Sign In
-              </Button>
+              <div className="space-y-3">
+                <Button onClick={handleManualSignIn} className="w-full">
+                  Continue to Sign In
+                </Button>
+                <Button onClick={handleGoToHome} variant="outline" className="w-full">
+                  Go to Home
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
