@@ -18,9 +18,14 @@ export default function EmailVerificationHandler() {
   useEffect(() => {
     const handleEmailVerification = async () => {
       try {
+        // Get URL parameters from both search params and hash (for Firebase deep links)
         const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
-        const oobCode = urlParams.get('oobCode');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        
+        const mode = urlParams.get('mode') || hashParams.get('mode');
+        const oobCode = urlParams.get('oobCode') || hashParams.get('oobCode');
+
+        console.log('URL params:', { mode, oobCode, search: window.location.search, hash: window.location.hash });
 
         if (mode === 'verifyEmail' && oobCode) {
           // First, verify the action code is valid
@@ -89,7 +94,8 @@ export default function EmailVerificationHandler() {
             }, 2000);
           }
         } else {
-          throw new Error('Invalid verification link');
+          console.log('Missing verification parameters:', { mode, oobCode });
+          throw new Error(`Invalid verification link. Missing required parameters: ${!mode ? 'mode' : ''} ${!oobCode ? 'oobCode' : ''}`);
         }
       } catch (error: any) {
         console.error('Email verification error:', error);

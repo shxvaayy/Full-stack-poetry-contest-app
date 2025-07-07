@@ -16,7 +16,9 @@ import {
   linkWithCredential,
   updateProfile,
   sendEmailVerification,
-  reload
+  reload,
+  applyActionCode,
+  checkActionCode
 } from "firebase/auth";
 
 
@@ -77,6 +79,16 @@ export const sendEmailVerificationToUser = (user: User) => {
 export const checkEmailVerified = async (user: User) => {
   await reload(user);
   return user.emailVerified;
+};
+
+// Apply action code for email verification
+export const verifyEmailWithCode = (oobCode: string) => {
+  return applyActionCode(auth, oobCode);
+};
+
+// Check action code validity
+export const checkEmailActionCode = (oobCode: string) => {
+  return checkActionCode(auth, oobCode);
 };
 
 // --- PHONE AUTH ---
