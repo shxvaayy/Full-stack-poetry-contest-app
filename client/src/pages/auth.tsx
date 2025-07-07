@@ -544,7 +544,7 @@ export default function AuthPage() {
                       className="text-sm text-blue-600 hover:text-blue-700 underline"
                       onClick={() => setShowForgotPassword(true)}
                     >
-                      Forgot your password?
+                      Forgot  password?
                     </button>
                   </div>
                 )}
