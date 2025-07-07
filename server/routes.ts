@@ -915,7 +915,8 @@ router.post('/api/validate-coupon', asyncHandler(async (req: any, res: any) => {
     'ENTRYBARD', 'QUILLPASS', 'PENJOY100', 'LINESFREE', 'PROSEPERK',
     'STANZAGIFT', 'FREELYRICS', 'RHYMEGRANT', 'SONNETKEY', 'ENTRYVERSE',
     'PASSWRTY1', 'PASSWRTY2', 'GIFTPOEM', 'WORDSOPEN', 'STAGEPASS',
-    'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',
+    'LITERUNLOCK', 'PASSINKED', 'WRTYGENIUS', 'UNLOCKINK', 'ENTRYMUSE',The code has been modified to remove the duplicated `userId` declaration.
+```
     'WRTYSTAR', 'FREEQUILL', 'PENPASS100', 'POEMKEY', 'WRITEACCESS',
     'PASSFLARE', 'WRITERJOY', 'MUSE100FREE', 'PASSCANTO', 'STANZAOPEN',
     'VERSEUNLOCK', 'QUILLEDPASS', 'FREEMUSE2025', 'WRITYSTREAK', 'RHYMESMILE',
@@ -1234,6 +1235,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       }
 
       // Check if user has already used free tier
+      const userId = uid || userUid;
       if (userId) {
         try {
           const user = await storage.getUserByUid(userId);
@@ -1255,7 +1257,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     // Use uid or userUid (frontend might send either)
-    const userId = uid || userUid;
+    //const userId = uid || userUid;
 
     // Extract coupon data
     const couponCode = req.body.couponCode;
@@ -1329,6 +1331,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           couponAlreadyUsed = anyUsageCheck.rows.length > 0;
         } else {
           // For regular 10% codes: Check if THIS user has used this code
+          const userId = uid || userUid;
           if (userId) {
             const usageCheck = await client.query(`
               SELECT cu.id, cu.used_at
@@ -1364,6 +1367,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       }
     }
 
+    const userId = uid || userUid;
     console.log('🔍 Processing submission for user UID:', userId);
     console.log('📋 Form data received:', { firstName, lastName, email, phone, age, poemTitle, tier });
 
@@ -1725,7 +1729,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       // Try to find user by email as fallback
       console.log('⚠️ No UID provided, trying to find user by email:', email);
       try {
-        const existingUsers = await storage.getAllUsers?.() || [];
+        const existingUsers = await storage.getAllUsers?.()```javascript
+ || [];
         user = existingUsers.find(u => u.email === email) || null;
         if (user) {
           console.log('✅ Found user by email:', user.email);
@@ -2700,8 +2705,7 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
       message: 'Profile updated successfully',
       user: {
         id: updatedUser.id,
-        uid: updatedUser.uid,
-        name: updatedUser.name,
+        uid: updatedUser.uid,        name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone,
         profilePictureUrl: updatedUser.profile_picture_url,
