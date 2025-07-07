@@ -93,9 +93,9 @@ export default function PasswordResetHandler() {
         description: "Your password has been updated. You can now sign in with your new password.",
       });
 
-      // Redirect to auth page with success message
+      // Redirect to home page after successful password reset
       setTimeout(() => {
-        window.location.href = '/auth?reset=success';
+        window.location.href = '/';
       }, 2000);
 
     } catch (error: any) {

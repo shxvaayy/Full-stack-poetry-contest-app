@@ -109,7 +109,7 @@ export default function EmailVerificationHandler() {
 
               // Redirect to home page immediately
               setTimeout(() => {
-                window.location.href = "/home";
+                window.location.href = "/";
               }, 1000);
 
             } catch (loginError: any) {
@@ -126,7 +126,7 @@ export default function EmailVerificationHandler() {
               
               // Redirect to auth page with verified flag
               setTimeout(() => {
-                window.location.href = "/?verified=true";
+                window.location.href = "/auth?verified=true";
               }, 2000);
             }
           } else {
@@ -140,7 +140,7 @@ export default function EmailVerificationHandler() {
             
             // Redirect to auth page with verified flag
             setTimeout(() => {
-              window.location.href = "/?verified=true";
+              window.location.href = "/auth?verified=true";
             }, 2000);
           }
         } else {
