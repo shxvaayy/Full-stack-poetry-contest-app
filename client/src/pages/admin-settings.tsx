@@ -172,16 +172,26 @@ export default function AdminSettingsPage() {
         },
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.log('📊 Reset response (text):', text);
+        data = { message: text };
+      }
+
       console.log('📊 Reset response:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to reset free tier submissions');
+        throw new Error(data.error || data.message || 'Failed to reset free tier submissions');
       }
 
       toast({
         title: "Success",
-        description: `✅ Free Tier submissions have been reset. All users can now submit the form again once. (${data.affectedUsers || 0} users affected)`,
+        description: `✅ Free Tier submissions have been reset. All users can now submit the form again once.`,
       });
 
     } catch (error: any) {
