@@ -4,9 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Loader2, AlertCircle } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface AdminSettings {
   free_tier_enabled: string;
@@ -20,6 +31,7 @@ export default function AdminSettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Check if user is admin
   const adminEmails = [
@@ -142,6 +154,48 @@ export default function AdminSettingsPage() {
     }));
   };
 
+  const resetFreeTierSubmissions = async () => {
+    try {
+      setResetting(true);
+
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      console.log('🔄 Resetting free tier submissions...');
+
+      const response = await fetch('/api/admin/reset-free-tier', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': user.email,
+        },
+      });
+
+      const data = await response.json();
+      console.log('📊 Reset response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset free tier submissions');
+      }
+
+      toast({
+        title: "Success",
+        description: `✅ Free Tier submissions have been reset. All users can now submit the form again once. (${data.affectedUsers || 0} users affected)`,
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error resetting free tier:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset free tier submissions: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -215,8 +269,51 @@ export default function AdminSettingsPage() {
               </AlertDescription>
             </Alert>
 
-            {/* Save Button */}
-            <div className="flex justify-end pt-4">
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center pt-4">
+              {/* Reset Free Tier Button */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={resetting}
+                    className="border-red-200 text-red-700 hover:bg-red-50"
+                  >
+                    {resetting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Resetting...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Reset Free Tier
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset Free Tier Submissions</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to reset all Free Tier submissions? All users will be able to submit the form again once.
+                      <br /><br />
+                      <strong>This action cannot be undone.</strong>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={resetFreeTierSubmissions}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Yes, Reset All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* Save Settings Button */}
               <Button
                 onClick={saveSettings}
                 disabled={saving}
@@ -252,6 +349,8 @@ export default function AdminSettingsPage() {
                   <li>• Users will see an error message directing them to paid tiers</li>
                   <li>• Existing free submissions will not be affected</li>
                   <li>• Changes take effect immediately after saving</li>
+                  <li>• <strong>Reset Free Tier:</strong> Allows all users to submit the free form again, even if they've already submitted</li>
+                  <li>• After reset, users can submit once more, then the same restrictions apply</li>
                 </ul>
               </div>
             </div>
