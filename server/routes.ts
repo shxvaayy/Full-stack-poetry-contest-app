@@ -2802,23 +2802,11 @@ router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req:
     const now = new Date().toISOString();
 
     // Update the admin setting
-    await updateSetting('free_tier_reset_timestamp', now);
+    const success = await updateSetting('free_tier_reset_timestamp', now);
 
-    console.log('✅ Free Tier submissions have been reset. Timestamp:', now);
-    res.json({
-      success: true,
-      message: 'Free Tier submissions have been reset. All users can now submit the form again once.',
-      resetTimestamp: now
-    });
-
-  } catch (error) {
-    console.error('❌ Error resetting Free Tier submissions:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset Free Tier submissions'
-    });
-  }
-}));
-
-// Updated free tier check logic to use reset timestamp and consistent formatting.
-// This change ensures accurate determination of free tier availability after a reset.
+    if (!success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to reset Free Tier submissions'
+      });
+    }
