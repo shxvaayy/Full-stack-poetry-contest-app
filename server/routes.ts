@@ -11,7 +11,7 @@ import { storage } from './storage.js';
 import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
 import { client, connectDatabase } from './db.js';
-import { initializeAdminSettings, getSetting, updateSetting, getAllSettings } from './admin-settings.js';
+import { initializeAdminSettings, getSetting, updateSetting, getAllSettings, resetFreeTierSubmissions } from './admin-settings.js';
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
 const router = Router();
@@ -2794,36 +2794,31 @@ export { router };
 
 
 
-// This endpoint resets all free tier submissions by updating the free_tier_reset_timestamp in the admin_settings table.
+// Reset free tier submissions endpoint
 router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req: any, res: any) => {
-  console.log('🔧 Resetting Free Tier Submissions...');
+  console.log('🔄 Resetting free tier submissions...');
 
   try {
-    // Get current timestamp
-    const now = new Date().toISOString();
-
-    // Update the admin setting
-    const success = await updateSetting('free_tier_reset_timestamp', now);
-
-    if (!success) {
-      return res.status(500).json({
+    const result = await resetFreeTierSubmissions();
+    
+    if (result) {
+      console.log('✅ Free tier reset completed successfully');
+      res.json({
+        success: true,
+        message: 'Free tier submissions have been reset. All users can now submit the form again once.'
+      });
+    } else {
+      console.error('❌ Failed to reset free tier submissions');
+      res.status(500).json({
         success: false,
-        error: 'Failed to reset Free Tier submissions'
+        error: 'Failed to reset free tier submissions'
       });
     }
-
-    console.log('✅ Free Tier submissions have been reset. Timestamp:', now);
-    return res.json({
-      success: true,
-      message: 'Free Tier submissions have been reset. All users can now submit the form again once.',
-      resetTimestamp: now
-    });
-
   } catch (error) {
-    console.error('❌ Error resetting Free Tier submissions:', error);
-    return res.status(500).json({
+    console.error('❌ Error resetting free tier submissions:', error);
+    res.status(500).json({
       success: false,
-      error: 'Failed to reset Free Tier submissions'
+      error: 'Failed to reset free tier submissions: ' + error.message
     });
   }
 }));

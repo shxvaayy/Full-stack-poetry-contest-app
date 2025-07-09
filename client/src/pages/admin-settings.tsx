@@ -170,29 +170,26 @@ export default function AdminSettingsPage() {
           'Content-Type': 'application/json',
           'x-user-email': user.email,
         },
+        body: JSON.stringify({})
       });
-
-      let data;
-      const contentType = response.headers.get('content-type');
-      
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.log('📊 Reset response (text):', text);
-        data = { message: text };
-      }
-
-      console.log('📊 Reset response:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Failed to reset free tier submissions');
+        const errorText = await response.text();
+        console.error('❌ Reset failed with status:', response.status, errorText);
+        throw new Error(`Failed to reset free tier submissions (${response.status})`);
       }
 
-      toast({
-        title: "Success",
-        description: `✅ Free Tier submissions have been reset. All users can now submit the form again once.`,
-      });
+      const data = await response.json();
+      console.log('📊 Reset response:', data);
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: data.message || "Free tier submissions have been reset. All users can now submit the form again once.",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to reset free tier submissions');
+      }
 
     } catch (error: any) {
       console.error('❌ Error resetting free tier:', error);

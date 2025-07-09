@@ -123,16 +123,20 @@ export async function getAllSettings(): Promise<AdminSettings[]> {
 // Reset free tier submissions by updating the reset timestamp
 export async function resetFreeTierSubmissions(): Promise<boolean> {
   try {
+    await connectDatabase();
+    
     const resetTimestamp = new Date().toISOString();
     
-    const success = await updateSetting('free_tier_reset_timestamp', resetTimestamp);
-    
-    if (success) {
-      console.log(`✅ Free tier reset completed at: ${resetTimestamp}`);
-      return true;
-    }
-    
-    return false;
+    // Update the reset timestamp setting
+    await client.query(`
+      INSERT INTO admin_settings (setting_key, setting_value, updated_at)
+      VALUES ('free_tier_reset_timestamp', $1, NOW())
+      ON CONFLICT (setting_key) 
+      DO UPDATE SET setting_value = $1, updated_at = NOW()
+    `, [resetTimestamp]);
+
+    console.log(`✅ Free tier reset completed at: ${resetTimestamp}`);
+    return true;
   } catch (error) {
     console.error('❌ Error resetting free tier submissions:', error);
     return false;
