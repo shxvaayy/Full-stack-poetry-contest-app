@@ -186,34 +186,50 @@ export async function uploadPoemFile(
   poemIndex?: number,
   poemTitle?: string
 ): Promise<string> {
-  const fileExtension = originalFileName.split('.').pop() || 'pdf';
-  
-  // ✅ NEW: Create filename in format email_poemtitle.pdf
-  let fileName: string;
-  if (poemTitle && poemTitle.trim()) {
-    // Sanitize poem title for filename use
-    const sanitizedTitle = poemTitle.trim()
-      .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
-      .replace(/\s+/g, '_') // Replace spaces with underscores
-      .substring(0, 50); // Limit title length
+  try {
+    console.log(`📤 Starting poem file upload for email: ${email}`);
+    console.log(`📄 Original filename: ${originalFileName}`);
+    console.log(`📝 Poem title: ${poemTitle}`);
     
-    fileName = `${email}_${sanitizedTitle}.${fileExtension}`;
-  } else {
-    // Fallback if no poem title provided
-    if (poemIndex !== undefined && poemIndex >= 0) {
-      fileName = `${email}_poem_${poemIndex + 1}.${fileExtension}`;
-    } else {
-      fileName = `${email}_poem.${fileExtension}`;
+    if (!file || file.length === 0) {
+      throw new Error('File buffer is empty or undefined');
     }
+    
+    const fileExtension = originalFileName.split('.').pop() || 'pdf';
+    
+    // ✅ NEW: Create filename in format email_poemtitle.pdf
+    let fileName: string;
+    if (poemTitle && poemTitle.trim()) {
+      // Sanitize poem title for filename use
+      const sanitizedTitle = poemTitle.trim()
+        .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
+        .replace(/\s+/g, '_') // Replace spaces with underscores
+        .substring(0, 50); // Limit title length
+      
+      fileName = `${email}_${sanitizedTitle}.${fileExtension}`;
+    } else {
+      // Fallback if no poem title provided
+      if (poemIndex !== undefined && poemIndex >= 0) {
+        fileName = `${email}_poem_${poemIndex + 1}.${fileExtension}`;
+      } else {
+        fileName = `${email}_poem.${fileExtension}`;
+      }
+    }
+    
+    const mimeType = getMimeType(fileExtension);
+    
+    console.log(`📤 Uploading poem file: ${fileName}`);
+    console.log(`📝 File size: ${file.length} bytes`);
+    console.log(`📝 MIME type: ${mimeType}`);
+    console.log(`📝 Using poem title: "${poemTitle}" -> sanitized: "${fileName}"`);
+    
+    const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Poems');
+    console.log(`✅ Poem file uploaded successfully: ${uploadedUrl}`);
+    return uploadedUrl;
+  } catch (error) {
+    console.error(`❌ Error uploading poem file for ${email}:`, error);
+    throw new Error(`Failed to upload poem file: ${error.message}`);
   }
-  
-  const mimeType = getMimeType(fileExtension);
-  
-  console.log(`📤 Uploading poem file: ${fileName}`);
-  console.log(`📝 Using poem title: "${poemTitle}" -> sanitized: "${fileName}"`);
-  const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Poems');
-  console.log(`✅ Poem file uploaded successfully: ${uploadedUrl}`);
-  return uploadedUrl;
 }
 
 // ✅ FIXED: Upload multiple poem files with proper naming
@@ -237,14 +253,29 @@ export async function uploadMultiplePoemFiles(
 
 // Upload photo file (JPG/PNG) - Keep existing functionality
 export async function uploadPhotoFile(file: Buffer, email: string, originalFileName: string): Promise<string> {
-  const fileExtension = originalFileName.split('.').pop() || 'jpg';
-  const fileName = `${email}_photo.${fileExtension}`;
-  const mimeType = getMimeType(fileExtension);
-  
-  console.log(`📸 Uploading photo file: ${fileName}`);
-  const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Photos');
-  console.log(`✅ Photo file uploaded successfully: ${uploadedUrl}`);
-  return uploadedUrl;
+  try {
+    console.log(`📸 Starting photo file upload for email: ${email}`);
+    console.log(`📄 Original filename: ${originalFileName}`);
+    
+    if (!file || file.length === 0) {
+      throw new Error('Photo file buffer is empty or undefined');
+    }
+    
+    const fileExtension = originalFileName.split('.').pop() || 'jpg';
+    const fileName = `${email}_photo.${fileExtension}`;
+    const mimeType = getMimeType(fileExtension);
+    
+    console.log(`📸 Uploading photo file: ${fileName}`);
+    console.log(`📝 File size: ${file.length} bytes`);
+    console.log(`📝 MIME type: ${mimeType}`);
+    
+    const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Photos');
+    console.log(`✅ Photo file uploaded successfully: ${uploadedUrl}`);
+    return uploadedUrl;
+  } catch (error) {
+    console.error(`❌ Error uploading photo file for ${email}:`, error);
+    throw new Error(`Failed to upload photo file: ${error.message}`);
+  }
 }
 
 // Get MIME type based on file extension

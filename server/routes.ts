@@ -2622,6 +2622,55 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
   }
 }));
 
+// Debug endpoint to check Google Drive and Sheets configuration
+router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) => {
+  try {
+    console.log('🔍 Checking Google configuration...');
+    
+    const config = {
+      hasGoogleServiceAccount: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+      hasGoogleSheetId: !!process.env.GOOGLE_SHEET_ID,
+      googleServiceAccountLength: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+      googleSheetId: process.env.GOOGLE_SHEET_ID || 'NOT_SET',
+      databaseUrl: process.env.DATABASE_URL ? 'CONFIGURED' : 'NOT_SET'
+    };
+    
+    // Test Google Drive connection
+    let driveTest = null;
+    try {
+      const { uploadFileToDrive } = await import('./google-drive.js');
+      const testBuffer = Buffer.from('Test file content', 'utf-8');
+      driveTest = 'CONNECTION_READY';
+    } catch (driveError) {
+      driveTest = `ERROR: ${driveError.message}`;
+    }
+    
+    // Test Google Sheets connection
+    let sheetsTest = null;
+    try {
+      const { initializeSheetHeaders } = await import('./google-sheets.js');
+      sheetsTest = 'CONNECTION_READY';
+    } catch (sheetsError) {
+      sheetsTest = `ERROR: ${sheetsError.message}`;
+    }
+    
+    res.json({
+      success: true,
+      config,
+      driveTest,
+      sheetsTest,
+      recommendations: [
+        !config.hasGoogleServiceAccount && 'Set GOOGLE_SERVICE_ACCOUNT_JSON in Secrets',
+        !config.hasGoogleSheetId && 'Set GOOGLE_SHEET_ID in Secrets',
+        !config.databaseUrl && 'Set DATABASE_URL in Secrets',
+      ].filter(Boolean)
+    });
+  } catch (error) {
+    console.error('❌ Google config debug error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}));
+
 // Debug endpoint to check winner data
 router.get('/api/debug/winners', asyncHandler(async (req: any, res: any) => {
   try {
