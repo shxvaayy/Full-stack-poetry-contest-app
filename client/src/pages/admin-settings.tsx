@@ -267,14 +267,7 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            {/* Reset Information */}
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Free Tier Reset:</strong> When you disable and then re-enable the free tier, 
-                all users will be able to submit the free form again, regardless of their previous submissions.
-              </AlertDescription>
-            </Alert>
+            
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center pt-4">
