@@ -120,10 +120,11 @@ export async function uploadFileToDrive(
       auth: authClient,
     });
 
-    const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
+    // Generate shareable link
+    const fileUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
     console.log(`✅ File uploaded to Drive: ${fileName} -> ${fileUrl}`);
     console.log(`📁 File ID: ${fileId}, Folder: ${folderType}`);
-    console.log(`🔗 Returning URL: ${fileUrl}`);
+    console.log(`🔗 Returning shareable URL: ${fileUrl}`);
     
     return fileUrl;
   } catch (error) {

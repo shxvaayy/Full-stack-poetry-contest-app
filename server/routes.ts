@@ -1529,6 +1529,22 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     setImmediate(async () => {
       try {
         // Add to Google Sheets in background with proper file URLs
+        console.log('🔍 File URLs being sent to sheets:', { 
+          poemFileUrl: poemFileUrl || 'EMPTY', 
+          photoFileUrl: photoFileUrl || 'EMPTY',
+          poemFileUrlType: typeof poemFileUrl,
+          photoFileUrlType: typeof photoFileUrl,
+          allDataKeys: Object.keys(submissionData)
+        });
+
+        // Validate URLs before sending to sheets
+        if (poemFileUrl && !poemFileUrl.startsWith('https://drive.google.com/')) {
+          console.warn('⚠️ Poem file URL does not look like a Google Drive link:', poemFileUrl);
+        }
+        if (photoFileUrl && !photoFileUrl.startsWith('https://drive.google.com/')) {
+          console.warn('⚠️ Photo file URL does not look like a Google Drive link:', photoFileUrl);
+        }
+
         await addPoemSubmissionToSheet({
           ...submissionData,
           submissionId: submission.id,
@@ -1698,7 +1714,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           }
         } catch (error) {
           console.error('❌ Error checking free tier usage:', error);
-        }
+        }        
       }
     }
 
@@ -1848,11 +1864,25 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     setImmediate(async () => {
       try {
         // Add to Google Sheets in background with proper file URLs
-        console.log('🔍 Sending to Google Sheets:', {
+        console.log('🔍 File URLs being sent to sheets:', {
           titles: titles.length,
           poemFileUrls: poemFileUrls.length,
-          photoFileUrl: photoFileUrl ? 'YES' : 'NO'
+          photoFileUrl: photoFileUrl ? 'YES' : 'NO',
+          poemFileUrlsType: typeof poemFileUrls,
+          photoFileUrlType: typeof photoFileUrl,
         });
+
+        // Validate URLs before sending to sheets
+        if (poemFileUrls && Array.isArray(poemFileUrls)) {
+          poemFileUrls.forEach((url, index) => {
+            if (url && !url.startsWith('https://drive.google.com/')) {
+              console.warn(`⚠️ Poem file URL ${index + 1} does not look like a Google Drive link:`, url);
+            }
+          });
+        }
+        if (photoFileUrl && !photoFileUrl.startsWith('https://drive.google.com/')) {
+          console.warn('⚠️ Photo file URL does not look like a Google Drive link:', photoFileUrl);
+        }
 
         await addMultiplePoemsToSheet({
           firstName: firstName,
@@ -2646,8 +2676,7 @@ router.get('/api/debug/submissions', asyncHandler(async (req: any, res: any) => 
       recentSubmissions: recentResult.rows.map(sub => ({
         id: sub.id,
         email: sub.email,
-        name: `${sub.first_name} ${sub.last_name || ''}`.trim(),
-        poemTitle: sub.poem_title,
+        name: `${sub.first_name} ${sub.last_name || ''}`.trim(),        poemTitle: sub.poem_title,
         userId: sub.user_id,
         hasUserLink: !!sub.user_id,
         submittedAt: sub.submitted_at
