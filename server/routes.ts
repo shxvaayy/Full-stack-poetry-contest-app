@@ -1714,7 +1714,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           }
         } catch (error) {
           console.error('❌ Error checking free tier usage:', error);
-        }        
+        }        }
       }
     }
 
@@ -2852,6 +2852,28 @@ export function registerRoutes(app: any) {
 export { router };
 
 
+
+// Reset Google Sheets headers endpoint
+router.post('/api/admin/reset-sheet-headers', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  console.log('🔄 Manually resetting Google Sheets headers...');
+
+  try {
+    const { initializeSheetHeaders } = await import('./google-sheets.js');
+    await initializeSheetHeaders();
+
+    console.log('✅ Google Sheets headers reset completed successfully');
+    res.json({
+      success: true,
+      message: 'Google Sheets headers have been reset to the correct format.'
+    });
+  } catch (error) {
+    console.error('❌ Error resetting Google Sheets headers:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reset Google Sheets headers: ' + error.message
+    });
+  }
+}));
 
 // Reset free tier submissions endpoint
 router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req: any, res: any) => {

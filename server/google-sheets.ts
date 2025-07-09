@@ -179,8 +179,8 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
           data.poemTitle,                         // F - Poem Title
           data.tier,                              // G - Tier
           amount.toString(),                      // H - Amount
-          poemFileUrl,                            // I - Poem File URL
-          photoFileUrl,                           // J - Photo URL
+          photoFileUrl,                           // I - Photo Link (Photo URL)
+          poemFileUrl,                            // J - PDF Link (Poem File URL)
           data.submissionUuid || '',              // K - Submission UUID
           (data.poemIndex || 1).toString()        // L - Poem Index
         ]]
@@ -231,9 +231,9 @@ export async function addMultiplePoemsToSheet(data: {
     const rowsToAdd = data.titles.map((title, index) => {
       const poemFileUrl = data.poemFileUrls?.[index] || '';
       const photoFileUrl = data.photoFileUrl || '';
-      
+
       console.log(`📄 Row ${index + 1}: ${title} - Poem: ${poemFileUrl ? 'YES' : 'NO'}, Photo: ${photoFileUrl ? 'YES' : 'NO'}`);
-      
+
       return [
         timestamp,                                           // A - Timestamp
         name,                                               // B - Name
@@ -243,8 +243,8 @@ export async function addMultiplePoemsToSheet(data: {
         title,                                              // F - Poem Title
         data.tier,                                          // G - Tier
         (data.price || 0).toString(),                       // H - Amount (same for all poems in submission)
-        poemFileUrl,                                        // I - Poem File URL
-        photoFileUrl,                                       // J - Photo (same for all poems)
+        photoFileUrl,                                       // I - Photo (same for all poems)
+        poemFileUrl,                                        // J - Poem File URL
         data.submissionUuid,                                // K - Submission UUID
         (index + 1).toString()                              // L - Poem Index
       ];
@@ -312,11 +312,31 @@ export async function initializeSheetHeaders(): Promise<void> {
           valueInputOption: 'USER_ENTERED',
           auth: authClient,
           requestBody: {
-            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Poem File', 'Photo', 'Submission UUID', 'Poem Index']]
+            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index']]
           }
         };
         await sheets.spreadsheets.values.update(poemsRequest);
         console.log('✅ Poetry sheet headers initialized with correct A-L column mapping');
+      } else {
+        // Check if headers need to be updated to correct format
+        const currentHeaders = existingPoetry.data.values[0];
+        const expectedHeaders = ['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index'];
+        
+        // If headers don't match, update them
+        if (JSON.stringify(currentHeaders) !== JSON.stringify(expectedHeaders)) {
+          console.log('🔄 Updating sheet headers to correct format...');
+          const updateRequest = {
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Poetry!A1:L1',
+            valueInputOption: 'USER_ENTERED',
+            auth: authClient,
+            requestBody: {
+              values: [expectedHeaders]
+            }
+          };
+          await sheets.spreadsheets.values.update(updateRequest);
+          console.log('✅ Poetry sheet headers updated to correct format');
+        }
       }
     } catch (error) {
       console.log('📋 Creating new sheets with headers...');
@@ -336,7 +356,7 @@ export async function initializeSheetHeaders(): Promise<void> {
         valueInputOption: 'USER_ENTERED',
         auth: authClient,
         requestBody: {
-          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Poem File', 'Photo', 'Submission UUID', 'Poem Index']]
+          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index']]
         }
       };
 
