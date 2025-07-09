@@ -20,7 +20,9 @@ import {
   uploadPhotoFileOAuth, 
   uploadMultiplePoemFilesOAuth,
   checkAuthStatus,
-  clearTokens
+  clearTokens,
+  uploadPoemFile,
+  uploadPhotoFile
 } from './google-drive-oauth.js';
 
 const router = Router();
@@ -37,7 +39,7 @@ const upload = multer({
       originalname: file.originalname,
       mimetype: file.mimetype
     });
-    
+
     // Allow images for photos
     if (file.mimetype.startsWith('image/')) {
       console.log('✅ Image file accepted:', file.originalname);
@@ -214,7 +216,7 @@ router.get('/api/test', (req, res) => {
 // Initiate OAuth 2.0 flow
 router.get('/auth', asyncHandler(async (req: any, res: any) => {
   console.log('🔐 Initiating Google Drive OAuth flow...');
-  
+
   try {
     const authUrl = getAuthUrl();
     console.log('✅ OAuth URL generated, redirecting to Google...');
@@ -231,9 +233,9 @@ router.get('/auth', asyncHandler(async (req: any, res: any) => {
 // Handle OAuth callback
 router.get('/oauth2callback', asyncHandler(async (req: any, res: any) => {
   console.log('🔄 Handling OAuth callback...');
-  
+
   const { code, error: oauthError } = req.query;
-  
+
   if (oauthError) {
     console.error('❌ OAuth error:', oauthError);
     return res.status(400).send(`
@@ -254,7 +256,7 @@ router.get('/oauth2callback', asyncHandler(async (req: any, res: any) => {
       </html>
     `);
   }
-  
+
   if (!code) {
     console.error('❌ No authorization code received');
     return res.status(400).send(`
@@ -275,13 +277,13 @@ router.get('/oauth2callback', asyncHandler(async (req: any, res: any) => {
       </html>
     `);
   }
-  
+
   try {
     console.log('🔄 Exchanging authorization code for tokens...');
     const tokens = await exchangeCodeForTokens(code as string);
-    
+
     console.log('✅ OAuth flow completed successfully');
-    
+
     res.send(`
       <!DOCTYPE html>
       <html>
@@ -328,10 +330,10 @@ router.get('/oauth2callback', asyncHandler(async (req: any, res: any) => {
 // Check OAuth status
 router.get('/api/oauth-status', asyncHandler(async (req: any, res: any) => {
   console.log('🔍 Checking OAuth authorization status...');
-  
+
   try {
     const isAuthorized = await checkAuthStatus();
-    
+
     res.json({
       success: true,
       authorized: isAuthorized,
@@ -350,10 +352,10 @@ router.get('/api/oauth-status', asyncHandler(async (req: any, res: any) => {
 // Clear OAuth tokens (logout)
 router.post('/api/oauth-logout', asyncHandler(async (req: any, res: any) => {
   console.log('🚪 Clearing OAuth tokens...');
-  
+
   try {
     await clearTokens();
-    
+
     res.json({
       success: true,
       message: 'OAuth tokens cleared successfully'
@@ -913,7 +915,8 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   // Check Razorpay configuration
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('❌ Razorpay not configured');
-    return res.status(500).json({ 
+    return res.status(500).```text
+json({ 
       error: 'Payment system not configured' 
     });
   }
@@ -1399,7 +1402,7 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
     // Check OAuth environment variables
     const hasOAuthCredentials = !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI);
     const hasDriveFolder = !!process.env.DRIVE_FOLDER_ID;
-    
+
     console.log('🔍 OAuth Environment check:', {
       hasClientId: !!process.env.CLIENT_ID,
       hasClientSecret: !!process.env.CLIENT_SECRET,
@@ -1407,7 +1410,7 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
       hasDriveFolder,
       driveFolder: process.env.DRIVE_FOLDER_ID || 'NOT_SET'
     });
-    
+
     if (!hasOAuthCredentials) {
       throw new Error('OAuth credentials not configured. Please set CLIENT_ID, CLIENT_SECRET, and REDIRECT_URI environment variables.');
     }
@@ -1418,10 +1421,10 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
 
     // Check if OAuth is authorized
     const isAuthorized = await checkAuthStatus();
-    
+
     if (!isAuthorized) {
       console.log('⚠️ OAuth not authorized - test file upload skipped');
-      
+
       return res.json({
         success: false,
         configured: true,
@@ -1439,18 +1442,18 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
     // Test file upload
     const testFile = Buffer.from('This is a test file for Google Drive OAuth upload - ' + new Date().toISOString(), 'utf-8');
     const testFileName = `oauth_test_${Date.now()}.txt`;
-    
+
     console.log('📤 Attempting to upload test file via OAuth...');
     console.log('📄 Test file details:', {
       fileName: testFileName,
       size: testFile.length,
       content: testFile.toString().substring(0, 50) + '...'
     });
-    
+
     const fileUrl = await uploadPoemFileOAuth(testFile, 'test@example.com', testFileName, 0, 'OAuth Test');
-    
+
     console.log('✅ Google Drive OAuth test successful!');
-    
+
     res.json({
       success: true,
       configured: true,
@@ -1471,7 +1474,7 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
       stack: error.stack,
       code: error.code
     });
-    
+
     res.json({
       success: false,
       configured: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
@@ -1697,7 +1700,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           originalname: file.originalname,
           mimetype: file.mimetype,
           size: file.size
-        });
+                });
       });
 
       // More flexible file detection
@@ -1756,33 +1759,19 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           throw new Error('Poem file buffer is empty');
         }
 
-        // Check OAuth authorization first
-        const isAuthorized = await checkAuthStatus();
-        if (!isAuthorized) {
-          return res.status(401).json({
-            success: false,
-            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
-            authUrl: '/auth'
-          });
-        }
-
-        console.log('📤 Calling OAuth uploadPoemFile function...');
-        
-        poemFileUrl = await uploadPoemFileOAuth(
+        poemFileUrl = await uploadPoemFile(
           poemFile.buffer, 
           email, 
-          poemFile.originalname,
-          0, // poemIndex
-          poemTitle // Pass the actual poem title
+          poemFile.originalname, 
+          0, 
+          poemTitle
         );
-        
-        console.log('✅ Poem file uploaded successfully via OAuth!');
-        console.log('🔗 Poem file URL:', poemFileUrl);
+        console.log('✅ Poem file uploaded via Service Account:', poemFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload poem file via OAuth:', error);
         console.error('❌ Upload error details:', error.message);
         console.error('❌ Error stack:', error.stack);
-        
+
         // Check if it's an auth error
         if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
           return res.status(401).json({
@@ -1791,7 +1780,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
             authUrl: '/auth'
           });
         }
-        
+
         // Return error to user if Google Drive upload fails
         return res.status(500).json({
           success: false,
@@ -1804,7 +1793,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     if (photoFile) {
-      console.log('☁️ Starting OAuth photo file upload to Google Drive...');
+      console.log('☁️ Starting photo file upload to Google Drive...');
       console.log('📸 Photo file details:', {
         name: photoFile.originalname,
         size: photoFile.size,
@@ -1813,27 +1802,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       });
 
       try {
-        if (!photoFile.buffer || photoFile.buffer.length === 0) {
-          throw new Error('Photo file buffer is empty');
-        }
-
-        // Check OAuth authorization first
-        const isAuthorized = await checkAuthStatus();
-        if (!isAuthorized) {
-          console.log('⚠️ Photo upload skipped - OAuth not authorized');
-          console.log('⚠️ Continuing submission without photo URL (photo is optional)');
-        } else {
-          console.log('📤 Calling OAuth uploadPhotoFile function...');
-          
-          photoFileUrl = await uploadPhotoFileOAuth(
-            photoFile.buffer, 
-            email, 
-            photoFile.originalname
-          );
-          
-          console.log('✅ Photo file uploaded successfully via OAuth!');
-          console.log('🔗 Photo file URL:', photoFileUrl);
-        }
+        photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
+        console.log('✅ Photo file uploaded via Service Account:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file via OAuth:', error);
         console.error('❌ Upload error details:', error.message);
@@ -2158,7 +2128,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         console.log('✅ Poem files uploaded via OAuth:', poemFileUrls.length);
       } catch (error) {
         console.error('❌ Failed to upload poem files via OAuth:', error);
-        
+
         // Check if it's an auth error
         if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
           return res.status(401).json({
@@ -2167,7 +2137,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
             authUrl: '/auth'
           });
         }
-        
+
         return res.status(500).json({
           success: false,
           error: `Failed to upload poem files: ${error.message}`
@@ -2184,20 +2154,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       });
 
       try {
-        // Check OAuth authorization first
-        const isAuthorized = await checkAuthStatus();
-        if (!isAuthorized) {
-          console.log('⚠️ Photo upload skipped - OAuth not authorized');
-          console.log('⚠️ Continuing submission without photo URL (photo is optional)');
-        } else {
-          photoFileUrl = await uploadPhotoFileOAuth(
-            photoFile.buffer, 
-            email, 
-            photoFile.originalname
-          );
-          console.log('✅ Photo file uploaded successfully via OAuth:', photoFileUrl);
-          console.log('🔗 Photo file URL will be saved as:', photoFileUrl);
-        }
+        photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
+        console.log('✅ Photo file uploaded via Service Account:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file via OAuth:', error);
         console.error('❌ Upload error details:', error.message);
@@ -3007,7 +2965,7 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
 router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) => {
   try {
     console.log('🔍 Checking Google configuration...');
-    
+
     const config = {
       hasGoogleServiceAccount: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
       hasGoogleSheetId: !!process.env.GOOGLE_SHEET_ID,
@@ -3015,7 +2973,7 @@ router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) =
       googleSheetId: process.env.GOOGLE_SHEET_ID || 'NOT_SET',
       databaseUrl: process.env.DATABASE_URL ? 'CONFIGURED' : 'NOT_SET'
     };
-    
+
     // Test Google Drive connection
     let driveTest = null;
     try {
@@ -3025,7 +2983,7 @@ router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) =
     } catch (driveError) {
       driveTest = `ERROR: ${driveError.message}`;
     }
-    
+
     // Test Google Sheets connection
     let sheetsTest = null;
     try {
@@ -3034,7 +2992,7 @@ router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) =
     } catch (sheetsError) {
       sheetsTest = `ERROR: ${sheetsError.message}`;
     }
-    
+
     res.json({
       success: true,
       config,
