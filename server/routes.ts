@@ -1519,10 +1519,12 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     // This ensures fast response to user while still completing necessary tasks
     setImmediate(async () => {
       try {
-        // Add to Google Sheets in background
+        // Add to Google Sheets in background with proper file URLs
         await addPoemSubmissionToSheet({
           ...submissionData,
-          submissionId: submission.id
+          submissionId: submission.id,
+          poemFileUrl: poemFileUrl, // Explicitly pass poem file URL
+          photoFileUrl: photoFileUrl // Explicitly pass photo file URL
         });
         console.log('✅ Google Sheets updated for submission:', submission.id);
       } catch (sheetError) {
@@ -1827,7 +1829,13 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     // This ensures fast response to user while still completing necessary tasks
     setImmediate(async () => {
       try {
-        // Add to Google Sheets in background
+        // Add to Google Sheets in background with proper file URLs
+        console.log('🔍 Sending to Google Sheets:', {
+          titles: titles.length,
+          poemFileUrls: poemFileUrls.length,
+          photoFileUrl: photoFileUrl ? 'YES' : 'NO'
+        });
+        
         await addMultiplePoemsToSheet({
           firstName: firstName,
           lastName: lastName,
@@ -1841,8 +1849,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           titles: titles,
           submissionUuid: submissionUuid,
           submissionIds: submissions.map(s => s.id),
-          poemFileUrls: poemFileUrls,
-          photoFileUrl: photoFileUrl
+          poemFileUrls: poemFileUrls, // This should now contain the actual URLs
+          photoFileUrl: photoFileUrl  // This should now contain the actual URL
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {
@@ -2021,9 +2029,13 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
 
     const submission = await storage.createSubmission(submissionData);
 
-    // Add to Google Sheets
+    // Add to Google Sheets with proper file URLs
     try {
-      await addPoemSubmissionToSheet(submission);
+      await addPoemSubmissionToSheet({
+        ...submission,
+        poemFileUrl: poemFileUrl, // Explicitly pass poem file URL
+        photoFileUrl: photoFileUrl // Explicitly pass photo file URL
+      });
     } catch (sheetError) {
       console.error('⚠️ Failed to add to Google Sheets:', sheetError);
     }

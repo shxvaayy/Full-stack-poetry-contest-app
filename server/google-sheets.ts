@@ -153,6 +153,12 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
     const name = data.name || `${data.firstName} ${data.lastName || ''}`.trim();
     const amount = data.amount || data.price || 0;
 
+    // FIXED: Properly extract file URLs with better fallback logic
+    const poemFileUrl = data.poemFileUrl || data.poemFile || data.poem_file_url || '';
+    const photoFileUrl = data.photoFileUrl || data.photo || data.photoUrl || data.photo_file_url || '';
+
+    console.log('🔍 File URLs being sent to sheets:', { poemFileUrl, photoFileUrl });
+
     const request = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Poetry!A:L',
@@ -169,8 +175,8 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
           data.poemTitle,                         // F - Poem Title
           data.tier,                              // G - Tier
           amount.toString(),                      // H - Amount
-          data.poemFile || data.poemFileUrl || '', // I - Poem File
-          data.photo || data.photoFileUrl || '',  // J - Photo
+          poemFileUrl,                            // I - Poem File URL
+          photoFileUrl,                           // J - Photo URL
           data.submissionUuid || '',              // K - Submission UUID
           (data.poemIndex || 1).toString()        // L - Poem Index
         ]]
@@ -207,6 +213,7 @@ export async function addMultiplePoemsToSheet(data: {
 }): Promise<void> {
   try {
     console.log(`📝 Adding ${data.titles.length} poems to sheet for:`, data.firstName, data.tier);
+    console.log('🔍 File URLs received:', { poemFileUrls: data.poemFileUrls, photoFileUrl: data.photoFileUrl });
 
     const authClient = await getAuthClient();
     if (!authClient) {
@@ -217,20 +224,27 @@ export async function addMultiplePoemsToSheet(data: {
     const name = `${data.firstName} ${data.lastName || ''}`.trim();
 
     // Create rows for each poem
-    const rowsToAdd = data.titles.map((title, index) => [
-      timestamp,                                           // A - Timestamp
-      name,                                               // B - Name
-      data.email,                                         // C - Email
-      data.phone || '',                                   // D - Phone
-      data.age || '',                                     // E - Age
-      title,                                              // F - Poem Title
-      data.tier,                                          // G - Tier
-      (data.price || 0).toString(),                       // H - Amount (same for all poems in submission)
-      data.poemFileUrls?.[index] || '',                   // I - Poem File URL
-      data.photoFileUrl || '',                            // J - Photo (same for all poems)
-      data.submissionUuid,                                // K - Submission UUID
-      (index + 1).toString()                              // L - Poem Index
-    ]);
+    const rowsToAdd = data.titles.map((title, index) => {
+      const poemFileUrl = data.poemFileUrls?.[index] || '';
+      const photoFileUrl = data.photoFileUrl || '';
+      
+      console.log(`📄 Row ${index + 1}: ${title} - Poem: ${poemFileUrl ? 'YES' : 'NO'}, Photo: ${photoFileUrl ? 'YES' : 'NO'}`);
+      
+      return [
+        timestamp,                                           // A - Timestamp
+        name,                                               // B - Name
+        data.email,                                         // C - Email
+        data.phone || '',                                   // D - Phone
+        data.age || '',                                     // E - Age
+        title,                                              // F - Poem Title
+        data.tier,                                          // G - Tier
+        (data.price || 0).toString(),                       // H - Amount (same for all poems in submission)
+        poemFileUrl,                                        // I - Poem File URL
+        photoFileUrl,                                       // J - Photo (same for all poems)
+        data.submissionUuid,                                // K - Submission UUID
+        (index + 1).toString()                              // L - Poem Index
+      ];
+    });
 
     // Use the correct Google Sheets API structure
     const request = {
@@ -244,7 +258,7 @@ export async function addMultiplePoemsToSheet(data: {
       }
     };
 
-    console.log(`📊 Adding ${rowsToAdd.length} rows to Google Sheets:`, rowsToAdd);
+    console.log(`📊 Adding ${rowsToAdd.length} rows to Google Sheets with file URLs`);
 
     await sheets.spreadsheets.values.append(request);
     console.log(`✅ Successfully added ${rowsToAdd.length} poem rows to Google Sheets`);

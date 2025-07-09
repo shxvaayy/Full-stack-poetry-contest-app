@@ -122,6 +122,7 @@ export async function uploadFileToDrive(
 
     const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
     console.log(`✅ File uploaded to Drive: ${fileName} -> ${fileUrl}`);
+    console.log(`📁 File ID: ${fileId}, Folder: ${folderType}`);
     
     return fileUrl;
   } catch (error) {
@@ -163,7 +164,9 @@ export async function uploadPoemFile(
   
   console.log(`📤 Uploading poem file: ${fileName}`);
   console.log(`📝 Using poem title: "${poemTitle}" -> sanitized: "${fileName}"`);
-  return uploadFileToDrive(file, fileName, mimeType, 'Poems');
+  const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Poems');
+  console.log(`✅ Poem file uploaded successfully: ${uploadedUrl}`);
+  return uploadedUrl;
 }
 
 // ✅ FIXED: Upload multiple poem files with proper naming
@@ -191,7 +194,10 @@ export async function uploadPhotoFile(file: Buffer, email: string, originalFileN
   const fileName = `${email}_photo.${fileExtension}`;
   const mimeType = getMimeType(fileExtension);
   
-  return uploadFileToDrive(file, fileName, mimeType, 'Photos');
+  console.log(`📸 Uploading photo file: ${fileName}`);
+  const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Photos');
+  console.log(`✅ Photo file uploaded successfully: ${uploadedUrl}`);
+  return uploadedUrl;
 }
 
 // Get MIME type based on file extension
