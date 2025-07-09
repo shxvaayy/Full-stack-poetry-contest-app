@@ -403,3 +403,27 @@ export async function clearTokens(): Promise<void> {
     console.error('⚠️ Warning: Could not clear token file:', error.message);
   }
 }
+
+/**
+ * Service Account version of uploadPoemFile (alias for uploadPoemFileOAuth)
+ */
+export async function uploadPoemFile(
+  file: Buffer,
+  email: string,
+  originalFileName: string,
+  poemIndex?: number,
+  poemTitle?: string
+): Promise<string> {
+  return uploadPoemFileOAuth(file, email, originalFileName, poemIndex, poemTitle);
+}
+
+/**
+ * Service Account version of uploadPhotoFile (alias for uploadPhotoFileOAuth)
+ */
+export async function uploadPhotoFile(
+  file: Buffer,
+  email: string,
+  originalFileName: string
+): Promise<string> {
+  return uploadPhotoFileOAuth(file, email, originalFileName);
+}
