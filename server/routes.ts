@@ -1199,6 +1199,41 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// Test Google Drive configuration
+router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => {
+  console.log('🧪 Testing Google Drive configuration...');
+
+  try {
+    const { uploadFileToDrive } = await import('./google-drive.js');
+    
+    // Create a small test file
+    const testFile = Buffer.from('This is a test file for Google Drive upload', 'utf-8');
+    const testFileName = `test_${Date.now()}.txt`;
+    
+    console.log('📤 Attempting to upload test file to Google Drive...');
+    const fileUrl = await uploadFileToDrive(testFile, testFileName, 'text/plain', 'Poems');
+    
+    res.json({
+      success: true,
+      configured: true,
+      message: 'Google Drive is properly configured',
+      testFileUrl: fileUrl
+    });
+
+  } catch (error: any) {
+    console.error('❌ Google Drive test failed:', error);
+    res.json({
+      success: false,
+      configured: false,
+      message: 'Google Drive test failed: ' + error.message,
+      details: {
+        hasCredentials: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+        errorMessage: error.message
+      }
+    });
+  }
+}));
+
 // ===== SUBMISSION ENDPOINTS =====
 
 // Helper function to get the free tier reset timestamp
@@ -1419,6 +1454,11 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     if (poemFile) {
       console.log('☁️ Uploading poem file to Google Drive...');
+      console.log('📄 Poem file details:', {
+        name: poemFile.originalname,
+        size: poemFile.size,
+        type: poemFile.mimetype
+      });
 
       try {
         const { uploadPoemFile } = await import('./google-drive.js');
@@ -1432,6 +1472,9 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Poem file uploaded:', poemFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload poem file:', error);
+        console.error('❌ Upload error details:', error.message);
+        // Don't fail the submission if Google Drive upload fails
+        console.log('⚠️ Continuing submission without Google Drive URL');
       }
     }
 
@@ -1455,6 +1498,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       } catch (error) {
         console.error('❌ Failed to upload photo file:', error);
         console.error('❌ Upload error details:', error.message);
+        // Don't fail the submission if Google Drive upload fails
+        console.log('⚠️ Continuing submission without Google Drive URL');
       }
     } else {
       console.log('⚠️ No photo file found in request');

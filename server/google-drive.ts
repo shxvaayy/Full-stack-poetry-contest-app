@@ -5,14 +5,22 @@ import { Readable } from 'stream';
 const DRIVE_FOLDER_ID = '1kG8qdjMAmWKXiEKngr51jnUnyb2sEv4P';
 
 // Decode base64-encoded service account JSON
-const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-  ? JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON, "base64").toString("utf-8"))
-  : null;
-
-if (!credentials) {
-  console.log("❌ GOOGLE_SERVICE_ACCOUNT_JSON not loaded properly");
-} else {
-  console.log("✅ Google Drive service account credentials loaded.");
+let credentials = null;
+try {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_JSON, "base64").toString("utf-8"));
+    console.log("✅ Google Drive service account credentials loaded.");
+    console.log("🔍 Credentials info:", {
+      type: credentials.type,
+      project_id: credentials.project_id,
+      client_email: credentials.client_email ? 'present' : 'missing'
+    });
+  } else {
+    console.log("❌ GOOGLE_SERVICE_ACCOUNT_JSON environment variable not found");
+  }
+} catch (error) {
+  console.error("❌ Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:", error.message);
+  credentials = null;
 }
 
 const auth = new google.auth.GoogleAuth({
@@ -27,20 +35,29 @@ const drive = google.drive({ version: "v3", auth });
 
 async function getAuthClient() {
   try {
-    if (!credentials) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON in env");
-    return await auth.getClient();
+    if (!credentials) {
+      console.error("❌ No Google Drive credentials available");
+      throw new Error("Google Drive not configured - missing GOOGLE_SERVICE_ACCOUNT_JSON");
+    }
+    
+    console.log("🔐 Attempting to get auth client...");
+    const client = await auth.getClient();
+    console.log("✅ Google Drive auth client obtained successfully");
+    return client;
   } catch (error) {
-    console.warn('Google Drive authentication not configured.');
-    throw error;
+    console.error('❌ Google Drive authentication failed:', error.message);
+    throw new Error(`Google Drive auth failed: ${error.message}`);
   }
 }
 
 // Create or get folder by name
 async function createOrGetFolder(folderName: string, parentFolderId: string): Promise<string> {
   try {
+    console.log(`📁 Looking for folder: ${folderName} in parent: ${parentFolderId}`);
     const authClient = await getAuthClient();
 
     // Check if folder already exists
+    console.log(`🔍 Searching for existing folder: ${folderName}`);
     const existingFolders = await drive.files.list({
       q: `name='${folderName}' and parents in '${parentFolderId}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       auth: authClient,
@@ -53,6 +70,7 @@ async function createOrGetFolder(folderName: string, parentFolderId: string): Pr
     }
 
     // Create new folder
+    console.log(`📁 Creating new folder: ${folderName}`);
     const folderMetadata = {
       name: folderName,
       mimeType: 'application/vnd.google-apps.folder',
@@ -64,12 +82,22 @@ async function createOrGetFolder(folderName: string, parentFolderId: string): Pr
       auth: authClient,
     });
 
-    const folderId = folder.data.id!;
+    if (!folder.data.id) {
+      throw new Error("Folder creation succeeded but no folder ID returned");
+    }
+
+    const folderId = folder.data.id;
     console.log(`📁 Created new folder: ${folderName} (${folderId})`);
     return folderId;
   } catch (error) {
     console.error(`❌ Error creating/getting folder ${folderName}:`, error);
-    throw error;
+    console.error(`❌ Parent folder ID: ${parentFolderId}`);
+    console.error(`❌ Error details:`, {
+      message: error.message,
+      code: error.code,
+      status: error.status
+    });
+    throw new Error(`Failed to create/get folder ${folderName}: ${error.message}`);
   }
 }
 
@@ -81,11 +109,16 @@ export async function uploadFileToDrive(
   folderType: 'Photos' | 'Poems'
 ): Promise<string> {
   try {
+    console.log(`📤 Starting upload to Drive: ${fileName} (${file.length} bytes, type: ${mimeType})`);
+    
     const authClient = await getAuthClient();
+    console.log("✅ Auth client ready for file upload");
 
     // Get or create the specific folder (Photos or Poems)
     const folderName = folderType === 'Photos' ? 'Photos (Participants)' : 'Poems';
+    console.log(`📁 Getting/creating folder: ${folderName}`);
     const folderId = await createOrGetFolder(folderName, DRIVE_FOLDER_ID);
+    console.log(`📁 Using folder ID: ${folderId}`);
 
     const fileMetadata = {
       name: fileName,
@@ -102,15 +135,22 @@ export async function uploadFileToDrive(
       body: stream,
     };
 
+    console.log(`☁️ Uploading file to Google Drive...`);
     const uploadedFile = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
       auth: authClient,
     });
 
-    const fileId = uploadedFile.data.id!;
+    if (!uploadedFile.data.id) {
+      throw new Error("Upload succeeded but no file ID returned");
+    }
+
+    const fileId = uploadedFile.data.id;
+    console.log(`✅ File uploaded successfully with ID: ${fileId}`);
     
     // Make file viewable by anyone with the link
+    console.log(`🔐 Setting file permissions...`);
     await drive.permissions.create({
       fileId: fileId,
       requestBody: {
@@ -128,8 +168,13 @@ export async function uploadFileToDrive(
     
     return fileUrl;
   } catch (error) {
-    console.error(`❌ Error uploading file to Drive:`, error);
-    throw error;
+    console.error(`❌ Error uploading file ${fileName} to Drive:`, error);
+    console.error(`❌ Error details:`, {
+      message: error.message,
+      code: error.code,
+      status: error.status
+    });
+    throw new Error(`Failed to upload ${fileName} to Google Drive: ${error.message}`);
   }
 }
 
