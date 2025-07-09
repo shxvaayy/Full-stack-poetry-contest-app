@@ -915,7 +915,7 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   // Check Razorpay configuration
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('❌ Razorpay not configured');
-    return res.status(500).```text
+    return res.status(500).
 json({ 
       error: 'Payment system not configured' 
     });
