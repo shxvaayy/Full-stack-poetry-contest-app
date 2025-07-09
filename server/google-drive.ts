@@ -37,15 +37,27 @@ async function getAuthClient() {
   try {
     if (!credentials) {
       console.error("❌ No Google Drive credentials available");
+      console.error("❌ GOOGLE_SERVICE_ACCOUNT_JSON environment variable is missing or invalid");
       throw new Error("Google Drive not configured - missing GOOGLE_SERVICE_ACCOUNT_JSON");
     }
     
     console.log("🔐 Attempting to get auth client...");
+    console.log("🔍 Credentials info:", {
+      type: credentials.type,
+      project_id: credentials.project_id,
+      client_email: credentials.client_email
+    });
+    
     const client = await auth.getClient();
     console.log("✅ Google Drive auth client obtained successfully");
     return client;
   } catch (error) {
     console.error('❌ Google Drive authentication failed:', error.message);
+    console.error('❌ Auth error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status
+    });
     throw new Error(`Google Drive auth failed: ${error.message}`);
   }
 }
@@ -190,14 +202,38 @@ export async function uploadPoemFile(
     console.log(`📤 Starting poem file upload for email: ${email}`);
     console.log(`📄 Original filename: ${originalFileName}`);
     console.log(`📝 Poem title: ${poemTitle}`);
+    console.log(`📊 File buffer details:`, {
+      bufferLength: file?.length || 0,
+      isBuffer: Buffer.isBuffer(file),
+      bufferType: typeof file
+    });
     
-    if (!file || file.length === 0) {
-      throw new Error('File buffer is empty or undefined');
+    // Validate file buffer
+    if (!file) {
+      throw new Error('File buffer is null or undefined');
+    }
+    
+    if (!Buffer.isBuffer(file)) {
+      throw new Error('File is not a valid Buffer object');
+    }
+    
+    if (file.length === 0) {
+      throw new Error('File buffer is empty (0 bytes)');
+    }
+    
+    // Validate email
+    if (!email || !email.trim()) {
+      throw new Error('Email is required for file upload');
+    }
+    
+    // Validate original filename
+    if (!originalFileName || !originalFileName.trim()) {
+      throw new Error('Original filename is required');
     }
     
     const fileExtension = originalFileName.split('.').pop() || 'pdf';
     
-    // ✅ NEW: Create filename in format email_poemtitle.pdf
+    // Create filename in format email_poemtitle.pdf
     let fileName: string;
     if (poemTitle && poemTitle.trim()) {
       // Sanitize poem title for filename use
@@ -206,13 +242,13 @@ export async function uploadPoemFile(
         .replace(/\s+/g, '_') // Replace spaces with underscores
         .substring(0, 50); // Limit title length
       
-      fileName = `${email}_${sanitizedTitle}.${fileExtension}`;
+      fileName = `${email.split('@')[0]}_${sanitizedTitle}.${fileExtension}`;
     } else {
       // Fallback if no poem title provided
       if (poemIndex !== undefined && poemIndex >= 0) {
-        fileName = `${email}_poem_${poemIndex + 1}.${fileExtension}`;
+        fileName = `${email.split('@')[0]}_poem_${poemIndex + 1}.${fileExtension}`;
       } else {
-        fileName = `${email}_poem.${fileExtension}`;
+        fileName = `${email.split('@')[0]}_poem.${fileExtension}`;
       }
     }
     
@@ -221,13 +257,25 @@ export async function uploadPoemFile(
     console.log(`📤 Uploading poem file: ${fileName}`);
     console.log(`📝 File size: ${file.length} bytes`);
     console.log(`📝 MIME type: ${mimeType}`);
-    console.log(`📝 Using poem title: "${poemTitle}" -> sanitized: "${fileName}"`);
+    console.log(`📝 Using poem title: "${poemTitle}" -> sanitized filename: "${fileName}"`);
     
     const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Poems');
     console.log(`✅ Poem file uploaded successfully: ${uploadedUrl}`);
+    
+    // Validate the returned URL
+    if (!uploadedUrl || !uploadedUrl.startsWith('https://drive.google.com/')) {
+      throw new Error('Invalid Google Drive URL returned');
+    }
+    
     return uploadedUrl;
   } catch (error) {
     console.error(`❌ Error uploading poem file for ${email}:`, error);
+    console.error(`❌ Error details:`, {
+      message: error.message,
+      stack: error.stack,
+      fileSize: file?.length || 0,
+      fileName: originalFileName
+    });
     throw new Error(`Failed to upload poem file: ${error.message}`);
   }
 }
@@ -256,13 +304,37 @@ export async function uploadPhotoFile(file: Buffer, email: string, originalFileN
   try {
     console.log(`📸 Starting photo file upload for email: ${email}`);
     console.log(`📄 Original filename: ${originalFileName}`);
+    console.log(`📊 File buffer details:`, {
+      bufferLength: file?.length || 0,
+      isBuffer: Buffer.isBuffer(file),
+      bufferType: typeof file
+    });
     
-    if (!file || file.length === 0) {
-      throw new Error('Photo file buffer is empty or undefined');
+    // Validate file buffer
+    if (!file) {
+      throw new Error('Photo file buffer is null or undefined');
+    }
+    
+    if (!Buffer.isBuffer(file)) {
+      throw new Error('Photo file is not a valid Buffer object');
+    }
+    
+    if (file.length === 0) {
+      throw new Error('Photo file buffer is empty (0 bytes)');
+    }
+    
+    // Validate email
+    if (!email || !email.trim()) {
+      throw new Error('Email is required for photo upload');
+    }
+    
+    // Validate original filename
+    if (!originalFileName || !originalFileName.trim()) {
+      throw new Error('Original filename is required');
     }
     
     const fileExtension = originalFileName.split('.').pop() || 'jpg';
-    const fileName = `${email}_photo.${fileExtension}`;
+    const fileName = `${email.split('@')[0]}_photo.${fileExtension}`;
     const mimeType = getMimeType(fileExtension);
     
     console.log(`📸 Uploading photo file: ${fileName}`);
@@ -271,9 +343,21 @@ export async function uploadPhotoFile(file: Buffer, email: string, originalFileN
     
     const uploadedUrl = await uploadFileToDrive(file, fileName, mimeType, 'Photos');
     console.log(`✅ Photo file uploaded successfully: ${uploadedUrl}`);
+    
+    // Validate the returned URL
+    if (!uploadedUrl || !uploadedUrl.startsWith('https://drive.google.com/')) {
+      throw new Error('Invalid Google Drive URL returned for photo');
+    }
+    
     return uploadedUrl;
   } catch (error) {
     console.error(`❌ Error uploading photo file for ${email}:`, error);
+    console.error(`❌ Error details:`, {
+      message: error.message,
+      stack: error.stack,
+      fileSize: file?.length || 0,
+      fileName: originalFileName
+    });
     throw new Error(`Failed to upload photo file: ${error.message}`);
   }
 }

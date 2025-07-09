@@ -23,8 +23,15 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit for poem files
   },
   fileFilter: (req, file, cb) => {
+    console.log('📁 Multer file filter:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype
+    });
+    
     // Allow images for photos
     if (file.mimetype.startsWith('image/')) {
+      console.log('✅ Image file accepted:', file.originalname);
       cb(null, true);
     }
     // Allow documents for poem files
@@ -34,6 +41,7 @@ const upload = multer({
       file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.mimetype === 'text/plain'
     ) {
+      console.log('✅ Document file accepted:', file.originalname);
       cb(null, true);
     }
     // Allow CSV files for admin uploads
@@ -42,10 +50,12 @@ const upload = multer({
       file.mimetype === 'application/csv' ||
       file.mimetype === 'application/vnd.ms-excel'
     ) {
+      console.log('✅ CSV file accepted:', file.originalname);
       cb(null, true);
     }
     // Reject other file types
     else {
+      console.error('❌ File type rejected:', file.mimetype, file.originalname);
       cb(new Error(`File type not allowed: ${file.mimetype}. Please upload images (JPG, PNG) for photos and documents (PDF, DOC, DOCX, TXT) for poems.`));
     }
   }
@@ -131,12 +141,25 @@ const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
 
 // SAFER: Wrapper function for upload.any() with better error handling
 const safeUploadAny = (req: any, res: any, next: any) => {
+  console.log('📁 Processing file upload...');
   upload.any()(req, res, (error) => {
     if (error) {
       console.error('❌ Multer error:', error);
       return res.status(400).json({
         success: false,
         error: error.message
+      });
+    }
+    console.log('✅ Multer processing completed');
+    console.log('📁 Files processed:', req.files?.length || 0);
+    if (req.files) {
+      req.files.forEach((file: any) => {
+        console.log('📄 File details:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        });
       });
     }
     next();
@@ -1204,31 +1227,67 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
   console.log('🧪 Testing Google Drive configuration...');
 
   try {
+    // Check environment variables
+    const hasCredentials = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const credentialsLength = process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0;
+    
+    console.log('🔍 Environment check:', {
+      hasCredentials,
+      credentialsLength,
+      driveFolder: '1kG8qdjMAmWKXiEKngr51jnUnyb2sEv4P'
+    });
+    
+    if (!hasCredentials) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured in environment');
+    }
+
     const { uploadFileToDrive } = await import('./google-drive.js');
     
     // Create a small test file
-    const testFile = Buffer.from('This is a test file for Google Drive upload', 'utf-8');
+    const testFile = Buffer.from('This is a test file for Google Drive upload - ' + new Date().toISOString(), 'utf-8');
     const testFileName = `test_${Date.now()}.txt`;
     
     console.log('📤 Attempting to upload test file to Google Drive...');
+    console.log('📄 Test file details:', {
+      fileName: testFileName,
+      size: testFile.length,
+      content: testFile.toString().substring(0, 50) + '...'
+    });
+    
     const fileUrl = await uploadFileToDrive(testFile, testFileName, 'text/plain', 'Poems');
+    
+    console.log('✅ Google Drive test successful!');
     
     res.json({
       success: true,
       configured: true,
-      message: 'Google Drive is properly configured',
-      testFileUrl: fileUrl
+      message: 'Google Drive is properly configured and working',
+      testFileUrl: fileUrl,
+      environment: {
+        hasCredentials: true,
+        credentialsLength,
+        nodeEnv: process.env.NODE_ENV
+      }
     });
 
   } catch (error: any) {
     console.error('❌ Google Drive test failed:', error);
+    console.error('❌ Full error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
+    
     res.json({
       success: false,
       configured: false,
       message: 'Google Drive test failed: ' + error.message,
       details: {
         hasCredentials: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
-        errorMessage: error.message
+        credentialsLength: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+        errorMessage: error.message,
+        errorCode: error.code,
+        nodeEnv: process.env.NODE_ENV
       }
     });
   }
@@ -1430,38 +1489,80 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     let poemFile = null;
     let photoFile = null;
 
+    console.log('📁 Processing uploaded files...');
+    console.log('📁 Request files:', req.files);
+    console.log('📁 Files count:', req.files?.length || 0);
+
     if (req.files && Array.isArray(req.files)) {
+      console.log('📄 All uploaded files:');
+      req.files.forEach((file: any, index: number) => {
+        console.log(`  File ${index + 1}:`, {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+      });
+
+      // More flexible file detection
       poemFile = req.files.find((f: any) => 
         f.fieldname === 'poemFile' || 
         f.fieldname === 'poems' || 
-        f.originalname?.toLowerCase().includes('poem')
+        f.fieldname === 'poem' ||
+        f.originalname?.toLowerCase().includes('poem') ||
+        (!f.mimetype?.startsWith('image/') && (
+          f.mimetype === 'application/pdf' ||
+          f.mimetype === 'application/msword' ||
+          f.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          f.mimetype === 'text/plain'
+        ))
       );
 
       photoFile = req.files.find((f: any) => 
         f.fieldname === 'photoFile' || 
         f.fieldname === 'photo' || 
+        f.fieldname === 'profilePicture' ||
         f.originalname?.toLowerCase().includes('photo') ||
         f.mimetype?.startsWith('image/')
       );
     }
 
     console.log('📁 Identified files:', {
-      poemFile: poemFile?.originalname,
-      photoFile: photoFile?.originalname
-    });    // Upload files to Google Drive
+      poemFile: poemFile ? {
+        name: poemFile.originalname,
+        type: poemFile.mimetype,
+        size: poemFile.size,
+        fieldname: poemFile.fieldname
+      } : null,
+      photoFile: photoFile ? {
+        name: photoFile.originalname,
+        type: photoFile.mimetype,
+        size: photoFile.size,
+        fieldname: photoFile.fieldname
+      } : null
+    });
+
+    // Upload files to Google Drive
     let poemFileUrl = null;
     let photoFileUrl = null;
 
     if (poemFile) {
-      console.log('☁️ Uploading poem file to Google Drive...');
+      console.log('☁️ Starting poem file upload to Google Drive...');
       console.log('📄 Poem file details:', {
         name: poemFile.originalname,
         size: poemFile.size,
-        type: poemFile.mimetype
+        type: poemFile.mimetype,
+        bufferSize: poemFile.buffer?.length || 0
       });
 
       try {
+        if (!poemFile.buffer || poemFile.buffer.length === 0) {
+          throw new Error('Poem file buffer is empty');
+        }
+
         const { uploadPoemFile } = await import('./google-drive.js');
+        console.log('📤 Calling uploadPoemFile function...');
+        
         poemFileUrl = await uploadPoemFile(
           poemFile.buffer, 
           email, 
@@ -1469,40 +1570,59 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           0, // poemIndex
           poemTitle // Pass the actual poem title
         );
-        console.log('✅ Poem file uploaded:', poemFileUrl);
+        
+        console.log('✅ Poem file uploaded successfully!');
+        console.log('🔗 Poem file URL:', poemFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload poem file:', error);
         console.error('❌ Upload error details:', error.message);
-        // Don't fail the submission if Google Drive upload fails
-        console.log('⚠️ Continuing submission without Google Drive URL');
+        console.error('❌ Error stack:', error.stack);
+        // Return error to user if Google Drive upload fails
+        return res.status(500).json({
+          success: false,
+          error: `Failed to upload poem file: ${error.message}`
+        });
       }
+    } else {
+      console.log('⚠️ No poem file found in request');
+      console.log('📋 Available files:', req.files?.map(f => f.fieldname) || []);
     }
 
     if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive...');
+      console.log('☁️ Starting photo file upload to Google Drive...');
       console.log('📸 Photo file details:', {
         name: photoFile.originalname,
         size: photoFile.size,
-        type: photoFile.mimetype
+        type: photoFile.mimetype,
+        bufferSize: photoFile.buffer?.length || 0
       });
 
       try {
+        if (!photoFile.buffer || photoFile.buffer.length === 0) {
+          throw new Error('Photo file buffer is empty');
+        }
+
         const { uploadPhotoFile } = await import('./google-drive.js');
+        console.log('📤 Calling uploadPhotoFile function...');
+        
         photoFileUrl = await uploadPhotoFile(
           photoFile.buffer, 
           email, 
           photoFile.originalname
         );
-        console.log('✅ Photo file uploaded successfully:', photoFileUrl);
-        console.log('🔗 Photo file URL will be saved as:', photoFileUrl);
+        
+        console.log('✅ Photo file uploaded successfully!');
+        console.log('🔗 Photo file URL:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file:', error);
         console.error('❌ Upload error details:', error.message);
-        // Don't fail the submission if Google Drive upload fails
-        console.log('⚠️ Continuing submission without Google Drive URL');
+        console.error('❌ Error stack:', error.stack);
+        // Continue with submission even if photo upload fails (photo is optional)
+        console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
     } else {
       console.log('⚠️ No photo file found in request');
+      console.log('📋 Available files:', req.files?.map(f => f.fieldname) || []);
     }
 
     // Create or find user - FIXED VERSION
