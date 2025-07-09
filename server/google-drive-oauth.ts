@@ -405,7 +405,7 @@ export async function clearTokens(): Promise<void> {
 }
 
 /**
- * Service Account version of uploadPoemFile (alias for uploadPoemFileOAuth)
+ * Service Account version of uploadPoemFile with fallback to service account
  */
 export async function uploadPoemFile(
   file: Buffer,
@@ -414,16 +414,54 @@ export async function uploadPoemFile(
   poemIndex?: number,
   poemTitle?: string
 ): Promise<string> {
-  return uploadPoemFileOAuth(file, email, originalFileName, poemIndex, poemTitle);
+  try {
+    // First try OAuth if tokens are available
+    const isAuthorized = await checkAuthStatus();
+    if (isAuthorized) {
+      console.log('✅ Using OAuth authentication for poem file upload');
+      return await uploadPoemFileOAuth(file, email, originalFileName, poemIndex, poemTitle);
+    }
+  } catch (oauthError) {
+    console.log('⚠️ OAuth authentication failed, falling back to service account');
+  }
+
+  // Fallback to service account
+  try {
+    console.log('🔄 Using service account for poem file upload');
+    const { uploadPoemFile: serviceAccountUpload } = await import('./google-drive.js');
+    return await serviceAccountUpload(file, email, originalFileName, poemIndex, poemTitle);
+  } catch (serviceError) {
+    console.error('❌ Service account upload also failed:', serviceError);
+    throw new Error(`Both OAuth and service account uploads failed. OAuth: No tokens available. Service: ${serviceError.message}`);
+  }
 }
 
 /**
- * Service Account version of uploadPhotoFile (alias for uploadPhotoFileOAuth)
+ * Service Account version of uploadPhotoFile with fallback to service account
  */
 export async function uploadPhotoFile(
   file: Buffer,
   email: string,
   originalFileName: string
 ): Promise<string> {
-  return uploadPhotoFileOAuth(file, email, originalFileName);
+  try {
+    // First try OAuth if tokens are available
+    const isAuthorized = await checkAuthStatus();
+    if (isAuthorized) {
+      console.log('✅ Using OAuth authentication for photo file upload');
+      return await uploadPhotoFileOAuth(file, email, originalFileName);
+    }
+  } catch (oauthError) {
+    console.log('⚠️ OAuth authentication failed, falling back to service account');
+  }
+
+  // Fallback to service account
+  try {
+    console.log('🔄 Using service account for photo file upload');
+    const { uploadPhotoFile: serviceAccountUpload } = await import('./google-drive.js');
+    return await serviceAccountUpload(file, email, originalFileName);
+  } catch (serviceError) {
+    console.error('❌ Service account upload also failed:', serviceError);
+    throw new Error(`Both OAuth and service account uploads failed. OAuth: No tokens available. Service: ${serviceError.message}`);
+  }
 }

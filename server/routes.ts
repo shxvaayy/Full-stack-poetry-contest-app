@@ -1772,7 +1772,15 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.error('❌ Upload error details:', error.message);
         console.error('❌ Error stack:', error.stack);
 
-        // Check if it's an auth error
+        // Check if it's an auth error that couldn't be resolved with fallback
+        if (error.message.includes('Both OAuth and service account uploads failed')) {
+          return res.status(500).json({
+            success: false,
+            error: 'File upload system temporarily unavailable. Please try again later or contact support.',
+            details: 'Both authentication methods failed'
+          });
+        }
+
         if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
           return res.status(401).json({
             success: false,
@@ -1805,9 +1813,14 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
         console.log('✅ Photo file uploaded via Service Account:', photoFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload photo file via OAuth:', error);
+        console.error('❌ Failed to upload photo file:', error);
         console.error('❌ Upload error details:', error.message);
-        console.error('❌ Error stack:', error.stack);
+        
+        // Only show specific error if both methods failed
+        if (error.message.includes('Both OAuth and service account uploads failed')) {
+          console.error('❌ All photo upload methods failed:', error.message);
+        }
+        
         // Continue with submission even if photo upload fails (photo is optional)
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
@@ -2106,37 +2119,41 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       console.log('☁️ Uploading poem files to Google Drive via OAuth...');
 
       try {
-        // Check OAuth authorization first
-        const isAuthorized = await checkAuthStatus();
-        if (!isAuthorized) {
-          return res.status(401).json({
-            success: false,
-            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
-            authUrl: '/auth'
-          });
+        // Try multiple poem upload with fallback logic
+        try {
+          const isAuthorized = await checkAuthStatus();
+          if (isAuthorized) {
+            console.log('✅ Using OAuth for multiple poems upload');
+            const poemBuffers = poemFiles.map(file => file.buffer);
+            const originalFileNames = poemFiles.map(file => file.originalname);
+
+            poemFileUrls = await uploadMultiplePoemFilesOAuth(
+              poemBuffers, 
+              email, 
+              originalFileNames,
+              titles
+            );
+            console.log('✅ Poem files uploaded via OAuth:', poemFileUrls.length);
+          } else {
+            throw new Error('OAuth not authorized');
+          }
+        } catch (oauthError) {
+          console.log('⚠️ OAuth failed for multiple poems, using service account fallback');
+          // Fallback to service account for each file
+          const { uploadMultiplePoemFiles } = await import('./google-drive.js');
+          const poemBuffers = poemFiles.map(file => file.buffer);
+          const originalFileNames = poemFiles.map(file => file.originalname);
+          
+          poemFileUrls = await uploadMultiplePoemFiles(
+            poemBuffers,
+            email,
+            originalFileNames,
+            titles
+          );
+          console.log('✅ Poem files uploaded via service account:', poemFileUrls.length);
         }
-
-        const poemBuffers = poemFiles.map(file => file.buffer);
-        const originalFileNames = poemFiles.map(file => file.originalname);
-
-        poemFileUrls = await uploadMultiplePoemFilesOAuth(
-          poemBuffers, 
-          email, 
-          originalFileNames,
-          titles
-        );
-        console.log('✅ Poem files uploaded via OAuth:', poemFileUrls.length);
       } catch (error) {
-        console.error('❌ Failed to upload poem files via OAuth:', error);
-
-        // Check if it's an auth error
-        if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
-          return res.status(401).json({
-            success: false,
-            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
-            authUrl: '/auth'
-          });
-        }
+        console.error('❌ Failed to upload poem files:', error);
 
         return res.status(500).json({
           success: false,
@@ -2155,9 +2172,9 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
       try {
         photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
-        console.log('✅ Photo file uploaded via Service Account:', photoFileUrl);
+        console.log('✅ Photo file uploaded successfully:', photoFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload photo file via OAuth:', error);
+        console.error('❌ Failed to upload photo file:', error);
         console.error('❌ Upload error details:', error.message);
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
