@@ -13,6 +13,15 @@ import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.j
 import { client, connectDatabase } from './db.js';
 import { initializeAdminSettings, getSetting, updateSetting, getAllSettings, resetFreeTierSubmissions } from './admin-settings.js';
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
+import { 
+  getAuthUrl, 
+  exchangeCodeForTokens, 
+  uploadPoemFileOAuth, 
+  uploadPhotoFileOAuth, 
+  uploadMultiplePoemFilesOAuth,
+  checkAuthStatus,
+  clearTokens
+} from './google-drive-oauth.js';
 
 const router = Router();
 
@@ -194,9 +203,169 @@ router.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     paypal_configured: !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
     razorpay_configured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
-    email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
+    email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
+    oauth_configured: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
+    drive_folder_configured: !!process.env.DRIVE_FOLDER_ID
   });
 });
+
+// ===== GOOGLE DRIVE OAUTH ENDPOINTS =====
+
+// Initiate OAuth 2.0 flow
+router.get('/auth', asyncHandler(async (req: any, res: any) => {
+  console.log('🔐 Initiating Google Drive OAuth flow...');
+  
+  try {
+    const authUrl = getAuthUrl();
+    console.log('✅ OAuth URL generated, redirecting to Google...');
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error('❌ Error initiating OAuth flow:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initiate OAuth flow: ' + error.message
+    });
+  }
+}));
+
+// Handle OAuth callback
+router.get('/oauth2callback', asyncHandler(async (req: any, res: any) => {
+  console.log('🔄 Handling OAuth callback...');
+  
+  const { code, error: oauthError } = req.query;
+  
+  if (oauthError) {
+    console.error('❌ OAuth error:', oauthError);
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>OAuth Error - Writory</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+          .error { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1 class="error">OAuth Authorization Failed</h1>
+        <p>Error: ${oauthError}</p>
+        <p><a href="/">Return to Home</a></p>
+      </body>
+      </html>
+    `);
+  }
+  
+  if (!code) {
+    console.error('❌ No authorization code received');
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>OAuth Error - Writory</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+          .error { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1 class="error">No Authorization Code</h1>
+        <p>The OAuth flow did not return an authorization code.</p>
+        <p><a href="/">Return to Home</a></p>
+      </body>
+      </html>
+    `);
+  }
+  
+  try {
+    console.log('🔄 Exchanging authorization code for tokens...');
+    const tokens = await exchangeCodeForTokens(code as string);
+    
+    console.log('✅ OAuth flow completed successfully');
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>OAuth Success - Writory</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+          .success { color: #2e7d32; }
+          .info { background: #e3f2fd; padding: 20px; margin: 20px 0; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <h1 class="success">✅ Google Drive Access Authorized!</h1>
+        <div class="info">
+          <p>Your application now has access to upload files to Google Drive.</p>
+          <p>You can now submit poems and photos through the contest form.</p>
+        </div>
+        <p><a href="/">Return to Home</a> | <a href="/submit">Submit Poem</a></p>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('❌ Error exchanging code for tokens:', error);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>OAuth Error - Writory</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+          .error { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1 class="error">OAuth Token Exchange Failed</h1>
+        <p>Error: ${error.message}</p>
+        <p><a href="/auth">Try Again</a> | <a href="/">Return to Home</a></p>
+      </body>
+      </html>
+    `);
+  }
+}));
+
+// Check OAuth status
+router.get('/api/oauth-status', asyncHandler(async (req: any, res: any) => {
+  console.log('🔍 Checking OAuth authorization status...');
+  
+  try {
+    const isAuthorized = await checkAuthStatus();
+    
+    res.json({
+      success: true,
+      authorized: isAuthorized,
+      message: isAuthorized ? 'Google Drive access is authorized' : 'Google Drive access not authorized',
+      authUrl: isAuthorized ? null : '/auth'
+    });
+  } catch (error) {
+    console.error('❌ Error checking OAuth status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check OAuth status'
+    });
+  }
+}));
+
+// Clear OAuth tokens (logout)
+router.post('/api/oauth-logout', asyncHandler(async (req: any, res: any) => {
+  console.log('🚪 Clearing OAuth tokens...');
+  
+  try {
+    await clearTokens();
+    
+    res.json({
+      success: true,
+      message: 'OAuth tokens cleared successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error clearing OAuth tokens:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear OAuth tokens'
+    });
+  }
+}));
 
 // ===== ADMIN SETTINGS ENDPOINTS =====
 
@@ -1222,56 +1391,81 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Test Google Drive configuration
+// Test Google Drive OAuth configuration
 router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => {
-  console.log('🧪 Testing Google Drive configuration...');
+  console.log('🧪 Testing Google Drive OAuth configuration...');
 
   try {
-    // Check environment variables
-    const hasCredentials = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    const credentialsLength = process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0;
+    // Check OAuth environment variables
+    const hasOAuthCredentials = !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI);
+    const hasDriveFolder = !!process.env.DRIVE_FOLDER_ID;
     
-    console.log('🔍 Environment check:', {
-      hasCredentials,
-      credentialsLength,
-      driveFolder: '1kG8qdjMAmWKXiEKngr51jnUnyb2sEv4P'
+    console.log('🔍 OAuth Environment check:', {
+      hasClientId: !!process.env.CLIENT_ID,
+      hasClientSecret: !!process.env.CLIENT_SECRET,
+      hasRedirectUri: !!process.env.REDIRECT_URI,
+      hasDriveFolder,
+      driveFolder: process.env.DRIVE_FOLDER_ID || 'NOT_SET'
     });
     
-    if (!hasCredentials) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured in environment');
+    if (!hasOAuthCredentials) {
+      throw new Error('OAuth credentials not configured. Please set CLIENT_ID, CLIENT_SECRET, and REDIRECT_URI environment variables.');
     }
 
-    const { uploadFileToDrive } = await import('./google-drive.js');
+    if (!hasDriveFolder) {
+      throw new Error('DRIVE_FOLDER_ID not configured in environment');
+    }
+
+    // Check if OAuth is authorized
+    const isAuthorized = await checkAuthStatus();
     
-    // Create a small test file
-    const testFile = Buffer.from('This is a test file for Google Drive upload - ' + new Date().toISOString(), 'utf-8');
-    const testFileName = `test_${Date.now()}.txt`;
+    if (!isAuthorized) {
+      console.log('⚠️ OAuth not authorized - test file upload skipped');
+      
+      return res.json({
+        success: false,
+        configured: true,
+        authorized: false,
+        message: 'Google Drive OAuth is configured but not authorized',
+        authUrl: '/auth',
+        environment: {
+          hasOAuthCredentials: true,
+          hasDriveFolder: true,
+          nodeEnv: process.env.NODE_ENV
+        }
+      });
+    }
+
+    // Test file upload
+    const testFile = Buffer.from('This is a test file for Google Drive OAuth upload - ' + new Date().toISOString(), 'utf-8');
+    const testFileName = `oauth_test_${Date.now()}.txt`;
     
-    console.log('📤 Attempting to upload test file to Google Drive...');
+    console.log('📤 Attempting to upload test file via OAuth...');
     console.log('📄 Test file details:', {
       fileName: testFileName,
       size: testFile.length,
       content: testFile.toString().substring(0, 50) + '...'
     });
     
-    const fileUrl = await uploadFileToDrive(testFile, testFileName, 'text/plain', 'Poems');
+    const fileUrl = await uploadPoemFileOAuth(testFile, 'test@example.com', testFileName, 0, 'OAuth Test');
     
-    console.log('✅ Google Drive test successful!');
+    console.log('✅ Google Drive OAuth test successful!');
     
     res.json({
       success: true,
       configured: true,
-      message: 'Google Drive is properly configured and working',
+      authorized: true,
+      message: 'Google Drive OAuth is properly configured and working',
       testFileUrl: fileUrl,
       environment: {
-        hasCredentials: true,
-        credentialsLength,
+        hasOAuthCredentials: true,
+        hasDriveFolder: true,
         nodeEnv: process.env.NODE_ENV
       }
     });
 
   } catch (error: any) {
-    console.error('❌ Google Drive test failed:', error);
+    console.error('❌ Google Drive OAuth test failed:', error);
     console.error('❌ Full error details:', {
       message: error.message,
       stack: error.stack,
@@ -1280,11 +1474,13 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
     
     res.json({
       success: false,
-      configured: false,
-      message: 'Google Drive test failed: ' + error.message,
+      configured: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
+      authorized: false,
+      message: 'Google Drive OAuth test failed: ' + error.message,
+      authUrl: '/auth',
       details: {
-        hasCredentials: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
-        credentialsLength: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+        hasOAuthCredentials: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
+        hasDriveFolder: !!process.env.DRIVE_FOLDER_ID,
         errorMessage: error.message,
         errorCode: error.code,
         nodeEnv: process.env.NODE_ENV
@@ -1547,7 +1743,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     let photoFileUrl = null;
 
     if (poemFile) {
-      console.log('☁️ Starting poem file upload to Google Drive...');
+      console.log('☁️ Starting OAuth poem file upload to Google Drive...');
       console.log('📄 Poem file details:', {
         name: poemFile.originalname,
         size: poemFile.size,
@@ -1560,10 +1756,19 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           throw new Error('Poem file buffer is empty');
         }
 
-        const { uploadPoemFile } = await import('./google-drive.js');
-        console.log('📤 Calling uploadPoemFile function...');
+        // Check OAuth authorization first
+        const isAuthorized = await checkAuthStatus();
+        if (!isAuthorized) {
+          return res.status(401).json({
+            success: false,
+            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
+            authUrl: '/auth'
+          });
+        }
+
+        console.log('📤 Calling OAuth uploadPoemFile function...');
         
-        poemFileUrl = await uploadPoemFile(
+        poemFileUrl = await uploadPoemFileOAuth(
           poemFile.buffer, 
           email, 
           poemFile.originalname,
@@ -1571,12 +1776,22 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           poemTitle // Pass the actual poem title
         );
         
-        console.log('✅ Poem file uploaded successfully!');
+        console.log('✅ Poem file uploaded successfully via OAuth!');
         console.log('🔗 Poem file URL:', poemFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload poem file:', error);
+        console.error('❌ Failed to upload poem file via OAuth:', error);
         console.error('❌ Upload error details:', error.message);
         console.error('❌ Error stack:', error.stack);
+        
+        // Check if it's an auth error
+        if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
+          return res.status(401).json({
+            success: false,
+            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
+            authUrl: '/auth'
+          });
+        }
+        
         // Return error to user if Google Drive upload fails
         return res.status(500).json({
           success: false,
@@ -1589,7 +1804,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     if (photoFile) {
-      console.log('☁️ Starting photo file upload to Google Drive...');
+      console.log('☁️ Starting OAuth photo file upload to Google Drive...');
       console.log('📸 Photo file details:', {
         name: photoFile.originalname,
         size: photoFile.size,
@@ -1602,19 +1817,25 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           throw new Error('Photo file buffer is empty');
         }
 
-        const { uploadPhotoFile } = await import('./google-drive.js');
-        console.log('📤 Calling uploadPhotoFile function...');
-        
-        photoFileUrl = await uploadPhotoFile(
-          photoFile.buffer, 
-          email, 
-          photoFile.originalname
-        );
-        
-        console.log('✅ Photo file uploaded successfully!');
-        console.log('🔗 Photo file URL:', photoFileUrl);
+        // Check OAuth authorization first
+        const isAuthorized = await checkAuthStatus();
+        if (!isAuthorized) {
+          console.log('⚠️ Photo upload skipped - OAuth not authorized');
+          console.log('⚠️ Continuing submission without photo URL (photo is optional)');
+        } else {
+          console.log('📤 Calling OAuth uploadPhotoFile function...');
+          
+          photoFileUrl = await uploadPhotoFileOAuth(
+            photoFile.buffer, 
+            email, 
+            photoFile.originalname
+          );
+          
+          console.log('✅ Photo file uploaded successfully via OAuth!');
+          console.log('🔗 Photo file URL:', photoFileUrl);
+        }
       } catch (error) {
-        console.error('❌ Failed to upload photo file:', error);
+        console.error('❌ Failed to upload photo file via OAuth:', error);
         console.error('❌ Upload error details:', error.message);
         console.error('❌ Error stack:', error.stack);
         // Continue with submission even if photo upload fails (photo is optional)
@@ -1912,27 +2133,50 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     let photoFileUrl = null;
 
     if (poemFiles.length > 0) {
-      console.log('☁️ Uploading poem files to Google Drive...');
+      console.log('☁️ Uploading poem files to Google Drive via OAuth...');
 
       try {
-        const { uploadMultiplePoemFiles } = await import('./google-drive.js');
+        // Check OAuth authorization first
+        const isAuthorized = await checkAuthStatus();
+        if (!isAuthorized) {
+          return res.status(401).json({
+            success: false,
+            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
+            authUrl: '/auth'
+          });
+        }
+
         const poemBuffers = poemFiles.map(file => file.buffer);
         const originalFileNames = poemFiles.map(file => file.originalname);
 
-        poemFileUrls = await uploadMultiplePoemFiles(
+        poemFileUrls = await uploadMultiplePoemFilesOAuth(
           poemBuffers, 
           email, 
           originalFileNames,
           titles
         );
-        console.log('✅ Poem files uploaded:', poemFileUrls.length);
+        console.log('✅ Poem files uploaded via OAuth:', poemFileUrls.length);
       } catch (error) {
-        console.error('❌ Failed to upload poem files:', error);
+        console.error('❌ Failed to upload poem files via OAuth:', error);
+        
+        // Check if it's an auth error
+        if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
+          return res.status(401).json({
+            success: false,
+            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
+            authUrl: '/auth'
+          });
+        }
+        
+        return res.status(500).json({
+          success: false,
+          error: `Failed to upload poem files: ${error.message}`
+        });
       }
     }
 
     if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive...');
+      console.log('☁️ Uploading photo file to Google Drive via OAuth...');
       console.log('📸 Photo file details:', {
         name: photoFile.originalname,
         size: photoFile.size,
@@ -1940,17 +2184,24 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       });
 
       try {
-        const { uploadPhotoFile } = await import('./google-drive.js');
-        photoFileUrl = await uploadPhotoFile(
-          photoFile.buffer, 
-          email, 
-          photoFile.originalname
-        );
-        console.log('✅ Photo file uploaded successfully:', photoFileUrl);
-        console.log('🔗 Photo file URL will be saved as:', photoFileUrl);
+        // Check OAuth authorization first
+        const isAuthorized = await checkAuthStatus();
+        if (!isAuthorized) {
+          console.log('⚠️ Photo upload skipped - OAuth not authorized');
+          console.log('⚠️ Continuing submission without photo URL (photo is optional)');
+        } else {
+          photoFileUrl = await uploadPhotoFileOAuth(
+            photoFile.buffer, 
+            email, 
+            photoFile.originalname
+          );
+          console.log('✅ Photo file uploaded successfully via OAuth:', photoFileUrl);
+          console.log('🔗 Photo file URL will be saved as:', photoFileUrl);
+        }
       } catch (error) {
-        console.error('❌ Failed to upload photo file:', error);
+        console.error('❌ Failed to upload photo file via OAuth:', error);
         console.error('❌ Upload error details:', error.message);
+        console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
     } else {
       console.log('⚠️ No photo file found in request');
@@ -2201,19 +2452,29 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
 
     if (poemFile) {
       try {
-        const { uploadPoemFile } = await import('./google-drive.js');
-        poemFileUrl = await uploadPoemFile(poemFile.buffer, email, poemFile.originalname, 0, poemTitle);
+        // Check OAuth authorization first
+        const isAuthorized = await checkAuthStatus();
+        if (isAuthorized) {
+          poemFileUrl = await uploadPoemFileOAuth(poemFile.buffer, email, poemFile.originalname, 0, poemTitle);
+        } else {
+          console.log('⚠️ OAuth not authorized, skipping poem file upload');
+        }
       } catch (error) {
-        console.error('❌ Failed to upload poem file:', error);
+        console.error('❌ Failed to upload poem file via OAuth:', error);
       }
     }
 
     if (photoFile) {
       try {
-        const { uploadPhotoFile } = await import('./google-drive.js');
-        photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
+        // Check OAuth authorization first
+        const isAuthorized = await checkAuthStatus();
+        if (isAuthorized) {
+          photoFileUrl = await uploadPhotoFileOAuth(photoFile.buffer, email, photoFile.originalname);
+        } else {
+          console.log('⚠️ OAuth not authorized, skipping photo file upload');
+        }
       } catch (error) {
-        console.error('❌ Failed to upload photo file:', error);
+        console.error('❌ Failed to upload photo file via OAuth:', error);
       }
     }
 
