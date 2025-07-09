@@ -154,10 +154,14 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
     const amount = data.amount || data.price || 0;
 
     // FIXED: Properly extract file URLs with better fallback logic
-    const poemFileUrl = data.poemFileUrl || data.poemFile || data.poem_file_url || '';
-    const photoFileUrl = data.photoFileUrl || data.photo || data.photoUrl || data.photo_file_url || '';
+    const poemFileUrl = data.poemFileUrl || data.poemFile || data.poem_file_url || data.fileUrl || '';
+    const photoFileUrl = data.photoFileUrl || data.photo || data.photoUrl || data.photo_file_url || data.photoFile || '';
 
-    console.log('🔍 File URLs being sent to sheets:', { poemFileUrl, photoFileUrl });
+    console.log('🔍 File URLs being sent to sheets:', { 
+      poemFileUrl: poemFileUrl || 'EMPTY', 
+      photoFileUrl: photoFileUrl || 'EMPTY',
+      allDataKeys: Object.keys(data)
+    });
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,

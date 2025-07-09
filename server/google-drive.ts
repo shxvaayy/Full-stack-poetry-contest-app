@@ -123,6 +123,7 @@ export async function uploadFileToDrive(
     const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
     console.log(`✅ File uploaded to Drive: ${fileName} -> ${fileUrl}`);
     console.log(`📁 File ID: ${fileId}, Folder: ${folderType}`);
+    console.log(`🔗 Returning URL: ${fileUrl}`);
     
     return fileUrl;
   } catch (error) {

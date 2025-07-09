@@ -1437,6 +1437,11 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
 
     if (photoFile) {
       console.log('☁️ Uploading photo file to Google Drive...');
+      console.log('📸 Photo file details:', {
+        name: photoFile.originalname,
+        size: photoFile.size,
+        type: photoFile.mimetype
+      });
 
       try {
         const { uploadPhotoFile } = await import('./google-drive.js');
@@ -1445,10 +1450,14 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           email, 
           photoFile.originalname
         );
-        console.log('✅ Photo file uploaded:', photoFileUrl);
+        console.log('✅ Photo file uploaded successfully:', photoFileUrl);
+        console.log('🔗 Photo file URL will be saved as:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file:', error);
+        console.error('❌ Upload error details:', error.message);
       }
+    } else {
+      console.log('⚠️ No photo file found in request');
     }
 
     // Create or find user - FIXED VERSION
@@ -1708,7 +1717,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     const photoFile = req.files?.find((f: any) => 
       f.fieldname === 'photo' || 
-      f.fieldname === 'photoFile' ||
+      f.fieldname === 'photoFile' || 
       f.mimetype?.startsWith('image/')
     );
 
@@ -1743,6 +1752,11 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
 
     if (photoFile) {
       console.log('☁️ Uploading photo file to Google Drive...');
+      console.log('📸 Photo file details:', {
+        name: photoFile.originalname,
+        size: photoFile.size,
+        type: photoFile.mimetype
+      });
 
       try {
         const { uploadPhotoFile } = await import('./google-drive.js');
@@ -1751,10 +1765,14 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           email, 
           photoFile.originalname
         );
-        console.log('✅ Photo file uploaded:', photoFileUrl);
+        console.log('✅ Photo file uploaded successfully:', photoFileUrl);
+        console.log('🔗 Photo file URL will be saved as:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file:', error);
+        console.error('❌ Upload error details:', error.message);
       }
+    } else {
+      console.log('⚠️ No photo file found in request');
     }
 
     // Create or find user - FIXED VERSION
@@ -1835,7 +1853,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           poemFileUrls: poemFileUrls.length,
           photoFileUrl: photoFileUrl ? 'YES' : 'NO'
         });
-        
+
         await addMultiplePoemsToSheet({
           firstName: firstName,
           lastName: lastName,
@@ -2812,7 +2830,7 @@ router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req:
 
   try {
     const result = await resetFreeTierSubmissions();
-    
+
     if (result) {
       console.log('✅ Free tier reset completed successfully');
       res.json({
