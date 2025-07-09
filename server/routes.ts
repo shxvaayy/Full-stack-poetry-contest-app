@@ -1714,7 +1714,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           }
         } catch (error) {
           console.error('❌ Error checking free tier usage:', error);
-        }        }
+        }        
       }
     }
 
