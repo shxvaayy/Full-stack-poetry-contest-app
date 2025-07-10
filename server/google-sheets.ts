@@ -163,6 +163,14 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       allDataKeys: Object.keys(data)
     });
 
+    // Validate URLs before sending to sheets
+    if (poemFileUrl && !poemFileUrl.startsWith('https://res.cloudinary.com/')) {
+      console.warn('⚠️ Poem file URL does not look like a Cloudinary link:', poemFileUrl);
+    }
+    if (photoFileUrl && !photoFileUrl.startsWith('https://res.cloudinary.com/')) {
+      console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
+    }
+
     const request = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Poetry!A:L',
@@ -233,6 +241,18 @@ export async function addMultiplePoemsToSheet(data: {
       const photoFileUrl = data.photoFileUrl || '';
 
       console.log(`📄 Row ${index + 1}: ${title} - Poem: ${poemFileUrl ? 'YES' : 'NO'}, Photo: ${photoFileUrl ? 'YES' : 'NO'}`);
+
+      // Validate URLs before sending to sheets
+    if (poemFileUrls && Array.isArray(poemFileUrls)) {
+      poemFileUrls.forEach((url, index) => {
+        if (url && !url.startsWith('https://res.cloudinary.com/')) {
+          console.warn(`⚠️ Poem file URL ${index + 1} does not look like a Cloudinary link:`, url);
+        }
+      });
+    }
+    if (photoFileUrl && !photoFileUrl.startsWith('https://res.cloudinary.com/')) {
+      console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
+    }
 
       return [
         timestamp,                                           // A - Timestamp
@@ -321,7 +341,7 @@ export async function initializeSheetHeaders(): Promise<void> {
         // Check if headers need to be updated to correct format
         const currentHeaders = existingPoetry.data.values[0];
         const expectedHeaders = ['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index'];
-        
+
         // If headers don't match, update them
         if (JSON.stringify(currentHeaders) !== JSON.stringify(expectedHeaders)) {
           console.log('🔄 Updating sheet headers to correct format...');
