@@ -145,7 +145,8 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
 
     const authClient = await getAuthClient();
     if (!authClient) {
-      throw new Error("No auth client available");
+      console.warn('⚠️ No Google Sheets auth client available - data will not be saved to sheets');
+      return;
     }
 
     // Handle both old and new data formats
@@ -167,32 +168,22 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       contestType, 
       challengeTitle, 
       challengeDescription, 
-      poemText: poemText ? 'YES' : 'NO',
-      poemTextLength: poemText.length
+      poemText: poemText ? 'YES' : 'NO'
     });
 
     console.log('🔍 File URLs being sent to sheets:', { 
       poemFileUrl: poemFileUrl || 'EMPTY', 
-      photoFileUrl: photoFileUrl || 'EMPTY',
-      allDataKeys: Object.keys(data)
+      photoFileUrl: photoFileUrl || 'EMPTY'
     });
-
-    // Validate URLs before sending to sheets
-    if (poemFileUrl && !poemFileUrl.startsWith('https://res.cloudinary.com/')) {
-      console.warn('⚠️ Poem file URL does not look like a Cloudinary link:', poemFileUrl);
-    }
-    if (photoFileUrl && !photoFileUrl.startsWith('https://res.cloudinary.com/')) {
-      console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
-    }
 
     const rowData = [
       timestamp,                               // A - Timestamp
       name,                                   // B - Name
-      data.email,                             // C - Email
+      data.email || '',                       // C - Email
       data.phone || '',                       // D - Phone
       data.age || '',                         // E - Age
-      data.poemTitle,                         // F - Poem Title
-      data.tier,                              // G - Tier
+      data.poemTitle || '',                   // F - Poem Title
+      data.tier || '',                        // G - Tier
       amount.toString(),                      // H - Amount
       photoFileUrl,                           // I - Photo Link (Photo URL)
       poemFileUrl,                            // J - PDF Link (Poem File URL)
@@ -204,12 +195,7 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       poemText                                // P - Poem Text
     ];
 
-    console.log('📊 Full row data being sent to Google Sheets (M-P):', {
-      M_ContestType: rowData[12],
-      N_ChallengeTitle: rowData[13],
-      O_ChallengeDescription: rowData[14],
-      P_PoemText: rowData[15] ? `${rowData[15].substring(0, 50)}...` : 'EMPTY'
-    });
+    console.log('📊 Full row data being sent to Google Sheets:', rowData);
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,
@@ -222,12 +208,14 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       }
     };
 
-    await sheets.spreadsheets.values.append(request);
-    console.log('✅ Poem submission added to Google Sheets with contest fields');
+    const response = await sheets.spreadsheets.values.append(request);
+    console.log('✅ Poem submission added to Google Sheets successfully:', response.data);
 
   } catch (error) {
     console.error('❌ Error adding poem submission to Google Sheets:', error);
-    throw error;
+    console.error('Error details:', error.response?.data || error.message);
+    // Don't throw error to prevent submission failure
+    console.warn('⚠️ Continuing with submission despite Google Sheets error');
   }
 }
 

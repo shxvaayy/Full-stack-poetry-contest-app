@@ -1327,6 +1327,75 @@ router.get('/api/test-cloudinary', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// Test Google Sheets configuration
+router.get('/api/test-google-sheets', asyncHandler(async (req: any, res: any) => {
+  console.log('🧪 Testing Google Sheets configuration...');
+
+  try {
+    // Check Google Sheets environment variables
+    const hasGoogleSheetId = !!process.env.GOOGLE_SHEET_ID;
+    const hasGoogleCredentials = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+
+    console.log('🔍 Google Sheets Environment check:', {
+      hasSheetId: hasGoogleSheetId,
+      hasCredentials: hasGoogleCredentials,
+      sheetId: process.env.GOOGLE_SHEET_ID ? 'CONFIGURED' : 'NOT_SET'
+    });
+
+    if (!hasGoogleSheetId) {
+      throw new Error('Google Sheet ID not configured. Please set GOOGLE_SHEET_ID environment variable.');
+    }
+
+    if (!hasGoogleCredentials) {
+      throw new Error('Google service account credentials not configured. Please set GOOGLE_SERVICE_ACCOUNT_JSON environment variable.');
+    }
+
+    // Test Google Sheets connection
+    const { getSubmissionCountFromSheet, initializeSheetHeaders } = await import('./google-sheets.js');
+    
+    console.log('📤 Attempting to initialize Google Sheets headers...');
+    await initializeSheetHeaders();
+
+    console.log('📊 Attempting to get submission count from Google Sheets...');
+    const submissionCount = await getSubmissionCountFromSheet();
+
+    console.log('✅ Google Sheets test successful!');
+
+    res.json({
+      success: true,
+      configured: true,
+      message: 'Google Sheets is properly configured and working',
+      submissionCount: submissionCount,
+      environment: {
+        hasGoogleSheetId: true,
+        hasGoogleCredentials: true,
+        nodeEnv: process.env.NODE_ENV
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Google Sheets test failed:', error);
+    console.error('❌ Full error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
+
+    res.json({
+      success: false,
+      configured: !!(process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+      message: 'Google Sheets test failed: ' + error.message,
+      details: {
+        hasGoogleSheetId: !!process.env.GOOGLE_SHEET_ID,
+        hasGoogleCredentials: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+        errorMessage: error.message,
+        errorCode: error.code,
+        nodeEnv: process.env.NODE_ENV
+      }
+    });
+  }
+}));
+
 // ===== SUBMISSION ENDPOINTS =====
 
 // Helper function to get the free tier reset timestamp
