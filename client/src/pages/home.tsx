@@ -144,29 +144,31 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-full blur-xl opacity-50 animate-pulse"></div>
               </div>
             </div>
-          <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
 
-          {/* Moving Tagline */}
-          <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
-            <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
-              <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
+            <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
+
+            {/* Moving Tagline */}
+            <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
+              <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
+                <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
+              </div>
             </div>
-          </div>
 
-          <Link href="/submit">
-            <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
-              🚀 Start Your Journey
-            </Button>
-          </Link>
+            <Link href="/submit">
+              <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
+                🚀 Start Your Journey
+              </Button>
+            </Link>
 
-          <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
-            <div className="text-center">
-              <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
-              <div className="text-sm drop-shadow-lg">Poets Joined</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
-              <div className="text-sm drop-shadow-lg">Entry Available</div>
+            <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
+              <div className="text-center">
+                <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
+                <div className="text-sm drop-shadow-lg">Poets Joined</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
+                <div className="text-sm drop-shadow-lg">Entry Available</div>
+              </div>
             </div>
           </div>
         </div>
