@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
@@ -48,7 +49,6 @@ export default function SpinWheel({
     setRotation(totalRotation);
 
     // Calculate which segment we landed on - fixed for top pointer
-    // The pointer is at the top (12 o'clock position), so we need to account for that
     const normalizedAngle = (360 - (totalRotation % 360)) % 360;
     const selectedIndex = Math.floor(normalizedAngle / segmentAngle) % challenges.length;
 
@@ -84,16 +84,22 @@ export default function SpinWheel({
         </CardHeader>
         <CardContent className="flex flex-col items-center space-y-6 p-8 bg-gradient-to-br from-white to-purple-50">
           {/* Wheel Container */}
-          <div className="relative w-80 h-80">
-            {/* Arrow pointer - centered at top */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 z-10">
-              <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
+          <div className="relative w-80 h-80 flex items-center justify-center">
+            
+            {/* Arrow pointer - PROPERLY CENTERED at top */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20" style={{ top: '-10px' }}>
+              <div 
+                className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[30px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-xl"
+                style={{
+                  filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+                }}
+              ></div>
             </div>
 
             {/* Wheel */}
             <div 
               ref={wheelRef}
-              className={`w-80 h-80 rounded-full border-8 border-gray-800 shadow-2xl overflow-hidden ${
+              className={`w-80 h-80 rounded-full border-8 border-gray-800 shadow-2xl overflow-hidden relative ${
                 isSpinning 
                   ? 'transition-transform duration-[4500ms] ease-out' 
                   : 'transition-transform duration-300 ease-in-out'
@@ -108,10 +114,10 @@ export default function SpinWheel({
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3), inset 0 0 0 4px rgba(255,255,255,0.2)'
               }}
             >
-              {/* Challenge Labels - Fixed positioning and styling */}
+              {/* Challenge Labels - Properly positioned */}
               {challenges.map((challenge, index) => {
                 const angle = (index * segmentAngle) + (segmentAngle / 2);
-                const radius = 100; // Distance from center
+                const radius = 110; // Distance from center
 
                 return (
                   <div
@@ -122,17 +128,19 @@ export default function SpinWheel({
                       left: '50%',
                       transform: `rotate(${angle}deg) translate(0, -${radius}px) rotate(-${angle}deg)`,
                       transformOrigin: '0 0',
-                      width: '90px',
-                      marginLeft: '-45px',
-                      marginTop: '-12px'
+                      width: '100px',
+                      marginLeft: '-50px',
+                      marginTop: '-15px'
                     }}
                   >
                     <div 
-                      className="text-white text-xs font-bold text-center leading-tight drop-shadow-lg px-1"
+                      className="text-white text-xs font-bold text-center leading-tight drop-shadow-lg px-2 py-1"
                       style={{
                         textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7)',
                         fontSize: challenge.challengeTitle.length > 15 ? '10px' : '12px',
-                        lineHeight: '1.2'
+                        lineHeight: '1.2',
+                        backgroundColor: 'rgba(0,0,0,0.1)',
+                        borderRadius: '4px'
                       }}
                     >
                       {challenge.challengeTitle.length > 18 
@@ -144,14 +152,32 @@ export default function SpinWheel({
                 );
               })}
 
-              {/* Center circle for better appearance */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full border-4 border-white shadow-xl flex items-center justify-center">
-                <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full shadow-inner"></div>
+              {/* Center circle - Enhanced design */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full border-4 border-white shadow-2xl flex items-center justify-center z-10">
+                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full shadow-inner border-2 border-yellow-200 flex items-center justify-center">
+                  <div className="w-4 h-4 bg-yellow-300 rounded-full"></div>
+                </div>
               </div>
+
+              {/* Decorative tick marks around the wheel */}
+              {Array.from({ length: challenges.length }).map((_, index) => (
+                <div
+                  key={index}
+                  className="absolute w-1 h-6 bg-white"
+                  style={{
+                    top: '10px',
+                    left: '50%',
+                    transformOrigin: '50% 150px',
+                    transform: `translateX(-50%) rotate(${index * segmentAngle}deg)`,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}
+                ></div>
+              ))}
             </div>
 
-            {/* Outer decorative ring */}
-            <div className="absolute inset-0 w-80 h-80 rounded-full border-4 border-gradient-to-r from-purple-400 to-pink-400 opacity-50"></div>
+            {/* Outer decorative rings */}
+            <div className="absolute inset-0 w-80 h-80 rounded-full border-4 border-gradient-to-r from-purple-400 to-pink-400 opacity-30 pointer-events-none"></div>
+            <div className="absolute inset-2 w-76 h-76 rounded-full border-2 border-gradient-to-r from-yellow-400 to-orange-400 opacity-20 pointer-events-none"></div>
           </div>
 
           {/* Spin Button */}
@@ -159,7 +185,7 @@ export default function SpinWheel({
             <Button 
               onClick={handleSpin} 
               disabled={isSpinning || disabled}
-              className="bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 hover:from-purple-700 hover:via-purple-800 hover:to-pink-700 text-white px-10 py-4 rounded-full font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 hover:from-purple-700 hover:via-purple-800 hover:to-pink-700 text-white px-12 py-4 rounded-full font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSpinning ? (
                 <>
@@ -175,15 +201,15 @@ export default function SpinWheel({
             </Button>
           )}
 
-          {/* Spinning status indicator - only show while actually spinning */}
+          {/* Spinning status indicator */}
           {isSpinning && !selectedChallenge && (
             <div className="text-center">
               <div className="flex items-center justify-center space-x-2 text-purple-600 font-medium">
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce"></div>
+                <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
-              <p className="text-sm text-gray-600 mt-2">Get ready for your challenge!</p>
+              <p className="text-sm text-gray-600 mt-2 font-medium">🎯 Get ready for your challenge!</p>
             </div>
           )}
         </CardContent>
@@ -199,8 +225,8 @@ export default function SpinWheel({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 p-6">
-            <div className="text-center p-4 bg-white rounded-lg shadow-inner border border-green-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
+            <div className="text-center p-6 bg-white rounded-lg shadow-inner border-2 border-green-200">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">
                 {selectedChallenge.challengeTitle}
               </h3>
               <p className="text-gray-700 text-sm leading-relaxed">

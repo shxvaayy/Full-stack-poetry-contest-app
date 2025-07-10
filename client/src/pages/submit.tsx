@@ -858,7 +858,7 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
             <Input
               id={`poem-file-${i}`}
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={(e) => {
                 const file = e.target.files?.[0] || null;
                 if (i === 0) {
@@ -1142,7 +1142,7 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                     <Input
                       id={`poem-file-${currentPoemIndex}`}
                       type="file"
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;
                         const updatedPoems = [...selectedPoems];
@@ -1469,10 +1469,10 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setCurrentStep("selection")}
+                    onClick={() => setCurrentStep("spin")}
                     className="flex-1"
                   >
-                    Back to Tiers
+                    Back to Spin
                   </Button>
 
                   {selectedTier && discountedAmount === 0 ? (

@@ -31,11 +31,13 @@ const upload = multer({
 
     const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
     
-    // Allow only PDF and image files
+    // Allow PDF, Word documents, and image files
     if (
       file.mimetype === 'application/pdf' ||
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.mimetype.startsWith('image/') ||
-      ['pdf', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
+      ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
     ) {
       console.log('✅ File accepted:', file.originalname);
       cb(null, true);

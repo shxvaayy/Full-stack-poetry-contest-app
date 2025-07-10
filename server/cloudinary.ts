@@ -1,4 +1,3 @@
-
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary
@@ -57,34 +56,29 @@ export const uploadProfilePhotoToCloudinary = async (
 // Upload poem file to Cloudinary
 export const uploadPoemFileToCloudinary = async (
   fileBuffer: Buffer,
-  email: string,
-  originalName: string,
+  userEmail: string,
+  originalFilename: string,
   poemTitle?: string
 ): Promise<string> => {
   try {
-    console.log('📄 Uploading poem file to Cloudinary for email:', email);
+    console.log('📤 Starting Cloudinary poem upload:', {
+      originalFilename,
+      fileSize: fileBuffer.length,
+      userEmail,
+      poemTitle
+    });
 
-    // Validate file buffer
-    if (!fileBuffer || fileBuffer.length === 0) {
-      throw new Error('File buffer is empty');
-    }
-
-    // Validate file type (only PDF allowed for poems)
-    const fileExtension = originalName.split('.').pop()?.toLowerCase();
-    if (fileExtension !== 'pdf') {
-      throw new Error('Only PDF files are allowed for poem submissions');
-    }
-
-    // Generate a unique filename in format: email_poemtitle_timestamp
+    // Sanitize filename for Cloudinary
+    const sanitizedEmail = userEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    const sanitizedTitle = (poemTitle && typeof poemTitle === 'string') ? poemTitle.replace(/[^a-zA-Z0-9]/g, '_') : 'poem';
     const timestamp = Date.now();
-    const sanitizedEmail = email.replace(/[^a-zA-Z0-9@.]/g, '_'); // Keep full email with @ and .
-    const sanitizedTitle = poemTitle 
-      ? poemTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 30)
-      : 'poem';
-    
-    const publicId = `writory_uploads/poems/${sanitizedEmail}_${sanitizedTitle}_${timestamp}`;
+    const publicId = `poems/${sanitizedEmail}_${sanitizedTitle}_${timestamp}`;
 
-    console.log('📤 Uploading poem file with public ID:', publicId);
+    console.log('📝 Upload details:', {
+      publicId,
+      resourceType: 'raw',
+      fileType: 'poem'
+    });
 
     // Upload to Cloudinary
     const result = await new Promise((resolve, reject) => {
