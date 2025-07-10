@@ -148,7 +148,7 @@ export default function Header() {
 
           {/* Desktop Navigation - Perfectly Centered */}
           <nav className="hidden lg:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-4">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
