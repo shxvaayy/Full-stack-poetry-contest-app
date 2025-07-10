@@ -129,26 +129,27 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-white shadow-lg">
-      <div className="max-w-7xl mx-auto pl-2 pr-2 sm:pl-4 sm:pr-4 lg:pl-6 lg:pr-6">
-        <div className="flex items-center py-2 sm:py-3 lg:py-4">
-          {/* Logo Section - Extreme Left */}
-          <Link href="/" className="flex items-center flex-shrink-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:w-14 mr-3 sm:mr-4 lg:mr-5 flex-shrink-0">
+      <div className="max-w-7xl mx-auto pl-0 pr-2 sm:pr-4 lg:pr-6">
+        <div className="flex justify-between items-center py-2 sm:py-3 lg:py-4">
+          {/* Logo Section - Left Extreme */}
+          <Link href="/" className="flex items-center flex-shrink-0 min-w-0 ml-2 sm:ml-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 mr-3 sm:mr-4 lg:mr-5 flex-shrink-0">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <h1 className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold whitespace-nowrap">
+            {/* Title - responsive sizing with better spacing */}
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold whitespace-nowrap truncate">
                 WRITORY POETRY CONTEST
               </h1>
             </div>
           </Link>
 
           {/* Desktop Navigation - Center */}
-          <nav className="hidden xl:flex flex-1 justify-center">
+          <nav className="hidden xl:flex items-center flex-1 justify-center px-4 max-w-4xl">
             <div className="flex items-center space-x-4 2xl:space-x-6">
               {navigation.map((item) => (
                 <Link
@@ -164,8 +165,8 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* User Section - Extreme Right */}
-          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0 ml-auto">
+          {/* User Section - Right */}
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
             {user ? (
               <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
                 {/* User Profile Button */}
