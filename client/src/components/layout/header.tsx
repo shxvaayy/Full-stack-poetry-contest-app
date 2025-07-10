@@ -1,305 +1,353 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
-import { Menu, X, User } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-// Removed Firebase import - now using Cloudinary URLs from database
-import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
+import { Card, CardContent } from "@/components/ui/card";
+import { Trophy, Pen, IdCard, Users, Globe, Star, DollarSign, CheckCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750597683371.png";
+import ChatbotWidget from "@/components/ChatbotWidget";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 
-export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [location] = useLocation();
-  const { user, logout, dbUser } = useAuth();
-  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string>('');
+// Simple Hero Carousel Component
+function HeroCarousel({ children }: { children: React.ReactNode }) {
+  return (
+    <section 
+      className="relative min-h-screen flex items-center justify-center"
+      style={{ 
+        backgroundImage: `
+          url('https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1973&q=80')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/70 via-blue-900/60 to-indigo-900/70"></div>
+      <div className="absolute inset-0 bg-purple-500/15"></div>
+      <div className="relative z-10 w-full">
+        {children}
+      </div>
+    </section>
+  );
+}
 
-  const loadProfilePicture = async () => {
-    if (user?.uid) {
-      try {
-        const response = await fetch(`/api/users/${user.uid}`);
-        if (response.ok) {
-          const userData = await response.json();
-          if (userData.profilePictureUrl) {
-            const cacheBustedUrl = `${userData.profilePictureUrl}?v=${Date.now()}`;
-            setProfilePictureUrl(cacheBustedUrl);
-            console.log('Header: Loaded Cloudinary profile picture:', cacheBustedUrl);
-          } else {
-            setProfilePictureUrl(null);
-          }
-        } else {
-          setProfilePictureUrl(null);
-        }
-      } catch (error) {
-        console.log('Error loading profile picture from database:', error);
-        setProfilePictureUrl(null);
-      }
-    }
-  };
+// Simple Carousel Component for Poetry Inspiration
+function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: string; gradient: string }> }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Initialize display name from user data
   useEffect(() => {
-    if (user) {
-      const initialName = dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User';
-      setDisplayName(initialName);
-      console.log('Header: Initial display name set:', initialName);
-    }
-  }, [user, dbUser]);
-
-  // Load profile picture on user change
-  useEffect(() => {
-    if (user?.uid) {
-      loadProfilePicture();
-    } else {
-      setProfilePictureUrl(null);
-      setDisplayName('');
-    }
-  }, [user?.uid]);
-
-  // Listen for profile updates from user-profile page
-  useEffect(() => {
-    const handleProfileUpdate = (event: CustomEvent) => {
-      console.log('Header: Profile update event received:', event.detail);
-      if (event.detail) {
-        const updatedUser = event.detail;
-        setDisplayName(updatedUser.name || user?.displayName || user?.email?.split('@')[0] || 'User');
-
-        if (updatedUser.profilePictureUrl) {
-          const cacheBustedUrl = `${updatedUser.profilePictureUrl}?header_v=${Date.now()}`;
-          setProfilePictureUrl(cacheBustedUrl);
-          console.log('Header: Cloudinary profile picture updated from profile event:', cacheBustedUrl);
-
-          // Double-ensure the update by setting again after a short delay
-          setTimeout(() => {
-            setProfilePictureUrl(`${updatedUser.profilePictureUrl}?delayed_v=${Date.now()}`);
-          }, 50);
-        } else if (updatedUser.profilePictureUrl === null) {
-          setProfilePictureUrl(null);
-          console.log('Header: Profile picture removed');
-        }
-      }
-
-      // Also reload from database as fallback
-      setTimeout(() => {
-        if (user?.uid) {
-          loadProfilePicture();
-        }
-      }, 300);
-    };
-
-    window.addEventListener('profileUpdated', handleProfileUpdate);
-
-    return () => {
-      window.removeEventListener('profileUpdated', handleProfileUpdate);
-    };
-  }, []);
-
-  // Listen for profile picture changes
-  useEffect(() => {
-    const handleProfilePictureChange = () => {
-      console.log('Header: Profile picture change detected, reloading');
-      if (user?.uid) {
-        setTimeout(loadProfilePicture, 500); // Small delay to ensure upload is complete
-      }
-    };
-
-    window.addEventListener('profilePictureUpdated', handleProfilePictureChange);
-
-    return () => {
-      window.removeEventListener('profilePictureUpdated', handleProfilePictureChange);
-    };
-  }, [user]);
-
-  // Check if user is admin
-  const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'bhavyaseth2005@gmail.com';
-
-  const navigation = [
-    { name: "HOME", href: "/" },
-    { name: "SUBMIT POEM", href: "/submit" },
-    { name: "RESULTS", href: "/winning-poems" },
-    { name: "PAST WINNERS", href: "/past-winners" },
-    { name: "ABOUT US", href: "/about" },
-    { name: "CONTACT US", href: "/contact" },
-    ...(isAdmin ? [{ name: "ADMIN UPLOAD", href: "/admin-upload" }] : []),
-  ];
-
-  const handleLogout = async () => {
-    console.log("Header logout clicked");
-    await logout();
-  };
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
 
   return (
-    <header className="bg-primary text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-        <div className="flex justify-between items-center py-2 sm:py-3 lg:py-4">
-          {/* Logo Section - Left */}
-          <Link href="/" className="flex items-center flex-shrink-0 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 lg:mr-4 flex-shrink-0">
+    <div className="relative h-96 w-full overflow-hidden">
+      {slides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-1000 ${
+            index === currentSlide ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ background: slide.gradient }}
+        >
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-white px-8 max-w-4xl">
+              <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">{slide.title}</h3>
+              <p className="text-xl md:text-2xl font-light drop-shadow-lg">{slide.subtitle}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const { toast } = useToast();
+
+  // Check for verification success message
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('verified') === 'true') {
+      toast({
+        title: "Welcome to Writory!",
+        description: "Your email has been verified. You can now submit poems and participate in contests.",
+      });
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
+
+  // Fetch total submission count for live poets count
+  const { data: statsData } = useQuery({
+    queryKey: ['/api/submission-count'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/submission-count");
+      if (response.ok) {
+        const data = await response.json();
+        return { totalPoets: data.count || 0 };
+      }
+      return { totalPoets: 0 };
+    },
+    refetchInterval: 3000, // Refetch every 30 seconds
+  });
+
+  const poetsCount = statsData?.totalPoets || 0;
+
+  const carouselSlides = [
+    {
+      title: "Words That Dance",
+      subtitle: "Let your verses flow like music across the page",
+      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    },
+    {
+      title: "Echoes of the Heart",
+      subtitle: "Every poem carries the whispers of your soul",
+      gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+    },
+    {
+      title: "Nature's Symphony",
+      subtitle: "Find inspiration in the rhythm of the natural world",
+      gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+    },
+    {
+      title: "Legacy of Words",
+      subtitle: "Join the timeless tradition of poetic expression",
+      gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
+    }
+  ];
+
+  return (
+    <div>
+      {/* Hero Section with Rotating Carousel */}
+      <HeroCarousel>
+        <div className="text-center text-white px-4 max-w-6xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-16 relative">
+            {/* Logo positioned above WRITORY heading */}
+            <div className="mb-2 flex justify-center">
               <img 
                 src={logoImage} 
-                alt="WRITORY Logo" 
-                className="w-full h-full object-contain"
+                alt="Writory Logo" 
+                className="w-24 h-24 md:w-32 md:h-32 object-contain"
+                style={{
+                  filter: 'sepia(1) saturate(5) hue-rotate(30deg) brightness(1.2) contrast(1.1)',
+                  dropShadow: '0 4px 8px rgba(255, 215, 0, 0.3)'
+                }}
               />
             </div>
-            {/* Title - responsive sizing */}
-            <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold whitespace-nowrap truncate">
-                WRITORY POETRY CONTEST
-              </h1>
-            </div>
-          </Link>
 
-          {/* Desktop Navigation - Center */}
-          <nav className="hidden xl:flex items-center flex-1 justify-center px-4 max-w-4xl">
-            <div className="flex items-center space-x-4 2xl:space-x-6">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-xs 2xl:text-sm px-1 2xl:px-2 py-1 ${
-                    location === item.href ? "border-b-2 border-white pb-1" : ""
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </nav>
+            <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide">
+              WRITORY
+            </h1>
 
-          {/* User Section - Right */}
-          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
-            {user ? (
-              <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
-                {/* User Profile Button */}
-                <Link href="/profile">
-                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
-                    {profilePictureUrl ? (
-                      <img 
-                        src={profilePictureUrl}
-                        alt="Profile" 
-                        className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
-                        onError={(e) => {
-                          console.log('Header: Profile picture failed to load:', profilePictureUrl);
-                          setProfilePictureUrl(null); // Reset to show fallback
-                        }}
-                        key={`header-profile-${profilePictureUrl}`} // Force re-render on URL change
-                      />
-                    ) : (
-                      <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="text-green-600" size={14} />
-                      </div>
-                    )}
-                    <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
-                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
-                    </span>
-                  </button>
-                </Link>
-                {/* Logout Button */}
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white px-2 lg:px-3 py-1.5 lg:py-2 bg-transparent hover:bg-white hover:text-primary focus:bg-white focus:text-primary text-xs lg:text-sm"
-                >
-                  Logout
-                </Button>
+            <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
+
+            {/* Moving Tagline */}
+            <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
+              <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
+                <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
               </div>
-            ) : (
-              <div className="hidden md:flex items-center">
-                <Link href="/login">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-white hover:bg-white hover:text-primary px-2 lg:px-3 py-1.5 lg:py-2 text-xs lg:text-sm"
-                  >
-                    Login
-                  </Button>
-                </Link>
-              </div>
-            )}
+            </div>
 
-            {/* Mobile menu button */}
-            <button
-              className="xl:hidden text-white p-1.5 sm:p-2 hover:bg-green-700 rounded-md transition-colors flex-shrink-0"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            <Link href="/submit">
+              <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
+                🚀 Start Your Journey
+              </Button>
+            </Link>
+
+            <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
+              <div className="text-center">
+                <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
+                <div className="text-sm drop-shadow-lg">Poets Joined</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
+                <div className="text-sm drop-shadow-lg">Entry Available</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </HeroCarousel>
 
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="xl:hidden bg-primary border-t border-green-600">
-          <div className="px-3 pt-3 pb-4 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-colors ${
-                  location === item.href ? "bg-green-700" : ""
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            ))}
+      {/* No Barriers Section */}
+      <section className="py-16 bg-gradient-to-br from-white to-blue-50">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            No Barriers or Boundaries
+          </h2>
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
+            <CardContent className="p-8">
+              <div className="text-6xl mb-6">📝</div>
+              <p className="text-lg text-gray-700 leading-relaxed">
+                Whether you're a beginner or a seasoned poet, 13 or 63, from a small town or a big city — your words matter. We believe that creativity knows no limits, and every voice deserves to be heard. No fancy degrees, no prior publications — just pure passion and honest expression. So come as you are, write what you feel, and let the world hear your story. Because here, your pen holds the power, and your story knows no borders.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
-            {/* Mobile User Section */}
-            {user ? (
-              <div className="px-3 py-2 space-y-3 border-t border-green-600 mt-3 pt-4">
-                <Link href="/profile">
-                  <button 
-                    className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {profilePictureUrl ? (
-                      <img
-                        src={profilePictureUrl}
-                        alt="Profile"
-                        className="w-7 h-7 rounded-full object-cover"
-                        onError={() => setProfilePictureUrl(null)}
-                        key={`mobile-profile-${profilePictureUrl}`}
-                      />
-                    ) : (
-                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                        <User className="text-green-600" size={14} />
-                      </div>
-                    )}
-                    <span className="text-white text-sm font-medium">
-                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
-                    </span>
-                  </button>
-                </Link>
-                <Button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-white border-white bg-transparent hover:bg-white hover:text-primary focus:bg-white focus:text-primary"
-                >
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <div className="px-3 py-2 border-t border-green-600 mt-3 pt-4">
-                <Link href="/login">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-white border-white hover:bg-white hover:text-primary"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Login
-                  </Button>
-                </Link>
-              </div>
-            )}
+      {/* What Our Winners Receive */}
+      <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            What Our Winners Receive
+          </h2>
+          <p className="text-center text-gray-600 mb-12 text-lg">Celebrating literary excellence with meaningful rewards</p>
+          <div className="grid md:grid-cols-5 gap-6">
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <IdCard className="text-2xl text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Digital Certificates</h3>
+                <p className="text-gray-600 text-sm">Official recognition certificates for your achievement</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Users className="text-2xl text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Social Recognition</h3>
+                <p className="text-gray-600 text-sm">Featured across our social media platforms</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Globe className="text-2xl text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Global Exposure</h3>
+                <p className="text-gray-600 text-sm">Showcase your work to a worldwide audience</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-red-50 to-rose-50">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Star className="text-2xl text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Literary Recognition</h3>
+                <p className="text-gray-600 text-sm">Build your reputation in the literary community</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-violet-50">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Trophy className="text-2xl text-white" size={24} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Achievement Badge</h3>
+                <p className="text-gray-600 text-sm">Special recognition for your creative excellence</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      )}
-    </header>
+      </section>
+
+      {/* Benefits Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-slate-100">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent">
+            Why Choose Writory?
+          </h2>
+          <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
+
+          <div className="grid md:grid-cols-4 gap-8">
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <CheckCircle className="text-white" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Easy Submission</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Simple, user-friendly submission process. Upload your poem in minutes and join our community of passionate poets from around the world.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Users className="text-white" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Expert Judging</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Professional literary experts and published poets evaluate submissions with care, providing fair and insightful assessment of your work.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Globe className="text-white" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Global Recognition</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Winners gain international exposure through our platform and social media, connecting with poetry enthusiasts worldwide.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-orange-50 to-red-50">
+              <CardContent className="p-8 text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <Star className="text-white" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">New challenges every month</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  Fresh prompts, unique themes, and creative formats are released every month to keep your imagination active and your writing evolving. There's always something new to look forward to!
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Poetry Inspiration Carousel */}
+      <section className="py-16 bg-gradient-to-br from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 mb-12">
+          <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Poetry Inspiration
+          </h2>
+        </div>
+        <div className="w-full">
+          <SimpleCarousel slides={carouselSlides} />
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      <section className="py-32 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden min-h-[60vh]">
+        <div className="max-w-4xl mx-auto text-center px-4 flex flex-col justify-center h-full">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Ready to Share Your Poetry?
+          </h2>
+          <p className="text-xl text-white/90 mb-8 leading-relaxed">
+            Join thousands of poets who have already shared their voices. Your story matters, your words have power, and your poetry deserves to be heard.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/submit">
+              <Button size="lg" className="bg-white text-purple-600 hover:bg-gray-100 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                Submit Your Poem
+              </Button>
+            </Link>
+            <Link href="/about">
+              <Button size="lg" className="bg-white text-purple-600 hover:bg-white hover:text-purple-600 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                Learn More
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <ChatbotWidget />
+    </div>
   );
 }
