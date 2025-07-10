@@ -45,4 +45,9 @@ async function addPoemTextColumn() {
   }
 }
 
-addPoemTextColumn().catch(console.error);
+// Run if called directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  addPoemTextColumn().catch(console.error);
+}
+
+export default addPoemTextColumn;
