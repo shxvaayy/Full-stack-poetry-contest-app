@@ -48,16 +48,16 @@ export default function SpinWheel({
     setRotation(totalRotation);
 
     // Calculate which segment we landed on - fixed for top pointer
-    const normalizedAngle = (totalRotation % 360);
-    const adjustedAngle = (normalizedAngle + (segmentAngle / 2)) % 360;
-    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+    // The pointer is at the top (12 o'clock position), so we need to account for that
+    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
+    const selectedIndex = Math.floor(normalizedAngle / segmentAngle) % challenges.length;
 
-    // Increased timeout for more realistic spinning experience
+    // Realistic spinning experience with proper timing
     setTimeout(() => {
       const selected = challenges[selectedIndex];
       setSelectedChallenge(selected);
       setIsSpinning(false);
-    }, 4500); // Increased from 3000ms to 4500ms
+    }, 4500);
   };
 
   const handleUseChallenge = () => {
@@ -85,11 +85,11 @@ export default function SpinWheel({
         <CardContent className="flex flex-col items-center space-y-6 p-8 bg-gradient-to-br from-white to-purple-50">
           {/* Wheel Container */}
           <div className="relative w-80 h-80">
-            {/* Pointer - Fixed to point at center */}
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20">
+            {/* Pointer - Perfectly centered at 12 o'clock */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20">
               <div className="relative">
-                <div className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[30px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
-                <div className="absolute top-[25px] left-1/2 transform -translate-x-1/2 w-4 h-4 bg-red-600 rounded-full border-2 border-white shadow-lg"></div>
+                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[24px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
+                <div className="absolute top-[20px] left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-600 rounded-full border-2 border-white shadow-lg"></div>
               </div>
             </div>
 
@@ -99,7 +99,7 @@ export default function SpinWheel({
               className={`w-80 h-80 rounded-full border-8 border-gray-800 shadow-2xl overflow-hidden ${
                 isSpinning 
                   ? 'transition-transform duration-[4500ms] ease-out' 
-                  : 'transition-transform duration-500 ease-in-out'
+                  : 'transition-transform duration-300 ease-in-out'
               }`}
               style={{
                 transform: `rotate(${rotation}deg)`,
@@ -178,8 +178,8 @@ export default function SpinWheel({
             </Button>
           )}
 
-          {/* Spinning status indicator */}
-          {isSpinning && (
+          {/* Spinning status indicator - only show while actually spinning */}
+          {isSpinning && !selectedChallenge && (
             <div className="text-center">
               <div className="flex items-center justify-center space-x-2 text-purple-600 font-medium">
                 <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>

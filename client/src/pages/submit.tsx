@@ -28,6 +28,7 @@ interface SelectedChallenge {
 interface PoemData {
   challenge: SelectedChallenge;
   text: string;
+  file: File | null;
 }
 
 const TIERS = [
@@ -367,7 +368,8 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
     const updatedPoems = [...selectedPoems];
     updatedPoems[currentPoemIndex] = {
       challenge,
-      text: updatedPoems[currentPoemIndex]?.text || ""
+      text: updatedPoems[currentPoemIndex]?.text || "",
+      file: updatedPoems[currentPoemIndex]?.file || null
     };
     setSelectedPoems(updatedPoems);
 
@@ -385,7 +387,8 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
       const updatedPoems = [...selectedPoems];
       updatedPoems[poemIndex] = {
         challenge: selectedPoems[poemIndex - 1].challenge,
-        text: updatedPoems[poemIndex]?.text || ""
+        text: updatedPoems[poemIndex]?.text || "",
+        file: updatedPoems[poemIndex]?.file || null
       };
       setSelectedPoems(updatedPoems);
     }
@@ -402,7 +405,8 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
         // Initialize poem slots based on tier
         const initialPoems = Array(tier.poems).fill(null).map(() => ({
           challenge: null,
-          text: ""
+          text: "",
+          file: null
         }));
         setSelectedPoems(initialPoems);
         setCurrentPoemIndex(0);
@@ -608,13 +612,13 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
             throw new Error('Please fill in all required fields');
           }
 
-          // Validate that all poems have challenges and text
+          // Validate that all poems have challenges and files
           for (let i = 0; i < selectedPoems.length; i++) {
             if (!selectedPoems[i].challenge) {
               throw new Error(`Please select a challenge for poem ${i + 1}.`);
             }
-            if (!selectedPoems[i].text.trim()) {
-              throw new Error(`Please write poem ${i + 1}.`);
+            if (!selectedPoems[i].file) {
+              throw new Error(`Please upload poem file for poem ${i + 1}.`);
             }
           }
 
@@ -908,16 +912,15 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
       return false;
     }
 
-    // Validate that all poems have challenges and text
+    // Validate that all poems have challenges and files
     for (let i = 0; i < selectedPoems.length; i++) {
-      if (!selectedPoems[i]?.challenge || !selectedPoems[i]?.text?.trim()) {
+      if (!selectedPoems[i]?.challenge || !selectedPoems[i]?.file) {
         return false;
       }
     }
 
     if (!files.photo) {
-      return false;
-    }
+      return false;    }
 
     return true;
   };
@@ -1259,23 +1262,26 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                             {poem.challenge.description}
                           </p>
                           <div>
-                            <Label htmlFor={`poem-text-${index}`}>Write Your Poem *</Label>
-                            <Textarea
-                              id={`poem-text-${index}`}
-                              placeholder="Write your poem here..."
-                              value={poem.text}
+                            <Label htmlFor={`poem-file-${index}`}>Upload Poem File * (PDF, DOC, DOCX)</Label>
+                            <Input
+                              id={`poem-file-${index}`}
+                              type="file"
+                              accept=".pdf,.doc,.docx"
                               onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
                                 const updatedPoems = [...selectedPoems];
                                 updatedPoems[index] = {
                                   ...updatedPoems[index],
-                                  text: e.target.value
+                                  file: file
                                 };
                                 setSelectedPoems(updatedPoems);
                               }}
                               required
-                              className="mt-2 min-h-[120px] bg-white/80 backdrop-blur-sm border-purple-200 focus:border-purple-400"
-                              rows={6}
+                              className="mt-2"
                             />
+                            {poem.file && (
+                              <p className="text-sm text-green-600 mt-1">✓ {poem.file.name}</p>
+                            )}
                           </div>
                         </div>
                       )
@@ -1511,7 +1517,7 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                         } else {
                           toast({
                             title: "Form Incomplete",
-                            description: "Please complete all required fields and write your poems",
+                            description: "Please complete all required fields and upload your poems",
                             variant: "destructive",
                           });
                         }
