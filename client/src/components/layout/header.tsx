@@ -129,7 +129,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-[#1e944f] text-white shadow-lg relative">
+    <header className="bg-black text-white shadow-lg relative">
       <div className="max-w-full mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between py-4 relative">
           {/* Logo Section - Extreme Left */}
@@ -169,7 +169,7 @@ export default function Header() {
               <div className="hidden lg:flex items-center space-x-3">
                 {/* User Profile Section */}
                 <Link href="/profile">
-                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
+                  <button className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors">
                     {profilePictureUrl ? (
                       <img 
                         src={profilePictureUrl}
@@ -183,7 +183,7 @@ export default function Header() {
                       />
                     ) : (
                       <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="text-green-600" size={14} />
+                        <User className="text-black" size={14} />
                       </div>
                     )}
                     <span className="text-white text-sm font-medium">
@@ -196,7 +196,7 @@ export default function Header() {
                   onClick={handleLogout}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white px-3 py-2 bg-transparent hover:bg-white hover:text-[#1e944f] focus:bg-white focus:text-[#1e944f] text-sm font-medium"
+                  className="text-white border-white px-3 py-2 bg-transparent hover:bg-white hover:text-black focus:bg-white focus:text-black text-sm font-medium"
                 >
                   Logout
                 </Button>
@@ -207,7 +207,7 @@ export default function Header() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-white border-white hover:bg-white hover:text-[#1e944f] px-3 py-2 text-sm font-medium"
+                    className="text-white border-white hover:bg-white hover:text-black px-3 py-2 text-sm font-medium"
                   >
                     Login
                   </Button>
@@ -217,7 +217,7 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden text-white p-2 hover:bg-green-700 rounded-md transition-colors"
+              className="lg:hidden text-white p-2 hover:bg-gray-800 rounded-md transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -228,14 +228,14 @@ export default function Header() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#1e944f] border-t border-green-600">
+        <div className="lg:hidden bg-black border-t border-gray-600">
           <div className="px-4 pt-4 pb-6 space-y-3">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`block px-4 py-3 text-white hover:bg-green-700 rounded-md transition-colors font-medium ${
-                  location === item.href ? "bg-green-700" : ""
+                className={`block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium ${
+                  location === item.href ? "bg-gray-800" : ""
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -245,10 +245,10 @@ export default function Header() {
 
             {/* Mobile User Section */}
             {user ? (
-              <div className="px-4 py-3 space-y-4 border-t border-green-600 mt-4 pt-6">
+              <div className="px-4 py-3 space-y-4 border-t border-gray-600 mt-4 pt-6">
                 <Link href="/profile">
                   <button 
-                    className="flex items-center space-x-3 bg-green-700 rounded-lg px-4 py-3 w-full hover:bg-green-600 transition-colors"
+                    className="flex items-center space-x-3 bg-gray-800 rounded-lg px-4 py-3 w-full hover:bg-gray-700 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {profilePictureUrl ? (
@@ -261,7 +261,7 @@ export default function Header() {
                       />
                     ) : (
                       <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                        <User className="text-green-600" size={16} />
+                        <User className="text-black" size={16} />
                       </div>
                     )}
                     <span className="text-white text-sm font-medium">
@@ -276,18 +276,18 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="w-full text-white border-white bg-transparent hover:bg-white hover:text-[#1e944f] focus:bg-white focus:text-[#1e944f] font-medium"
+                  className="w-full text-white border-white bg-transparent hover:bg-white hover:text-black focus:bg-white focus:text-black font-medium"
                 >
                   Logout
                 </Button>
               </div>
             ) : (
-              <div className="px-4 py-3 border-t border-green-600 mt-4 pt-6">
+              <div className="px-4 py-3 border-t border-gray-600 mt-4 pt-6">
                 <Link href="/login">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full text-white border-white hover:bg-white hover:text-[#1e944f] font-medium"
+                    className="w-full text-white border-white hover:bg-white hover:text-black font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Login
