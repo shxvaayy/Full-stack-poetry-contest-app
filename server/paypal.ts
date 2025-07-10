@@ -5,21 +5,15 @@ const router = Router();
 // PayPal configuration
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || 'demo_client_id';
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || 'demo_client_secret';
-
-// Detect if using live credentials (live credentials don't start with 'sb-')
-const isLiveMode = PAYPAL_CLIENT_ID && !PAYPAL_CLIENT_ID.startsWith('sb-') && PAYPAL_CLIENT_ID !== 'demo_client_id';
-
-const PAYPAL_BASE_URL = isLiveMode 
+const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://api-m.paypal.com' 
   : 'https://api-m.sandbox.paypal.com';
 
 console.log('🔧 PayPal Configuration Check:');
 console.log('- Client ID exists:', !!PAYPAL_CLIENT_ID);
 console.log('- Client Secret exists:', !!PAYPAL_CLIENT_SECRET);
-console.log('- Live Mode Detected:', isLiveMode);
 console.log('- Base URL:', PAYPAL_BASE_URL);
 console.log('- Environment:', process.env.NODE_ENV);
-console.log('- Client ID prefix:', PAYPAL_CLIENT_ID?.substring(0, 10) + '...');
 
 // Get PayPal access token
 async function getPayPalAccessToken() {

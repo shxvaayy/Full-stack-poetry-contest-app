@@ -30,7 +30,7 @@ const upload = multer({
     });
 
     const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
-
+    
     // Allow only PDF and image files
     if (
       file.mimetype === 'application/pdf' ||
@@ -211,7 +211,7 @@ router.post('/api/test-cloudinary-upload', safeUploadAny, asyncHandler(async (re
   try {
     const file = req.files[0];
     const isImage = file.mimetype.startsWith('image/');
-
+    
     let uploadUrl;
     if (isImage) {
       uploadUrl = await uploadPhotoFileToCloudinary(file.buffer, 'test@example.com', file.originalname);
@@ -923,8 +923,7 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
       });
 
       res.json({
-        verified:```tool_code
-true,
+        verified: true,
         payment_id: razorpay_payment_id,
         order_id: razorpay_order_id,
         amount: payment.amount / 100, // Convert back to rupees
@@ -1603,7 +1602,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Poem file uploaded to Cloudinary:', poemFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload poem file to Cloudinary:', error);
-
+        
         // Return error to user if Cloudinary upload fails
         return res.status(500).json({
           success: false,
@@ -1629,7 +1628,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Photo file uploaded to Cloudinary:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file to Cloudinary:', error);
-
+        
         // Continue with submission even if photo upload fails (photo is optional)
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
@@ -1679,7 +1678,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       email,
       phone: phone || '',
       age: age ? parseInt(age) : null,
-      poemTitle,      tier,
+      poemTitle,
+      tier,
       price: price ? parseFloat(price) : 0,
       paymentId: paymentId || null,
       paymentMethod: paymentMethod || 'free',
@@ -1931,20 +1931,20 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         for (let i = 0; i < poemFiles.length; i++) {
           const file = poemFiles[i];
           const poemTitle = titles[i] || `poem_${i + 1}`;
-
+          
           console.log(`📄 Uploading poem ${i + 1}/${poemFiles.length}: ${poemTitle}`);
-
+          
           const fileUrl = await uploadPoemFileToCloudinary(
             file.buffer,
             email,
             file.originalname,
             poemTitle
           );
-
+          
           poemFileUrls.push(fileUrl);
           console.log(`✅ Poem ${i + 1} uploaded to Cloudinary:`, fileUrl);
         }
-
+        
         console.log('✅ All poem files uploaded to Cloudinary:', poemFileUrls.length);
       } catch (error) {
         console.error('❌ Failed to upload poem files to Cloudinary:', error);
@@ -3083,70 +3083,7 @@ export function registerRoutes(app: any) {
 // Export router
 export { router };
 
-// PayPal Configuration Test Endpoint
-router.get('/api/test-paypal', asyncHandler(async (req: any, res: any) => {
-  console.log('🧪 Testing PayPal configuration...');
 
-  const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-  const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-
-  if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-    return res.json({
-      success: false,
-      configured: false,
-      message: 'PayPal credentials not configured'
-    });
-  }
-
-  try {
-    // Detect if using live credentials (live credentials don't start with 'sb-')
-    const isLiveMode = PAYPAL_CLIENT_ID && !PAYPAL_CLIENT_ID.startsWith('sb-') && PAYPAL_CLIENT_ID !== 'demo_client_id';
-
-    const PAYPAL_BASE_URL = isLiveMode 
-      ? 'https://api-m.paypal.com' 
-      : 'https://api-m.sandbox.paypal.com';
-
-    const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
-
-    // Test PayPal access token
-    const accessTokenResponse = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
-      method: 'POST',
-      body: 'grant_type=client_credentials',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-
-    if (!accessTokenResponse.ok) {
-      console.error('❌ PayPal access token request failed:', accessTokenResponse.status, accessTokenResponse.statusText);
-      const errorData = await accessTokenResponse.json();
-      console.error('❌ PayPal access token error details:', errorData);
-      throw new Error(`PayPal access token request failed: ${accessTokenResponse.status} ${accessTokenResponse.statusText}`);
-    }
-
-    const accessTokenData = await accessTokenResponse.json();
-    console.log('✅ PayPal access token retrieved successfully');
-
-    res.json({
-      success: true,
-      configured: true,
-      message: 'PayPal is properly configured',
-      mode: isLiveMode ? 'LIVE' : 'SANDBOX',
-      environment: process.env.NODE_ENV || 'development',
-      baseUrl: PAYPAL_BASE_URL
-    });
-
-  } catch (error: any) {
-    console.error('❌ PayPal test failed:', error);
-    res.json({
-      success: false,
-      configured: false,
-      message: 'PayPal test failed: ' + error.message,
-      clientId: PAYPAL_CLIENT_ID
-    });
-  }
-}));
 
 // Reset Google Sheets headers endpoint
 router.post('/api/admin/reset-sheet-headers', requireAdmin, asyncHandler(async (req: any, res: any) => {
