@@ -162,7 +162,7 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
     // Handle both old and new data formats
     const timestamp = data.timestamp || data.submittedAt?.toISOString() || new Date().toISOString();
     const name = data.name || `${data.firstName} ${data.lastName || ''}`.trim();
-    const amount = data.amount || data.price || 0;
+    const amount = parseFloat(data.amount || data.price || '0');
 
     // FIXED: Properly extract file URLs with better fallback logic
     const poemFileUrl = data.poemFileUrl || data.poemFile || data.poem_file_url || data.fileUrl || '';
@@ -198,7 +198,7 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       safeString(data.age),                   // E - Age
       safeString(data.poemTitle),             // F - Poem Title
       safeString(data.tier),                  // G - Tier
-      safeString(amount),                     // H - Amount
+      amount.toString(),                      // H - Amount
       safeString(photoFileUrl),               // I - Photo Link (Photo URL)
       safeString(poemFileUrl),                // J - PDF Link (Poem File URL)
       safeString(data.submissionUuid),        // K - Submission UUID
@@ -285,7 +285,7 @@ export async function addMultiplePoemsToSheet(data: {
         data.age || '',                                     // E - Age
         title || '',                                        // F - Poem Title
         data.tier || '',                                    // G - Tier
-        (data.price || 0).toString(),                       // H - Amount (same for all poems in submission)
+        parseFloat(data.price || '0').toString(),           // H - Amount (same for all poems in submission)
         photoFileUrl,                                       // I - Photo (same for all poems)
         poemFileUrl,                                        // J - Poem File URL
         data.submissionUuid || '',                          // K - Submission UUID

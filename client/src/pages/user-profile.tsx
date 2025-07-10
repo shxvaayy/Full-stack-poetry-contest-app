@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -303,7 +302,7 @@ export default function UserProfile() {
       const formData = new FormData();
       formData.append('name', editName.trim());
       formData.append('email', editEmail.trim());
-      
+
       if (profilePicture) {
         formData.append('profilePicture', profilePicture);
       }
@@ -870,9 +869,8 @@ export default function UserProfile() {
                                         : 'Pending';
 
                                       return (
-                                        <Badge key={index} className={getStatusColor(actualStatus)} size="sm">
-                                          {getStatusIcon(actualStatus)}
-                                          <span className="ml-1">{actualStatus}</span>
+                                        <Badge key={index} className={getStatusColor(actualStatus)} size="sm">{getStatusIcon(actualStatus)}
+                                          <span className="ml-1">{actualStatusspan>
                                           {submission.poems.length > 1 && <span className="ml-1">({index + 1})</span>}
                                         </Badge>
                                       );
@@ -1019,13 +1017,13 @@ export default function UserProfile() {
                                 // Determine position display
                                 const position = winner.winnerPosition || (winner.isWinner ? 1 : null);
                                 const positionText = position ? `Position #${position}` : 'Winner';
-                                
+
                                 // Color based on position
                                 const bgColor = position === 1 ? 'bg-yellow-50 border-yellow-200' : 
                                                position === 2 ? 'bg-gray-50 border-gray-200' : 
                                                position === 3 ? 'bg-orange-50 border-orange-200' : 
                                                'bg-blue-50 border-blue-200';
-                                
+
                                 const textColor = position === 1 ? 'text-yellow-600' : 
                                                  position === 2 ? 'text-gray-600' : 
                                                  position === 3 ? 'text-orange-600' : 
@@ -1078,7 +1076,10 @@ export default function UserProfile() {
                                       <p className="text-sm text-gray-600">Evaluated</p>
                                       {poem.challengeTitle && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                          Challenge: {poem.challengeTitle}
+                                          Challenge: {typeof poem.challengeTitle === 'string' 
+                                            ? poem.challengeTitle.replace(/[{}]/g, '').replace(/"/g, '')
+                                            : poem.challengeTitle
+                                          }
                                         </p>
                                       )}
                                       <div className="flex gap-2 mt-2">
