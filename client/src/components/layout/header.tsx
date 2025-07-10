@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
@@ -128,34 +129,31 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-primary text-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-        <div className="flex justify-between items-center py-2 sm:py-3 lg:py-4">
-          {/* Logo Section - Left */}
-          <Link href="/" className="flex items-center flex-shrink-0 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 lg:mr-4 flex-shrink-0">
+    <header className="bg-[#1e944f] text-white shadow-lg relative">
+      <div className="max-w-full mx-auto px-4 lg:px-8">
+        <div className="flex items-center justify-between py-4 relative">
+          {/* Logo Section - Extreme Left */}
+          <Link href="/" className="flex items-center space-x-3 flex-shrink-0">
+            <div className="w-10 h-10 flex-shrink-0">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
                 className="w-full h-full object-contain"
               />
             </div>
-            {/* Title - responsive sizing */}
-            <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold whitespace-nowrap truncate">
-                WRITORY POETRY CONTEST
-              </h1>
-            </div>
+            <h1 className="text-lg font-bold whitespace-nowrap">
+              WRITORY POETRY CONTEST
+            </h1>
           </Link>
 
-          {/* Desktop Navigation - Center */}
-          <nav className="hidden xl:flex items-center flex-1 justify-center px-4 max-w-4xl">
-            <div className="flex items-center space-x-4 2xl:space-x-6">
+          {/* Desktop Navigation - Perfectly Centered */}
+          <nav className="hidden lg:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center space-x-8">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-xs 2xl:text-sm px-1 2xl:px-2 py-1 ${
+                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm px-2 py-1 ${
                     location === item.href ? "border-b-2 border-white pb-1" : ""
                   }`}
                 >
@@ -165,18 +163,18 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* User Section - Right */}
-          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
+          {/* User Section - Extreme Right */}
+          <div className="flex items-center space-x-4 flex-shrink-0">
             {user ? (
-              <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
-                {/* User Profile Button */}
+              <div className="hidden lg:flex items-center space-x-3">
+                {/* User Profile Section */}
                 <Link href="/profile">
-                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-2 lg:px-3 py-1.5 lg:py-2 hover:bg-green-600 transition-colors">
+                  <button className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 hover:bg-green-600 transition-colors">
                     {profilePictureUrl ? (
                       <img 
                         src={profilePictureUrl}
                         alt="Profile" 
-                        className="w-6 h-6 lg:w-7 lg:h-7 rounded-full object-cover"
+                        className="w-6 h-6 rounded-full object-cover"
                         onError={(e) => {
                           console.log('Header: Profile picture failed to load:', profilePictureUrl);
                           setProfilePictureUrl(null); // Reset to show fallback
@@ -184,11 +182,11 @@ export default function Header() {
                         key={`header-profile-${profilePictureUrl}`} // Force re-render on URL change
                       />
                     ) : (
-                      <div className="w-6 h-6 lg:w-7 lg:h-7 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0">
                         <User className="text-green-600" size={14} />
                       </div>
                     )}
-                    <span className="text-white text-xs lg:text-sm font-medium max-w-20 lg:max-w-24 truncate">
+                    <span className="text-white text-sm font-medium">
                       {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
                     </span>
                   </button>
@@ -198,18 +196,18 @@ export default function Header() {
                   onClick={handleLogout}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white px-2 lg:px-3 py-1.5 lg:py-2 bg-transparent hover:bg-white hover:text-primary focus:bg-white focus:text-primary text-xs lg:text-sm"
+                  className="text-white border-white px-3 py-2 bg-transparent hover:bg-white hover:text-[#1e944f] focus:bg-white focus:text-[#1e944f] text-sm font-medium"
                 >
                   Logout
                 </Button>
               </div>
             ) : (
-              <div className="hidden md:flex items-center">
+              <div className="hidden lg:flex items-center">
                 <Link href="/login">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-white border-white hover:bg-white hover:text-primary px-2 lg:px-3 py-1.5 lg:py-2 text-xs lg:text-sm"
+                    className="text-white border-white hover:bg-white hover:text-[#1e944f] px-3 py-2 text-sm font-medium"
                   >
                     Login
                   </Button>
@@ -219,10 +217,10 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="xl:hidden text-white p-1.5 sm:p-2 hover:bg-green-700 rounded-md transition-colors flex-shrink-0"
+              className="lg:hidden text-white p-2 hover:bg-green-700 rounded-md transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
@@ -230,13 +228,13 @@ export default function Header() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="xl:hidden bg-primary border-t border-green-600">
-          <div className="px-3 pt-3 pb-4 space-y-2">
+        <div className="lg:hidden bg-[#1e944f] border-t border-green-600">
+          <div className="px-4 pt-4 pb-6 space-y-3">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-colors ${
+                className={`block px-4 py-3 text-white hover:bg-green-700 rounded-md transition-colors font-medium ${
                   location === item.href ? "bg-green-700" : ""
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
@@ -247,23 +245,23 @@ export default function Header() {
 
             {/* Mobile User Section */}
             {user ? (
-              <div className="px-3 py-2 space-y-3 border-t border-green-600 mt-3 pt-4">
+              <div className="px-4 py-3 space-y-4 border-t border-green-600 mt-4 pt-6">
                 <Link href="/profile">
                   <button 
-                    className="flex items-center space-x-2 bg-green-700 rounded-lg px-3 py-2 w-full hover:bg-green-600 transition-colors"
+                    className="flex items-center space-x-3 bg-green-700 rounded-lg px-4 py-3 w-full hover:bg-green-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {profilePictureUrl ? (
                       <img
                         src={profilePictureUrl}
                         alt="Profile"
-                        className="w-7 h-7 rounded-full object-cover"
+                        className="w-8 h-8 rounded-full object-cover"
                         onError={() => setProfilePictureUrl(null)}
                         key={`mobile-profile-${profilePictureUrl}`}
                       />
                     ) : (
-                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
-                        <User className="text-green-600" size={14} />
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        <User className="text-green-600" size={16} />
                       </div>
                     )}
                     <span className="text-white text-sm font-medium">
@@ -278,18 +276,18 @@ export default function Header() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="w-full text-white border-white bg-transparent hover:bg-white hover:text-primary focus:bg-white focus:text-primary"
+                  className="w-full text-white border-white bg-transparent hover:bg-white hover:text-[#1e944f] focus:bg-white focus:text-[#1e944f] font-medium"
                 >
                   Logout
                 </Button>
               </div>
             ) : (
-              <div className="px-3 py-2 border-t border-green-600 mt-3 pt-4">
+              <div className="px-4 py-3 border-t border-green-600 mt-4 pt-6">
                 <Link href="/login">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full text-white border-white hover:bg-white hover:text-primary"
+                    className="w-full text-white border-white hover:bg-white hover:text-[#1e944f] font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Login
