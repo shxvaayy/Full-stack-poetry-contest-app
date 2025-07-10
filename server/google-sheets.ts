@@ -157,6 +157,20 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
     const poemFileUrl = data.poemFileUrl || data.poemFile || data.poem_file_url || data.fileUrl || '';
     const photoFileUrl = data.photoFileUrl || data.photo || data.photoUrl || data.photo_file_url || data.photoFile || '';
 
+    // CRITICAL: Extract contest fields and poem text properly
+    const contestType = data.contestType || 'Theme-Based';
+    const challengeTitle = data.challengeTitle || data.poemTitle || '';
+    const challengeDescription = data.challengeDescription || '';
+    const poemText = data.poemText || '';
+
+    console.log('🔍 Contest fields being sent to sheets:', { 
+      contestType, 
+      challengeTitle, 
+      challengeDescription, 
+      poemText: poemText ? 'YES' : 'NO',
+      poemTextLength: poemText.length
+    });
+
     console.log('🔍 File URLs being sent to sheets:', { 
       poemFileUrl: poemFileUrl || 'EMPTY', 
       photoFileUrl: photoFileUrl || 'EMPTY',
@@ -171,6 +185,32 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
     }
 
+    const rowData = [
+      timestamp,                               // A - Timestamp
+      name,                                   // B - Name
+      data.email,                             // C - Email
+      data.phone || '',                       // D - Phone
+      data.age || '',                         // E - Age
+      data.poemTitle,                         // F - Poem Title
+      data.tier,                              // G - Tier
+      amount.toString(),                      // H - Amount
+      photoFileUrl,                           // I - Photo Link (Photo URL)
+      poemFileUrl,                            // J - PDF Link (Poem File URL)
+      data.submissionUuid || '',              // K - Submission UUID
+      (data.poemIndex || 1).toString(),       // L - Poem Index
+      contestType,                            // M - Contest Type
+      challengeTitle,                         // N - Challenge Title
+      challengeDescription,                   // O - Challenge Description
+      poemText                                // P - Poem Text
+    ];
+
+    console.log('📊 Full row data being sent to Google Sheets (M-P):', {
+      M_ContestType: rowData[12],
+      N_ChallengeTitle: rowData[13],
+      O_ChallengeDescription: rowData[14],
+      P_PoemText: rowData[15] ? `${rowData[15].substring(0, 50)}...` : 'EMPTY'
+    });
+
     const request = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Poetry!A:P',
@@ -178,31 +218,12 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
       requestBody: {
-        values: [[
-          timestamp,                               // A - Timestamp
-          name,                                   // B - Name
-          data.email,                             // C - Email
-          data.phone || '',                       // D - Phone
-          data.age || '',                         // E - Age
-          data.poemTitle,                         // F - Poem Title
-          data.tier,                              // G - Tier
-          amount.toString(),                      // H - Amount
-          photoFileUrl,                           // I - Photo Link (Photo URL)
-          poemFileUrl,                            // J - PDF Link (Poem File URL)
-          data.submissionUuid || '',              // K - Submission UUID
-          (data.poemIndex || 1).toString(),       // L - Poem Index
-          data.contestType || 'Theme-Based',      // M - Contest Type
-          data.challengeTitle || data.poemTitle,  // N - Challenge Title
-          data.challengeDescription || '',        // O - Challenge Description
-          data.poemText || ''                     // P - Poem Text
-        ]]
+        values: [rowData]
       }
     };
 
-    console.log('📊 Sending to Google Sheets:', request.requestBody.values[0]);
-
     await sheets.spreadsheets.values.append(request);
-    console.log('✅ Poem submission added to Google Sheets');
+    console.log('✅ Poem submission added to Google Sheets with contest fields');
 
   } catch (error) {
     console.error('❌ Error adding poem submission to Google Sheets:', error);

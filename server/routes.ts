@@ -1706,6 +1706,19 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     // This ensures fast response to user while still completing necessary tasks
     setImmediate(async () => {
       try {
+        // Extract contest fields and poem text from request body
+        const contestType = req.body.contestType || 'Theme-Based';
+        const challengeTitle = req.body.challengeTitle || req.body.poemTitle || submissionData.poemTitle;
+        const challengeDescription = req.body.challengeDescription || '';
+        const poemText = req.body.poemText || '';
+
+        console.log('🔍 Contest fields for Google Sheets:', {
+          contestType,
+          challengeTitle,
+          challengeDescription: challengeDescription ? 'YES' : 'NO',
+          poemText: poemText ? 'YES' : 'NO'
+        });
+
         // Add to Google Sheets in background with proper file URLs
         console.log('🔍 File URLs being sent to sheets:', { 
           poemFileUrl: poemFileUrl || 'EMPTY', 
@@ -1728,10 +1741,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           submissionId: submission.id,
           poemFileUrl: poemFileUrl, // Explicitly pass poem file URL
           photoFileUrl: photoFileUrl, // Explicitly pass photo file URL
-          contestType: req.body.contestType || 'Theme-Based',
-          challengeTitle: req.body.challengeTitle || submissionData.poemTitle,
-          challengeDescription: req.body.challengeDescription || '',
-          poemText: req.body.poemText || ''
+          contestType: contestType,
+          challengeTitle: challengeTitle,
+          challengeDescription: challengeDescription,
+          poemText: poemText
         });
         console.log('✅ Google Sheets updated for submission:', submission.id);
       } catch (sheetError) {
@@ -2073,6 +2086,19 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           console.warn('⚠️ Photo file URL does not look like a Google Drive link:', photoFileUrl);
         }
 
+        // Extract contest fields properly for multiple poems
+        const contestType = req.body.contestType || 'Theme-Based';
+        const challengeTitles = titles;
+        const challengeDescriptions = titles.map((_, index) => req.body[`challengeDescription_${index}`] || req.body.challengeDescription || '');
+        const poemTexts = titles.map((_, index) => req.body[`poemText_${index}`] || req.body.poemText || '');
+
+        console.log('🔍 Multiple poems contest fields:', {
+          contestType,
+          challengeTitles: challengeTitles.length,
+          challengeDescriptions: challengeDescriptions.filter(d => d).length,
+          poemTexts: poemTexts.filter(p => p).length
+        });
+
         await addMultiplePoemsToSheet({
           firstName: firstName,
           lastName: lastName,
@@ -2088,10 +2114,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           submissionIds: submissions.map(s => s.id),
           poemFileUrls: poemFileUrls, // This should now contain the actual URLs
           photoFileUrl: photoFileUrl,  // This should now contain the actual URL
-          contestType: req.body.contestType || 'Theme-Based',
-          challengeTitles: titles,
-          challengeDescriptions: titles.map((_, index) => req.body[`challengeDescription_${index}`] || ''),
-          poemTexts: titles.map((_, index) => req.body[`poemText_${index}`] || '')
+          contestType: contestType,
+          challengeTitles: challengeTitles,
+          challengeDescriptions: challengeDescriptions,
+          poemTexts: poemTexts
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {
