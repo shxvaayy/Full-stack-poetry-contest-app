@@ -84,10 +84,10 @@ export default function SpinWheel({
         </CardHeader>
         <CardContent className="flex flex-col items-center space-y-6 p-8 bg-gradient-to-br from-white to-purple-50">
           {/* Wheel Container */}
-          <div className="relative w-80 h-80 flex items-center justify-center">
+          <div className="relative w-80 h-80 flex items-center justify-center" style={{ marginTop: '30px' }}>
             
             {/* Arrow pointer - PROPERLY CENTERED at top */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20" style={{ top: '-10px' }}>
+            <div className="absolute z-20" style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}>
               <div 
                 className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[30px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-xl"
                 style={{
