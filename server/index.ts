@@ -27,10 +27,13 @@ console.log('🔍 DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('🔍 DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
 
 if (!process.env.DATABASE_URL) {
-  console.warn('⚠️ DATABASE_URL environment variable not found in process.env');
-  console.warn('💡 Will attempt database connection anyway - may be available at runtime');
-} else {
-  console.log('✅ DATABASE_URL found in environment');
+  console.error('❌ DATABASE_URL environment variable is required');
+  console.error('💡 Please check your Secrets configuration in Replit');
+  console.error('💡 Using fallback local database URL for development');
+  
+  // Fallback for development
+  process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/writory_dev';
+  console.log('⚠️ Using development database URL');
 }
 
 // Check other services but don't fail startup
@@ -172,6 +175,15 @@ async function initializeApp() {
     if (isFirstDeploy || isDevelopment) {
       console.log('🔧 Running database migrations...');
 
+      // Run migrations to fix schema FIRST
+      const migrationSuccess = await createTables();
+
+      if (!migrationSuccess) {
+        console.error('❌ Database migration failed - cannot continue');
+        console.error('💡 Please check your database connection and permissions');
+        process.exit(1);
+      }
+
       // Run coupon table migration
       await migrateCouponTable();
       console.log('✅ Coupon table migration completed');
@@ -181,24 +193,16 @@ async function initializeApp() {
       await migrateContestFields();
       console.log('✅ Contest fields migration completed');
 
-      // Run poem text column fix
-      const { default: fixPoemTextColumn } = await import('./fix-poem-text-column.js');
-      await fixPoemTextColumn();
+      // CRITICAL: Fix poem_text column
+      await addPoemTextColumnDirectly();
       console.log('✅ Poem text column fix completed');
-
-      // Run migrations to fix schema
-      const migrationSuccess = await createTables();
-
-      if (!migrationSuccess) {
-        console.error('❌ Database migration failed - cannot continue');
-        console.error('💡 Please check your database connection and permissions');
-        process.exit(1);
-      }
 
       console.log('🎉 Database schema synchronized successfully!');
       console.log('✅ All tables created with proper updated_at columns');
     } else {
-      console.log('✅ Database already initialized, skipping migrations');
+      console.log('✅ Database already initialized, checking poem_text column...');
+      // Even for existing databases, ensure poem_text column exists
+      await addPoemTextColumnDirectly();
       console.log('📊 Preserving existing user data and submissions');
     }
 
@@ -571,5 +575,41 @@ async function addProfilePictureColumn() {
     }
   } catch (error) {
     console.error('❌ Error adding profile_picture_url column:', error.message);
+  }
+}
+
+// CRITICAL: Add poem_text column directly to submissions table
+async function addPoemTextColumnDirectly() {
+  try {
+    console.log('🔧 Checking poem_text column in submissions table...');
+    
+    const checkColumn = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'submissions' AND column_name = 'poem_text'
+    `);
+
+    if (checkColumn.rows.length === 0) {
+      console.log('📝 Adding poem_text column to submissions table...');
+      await client.query(`
+        ALTER TABLE submissions 
+        ADD COLUMN poem_text TEXT
+      `);
+      console.log('✅ poem_text column added successfully');
+      
+      // Verify the column was added
+      const verify = await client.query(`
+        SELECT column_name, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = 'submissions' AND column_name = 'poem_text'
+      `);
+      console.log('📋 poem_text column verified:', verify.rows[0]);
+      
+    } else {
+      console.log('✅ poem_text column already exists in submissions table');
+    }
+  } catch (error) {
+    console.error('❌ Error checking/adding poem_text column:', error.message);
+    // Don't throw - continue with server startup
   }
 }
