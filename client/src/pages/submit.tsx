@@ -828,32 +828,45 @@ export default function SubmitPage() {
 
   // Render dynamic poem fields based on tier
   const renderPoemFields = () => {
-    if (!selectedTier) return null;
+    if (!selectedTier || selectedPoems.length === 0) return null;
 
     const poemCount = getPoemCount(selectedTier.id);
     const fields = [];
 
     for (let i = 0; i < poemCount; i++) {
+      const poem = selectedPoems[i];
+      
       fields.push(
         <div key={i} className="space-y-4 p-4 border rounded-lg bg-gray-50">
           <h3 className="text-lg font-semibold text-gray-800">Poem {i + 1}</h3>
+
+          {/* Display selected challenge */}
+          {poem && poem.challenge && (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-blue-800">{poem.challenge.challengeTitle}</h4>
+              <p className="text-sm text-blue-700 mt-1">{poem.challenge.description}</p>
+            </div>
+          )}
 
           <div>
             <Label htmlFor={`poem-title-${i}`}>Poem Title *</Label>
             <Input
               id={`poem-title-${i}`}
-              value={i === 0 ? formData.poemTitle : multiplePoems.titles[i]}
-              onChange={(e) => {
-                if (i === 0) {
-                  handleFormData('poemTitle', e.target.value);
-                } else {
-                  handleMultiplePoemData(i, 'title', e.target.value);
-                }
-              }}
-              placeholder="Enter your poem title"
-              required
-              className="mt-1"
+              value={poem?.challenge?.challengeTitle || ''}
+              readOnly
+              className="mt-1 bg-gray-100"
+              placeholder="Challenge title will appear here"
             />
+            <p className="text-xs text-gray-500 mt-1">Title is automatically set from your selected challenge</p>
+          </div>
+
+          <div>
+            <Label htmlFor={`poem-text-${i}`}>Your Poem *</Label>
+            <div className="mt-1 p-3 bg-white rounded border min-h-[100px]">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                {poem?.text || 'Your poem will appear here after spinning the wheel'}
+              </p>
+            </div>
           </div>
 
           <div>
@@ -887,7 +900,7 @@ export default function SubmitPage() {
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-800">
-          Submit Your {poemCount > 1 ? `${poemCount} Poems` : 'Poem'}
+          Your {poemCount > 1 ? `${poemCount} Poems` : 'Poem'} and Challenges
         </h2>
         {fields}
       </div>
@@ -912,12 +925,22 @@ export default function SubmitPage() {
 
     const poemCount = getPoemCount(selectedTier.id);
 
-    // Check all poem titles and files
-    for (let i = 0; i < poemCount; i++) {
-      const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-      const file = i === 0 ? files.poem : multiplePoems.files[i];
+    // Check that all poems have challenges and text
+    if (selectedPoems.length !== poemCount) {
+      return false;
+    }
 
-      if (!title || !file) {
+    for (let i = 0; i < poemCount; i++) {
+      const poem = selectedPoems[i];
+      if (!poem || !poem.challenge || !poem.text.trim()) {
+        return false;
+      }
+    }
+
+    // Check all poem files
+    for (let i = 0; i < poemCount; i++) {
+      const file = i === 0 ? files.poem : multiplePoems.files[i];
+      if (!file) {
         return false;
       }
     }
@@ -1277,7 +1300,7 @@ export default function SubmitPage() {
                 </div>
 
                 {/* Poem Fields - Dynamic based on tier */}
-                {/*{renderPoemFields()}*/}
+                {renderPoemFields()}
 
                                 {/* Photo Upload */}
                 <div className="space-y-4">
@@ -1395,10 +1418,10 @@ export default function SubmitPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setCurrentStep("selection")}
+                    onClick={() => setCurrentStep("spin")}
                     className="flex-1"
                   >
-                    Back to Tiers
+                    Back to Spin Wheel
                   </Button>
 
                   {selectedTier && discountedAmount === 0 ? (
