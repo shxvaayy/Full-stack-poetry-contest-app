@@ -20,10 +20,51 @@ export default function EventPage() {
   };
 
   const rewards = [
-    { tier: "Free Tier", poems: 1, price: "₹0", features: ["1 Poem Submission", "Basic Support", "Certificate if Winner"] },
-    { tier: "Single Tier", poems: 1, price: "₹50", features: ["1 Poem Submission", "Priority Review", "Detailed Feedback", "Winner Certificate"] },
-    { tier: "Double Tier", poems: 2, price: "₹90", features: ["2 Poem Submissions", "Priority Review", "Detailed Feedback", "Winner Certificate", "10% Savings"] },
-    { tier: "Bulk Tier", poems: 5, price: "₹230", features: ["5 Poem Submissions", "Priority Review", "Detailed Feedback", "Winner Certificate", "Maximum Savings"] }
+    { 
+      tier: "Free Tier", 
+      poems: 1, 
+      price: "₹0", 
+      features: [
+        "✔️ Submit 1 Poem",
+        "🛠️ Basic Community Support",
+        "🏆 E-Certificate (If Selected as Winner)"
+      ] 
+    },
+    { 
+      tier: "Single Tier", 
+      poems: 1, 
+      price: "₹50", 
+      features: [
+        "✔️ Submit 1 Poem",
+        "⚡ Priority Reading by Judges",
+        "📝 Expert Feedback on Poem",
+        "🏅 Winner E-Certificate"
+      ] 
+    },
+    { 
+      tier: "Double Tier", 
+      poems: 2, 
+      price: "₹90", 
+      features: [
+        "✔️ Submit 2 Poems",
+        "⚡ Faster Judging Queue",
+        "📝 Feedback for Both Poems",
+        "🏅 Winner E-Certificate",
+        "💰 Save 10% Compared to Single Tier"
+      ] 
+    },
+    { 
+      tier: "Bulk Tier", 
+      poems: 5, 
+      price: "₹230", 
+      features: [
+        "✔️ Submit Up to 5 Poems",
+        "🚀 Fastest Judging Priority",
+        "📝 In-Depth Feedback on All Poems",
+        "🏅 Winner E-Certificate",
+        "💸 Maximum Value for Creators"
+      ] 
+    }
   ];
 
   const howItWorks = [
@@ -124,23 +165,23 @@ export default function EventPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {rewards.map((tier, index) => (
-                <Card key={index} className={`relative ${index === 3 ? 'border-2 border-purple-500 shadow-lg' : ''}`}>
+                <Card key={index} className={`relative shadow-sm border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${index === 3 ? 'border-2 border-purple-500 shadow-lg' : 'border-gray-200'}`}>
                   {index === 3 && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-purple-500 text-white">Most Popular</Badge>
+                      <Badge className="bg-purple-500 text-white px-3 py-1">Most Popular</Badge>
                     </div>
                   )}
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-lg font-bold">{tier.tier}</CardTitle>
-                    <div className="text-2xl font-bold text-purple-600">{tier.price}</div>
-                    <p className="text-sm text-gray-600">{tier.poems} poem{tier.poems > 1 ? 's' : ''}</p>
+                  <CardHeader className="text-center pb-4">
+                    <CardTitle className="text-lg font-bold text-gray-800">{tier.tier}</CardTitle>
+                    <div className="text-3xl font-bold text-purple-600 mb-1">{tier.price}</div>
+                    <p className="text-sm text-gray-500 font-medium">{tier.poems} poem{tier.poems > 1 ? 's' : ''}</p>
                   </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
+                  <CardContent className="pt-0">
+                    <ul className="space-y-3">
                       {tier.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="text-sm text-gray-600 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-purple-500 rounded-full flex-shrink-0"></div>
-                          {feature}
+                        <li key={featureIndex} className="text-sm text-gray-700 flex items-start gap-3">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0 mt-1.5"></div>
+                          <span className="leading-relaxed">{feature}</span>
                         </li>
                       ))}
                     </ul>
