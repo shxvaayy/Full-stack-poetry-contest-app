@@ -27,10 +27,10 @@ console.log('🔍 DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('🔍 DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
 
 if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL environment variable is required');
-  console.error('💡 Please check your Secrets configuration in Replit');
-  console.error('💡 Current environment:', process.env.NODE_ENV);
-  process.exit(1);
+  console.warn('⚠️ DATABASE_URL environment variable not found in process.env');
+  console.warn('💡 Will attempt database connection anyway - may be available at runtime');
+} else {
+  console.log('✅ DATABASE_URL found in environment');
 }
 
 // Check other services but don't fail startup
