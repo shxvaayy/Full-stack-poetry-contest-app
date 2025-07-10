@@ -125,50 +125,39 @@ export default function HomePage() {
       {/* Hero Section with Rotating Carousel */}
       <HeroCarousel>
         <div className="text-center text-white px-4 max-w-6xl mx-auto">
-          {/* Hero Section */}
-          <div className="text-center mb-16 relative">
-            <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide">
-              WRITORY
-            </h1>
+          <div className="w-24 h-24 mx-auto mb-6">
+            <img 
+              src={logoImage} 
+              alt="Writory Logo" 
+              className="w-full h-full object-contain drop-shadow-lg"
+            />
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white drop-shadow-2xl">
+            WRITORY
+          </h1>
+          <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
 
-            {/* Logo positioned below WRITORY heading */}
-            <div className="mb-8 flex justify-center">
-              <div className="relative">
-                <div className="w-32 h-32 md:w-40 md:h-40 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center shadow-2xl animate-float border border-white/20">
-                  <img 
-                    src={logoImage} 
-                    alt="Writory Logo" 
-                    className="w-24 h-24 md:w-32 md:h-32 object-contain"
-                  />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-full blur-xl opacity-50 animate-pulse"></div>
-              </div>
+          {/* Moving Tagline */}
+          <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
+            <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
+              <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
             </div>
+          </div>
 
-            <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
+          <Link href="/submit">
+            <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
+              🚀 Start Your Journey
+            </Button>
+          </Link>
 
-            {/* Moving Tagline */}
-            <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
-              <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
-                <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
-              </div>
+          <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
+            <div className="text-center">
+              <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
+              <div className="text-sm drop-shadow-lg">Poets Joined</div>
             </div>
-
-            <Link href="/submit">
-              <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
-                🚀 Start Your Journey
-              </Button>
-            </Link>
-
-            <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
-              <div className="text-center">
-                <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
-                <div className="text-sm drop-shadow-lg">Poets Joined</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
-                <div className="text-sm drop-shadow-lg">Entry Available</div>
-              </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
+              <div className="text-sm drop-shadow-lg">Entry Available</div>
             </div>
           </div>
         </div>
