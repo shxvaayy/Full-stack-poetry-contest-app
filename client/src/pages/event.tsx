@@ -33,12 +33,7 @@ export default function EventPage() {
     { step: 4, title: "Submit & Win", description: "Upload your poems and compete for monthly prizes" }
   ];
 
-  const pastEvents = [
-    { month: "June 2025", type: getContestTypeForMonth(5), winner: "Coming Soon" },
-    { month: "May 2025", type: getContestTypeForMonth(4), winner: "Coming Soon" },
-    { month: "April 2025", type: getContestTypeForMonth(3), winner: "Coming Soon" },
-    { month: "March 2025", type: getContestTypeForMonth(2), winner: "Coming Soon" }
-  ];
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100">
@@ -156,28 +151,7 @@ export default function EventPage() {
           </CardContent>
         </Card>
 
-        {/* Past Events */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-800">Past Events</CardTitle>
-            <p className="text-gray-600">Explore our monthly contest history</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {pastEvents.map((event, index) => (
-                <Card key={index} className="border border-gray-200">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="font-semibold text-gray-800 mb-1">{event.month}</h3>
-                    <Badge variant="outline" className="mb-2 text-xs">
-                      {event.type}
-                    </Badge>
-                    <p className="text-sm text-gray-600">Winner: {event.winner}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        
 
       </div>
     </div>
