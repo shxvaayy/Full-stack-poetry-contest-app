@@ -2,7 +2,10 @@
 import { Client } from 'pg';
 
 const client = new Client({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false 
+  } : false,
 });
 
 async function addPoemTextColumn() {
@@ -42,12 +45,8 @@ async function addPoemTextColumn() {
     throw error;
   } finally {
     await client.end();
+    process.exit(0);
   }
 }
 
-// Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  addPoemTextColumn().catch(console.error);
-}
-
-export default addPoemTextColumn;
+addPoemTextColumn().catch(console.error);
