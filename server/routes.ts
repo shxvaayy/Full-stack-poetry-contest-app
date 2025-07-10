@@ -30,7 +30,7 @@ const upload = multer({
     });
 
     const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
-    
+
     // Allow PDF, Word documents, and image files
     if (
       file.mimetype === 'application/pdf' ||
@@ -213,7 +213,7 @@ router.post('/api/test-cloudinary-upload', safeUploadAny, asyncHandler(async (re
   try {
     const file = req.files[0];
     const isImage = file.mimetype.startsWith('image/');
-    
+
     let uploadUrl;
     if (isImage) {
       uploadUrl = await uploadPhotoFileToCloudinary(file.buffer, 'test@example.com', file.originalname);
@@ -917,8 +917,7 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
     // Fetch additional payment details for verification
     try {
       const payment = await razorpay.payments.fetch(razorpay_payment_id);
-      console.log('💳 Payment details from Razorpay:', {
-        id: payment.id,
+      console.log('💳 Payment details from Razorpay:', {        id: payment.id,
         amount: payment.amount,
         status: payment.status,
         method: payment.method
@@ -1604,7 +1603,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Poem file uploaded to Cloudinary:', poemFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload poem file to Cloudinary:', error);
-        
+
         // Return error to user if Cloudinary upload fails
         return res.status(500).json({
           success: false,
@@ -1630,7 +1629,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Photo file uploaded to Cloudinary:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file to Cloudinary:', error);
-        
+
         // Continue with submission even if photo upload fails (photo is optional)
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
@@ -1937,20 +1936,20 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         for (let i = 0; i < poemFiles.length; i++) {
           const file = poemFiles[i];
           const poemTitle = titles[i] || `poem_${i + 1}`;
-          
+
           console.log(`📄 Uploading poem ${i + 1}/${poemFiles.length}: ${poemTitle}`);
-          
+
           const fileUrl = await uploadPoemFileToCloudinary(
             file.buffer,
             email,
             file.originalname,
             poemTitle
           );
-          
+
           poemFileUrls.push(fileUrl);
           console.log(`✅ Poem ${i + 1} uploaded to Cloudinary:`, fileUrl);
         }
-        
+
         console.log('✅ All poem files uploaded to Cloudinary:', poemFileUrls.length);
       } catch (error) {
         console.error('❌ Failed to upload poem files to Cloudinary:', error);
@@ -3148,3 +3147,180 @@ router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req:
 
 // Updated free tier check logic to use reset timestamp and consistent formatting.
 // This change ensures accurate determination of free tier availability after a reset.
+// Step 1: Database initialization
+export async function initializeDatabase() {
+  console.log('🗄️  Initializing database...');
+
+  try {
+    // Step 1: Connect to the database
+    await connectDatabase();
+    console.log('✅ Database connected successfully');
+
+    // Step 2: Check if this is first deployment or development
+    const tablesExist = await client.query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name IN ('users', 'submissions')
+    `);
+
+    const isFirstDeploy = tablesExist.rows.length === 0;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    // Step 2.1: Ensure poem_text column exists
+    try {
+      const poemTextColumn = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'submissions' AND column_name = 'poem_text'
+      `);
+
+      if (poemTextColumn.rows.length === 0) {
+        console.log('📝 Adding missing poem_text column...');
+        await client.query(`
+          ALTER TABLE submissions 
+          ADD COLUMN poem_text TEXT
+        `);
+        console.log('✅ poem_text column added successfully');
+      } else {
+        console.log('✅ poem_text column already exists');
+      }
+    } catch (error) {
+      console.error('❌ Error checking/adding poem_text column:', error);
+    }
+
+    if (isFirstDeploy || isDevelopment) {
+      console.warn('⚠️ First deployment or development environment detected');
+      console.warn('⚠️ Creating tables and initializing settings...');
+
+      // Create users table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          uid VARCHAR(255) UNIQUE NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255),
+          phone VARCHAR(20),
+          profile_picture_url TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      console.log('✅ Users table created');
+
+      // Create submissions table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS submissions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          first_name VARCHAR(255) NOT NULL,
+          last_name VARCHAR(255),
+          email VARCHAR(255) NOT NULL,
+          phone VARCHAR(20),
+          age INTEGER,
+          poem_title VARCHAR(255) NOT NULL,
+          tier VARCHAR(50) NOT NULL,
+          price DECIMAL(10, 2) NOT NULL,
+          payment_id VARCHAR(255),
+          payment_method VARCHAR(50) NOT NULL,
+          poem_file_url TEXT,
+          photo_file_url TEXT,
+          submission_uuid UUID UNIQUE NOT NULL,
+          poem_index INTEGER NOT NULL,
+          total_poems_in_submission INTEGER NOT NULL,
+          submitted_at TIMESTAMPTZ DEFAULT NOW(),
+          is_winner BOOLEAN DEFAULT FALSE,
+          winner_position INTEGER,
+          winner_category VARCHAR(255),
+          score INTEGER,
+          type VARCHAR(50),
+          status VARCHAR(50),
+          score_breakdown JSONB
+        )
+      `);
+      console.log('✅ Submissions table created');
+
+      // Create admin_users table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS admin_users (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          role VARCHAR(50) DEFAULT 'admin',
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      console.log('✅ Admin users table created');
+
+      // Create coupons table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS coupons (
+          id SERIAL PRIMARY KEY,
+          code VARCHAR(255) UNIQUE NOT NULL,
+          discount_type VARCHAR(50) NOT NULL,
+          discount_value DECIMAL(5, 2) NOT NULL,
+          used_count INTEGER DEFAULT 0,
+          valid_from TIMESTAMPTZ,
+          valid_until TIMESTAMPTZ,
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      console.log('✅ Coupons table created');
+
+      // Create coupon_usage table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS coupon_usage (
+          id SERIAL PRIMARY KEY,
+          coupon_id INTEGER REFERENCES coupons(id),
+          user_id INTEGER REFERENCES users(id),
+          submission_id INTEGER REFERENCES submissions(id),
+          user_uid VARCHAR(255),
+          discount_amount DECIMAL(10, 2) NOT NULL,
+          used_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      console.log('✅ Coupon usage table created');
+
+      // Create contacts table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS contacts (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          phone VARCHAR(20),
+          message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      console.log('✅ Contacts table created');
+
+      // Create settings table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+          id SERIAL PRIMARY KEY,
+          setting_key VARCHAR(255) UNIQUE NOT NULL,
+          setting_value TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      console.log('✅ Settings table created');
+
+      // Initialize admin users
+      await initializeAdminUsers();
+
+      // Initialize admin settings
+      await initializeAdminSettings();
+
+      console.log('✅ Default tables and settings initialized');
+    } else {
+      console.log('✅ Existing database schema found');
+    }
+
+    console.log('✅ Database initialization completed successfully');
+
+  } catch (dbError) {
+    console.error('❌ Database initialization error:', dbError);
+    console.error('Stack trace:', dbError.stack);
+    throw dbError; // Re-throw to prevent server from starting if DB fails
+  }
+}
