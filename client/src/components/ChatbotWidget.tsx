@@ -84,7 +84,7 @@ export default function ChatbotWidget() {
   const [showMoreQuestions, setShowMoreQuestions] = useState(false);
   const [currentState, setCurrentState] = useState<'questions' | 'typing' | 'followup'>('questions');
   const [isTyping, setIsTyping] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initial welcome message
@@ -194,10 +194,10 @@ export default function ChatbotWidget() {
           alt="Writory Logo" 
           className="w-10 h-10 object-contain rounded-full"
         />
-        
+
         {/* Pulse Animation Ring */}
         <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping"></div>
-        
+
         {/* Notification Badge */}
         {showBadge && (
           <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
@@ -244,7 +244,7 @@ export default function ChatbotWidget() {
                 }`}
               >
                 {message.sender === 'bot' && (
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
                     <CheckCircle className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -273,7 +273,7 @@ export default function ChatbotWidget() {
             {currentState === 'questions' && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 mb-2">Choose a question:</p>
-                
+
                 {/* Scrollable Questions Container */}
                 <div className="space-y-2 max-h-32 overflow-y-auto chat-scrollbar pr-2">
                   {/* Initial Questions */}
@@ -282,7 +282,7 @@ export default function ChatbotWidget() {
                       key={id}
                       onClick={() => handleQuestionClick(id)}
                       variant="outline"
-                      className="w-full text-left p-3 h-auto justify-start bg-gray-100 hover:bg-primary hover:text-white transition-all duration-200 text-sm border-0 break-words whitespace-normal"
+                      className="w-full p-3 text-left rounded-lg bg-gray-50 hover:bg-cyan-50 hover:text-cyan-700 transition-colors duration-200 text-sm border-0 break-words whitespace-normal"
                     >
                       <span className="block text-left">{faq.question}</span>
                     </Button>
@@ -296,7 +296,7 @@ export default function ChatbotWidget() {
                           key={id}
                           onClick={() => handleQuestionClick(id)}
                           variant="outline"
-                          className="w-full text-left p-3 h-auto justify-start bg-gray-100 hover:bg-primary hover:text-white transition-all duration-200 text-sm border-0 break-words whitespace-normal"
+                          className="w-full p-3 text-left rounded-lg bg-gray-50 hover:bg-cyan-50 hover:text-cyan-700 transition-colors duration-200 text-sm border-0 break-words whitespace-normal"
                         >
                           <span className="block text-left">{faq.question}</span>
                         </Button>
