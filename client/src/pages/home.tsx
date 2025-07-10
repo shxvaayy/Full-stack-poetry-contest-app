@@ -128,7 +128,7 @@ export default function HomePage() {
           {/* Hero Section */}
           <div className="text-center mb-16 relative">
             {/* Logo positioned above WRITORY heading */}
-            <div className="mb-1 flex justify-center">
+            <div className="flex justify-center">
               <img 
                 src={logoImage} 
                 alt="Writory Logo" 
@@ -136,7 +136,7 @@ export default function HomePage() {
               />
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide">
+            <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-4">
               WRITORY
             </h1>
 
