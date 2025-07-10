@@ -85,11 +85,11 @@ export default function SpinWheel({
         <CardContent className="flex flex-col items-center space-y-6 p-8 bg-gradient-to-br from-white to-purple-50">
           {/* Wheel Container */}
           <div className="relative w-80 h-80">
-            {/* Pointer - Enhanced design */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20">
+            {/* Pointer - Fixed to point at center */}
+            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20">
               <div className="relative">
-                <div className="w-0 h-0 border-l-[20px] border-r-[20px] border-b-[40px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
-                <div className="absolute top-[35px] left-1/2 transform -translate-x-1/2 w-6 h-6 bg-red-600 rounded-full border-4 border-white shadow-lg"></div>
+                <div className="w-0 h-0 border-l-[15px] border-r-[15px] border-b-[30px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
+                <div className="absolute top-[25px] left-1/2 transform -translate-x-1/2 w-4 h-4 bg-red-600 rounded-full border-2 border-white shadow-lg"></div>
               </div>
             </div>
 
