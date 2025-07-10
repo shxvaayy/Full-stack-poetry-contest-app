@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import multer from 'multer';
-import { uploadProfilePhotoToCloudinary } from './cloudinary.js';
+import { uploadProfilePhotoToCloudinary, uploadPoemFileToCloudinary, uploadPhotoFileToCloudinary } from './cloudinary.js';
 import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
@@ -13,17 +13,6 @@ import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.j
 import { client, connectDatabase } from './db.js';
 import { initializeAdminSettings, getSetting, updateSetting, getAllSettings, resetFreeTierSubmissions } from './admin-settings.js';
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
-import { 
-  getAuthUrl, 
-  exchangeCodeForTokens, 
-  uploadPoemFileOAuth, 
-  uploadPhotoFileOAuth, 
-  uploadMultiplePoemFilesOAuth,
-  checkAuthStatus,
-  clearTokens,
-  uploadPoemFile,
-  uploadPhotoFile
-} from './google-drive-oauth.js';
 
 const router = Router();
 
@@ -31,7 +20,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit for poem files
+    fileSize: 10 * 1024 * 1024, // 10MB limit for all files
   },
   fileFilter: (req, file, cb) => {
     console.log('📁 Multer file filter:', {
@@ -40,19 +29,15 @@ const upload = multer({
       mimetype: file.mimetype
     });
 
-    // Allow images for photos
-    if (file.mimetype.startsWith('image/')) {
-      console.log('✅ Image file accepted:', file.originalname);
-      cb(null, true);
-    }
-    // Allow documents for poem files
-    else if (
+    const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
+    
+    // Allow only PDF and image files
+    if (
       file.mimetype === 'application/pdf' ||
-      file.mimetype === 'application/msword' ||
-      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-      file.mimetype === 'text/plain'
+      file.mimetype.startsWith('image/') ||
+      ['pdf', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
     ) {
-      console.log('✅ Document file accepted:', file.originalname);
+      console.log('✅ File accepted:', file.originalname);
       cb(null, true);
     }
     // Allow CSV files for admin uploads
@@ -67,7 +52,7 @@ const upload = multer({
     // Reject other file types
     else {
       console.error('❌ File type rejected:', file.mimetype, file.originalname);
-      cb(new Error(`File type not allowed: ${file.mimetype}. Please upload images (JPG, PNG) for photos and documents (PDF, DOC, DOCX, TXT) for poems.`));
+      cb(new Error(`File type not allowed: ${file.mimetype}. Please upload only PDF files for poems and JPG/PNG images for photos.`));
     }
   }
 });
@@ -206,165 +191,45 @@ router.get('/api/test', (req, res) => {
     paypal_configured: !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
     razorpay_configured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
     email_configured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS),
-    oauth_configured: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
-    drive_folder_configured: !!process.env.DRIVE_FOLDER_ID
+    cloudinary_configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
   });
 });
 
-// ===== GOOGLE DRIVE OAUTH ENDPOINTS =====
+// ===== FILE UPLOAD ENDPOINTS =====
 
-// Initiate OAuth 2.0 flow
-router.get('/auth', asyncHandler(async (req: any, res: any) => {
-  console.log('🔐 Initiating Google Drive OAuth flow...');
+// Test file upload endpoint
+router.post('/api/test-cloudinary-upload', safeUploadAny, asyncHandler(async (req: any, res: any) => {
+  console.log('🧪 Testing Cloudinary upload');
 
-  try {
-    const authUrl = getAuthUrl();
-    console.log('✅ OAuth URL generated, redirecting to Google...');
-    res.redirect(authUrl);
-  } catch (error) {
-    console.error('❌ Error initiating OAuth flow:', error);
-    res.status(500).json({
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({
       success: false,
-      error: 'Failed to initiate OAuth flow: ' + error.message
+      error: 'No files uploaded'
     });
   }
-}));
-
-// Handle OAuth callback
-router.get('/oauth2callback', asyncHandler(async (req: any, res: any) => {
-  console.log('🔄 Handling OAuth callback...');
-
-  const { code, error: oauthError } = req.query;
-
-  if (oauthError) {
-    console.error('❌ OAuth error:', oauthError);
-    return res.status(400).send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>OAuth Error - Writory</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-          .error { color: #d32f2f; }
-        </style>
-      </head>
-      <body>
-        <h1 class="error">OAuth Authorization Failed</h1>
-        <p>Error: ${oauthError}</p>
-        <p><a href="/">Return to Home</a></p>
-      </body>
-      </html>
-    `);
-  }
-
-  if (!code) {
-    console.error('❌ No authorization code received');
-    return res.status(400).send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>OAuth Error - Writory</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-          .error { color: #d32f2f; }
-        </style>
-      </head>
-      <body>
-        <h1 class="error">No Authorization Code</h1>
-        <p>The OAuth flow did not return an authorization code.</p>
-        <p><a href="/">Return to Home</a></p>
-      </body>
-      </html>
-    `);
-  }
 
   try {
-    console.log('🔄 Exchanging authorization code for tokens...');
-    const tokens = await exchangeCodeForTokens(code as string);
-
-    console.log('✅ OAuth flow completed successfully');
-
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>OAuth Success - Writory</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-          .success { color: #2e7d32; }
-          .info { background: #e3f2fd; padding: 20px; margin: 20px 0; border-radius: 4px; }
-        </style>
-      </head>
-      <body>
-        <h1 class="success">✅ Google Drive Access Authorized!</h1>
-        <div class="info">
-          <p>Your application now has access to upload files to Google Drive.</p>
-          <p>You can now submit poems and photos through the contest form.</p>
-        </div>
-        <p><a href="/">Return to Home</a> | <a href="/submit">Submit Poem</a></p>
-      </body>
-      </html>
-    `);
-  } catch (error) {
-    console.error('❌ Error exchanging code for tokens:', error);
-    res.status(500).send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>OAuth Error - Writory</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-          .error { color: #d32f2f; }
-        </style>
-      </head>
-      <body>
-        <h1 class="error">OAuth Token Exchange Failed</h1>
-        <p>Error: ${error.message}</p>
-        <p><a href="/auth">Try Again</a> | <a href="/">Return to Home</a></p>
-      </body>
-      </html>
-    `);
-  }
-}));
-
-// Check OAuth status
-router.get('/api/oauth-status', asyncHandler(async (req: any, res: any) => {
-  console.log('🔍 Checking OAuth authorization status...');
-
-  try {
-    const isAuthorized = await checkAuthStatus();
+    const file = req.files[0];
+    const isImage = file.mimetype.startsWith('image/');
+    
+    let uploadUrl;
+    if (isImage) {
+      uploadUrl = await uploadPhotoFileToCloudinary(file.buffer, 'test@example.com', file.originalname);
+    } else {
+      uploadUrl = await uploadPoemFileToCloudinary(file.buffer, 'test@example.com', file.originalname);
+    }
 
     res.json({
       success: true,
-      authorized: isAuthorized,
-      message: isAuthorized ? 'Google Drive access is authorized' : 'Google Drive access not authorized',
-      authUrl: isAuthorized ? null : '/auth'
+      message: 'File uploaded successfully to Cloudinary',
+      url: uploadUrl,
+      fileType: isImage ? 'image' : 'document'
     });
   } catch (error) {
-    console.error('❌ Error checking OAuth status:', error);
+    console.error('❌ Cloudinary test upload failed:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to check OAuth status'
-    });
-  }
-}));
-
-// Clear OAuth tokens (logout)
-router.post('/api/oauth-logout', asyncHandler(async (req: any, res: any) => {
-  console.log('🚪 Clearing OAuth tokens...');
-
-  try {
-    await clearTokens();
-
-    res.json({
-      success: true,
-      message: 'OAuth tokens cleared successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error clearing OAuth tokens:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to clear OAuth tokens'
+      error: 'Upload failed: ' + error.message
     });
   }
 }));
@@ -1394,81 +1259,53 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
-// Test Google Drive OAuth configuration
-router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => {
-  console.log('🧪 Testing Google Drive OAuth configuration...');
+// Test Cloudinary configuration
+router.get('/api/test-cloudinary', asyncHandler(async (req: any, res: any) => {
+  console.log('🧪 Testing Cloudinary configuration...');
 
   try {
-    // Check OAuth environment variables
-    const hasOAuthCredentials = !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI);
-    const hasDriveFolder = !!process.env.DRIVE_FOLDER_ID;
+    // Check Cloudinary environment variables
+    const hasCloudinaryCredentials = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
 
-    console.log('🔍 OAuth Environment check:', {
-      hasClientId: !!process.env.CLIENT_ID,
-      hasClientSecret: !!process.env.CLIENT_SECRET,
-      hasRedirectUri: !!process.env.REDIRECT_URI,
-      hasDriveFolder,
-      driveFolder: process.env.DRIVE_FOLDER_ID || 'NOT_SET'
+    console.log('🔍 Cloudinary Environment check:', {
+      hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+      hasApiKey: !!process.env.CLOUDINARY_API_KEY,
+      hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME || 'NOT_SET'
     });
 
-    if (!hasOAuthCredentials) {
-      throw new Error('OAuth credentials not configured. Please set CLIENT_ID, CLIENT_SECRET, and REDIRECT_URI environment variables.');
-    }
-
-    if (!hasDriveFolder) {
-      throw new Error('DRIVE_FOLDER_ID not configured in environment');
-    }
-
-    // Check if OAuth is authorized
-    const isAuthorized = await checkAuthStatus();
-
-    if (!isAuthorized) {
-      console.log('⚠️ OAuth not authorized - test file upload skipped');
-
-      return res.json({
-        success: false,
-        configured: true,
-        authorized: false,
-        message: 'Google Drive OAuth is configured but not authorized',
-        authUrl: '/auth',
-        environment: {
-          hasOAuthCredentials: true,
-          hasDriveFolder: true,
-          nodeEnv: process.env.NODE_ENV
-        }
-      });
+    if (!hasCloudinaryCredentials) {
+      throw new Error('Cloudinary credentials not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.');
     }
 
     // Test file upload
-    const testFile = Buffer.from('This is a test file for Google Drive OAuth upload - ' + new Date().toISOString(), 'utf-8');
-    const testFileName = `oauth_test_${Date.now()}.txt`;
+    const testFile = Buffer.from('This is a test file for Cloudinary upload - ' + new Date().toISOString(), 'utf-8');
+    const testFileName = `cloudinary_test_${Date.now()}.txt`;
 
-    console.log('📤 Attempting to upload test file via OAuth...');
+    console.log('📤 Attempting to upload test file to Cloudinary...');
     console.log('📄 Test file details:', {
       fileName: testFileName,
       size: testFile.length,
       content: testFile.toString().substring(0, 50) + '...'
     });
 
-    const fileUrl = await uploadPoemFileOAuth(testFile, 'test@example.com', testFileName, 0, 'OAuth Test');
+    const fileUrl = await uploadPoemFileToCloudinary(testFile, 'test@example.com', testFileName, 'Cloudinary Test');
 
-    console.log('✅ Google Drive OAuth test successful!');
+    console.log('✅ Cloudinary test successful!');
 
     res.json({
       success: true,
       configured: true,
-      authorized: true,
-      message: 'Google Drive OAuth is properly configured and working',
+      message: 'Cloudinary is properly configured and working',
       testFileUrl: fileUrl,
       environment: {
-        hasOAuthCredentials: true,
-        hasDriveFolder: true,
+        hasCloudinaryCredentials: true,
         nodeEnv: process.env.NODE_ENV
       }
     });
 
   } catch (error: any) {
-    console.error('❌ Google Drive OAuth test failed:', error);
+    console.error('❌ Cloudinary test failed:', error);
     console.error('❌ Full error details:', {
       message: error.message,
       stack: error.stack,
@@ -1477,13 +1314,10 @@ router.get('/api/test-google-drive', asyncHandler(async (req: any, res: any) => 
 
     res.json({
       success: false,
-      configured: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
-      authorized: false,
-      message: 'Google Drive OAuth test failed: ' + error.message,
-      authUrl: '/auth',
+      configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+      message: 'Cloudinary test failed: ' + error.message,
       details: {
-        hasOAuthCredentials: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REDIRECT_URI),
-        hasDriveFolder: !!process.env.DRIVE_FOLDER_ID,
+        hasCloudinaryCredentials: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
         errorMessage: error.message,
         errorCode: error.code,
         nodeEnv: process.env.NODE_ENV
@@ -1741,12 +1575,12 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       } : null
     });
 
-    // Upload files to Google Drive
+    // Upload files to Cloudinary
     let poemFileUrl = null;
     let photoFileUrl = null;
 
     if (poemFile) {
-      console.log('☁️ Starting OAuth poem file upload to Google Drive...');
+      console.log('☁️ Starting poem file upload to Cloudinary...');
       console.log('📄 Poem file details:', {
         name: poemFile.originalname,
         size: poemFile.size,
@@ -1759,37 +1593,17 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           throw new Error('Poem file buffer is empty');
         }
 
-        poemFileUrl = await uploadPoemFile(
+        poemFileUrl = await uploadPoemFileToCloudinary(
           poemFile.buffer, 
           email, 
-          poemFile.originalname, 
-          0, 
+          poemFile.originalname,
           poemTitle
         );
-        console.log('✅ Poem file uploaded via Service Account:', poemFileUrl);
+        console.log('✅ Poem file uploaded to Cloudinary:', poemFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload poem file via OAuth:', error);
-        console.error('❌ Upload error details:', error.message);
-        console.error('❌ Error stack:', error.stack);
-
-        // Check if it's an auth error that couldn't be resolved with fallback
-        if (error.message.includes('Both OAuth and service account uploads failed')) {
-          return res.status(500).json({
-            success: false,
-            error: 'File upload system temporarily unavailable. Please try again later or contact support.',
-            details: 'Both authentication methods failed'
-          });
-        }
-
-        if (error.message.includes('Authentication failed') || error.message.includes('No tokens available')) {
-          return res.status(401).json({
-            success: false,
-            error: 'Google Drive access not authorized. Please complete OAuth flow first.',
-            authUrl: '/auth'
-          });
-        }
-
-        // Return error to user if Google Drive upload fails
+        console.error('❌ Failed to upload poem file to Cloudinary:', error);
+        
+        // Return error to user if Cloudinary upload fails
         return res.status(500).json({
           success: false,
           error: `Failed to upload poem file: ${error.message}`
@@ -1801,7 +1615,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     if (photoFile) {
-      console.log('☁️ Starting photo file upload to Google Drive...');
+      console.log('☁️ Starting photo file upload to Cloudinary...');
       console.log('📸 Photo file details:', {
         name: photoFile.originalname,
         size: photoFile.size,
@@ -1810,16 +1624,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       });
 
       try {
-        photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
-        console.log('✅ Photo file uploaded via Service Account:', photoFileUrl);
+        photoFileUrl = await uploadPhotoFileToCloudinary(photoFile.buffer, email, photoFile.originalname);
+        console.log('✅ Photo file uploaded to Cloudinary:', photoFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload photo file:', error);
-        console.error('❌ Upload error details:', error.message);
-        
-        // Only show specific error if both methods failed
-        if (error.message.includes('Both OAuth and service account uploads failed')) {
-          console.error('❌ All photo upload methods failed:', error.message);
-        }
+        console.error('❌ Failed to upload photo file to Cloudinary:', error);
         
         // Continue with submission even if photo upload fails (photo is optional)
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
@@ -2111,49 +1919,35 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       photoFile: photoFile?.originalname
     });
 
-    // Upload files to Google Drive
+    // Upload files to Cloudinary
     let poemFileUrls = [];
     let photoFileUrl = null;
 
     if (poemFiles.length > 0) {
-      console.log('☁️ Uploading poem files to Google Drive via OAuth...');
+      console.log('☁️ Uploading poem files to Cloudinary...');
 
       try {
-        // Try multiple poem upload with fallback logic
-        try {
-          const isAuthorized = await checkAuthStatus();
-          if (isAuthorized) {
-            console.log('✅ Using OAuth for multiple poems upload');
-            const poemBuffers = poemFiles.map(file => file.buffer);
-            const originalFileNames = poemFiles.map(file => file.originalname);
-
-            poemFileUrls = await uploadMultiplePoemFilesOAuth(
-              poemBuffers, 
-              email, 
-              originalFileNames,
-              titles
-            );
-            console.log('✅ Poem files uploaded via OAuth:', poemFileUrls.length);
-          } else {
-            throw new Error('OAuth not authorized');
-          }
-        } catch (oauthError) {
-          console.log('⚠️ OAuth failed for multiple poems, using service account fallback');
-          // Fallback to service account for each file
-          const { uploadMultiplePoemFiles } = await import('./google-drive.js');
-          const poemBuffers = poemFiles.map(file => file.buffer);
-          const originalFileNames = poemFiles.map(file => file.originalname);
+        // Upload each poem file to Cloudinary
+        for (let i = 0; i < poemFiles.length; i++) {
+          const file = poemFiles[i];
+          const poemTitle = titles[i] || `poem_${i + 1}`;
           
-          poemFileUrls = await uploadMultiplePoemFiles(
-            poemBuffers,
+          console.log(`📄 Uploading poem ${i + 1}/${poemFiles.length}: ${poemTitle}`);
+          
+          const fileUrl = await uploadPoemFileToCloudinary(
+            file.buffer,
             email,
-            originalFileNames,
-            titles
+            file.originalname,
+            poemTitle
           );
-          console.log('✅ Poem files uploaded via service account:', poemFileUrls.length);
+          
+          poemFileUrls.push(fileUrl);
+          console.log(`✅ Poem ${i + 1} uploaded to Cloudinary:`, fileUrl);
         }
+        
+        console.log('✅ All poem files uploaded to Cloudinary:', poemFileUrls.length);
       } catch (error) {
-        console.error('❌ Failed to upload poem files:', error);
+        console.error('❌ Failed to upload poem files to Cloudinary:', error);
 
         return res.status(500).json({
           success: false,
@@ -2163,7 +1957,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     }
 
     if (photoFile) {
-      console.log('☁️ Uploading photo file to Google Drive via OAuth...');
+      console.log('☁️ Uploading photo file to Cloudinary...');
       console.log('📸 Photo file details:', {
         name: photoFile.originalname,
         size: photoFile.size,
@@ -2171,11 +1965,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       });
 
       try {
-        photoFileUrl = await uploadPhotoFile(photoFile.buffer, email, photoFile.originalname);
-        console.log('✅ Photo file uploaded successfully:', photoFileUrl);
+        photoFileUrl = await uploadPhotoFileToCloudinary(photoFile.buffer, email, photoFile.originalname);
+        console.log('✅ Photo file uploaded to Cloudinary:', photoFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload photo file:', error);
-        console.error('❌ Upload error details:', error.message);
+        console.error('❌ Failed to upload photo file to Cloudinary:', error);
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
     } else {
@@ -2421,35 +2214,25 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       );
     }
 
-    // Upload files to Google Drive
+    // Upload files to Cloudinary
     let poemFileUrl = null;
     let photoFileUrl = null;
 
     if (poemFile) {
       try {
-        // Check OAuth authorization first
-        const isAuthorized = await checkAuthStatus();
-        if (isAuthorized) {
-          poemFileUrl = await uploadPoemFileOAuth(poemFile.buffer, email, poemFile.originalname, 0, poemTitle);
-        } else {
-          console.log('⚠️ OAuth not authorized, skipping poem file upload');
-        }
+        poemFileUrl = await uploadPoemFileToCloudinary(poemFile.buffer, email, poemFile.originalname, poemTitle);
+        console.log('✅ Poem file uploaded to Cloudinary:', poemFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload poem file via OAuth:', error);
+        console.error('❌ Failed to upload poem file to Cloudinary:', error);
       }
     }
 
     if (photoFile) {
       try {
-        // Check OAuth authorization first
-        const isAuthorized = await checkAuthStatus();
-        if (isAuthorized) {
-          photoFileUrl = await uploadPhotoFileOAuth(photoFile.buffer, email, photoFile.originalname);
-        } else {
-          console.log('⚠️ OAuth not authorized, skipping photo file upload');
-        }
+        photoFileUrl = await uploadPhotoFileToCloudinary(photoFile.buffer, email, photoFile.originalname);
+        console.log('✅ Photo file uploaded to Cloudinary:', photoFileUrl);
       } catch (error) {
-        console.error('❌ Failed to upload photo file via OAuth:', error);
+        console.error('❌ Failed to upload photo file to Cloudinary:', error);
       }
     }
 
@@ -2978,27 +2761,26 @@ router.get('/api/debug/admin-status', asyncHandler(async (req: any, res: any) =>
   }
 }));
 
-// Debug endpoint to check Google Drive and Sheets configuration
-router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) => {
+// Debug endpoint to check Cloudinary and Sheets configuration
+router.get('/api/debug/config', asyncHandler(async (req: any, res: any) => {
   try {
-    console.log('🔍 Checking Google configuration...');
+    console.log('🔍 Checking system configuration...');
 
     const config = {
-      hasGoogleServiceAccount: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+      hasCloudinaryCredentials: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
       hasGoogleSheetId: !!process.env.GOOGLE_SHEET_ID,
-      googleServiceAccountLength: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+      cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || 'NOT_SET',
       googleSheetId: process.env.GOOGLE_SHEET_ID || 'NOT_SET',
       databaseUrl: process.env.DATABASE_URL ? 'CONFIGURED' : 'NOT_SET'
     };
 
-    // Test Google Drive connection
-    let driveTest = null;
+    // Test Cloudinary connection
+    let cloudinaryTest = null;
     try {
-      const { uploadFileToDrive } = await import('./google-drive.js');
-      const testBuffer = Buffer.from('Test file content', 'utf-8');
-      driveTest = 'CONNECTION_READY';
-    } catch (driveError) {
-      driveTest = `ERROR: ${driveError.message}`;
+      const { cloudinary } = await import('./cloudinary.js');
+      cloudinaryTest = 'CONNECTION_READY';
+    } catch (cloudinaryError) {
+      cloudinaryTest = `ERROR: ${cloudinaryError.message}`;
     }
 
     // Test Google Sheets connection
@@ -3013,16 +2795,16 @@ router.get('/api/debug/google-config', asyncHandler(async (req: any, res: any) =
     res.json({
       success: true,
       config,
-      driveTest,
+      cloudinaryTest,
       sheetsTest,
       recommendations: [
-        !config.hasGoogleServiceAccount && 'Set GOOGLE_SERVICE_ACCOUNT_JSON in Secrets',
+        !config.hasCloudinaryCredentials && 'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in Secrets',
         !config.hasGoogleSheetId && 'Set GOOGLE_SHEET_ID in Secrets',
         !config.databaseUrl && 'Set DATABASE_URL in Secrets',
       ].filter(Boolean)
     });
   } catch (error) {
-    console.error('❌ Google config debug error:', error);
+    console.error('❌ Config debug error:', error);
     res.status(500).json({ error: error.message });
   }
 }));
