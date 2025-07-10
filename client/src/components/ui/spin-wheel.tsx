@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
@@ -40,18 +39,19 @@ export default function SpinWheel({
     if (isSpinning || disabled) return;
 
     setIsSpinning(true);
-    
+
     // Generate random rotation with more realistic spinning
     const spins = 4 + Math.random() * 4; // 4-8 full rotations
     const finalAngle = Math.random() * 360;
     const totalRotation = rotation + (spins * 360) + finalAngle;
-    
+
     setRotation(totalRotation);
 
-    // Calculate which segment we landed on
-    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    const selectedIndex = Math.floor(normalizedAngle / segmentAngle) % challenges.length;
-    
+    // Calculate which segment we landed on - fixed for top pointer
+    const normalizedAngle = (totalRotation % 360);
+    const adjustedAngle = (normalizedAngle + (segmentAngle / 2)) % 360;
+    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+
     // Increased timeout for more realistic spinning experience
     setTimeout(() => {
       const selected = challenges[selectedIndex];
@@ -92,7 +92,7 @@ export default function SpinWheel({
                 <div className="absolute top-[35px] left-1/2 transform -translate-x-1/2 w-6 h-6 bg-red-600 rounded-full border-4 border-white shadow-lg"></div>
               </div>
             </div>
-            
+
             {/* Wheel */}
             <div 
               ref={wheelRef}
@@ -111,11 +111,11 @@ export default function SpinWheel({
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3), inset 0 0 0 4px rgba(255,255,255,0.2)'
               }}
             >
-              {/* Challenge Labels - Improved positioning and styling */}
+              {/* Challenge Labels - Fixed positioning and styling */}
               {challenges.map((challenge, index) => {
                 const angle = (index * segmentAngle) + (segmentAngle / 2);
-                const radius = 110; // Distance from center
-                
+                const radius = 100; // Distance from center
+
                 return (
                   <div
                     key={index}
@@ -123,22 +123,23 @@ export default function SpinWheel({
                     style={{
                       top: '50%',
                       left: '50%',
-                      transform: `rotate(${angle}deg) translate(${radius}px, 0) rotate(-${angle}deg)`,
+                      transform: `rotate(${angle}deg) translate(0, -${radius}px) rotate(-${angle}deg)`,
                       transformOrigin: '0 0',
-                      width: '80px',
-                      marginLeft: '-40px',
-                      marginTop: '-15px'
+                      width: '90px',
+                      marginLeft: '-45px',
+                      marginTop: '-12px'
                     }}
                   >
                     <div 
-                      className="text-white text-sm font-bold text-center leading-tight drop-shadow-lg"
+                      className="text-white text-xs font-bold text-center leading-tight drop-shadow-lg px-1"
                       style={{
-                        textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.5)',
-                        fontSize: challenge.challengeTitle.length > 12 ? '11px' : '13px'
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7)',
+                        fontSize: challenge.challengeTitle.length > 15 ? '10px' : '12px',
+                        lineHeight: '1.2'
                       }}
                     >
-                      {challenge.challengeTitle.length > 15 
-                        ? challenge.challengeTitle.substring(0, 12) + '...' 
+                      {challenge.challengeTitle.length > 18 
+                        ? challenge.challengeTitle.substring(0, 15) + '...' 
                         : challenge.challengeTitle
                       }
                     </div>
@@ -209,7 +210,7 @@ export default function SpinWheel({
                 {selectedChallenge.description}
               </p>
             </div>
-            
+
             <div className="flex gap-4 justify-center">
               <Button 
                 onClick={handleUseChallenge}

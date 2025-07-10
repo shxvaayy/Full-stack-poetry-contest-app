@@ -15,6 +15,7 @@ import { Gift, Pen, Feather, Crown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import PaymentForm from "@/components/PaymentForm";
 import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type SubmissionStep = "selection" | "spin" | "form" | "payment" | "completed";
 
@@ -153,7 +154,7 @@ export default function SubmitPage() {
       };
       return poemCounts[tierId as keyof typeof poemCounts] || 1;
     };
-  
+
     // Handle multiple poem data
     const handleMultiplePoemData = (index: number, field: 'title' | 'file', value: string | File | null) => {
       setMultiplePoems(prev => {
@@ -361,7 +362,8 @@ export default function SubmitPage() {
     }
   }, [freeTierStatus, user?.uid, refetchSubmissionStatus]);
 
-  const handleChallengeSelected = (challenge: SelectedChallenge) => {
+const handleChallengeSelected = (challenge: SelectedChallenge) => {
+    // Update the poem with the selected challenge
     const updatedPoems = [...selectedPoems];
     updatedPoems[currentPoemIndex] = {
       challenge,
@@ -369,12 +371,8 @@ export default function SubmitPage() {
     };
     setSelectedPoems(updatedPoems);
 
-    // Move to next poem or proceed to form
-    if (currentPoemIndex < selectedTier.poems - 1) {
-      setCurrentPoemIndex(currentPoemIndex + 1);
-    } else {
-      setCurrentStep("form");
-    }
+    // Stay on the same step but show the form instead of spin wheel
+    // The form will be shown because the challenge is now selected
   };
 
   const handleGoToSpin = (poemIndex: number) => {
@@ -400,7 +398,7 @@ export default function SubmitPage() {
     setCouponDiscount(0);
     setCouponCode("");
     setCouponError("");
-    
+
         // Initialize poem slots based on tier
         const initialPoems = Array(tier.poems).fill(null).map(() => ({
           challenge: null,
@@ -604,12 +602,12 @@ export default function SubmitPage() {
       console.log('User:', user);
 
           if (!selectedTier || selectedPoems.length === 0) return;
-      
+
           // Basic validation
           if (!formData.firstName || !formData.email ) {
             throw new Error('Please fill in all required fields');
           }
-      
+
           // Validate that all poems have challenges and text
           for (let i = 0; i < selectedPoems.length; i++) {
             if (!selectedPoems[i].challenge) {
@@ -910,14 +908,9 @@ export default function SubmitPage() {
       return false;
     }
 
-    const poemCount = getPoemCount(selectedTier.id);
-
-    // Check all poem titles and files
-    for (let i = 0; i < poemCount; i++) {
-      const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-      const file = i === 0 ? files.poem : multiplePoems.files[i];
-
-      if (!title || !file) {
+    // Validate that all poems have challenges and text
+    for (let i = 0; i < selectedPoems.length; i++) {
+      if (!selectedPoems[i]?.challenge || !selectedPoems[i]?.text?.trim()) {
         return false;
       }
     }
@@ -929,7 +922,7 @@ export default function SubmitPage() {
     return true;
   };
 
-  // Check submission status
+  // Checkif submission status
   if (userSubmissionStatus?.hasSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -1083,6 +1076,26 @@ export default function SubmitPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8">
+              {/* Navigation Header */}
+              <div className="flex justify-between items-center mb-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (currentPoemIndex > 0) {
+                      setCurrentPoemIndex(currentPoemIndex - 1);
+                    } else {
+                      setCurrentStep("selection");
+                    }
+                  }}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {currentPoemIndex > 0 ? "Previous Poem" : "Back to Tiers"}
+                </Button>
+                <div className="text-sm text-gray-600">
+                  Poem {currentPoemIndex + 1} of {selectedTier?.poems}
+                </div>
+              </div>
+
               {/* Display selected challenge if exists */}
               {selectedPoems[currentPoemIndex]?.challenge ? (
                 <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
@@ -1108,6 +1121,7 @@ export default function SubmitPage() {
                   <SpinWheel
                     challenges={currentChallenges}
                     onChallengeSelected={handleChallengeSelected}
+                    poemIndex={currentPoemIndex + 1}
                   />
                   {currentPoemIndex > 0 && (
                     <Button
@@ -1164,6 +1178,17 @@ export default function SubmitPage() {
 
                     <Button
                       onClick={() => {
+                        // Validate current poem has text
+                        const currentPoem = selectedPoems[currentPoemIndex];
+                        if (!currentPoem?.text?.trim()) {
+                          toast({
+                            title: "Please write your poem",
+                            description: "You need to write your poem before proceeding.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+
                         // Check if it's the last poem
                         if (currentPoemIndex === selectedTier.poems - 1) {
                           // Move to the form
@@ -1173,8 +1198,9 @@ export default function SubmitPage() {
                           setCurrentPoemIndex(currentPoemIndex + 1);
                         }
                       }}
+                      disabled={!selectedPoems[currentPoemIndex]?.text?.trim()}
                     >
-                      {currentPoemIndex === selectedTier.poems - 1 ? "Next: Submit" : "Next Poem"}
+                      {currentPoemIndex === selectedTier.poems - 1 ? "Next: Submit Form" : "Next Poem"}
                     </Button>
                   </div>
                 </div>
@@ -1195,7 +1221,7 @@ export default function SubmitPage() {
             <p className="text-lg text-gray-600">
               {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
             </p>
-            
+
             {/* Show selected poem challenges */}
             {selectedPoems.length > 0 && (
               <div className="mt-6 space-y-3">
@@ -1219,6 +1245,44 @@ export default function SubmitPage() {
           <Card className="shadow-xl border-2 border-purple-200 bg-white/95 backdrop-blur-sm">
             <CardContent className="p-8 bg-gradient-to-br from-white to-purple-50">
               <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
+                {/* Poem Text Inputs */}
+                {selectedPoems.length > 0 && (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-gray-800">Your Poems</h2>
+                    {selectedPoems.map((poem, index) => (
+                      poem.challenge && (
+                        <div key={index} className="space-y-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                          <h3 className="text-lg font-semibold text-purple-800">
+                            Poem {index + 1}: {poem.challenge.challengeTitle}
+                          </h3>
+                          <p className="text-sm text-gray-600 italic">
+                            {poem.challenge.description}
+                          </p>
+                          <div>
+                            <Label htmlFor={`poem-text-${index}`}>Write Your Poem *</Label>
+                            <Textarea
+                              id={`poem-text-${index}`}
+                              placeholder="Write your poem here..."
+                              value={poem.text}
+                              onChange={(e) => {
+                                const updatedPoems = [...selectedPoems];
+                                updatedPoems[index] = {
+                                  ...updatedPoems[index],
+                                  text: e.target.value
+                                };
+                                setSelectedPoems(updatedPoems);
+                              }}
+                              required
+                              className="mt-2 min-h-[120px] bg-white/80 backdrop-blur-sm border-purple-200 focus:border-purple-400"
+                              rows={6}
+                            />
+                          </div>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                )}
+
                 {/* Form content */}
                 <div className="space-y-4">
                   <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
@@ -1424,7 +1488,7 @@ export default function SubmitPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting || !isFormValid()}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold shadow-lg transform transition-all duration-200 hover:scale-105"
                     >
                       {isSubmitting ? (
                         <>
@@ -1432,7 +1496,10 @@ export default function SubmitPage() {
                           Please wait, submitting...
                         </>
                       ) : (
-                        'Submit for Free'
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Submit for Free
+                        </>
                       )}
                     </Button>
                   ) : (
@@ -1444,14 +1511,15 @@ export default function SubmitPage() {
                         } else {
                           toast({
                             title: "Form Incomplete",
-                            description: "Please fill in all required fields",
+                            description: "Please complete all required fields and write your poems",
                             variant: "destructive",
                           });
                         }
                       }}
                       disabled={!isFormValid()}
-                      className="flex-1"
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
+                      <CreditCard className="w-4 h-4 mr-2" />
                       Proceed to Payment
                     </Button>
                   )}
