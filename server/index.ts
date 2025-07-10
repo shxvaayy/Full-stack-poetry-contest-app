@@ -176,6 +176,11 @@ async function initializeApp() {
       await migrateCouponTable();
       console.log('✅ Coupon table migration completed');
 
+      // Run contest fields migration
+      const { migrateContestFields } = await import('./migrate-contest-fields.js');
+      await migrateContestFields();
+      console.log('✅ Contest fields migration completed');
+
       // Run migrations to fix schema
       const migrationSuccess = await createTables();
 

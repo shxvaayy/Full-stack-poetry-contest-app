@@ -1726,7 +1726,11 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           ...submissionData,
           submissionId: submission.id,
           poemFileUrl: poemFileUrl, // Explicitly pass poem file URL
-          photoFileUrl: photoFileUrl // Explicitly pass photo file URL
+          photoFileUrl: photoFileUrl, // Explicitly pass photo file URL
+          contestType: req.body.contestType || 'Theme-Based',
+          challengeTitle: req.body.challengeTitle || submissionData.poemTitle,
+          challengeDescription: req.body.challengeDescription || '',
+          poemText: req.body.poemText || ''
         });
         console.log('✅ Google Sheets updated for submission:', submission.id);
       } catch (sheetError) {
@@ -2082,7 +2086,11 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           submissionUuid: submissionUuid,
           submissionIds: submissions.map(s => s.id),
           poemFileUrls: poemFileUrls, // This should now contain the actual URLs
-          photoFileUrl: photoFileUrl  // This should now contain the actual URL
+          photoFileUrl: photoFileUrl,  // This should now contain the actual URL
+          contestType: req.body.contestType || 'Theme-Based',
+          challengeTitles: titles,
+          challengeDescriptions: titles.map((_, index) => req.body[`challengeDescription_${index}`] || ''),
+          poemTexts: titles.map((_, index) => req.body[`poemText_${index}`] || '')
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {

@@ -1,17 +1,33 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Gift, Pen, Feather, Crown, Upload, QrCode, CheckCircle, AlertTriangle, CreditCard, Loader2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/use-auth";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Upload, FileText, ArrowLeft, CheckCircle, AlertCircle, Loader2, CreditCard, QrCode, Camera, Sparkles, RotateCcw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import SpinWheel from "@/components/ui/spin-wheel";
+import { getCurrentContestType, getCurrentChallenges } from "@/data/contestChallenges";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Gift, Pen, Feather, Crown } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import PaymentForm from "@/components/PaymentForm";
 import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
+
+type SubmissionStep = "selection" | "spin" | "form" | "payment" | "completed";
+
+interface SelectedChallenge {
+  contestType: string;
+  challengeTitle: string;
+  description: string;
+}
+
+interface PoemData {
+  challenge: SelectedChallenge;
+  text: string;
+}
 
 const TIERS = [
   { 
@@ -24,7 +40,8 @@ const TIERS = [
     borderClass: "border-green-500",
     bgClass: "bg-green-500",
     hoverClass: "hover:bg-green-600",
-    textClass: "text-green-600"
+    textClass: "text-green-600",
+    poems: 1
   },
   { 
     id: "single", 
@@ -36,7 +53,8 @@ const TIERS = [
     borderClass: "border-blue-500",
     bgClass: "bg-blue-500", 
     hoverClass: "hover:bg-blue-600",
-    textClass: "text-blue-600"
+    textClass: "text-blue-600",
+    poems: 1
   },
   { 
     id: "double", 
@@ -48,7 +66,8 @@ const TIERS = [
     borderClass: "border-purple-500",
     bgClass: "bg-purple-500",
     hoverClass: "hover:bg-purple-600", 
-    textClass: "text-purple-600"
+    textClass: "text-purple-600",
+    poems: 2
   },
   { 
     id: "bulk", 
@@ -60,21 +79,29 @@ const TIERS = [
     borderClass: "border-yellow-500",
     bgClass: "bg-yellow-500",
     hoverClass: "hover:bg-yellow-600",
-    textClass: "text-yellow-600"
+    textClass: "text-yellow-600",
+    poems: 5
   },
 ];
 
-type SubmissionStep = "selection" | "form" | "payment" | "completed";
-
 export default function SubmitPage() {
-  const { user, dbUser } = useAuth();
-  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<SubmissionStep>("selection");
-  const [selectedTier, setSelectedTier] = useState<typeof TIERS[0] | null>(null);
+  const [selectedTier, setSelectedTier] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentPoemIndex, setCurrentPoemIndex] = useState(0);
+  const [selectedPoems, setSelectedPoems] = useState<PoemData[]>([]);
+  const [currentContestType] = useState(getCurrentContestType());
+  const [currentChallenges] = useState(getCurrentChallenges());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const poemFileRef = useRef<HTMLInputElement>(null);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const { user, dbUser } = useAuth();
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<string>("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
@@ -95,7 +122,8 @@ export default function SubmitPage() {
     poemTitle: "",
     termsAccepted: false,
   });
-  
+  const [freeTierEnabled, setFreeTierEnabled] = useState(true);
+
   // Store submission details for success page
   const [submissionDetails, setSubmissionDetails] = useState({
     firstName: "",
@@ -115,32 +143,29 @@ export default function SubmitPage() {
     files: [null, null, null, null, null] as (File | null)[],
   });
 
-  const poemFileRef = useRef<HTMLInputElement>(null);
-  const photoFileRef = useRef<HTMLInputElement>(null);
-
-  // Get poem count based on tier
-  const getPoemCount = (tierId: string): number => {
-    const poemCounts = {
-      'free': 1,
-      'single': 1, 
-      'double': 2,
-      'bulk': 5
+    // Get poem count based on tier
+    const getPoemCount = (tierId: string): number => {
+      const poemCounts = {
+        'free': 1,
+        'single': 1, 
+        'double': 2,
+        'bulk': 5
+      };
+      return poemCounts[tierId as keyof typeof poemCounts] || 1;
     };
-    return poemCounts[tierId as keyof typeof poemCounts] || 1;
-  };
-
-  // Handle multiple poem data
-  const handleMultiplePoemData = (index: number, field: 'title' | 'file', value: string | File | null) => {
-    setMultiplePoems(prev => {
-      const updated = { ...prev };
-      if (field === 'title') {
-        updated.titles[index] = value as string;
-      } else if (field === 'file') {
-        updated.files[index] = value as File | null;
-      }
-      return updated;
-    });
-  };
+  
+    // Handle multiple poem data
+    const handleMultiplePoemData = (index: number, field: 'title' | 'file', value: string | File | null) => {
+      setMultiplePoems(prev => {
+        const updated = { ...prev };
+        if (field === 'title') {
+          updated.titles[index] = value as string;
+        } else if (field === 'file') {
+          updated.files[index] = value as File | null;
+        }
+        return updated;
+      });
+    };
 
   // Check URL parameters for payment status
   useEffect(() => {
@@ -336,6 +361,38 @@ export default function SubmitPage() {
     }
   }, [freeTierStatus, user?.uid, refetchSubmissionStatus]);
 
+  const handleChallengeSelected = (challenge: SelectedChallenge) => {
+    const updatedPoems = [...selectedPoems];
+    updatedPoems[currentPoemIndex] = {
+      challenge,
+      text: updatedPoems[currentPoemIndex]?.text || ""
+    };
+    setSelectedPoems(updatedPoems);
+
+    // Move to next poem or proceed to form
+    if (currentPoemIndex < selectedTier.poems - 1) {
+      setCurrentPoemIndex(currentPoemIndex + 1);
+    } else {
+      setCurrentStep("form");
+    }
+  };
+
+  const handleGoToSpin = (poemIndex: number) => {
+    setCurrentPoemIndex(poemIndex);
+    setCurrentStep("spin");
+  };
+
+  const handleUsePreviousChallenge = (poemIndex: number) => {
+    if (poemIndex > 0 && selectedPoems[poemIndex - 1]) {
+      const updatedPoems = [...selectedPoems];
+      updatedPoems[poemIndex] = {
+        challenge: selectedPoems[poemIndex - 1].challenge,
+        text: updatedPoems[poemIndex]?.text || ""
+      };
+      setSelectedPoems(updatedPoems);
+    }
+  };
+
   const handleTierSelection = (tier: typeof TIERS[0]) => {
     setSelectedTier(tier);
     setDiscountedAmount(tier.price);
@@ -343,7 +400,15 @@ export default function SubmitPage() {
     setCouponDiscount(0);
     setCouponCode("");
     setCouponError("");
-    setCurrentStep("form");
+    
+        // Initialize poem slots based on tier
+        const initialPoems = Array(tier.poems).fill(null).map(() => ({
+          challenge: null,
+          text: ""
+        }));
+        setSelectedPoems(initialPoems);
+        setCurrentPoemIndex(0);
+    setCurrentStep("spin");
   };
 
   const applyCoupon = async () => {
@@ -447,7 +512,7 @@ export default function SubmitPage() {
       }
       return;
     }
-    
+
     if (field === 'age') {
       // Only allow numeric input and max 2 digits
       const numericValue = value.replace(/\D/g, '');
@@ -459,7 +524,7 @@ export default function SubmitPage() {
       }
       return;
     }
-    
+
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -482,6 +547,12 @@ export default function SubmitPage() {
     setPaymentCompleted(true);
     setIsSubmitting(true);
     setSubmissionStatus("Payment successful! Processing your submission...");
+
+        setCurrentStep("spin");
+        toast({
+          title: "Payment Successful!",
+          description: "Time to spin for your poetry challenges!",
+        });
 
     // Immediately submit after payment success - no delay
     try {
@@ -532,14 +603,22 @@ export default function SubmitPage() {
       console.log('Selected tier:', selectedTier);
       console.log('User:', user);
 
-      // Validate form
-      if (!formData.firstName || !formData.email || !formData.poemTitle) {
-        throw new Error('Please fill in all required fields');
-      }
-
-      if (!selectedTier) {
-        throw new Error('Please select a tier');
-      }
+          if (!selectedTier || selectedPoems.length === 0) return;
+      
+          // Basic validation
+          if (!formData.firstName || !formData.email ) {
+            throw new Error('Please fill in all required fields');
+          }
+      
+          // Validate that all poems have challenges and text
+          for (let i = 0; i < selectedPoems.length; i++) {
+            if (!selectedPoems[i].challenge) {
+              throw new Error(`Please select a challenge for poem ${i + 1}.`);
+            }
+            if (!selectedPoems[i].text.trim()) {
+              throw new Error(`Please write poem ${i + 1}.`);
+            }
+          }
 
       // Ensure user is authenticated
       if (!user?.uid) {
@@ -550,15 +629,15 @@ export default function SubmitPage() {
 
       // Validate multiple poems if required
       for (let i = 0; i < poemCount; i++) {
-        const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-        const file = i === 0 ? files.poem : multiplePoems.files[i];
+        const title = multiplePoems.titles[i];
+        const file = multiplePoems.files[i];
 
-        if (!title) {
-          throw new Error(`Please enter title for poem ${i + 1}`);
-        }
-        if (!file) {
-          throw new Error(`Please upload file for poem ${i + 1}`);
-        }
+        // if (!title) {
+        //   throw new Error(`Please enter title for poem ${i + 1}`);
+        // }
+        // if (!file) {
+        //   throw new Error(`Please upload file for poem ${i + 1}`);
+        // }
       }
 
       if (!files.photo) {
@@ -583,7 +662,7 @@ export default function SubmitPage() {
       // Add tier and payment data
       formDataToSend.append('tier', selectedTier.id);
       formDataToSend.append('price', selectedTier.price.toString()); // Use original tier price
-      
+
       // Add user ID - use user.uid directly
       formDataToSend.append('userUid', user.uid);
 
@@ -598,13 +677,34 @@ export default function SubmitPage() {
         formDataToSend.append('paymentId', actualPaymentData.razorpay_payment_id || actualPaymentData.paypal_order_id || '');
         formDataToSend.append('paymentMethod', actualPaymentData.payment_method || 'razorpay');
       }
+      formDataToSend.append('contestType', currentContestType);
+
+      // Handle single vs multiple poems
+      if (selectedPoems.length === 1) {
+        // Single poem submission
+        formDataToSend.append('poemTitle', selectedPoems[0].challenge.challengeTitle);
+        formDataToSend.append('challengeTitle', selectedPoems[0].challenge.challengeTitle);
+        formDataToSend.append('challengeDescription', selectedPoems[0].challenge.description);
+        formDataToSend.append('poemText', selectedPoems[0].text);
+      } else {
+        // Multiple poems submission
+        const poemTitles = selectedPoems.map(p => p.challenge.challengeTitle);
+        formDataToSend.append('poemTitles', JSON.stringify(poemTitles));
+
+        // Add challenge data for each poem
+        selectedPoems.forEach((poem, index) => {
+          formDataToSend.append(`challengeTitle_${index}`, poem.challenge.challengeTitle);
+          formDataToSend.append(`challengeDescription_${index}`, poem.challenge.description);
+          formDataToSend.append(`poemText_${index}`, poem.text);
+        });
+      }
 
       // Add multiple poem titles
       const allTitles = [formData.poemTitle];
       for (let i = 1; i < poemCount; i++) {
         allTitles.push(multiplePoems.titles[i] || '');
       }
-      formDataToSend.append('poemTitles', JSON.stringify(allTitles));
+      //formDataToSend.append('poemTitles', JSON.stringify(allTitles));
 
       // Add poem files
       if (files.poem) {
@@ -680,6 +780,7 @@ export default function SubmitPage() {
           titles: ["", "", "", "", ""],
           files: [null, null, null, null, null],
         });
+        setSelectedPoems([]);
 
         // Show immediate success toast
         toast({
@@ -869,17 +970,17 @@ export default function SubmitPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {TIERS.map((tier) => {
               const Icon = tier.icon;
-              
+
               // Check if free tier should be disabled
               const isFreeTierAdminDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
               const isFreeTierConfigDisabled = tier.id === 'free' && (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER);
               const isFreeTierAlreadyUsed = tier.id === 'free' && hasUsedFreeTier;
-              
+
               // Hide free tier completely if config disabled
               if (tier.id === 'free' && isFreeTierConfigDisabled && freeTierStatus !== undefined) {
                 return null;
               }
-              
+
               const isDisabled = isFreeTierAdminDisabled || isFreeTierAlreadyUsed;
               const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : '';
 
@@ -917,7 +1018,7 @@ export default function SubmitPage() {
                       </button>
                     </CardContent>
                   </Card>
-                  
+
                   {/* Warning messages below cards */}
                   {isFreeTierAdminDisabled && tier.id === 'free' && (
                     <div className="mt-2 text-center">
@@ -926,7 +1027,7 @@ export default function SubmitPage() {
                       </p>
                     </div>
                   )}
-                  
+
                   {isFreeTierAlreadyUsed && tier.id === 'free' && (
                     <div className="mt-2 text-center">
                       <p className="text-sm text-orange-600 font-medium">
@@ -943,7 +1044,7 @@ export default function SubmitPage() {
             // Check if free tier should be hidden and show appropriate message
             const adminDisabled = freeTierStatus?.enabled === false;
             const configDisabled = !FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER;
-            
+
             if (adminDisabled || (freeTierStatus === undefined && configDisabled)) {
               return (
                 <div className="text-center mt-6">
@@ -966,6 +1067,120 @@ export default function SubmitPage() {
             No rules, just heart — let your truth unfold, Your words are flames, fierce and bold. At Writory, every voice is gold.
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentStep === "spin") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <Card className="shadow-xl">
+            <CardHeader className="p-6">
+              <CardTitle className="text-2xl font-bold text-gray-800 text-center">
+                Spin the Wheel for Poem {currentPoemIndex + 1}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8">
+              {/* Display selected challenge if exists */}
+              {selectedPoems[currentPoemIndex]?.challenge ? (
+                <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h3 className="text-lg font-semibold text-green-800">
+                    Selected Challenge: {selectedPoems[currentPoemIndex].challenge.challengeTitle}
+                  </h3>
+                  <p className="text-green-700 mt-2">
+                    {selectedPoems[currentPoemIndex].challenge.description}
+                  </p>
+                  {currentPoemIndex > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUsePreviousChallenge(currentPoemIndex)}
+                      className="mt-4"
+                    >
+                      Use Previous Challenge
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <SpinWheel
+                    challenges={currentChallenges}
+                    onChallengeSelected={handleChallengeSelected}
+                  />
+                  {currentPoemIndex > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUsePreviousChallenge(currentPoemIndex)}
+                      className="mt-4"
+                    >
+                      Use Previous Challenge
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {/* Poem Text Input */}
+              {selectedPoems[currentPoemIndex]?.challenge && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor={`poem-text-${currentPoemIndex}`}>Write Your Poem *</Label>
+                    <Textarea
+                      id={`poem-text-${currentPoemIndex}`}
+                      placeholder="Write your poem here"
+                      value={selectedPoems[currentPoemIndex]?.text || ""}
+                      onChange={(e) => {
+                        const updatedPoems = [...selectedPoems];
+                        updatedPoems[currentPoemIndex] = {
+                          ...updatedPoems[currentPoemIndex],
+                          text: e.target.value
+                        };
+                        setSelectedPoems(updatedPoems);
+                      }}
+                      required
+                      className="mt-2"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Reset the challenge for the current poem
+                        const updatedPoems = [...selectedPoems];
+                        updatedPoems[currentPoemIndex] = {
+                          challenge: null,
+                          text: ""
+                        };
+                        setSelectedPoems(updatedPoems);
+                      }}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Spin Again
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        // Check if it's the last poem
+                        if (currentPoemIndex === selectedTier.poems - 1) {
+                          // Move to the form
+                          setCurrentStep("form");
+                        } else {
+                          // Move to the next poem
+                          setCurrentPoemIndex(currentPoemIndex + 1);
+                        }
+                      }}
+                    >
+                      {currentPoemIndex === selectedTier.poems - 1 ? "Next: Submit" : "Next Poem"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -1062,9 +1277,9 @@ export default function SubmitPage() {
                 </div>
 
                 {/* Poem Fields - Dynamic based on tier */}
-                {renderPoemFields()}
+                {/*{renderPoemFields()}*/}
 
-                {/* Photo Upload */}
+                                {/* Photo Upload */}
                 <div className="space-y-4">
                   <h2 className="text-xl font-bold text-gray-800">Photo Upload</h2>
                   <div>
@@ -1309,7 +1524,7 @@ export default function SubmitPage() {
                   onError={handlePaymentError}
                   isProcessing={isProcessingPayment}
                   setIsProcessing={setIsProcessingPayment}
-                  isProcessingPayPal={isProcessingPayPal}
+                  isProcessingPayPal={setIsProcessingPayPal}
                   setIsProcessingPayPal={setIsProcessingPayPal}
                   onBack={() => setCurrentStep("form")}
                   onQRPayment={(qrData) => {

@@ -173,7 +173,7 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
 
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:L',
+      range: 'Poetry!A:P',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
@@ -190,7 +190,11 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
           photoFileUrl,                           // I - Photo Link (Photo URL)
           poemFileUrl,                            // J - PDF Link (Poem File URL)
           data.submissionUuid || '',              // K - Submission UUID
-          (data.poemIndex || 1).toString()        // L - Poem Index
+          (data.poemIndex || 1).toString(),       // L - Poem Index
+          data.contestType || 'Theme-Based',      // M - Contest Type
+          data.challengeTitle || data.poemTitle,  // N - Challenge Title
+          data.challengeDescription || '',        // O - Challenge Description
+          data.poemText || ''                     // P - Poem Text
         ]]
       }
     };
@@ -222,6 +226,10 @@ export async function addMultiplePoemsToSheet(data: {
   submissionIds: number[];
   poemFileUrls?: string[];
   photoFileUrl?: string; // Add photo file URL
+  contestType?: string;
+  challengeTitles?: string[];
+  challengeDescriptions?: string[];
+  poemTexts?: string[];
 }): Promise<void> {
   try {
     console.log(`📝 Adding ${data.titles.length} poems to sheet for:`, data.firstName, data.tier);
@@ -239,20 +247,23 @@ export async function addMultiplePoemsToSheet(data: {
     const rowsToAdd = data.titles.map((title, index) => {
       const poemFileUrl = data.poemFileUrls?.[index] || '';
       const photoFileUrl = data.photoFileUrl || '';
+      const challengeTitle = data.challengeTitles?.[index] || title;
+      const challengeDescription = data.challengeDescriptions?.[index] || '';
+      const poemText = data.poemTexts?.[index] || '';
 
       console.log(`📄 Row ${index + 1}: ${title} - Poem: ${poemFileUrl ? 'YES' : 'NO'}, Photo: ${photoFileUrl ? 'YES' : 'NO'}`);
 
       // Validate URLs before sending to sheets
-    if (poemFileUrls && Array.isArray(poemFileUrls)) {
-      poemFileUrls.forEach((url, index) => {
-        if (url && !url.startsWith('https://res.cloudinary.com/')) {
-          console.warn(`⚠️ Poem file URL ${index + 1} does not look like a Cloudinary link:`, url);
-        }
-      });
-    }
-    if (photoFileUrl && !photoFileUrl.startsWith('https://res.cloudinary.com/')) {
-      console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
-    }
+      if (data.poemFileUrls && Array.isArray(data.poemFileUrls)) {
+        data.poemFileUrls.forEach((url, index) => {
+          if (url && !url.startsWith('https://res.cloudinary.com/')) {
+            console.warn(`⚠️ Poem file URL ${index + 1} does not look like a Cloudinary link:`, url);
+          }
+        });
+      }
+      if (photoFileUrl && !photoFileUrl.startsWith('https://res.cloudinary.com/')) {
+        console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
+      }
 
       return [
         timestamp,                                           // A - Timestamp
@@ -266,14 +277,18 @@ export async function addMultiplePoemsToSheet(data: {
         photoFileUrl,                                       // I - Photo (same for all poems)
         poemFileUrl,                                        // J - Poem File URL
         data.submissionUuid,                                // K - Submission UUID
-        (index + 1).toString()                              // L - Poem Index
+        (index + 1).toString(),                             // L - Poem Index
+        data.contestType || 'Theme-Based',                  // M - Contest Type
+        challengeTitle,                                     // N - Challenge Title
+        challengeDescription,                               // O - Challenge Description
+        poemText                                            // P - Poem Text
       ];
     });
 
     // Use the correct Google Sheets API structure
     const request = {
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Poetry!A:L',
+      range: 'Poetry!A:P',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
@@ -307,7 +322,7 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const existingPoetry = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:L1', // Updated range A-L
+        range: 'Poetry!A1:P1', // Updated range A-P
         auth: authClient,
       });
 
@@ -328,26 +343,26 @@ export async function initializeSheetHeaders(): Promise<void> {
       if (!existingPoetry.data.values || existingPoetry.data.values.length === 0) {
         const poemsRequest = {
           spreadsheetId: SPREADSHEET_ID,
-          range: 'Poetry!A1:L1', // Updated range A-L
+          range: 'Poetry!A1:P1', // Updated range A-P
           valueInputOption: 'USER_ENTERED',
           auth: authClient,
           requestBody: {
-            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index']]
+            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text']]
           }
         };
         await sheets.spreadsheets.values.update(poemsRequest);
-        console.log('✅ Poetry sheet headers initialized with correct A-L column mapping');
+        console.log('✅ Poetry sheet headers initialized with correct A-P column mapping');
       } else {
         // Check if headers need to be updated to correct format
         const currentHeaders = existingPoetry.data.values[0];
-        const expectedHeaders = ['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index'];
+        const expectedHeaders = ['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text'];
 
         // If headers don't match, update them
         if (JSON.stringify(currentHeaders) !== JSON.stringify(expectedHeaders)) {
           console.log('🔄 Updating sheet headers to correct format...');
           const updateRequest = {
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Poetry!A1:L1',
+            range: 'Poetry!A1:P1',
             valueInputOption: 'USER_ENTERED',
             auth: authClient,
             requestBody: {
@@ -372,17 +387,17 @@ export async function initializeSheetHeaders(): Promise<void> {
 
       const poemsRequest = {
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Poetry!A1:L1', // Updated range A-L
+        range: 'Poetry!A1:P1', // Updated range A-P
         valueInputOption: 'USER_ENTERED',
         auth: authClient,
         requestBody: {
-          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index']]
+          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text']]
         }
       };
 
       await sheets.spreadsheets.values.update(contactsRequest);
       await sheets.spreadsheets.values.update(poemsRequest);
-      console.log('✅ Sheet headers created with correct A-L column mapping');
+      console.log('✅ Sheet headers created with correct A-P column mapping');
     }
   } catch (error) {
     console.error('❌ Error initializing sheet headers:', error);

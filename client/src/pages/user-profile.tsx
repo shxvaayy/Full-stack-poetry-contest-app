@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -7,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2, Camera, Upload } from 'lucide-react';
+import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2, Camera, Upload, Target, Zap } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
 interface BackendUser {
@@ -40,7 +41,27 @@ interface Submission {
     theme: number;
   };
   submissionUuid: string;
-  poems: { id: number; title: string; fileUrl?: string }[];
+  contestType?: string;
+  challengeTitle?: string;
+  poems: { 
+    id: number; 
+    title: string; 
+    fileUrl?: string;
+    contestType?: string;
+    challengeTitle?: string;
+    score?: number;
+    status?: string;
+    type?: string;
+    isWinner?: boolean;
+    winnerPosition?: number | null;
+    scoreBreakdown?: {
+      originality: number;
+      emotion: number;
+      structure: number;
+      language: number;
+      theme: number;
+    };
+  }[];
 }
 
 interface SubmissionStatus {
@@ -48,6 +69,7 @@ interface SubmissionStatus {
   totalSubmissions: number;
   contestMonth: string;
   allTimeSubmissions: number;
+  currentContestType?: string;
 }
 
 export default function UserProfile() {
@@ -65,6 +87,13 @@ export default function UserProfile() {
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>("");
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [displayName, setDisplayName] = useState<string>('');
+
+  // Get current contest type
+  const getCurrentContestType = () => {
+    const contestTypes = ["Theme-Based", "Constraint-Based", "Form-Based", "Prompt-Based"];
+    const currentMonth = new Date().getMonth(); // Jan = 0
+    return contestTypes[currentMonth % 4];
+  };
 
   useEffect(() => {
     if (user?.uid) {
@@ -96,7 +125,8 @@ export default function UserProfile() {
         freeSubmissionUsed: false,
         totalSubmissions: 0,
         contestMonth: new Date().toISOString().slice(0, 7),
-        allTimeSubmissions: 0
+        allTimeSubmissions: 0,
+        currentContestType: getCurrentContestType()
       });
 
       // Force loading to false after 2 seconds max
@@ -149,6 +179,8 @@ export default function UserProfile() {
                     amount: sub.amount,
                     submittedAt: sub.submittedAt,
                     submissionUuid: uuid,
+                    contestType: sub.contestType,
+                    challengeTitle: sub.challengeTitle,
                     poems: []
                   });
                 }
@@ -160,7 +192,10 @@ export default function UserProfile() {
                   type: sub.type,
                   isWinner: sub.isWinner,
                   winnerPosition: sub.winnerPosition,
-                  scoreBreakdown: sub.scoreBreakdown
+                  scoreBreakdown: sub.scoreBreakdown,
+                  contestType: sub.contestType,
+                  challengeTitle: sub.challengeTitle,
+                  fileUrl: sub.fileUrl
                 });
               });
 
@@ -174,7 +209,10 @@ export default function UserProfile() {
             const statusRes = await fetch(`/api/users/${user!.uid}/submission-status`);
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              setSubmissionStatus(statusData);
+              setSubmissionStatus({
+                ...statusData,
+                currentContestType: getCurrentContestType()
+              });
             }
           } catch (statusError) {
             console.log('Status fetch failed:', statusError);
@@ -425,9 +463,35 @@ export default function UserProfile() {
   const getTierColor = (tier: string) => {
     switch (tier) {
       case 'free': return 'bg-green-100 text-green-800';
+      case 'tier1': return 'bg-blue-100 text-blue-800';
+      case 'tier2': return 'bg-purple-100 text-purple-800';
+      case 'tier3': return 'bg-yellow-100 text-yellow-800';
       case 'single': return 'bg-blue-100 text-blue-800';
       case 'double': return 'bg-purple-100 text-purple-800';
       case 'bulk': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTierDisplayName = (tier: string) => {
+    switch (tier) {
+      case 'free': return 'Free';
+      case 'tier1': return 'Tier 1';
+      case 'tier2': return 'Tier 2';
+      case 'tier3': return 'Tier 3';
+      case 'single': return 'Single';
+      case 'double': return 'Double';
+      case 'bulk': return 'Bulk';
+      default: return tier;
+    }
+  };
+
+  const getContestTypeColor = (contestType: string) => {
+    switch (contestType) {
+      case 'Theme-Based': return 'bg-emerald-100 text-emerald-800';
+      case 'Constraint-Based': return 'bg-orange-100 text-orange-800';
+      case 'Form-Based': return 'bg-indigo-100 text-indigo-800';
+      case 'Prompt-Based': return 'bg-rose-100 text-rose-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -643,6 +707,36 @@ export default function UserProfile() {
               </CardContent>
             </Card>
 
+            {/* Contest Info */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Target className="mr-2" size={20} />
+                  Current Contest
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center">
+                  <Badge className={getContestTypeColor(submissionStatus?.currentContestType || getCurrentContestType())}>
+                    {submissionStatus?.currentContestType || getCurrentContestType()}
+                  </Badge>
+                  <p className="text-sm text-gray-600 mt-2">
+                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <Button 
+                    onClick={() => window.location.href = '/submit'}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <Zap className="mr-2" size={16} />
+                    Submit Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Submission Status */}
             <Card className="mt-6">
               <CardHeader>
@@ -697,7 +791,7 @@ export default function UserProfile() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <div className="text-2xl font-bold text-green-600">
                           {submissions.reduce((total, s) => total + s.poems.length, 0)}
@@ -708,7 +802,6 @@ export default function UserProfile() {
                         <div className="text-2xl font-bold text-blue-600">
                           {submissions.reduce((count, s) => {
                             const winCount = s.poems.filter((p: any) => p.isWinner === true).length;
-                            console.log('Submission:', s.submissionUuid, 'Win count:', winCount, 'Poems:', s.poems.map(p => ({ title: p.title, isWinner: p.isWinner })));
                             return count + winCount;
                           }, 0)}
                         </div>
@@ -723,6 +816,12 @@ export default function UserProfile() {
                           )}
                         </div>
                         <div className="text-sm text-gray-600">Evaluated</div>
+                      </div>
+                      <div className="text-center p-4 bg-orange-50 rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {new Set(submissions.map(s => s.contestType).filter(Boolean)).size}
+                        </div>
+                        <div className="text-sm text-gray-600">Contest Types</div>
                       </div>
                     </div>
                   </CardContent>
@@ -748,10 +847,15 @@ export default function UserProfile() {
                                 <div className="text-sm text-gray-600">
                                   {formatDate(submission.submittedAt)}
                                 </div>
+                                {submission.contestType && (
+                                  <Badge className={getContestTypeColor(submission.contestType)} size="sm">
+                                    {submission.contestType}
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Badge className={getTierColor(submission.tier)}>
-                                  {submission.tier}
+                                  {getTierDisplayName(submission.tier)}
                                 </Badge>
                                 {/* Show individual poem statuses */}
                                 {submission.poems && submission.poems.length > 0 ? (
@@ -824,6 +928,11 @@ export default function UserProfile() {
                                 <p className="text-gray-600 text-sm mb-2">
                                   Submitted on {formatDate(submission.submittedAt)}
                                 </p>
+                                {submission.contestType && (
+                                  <Badge className={getContestTypeColor(submission.contestType)}>
+                                    {submission.contestType}
+                                  </Badge>
+                                )}
                               </div>
                               <div className="text-right">
                                 <p className="text-lg font-semibold text-green-600">
@@ -840,9 +949,16 @@ export default function UserProfile() {
                               <div className="space-y-2">
                                 {submission.poems.map((poem, index) => (
                                   <div key={poem.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <span className="text-sm font-medium">
-                                      {index + 1}. {poem.title}
-                                    </span>
+                                    <div>
+                                      <span className="text-sm font-medium">
+                                        {index + 1}. {poem.title}
+                                      </span>
+                                      {poem.challengeTitle && (
+                                        <p className="text-xs text-gray-600 mt-1">
+                                          Challenge: {poem.challengeTitle}
+                                        </p>
+                                      )}
+                                    </div>
                                     {poem.fileUrl && (
                                       <a 
                                         href={poem.fileUrl} 
@@ -860,7 +976,7 @@ export default function UserProfile() {
 
                             <div className="flex flex-wrap gap-2">
                               <Badge className={getTierColor(submission.tier)}>
-                                {submission.tier}
+                                {getTierDisplayName(submission.tier)}
                               </Badge>
                             </div>
                           </Card>
@@ -921,6 +1037,16 @@ export default function UserProfile() {
                                       <div>
                                         <h4 className="font-semibold">{winner.title}</h4>
                                         <p className="text-sm text-gray-600">{positionText}</p>
+                                        {winner.challengeTitle && (
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            Challenge: {winner.challengeTitle}
+                                          </p>
+                                        )}
+                                        {winner.contestType && (
+                                          <Badge className={getContestTypeColor(winner.contestType)} size="sm">
+                                            {winner.contestType}
+                                          </Badge>
+                                        )}
                                       </div>
                                       <div className="text-right">
                                         {winner.score && (
@@ -950,11 +1076,23 @@ export default function UserProfile() {
                                     <div>
                                       <h4 className="font-semibold">{poem.title}</h4>
                                       <p className="text-sm text-gray-600">Evaluated</p>
-                                      {poem.type && (
-                                        <Badge className={getTypeColor(poem.type)} size="sm">
-                                          {poem.type}
-                                        </Badge>
+                                      {poem.challengeTitle && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Challenge: {poem.challengeTitle}
+                                        </p>
                                       )}
+                                      <div className="flex gap-2 mt-2">
+                                        {poem.contestType && (
+                                          <Badge className={getContestTypeColor(poem.contestType)} size="sm">
+                                            {poem.contestType}
+                                          </Badge>
+                                        )}
+                                        {poem.type && (
+                                          <Badge className={getTypeColor(poem.type)} size="sm">
+                                            {poem.type}
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
                                     <div className="text-right">
                                       {poem.score && (

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
@@ -120,6 +119,7 @@ export default function Header() {
     { name: "PAST WINNERS", href: "/past-winners" },
     { name: "ABOUT US", href: "/about" },
     { name: "CONTACT US", href: "/contact" },
+    { name: "EVENT", href: "/event"},
     ...(isAdmin ? [{ name: "ADMIN UPLOAD", href: "/admin-upload" }] : []),
   ];
 

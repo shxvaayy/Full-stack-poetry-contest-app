@@ -22,6 +22,7 @@ import PrivacyPage from "@/pages/privacy";
 import EmailVerifiedPage from "@/pages/email-verified";
 import EmailVerificationHandler from "@/pages/email-verification-handler";
 import PasswordResetHandler from "@/pages/password-reset-handler";
+import EventPage from "@/pages/event";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 function AppContent() {
@@ -50,6 +51,7 @@ function AppContent() {
                 <Route path="/about" component={AboutPage} />
                 <Route path="/contact" component={ContactPage} />
                 <Route path="/profile" component={UserProfilePage} />
+                <Route path="/event" component={EventPage} />
                 <Route path="/admin-upload" component={AdminUploadPage} />
                 <Route path="/admin-settings" component={AdminSettingsPage} />
                 <Route path="/not-found" component={NotFoundPage} />

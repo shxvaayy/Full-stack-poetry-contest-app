@@ -89,6 +89,10 @@ export const submissions = pgTable('submissions', {
   winnerCategory: varchar('winner_category', { length: 100 }), // Overall, Free Category, etc.
   
   // Contest information
+  contestType: varchar('contest_type', { length: 50 }), // Theme-Based, Constraint-Based, etc.
+  challengeTitle: varchar('challenge_title', { length: 255 }), // Specific challenge from spin wheel
+  challengeDescription: text('challenge_description'), // Challenge description
+  poemText: text('poem_text'), // Actual poem content
   contestMonth: varchar('contest_month', { length: 7 }), // YYYY-MM format
   contestYear: integer('contest_year'),
   
