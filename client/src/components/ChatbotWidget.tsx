@@ -186,17 +186,17 @@ export default function ChatbotWidget() {
       {/* Chat Button */}
       <Button
         onClick={toggleChat}
-        className="relative w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 animate-glow hover:animate-bounce-subtle bg-primary hover:bg-primary/90 p-0 overflow-hidden"
+        className="relative w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 animate-glow hover:animate-bounce-subtle bg-black hover:bg-gray-900 p-0 overflow-hidden border-2 border-cyan-400"
       >
         {/* Logo Image */}
         <img 
           src={logoImage} 
           alt="Writory Logo" 
-          className="w-10 h-10 object-contain"
+          className="w-10 h-10 object-contain rounded-full"
         />
         
         {/* Pulse Animation Ring */}
-        <div className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping"></div>
+        <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping"></div>
         
         {/* Notification Badge */}
         {showBadge && (
