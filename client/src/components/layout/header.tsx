@@ -129,20 +129,20 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-white shadow-lg">
-      <div className="max-w-7xl mx-auto pl-0 pr-2 sm:pr-4 lg:pr-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
         <div className="flex justify-between items-center py-2 sm:py-3 lg:py-4">
-          {/* Logo Section - Left Extreme */}
-          <Link href="/" className="flex items-center flex-shrink-0 min-w-0 ml-2 sm:ml-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 mr-3 sm:mr-4 lg:mr-5 flex-shrink-0">
+          {/* Logo Section - Left */}
+          <Link href="/" className="flex items-center flex-shrink-0 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mr-2 sm:mr-3 lg:mr-4 flex-shrink-0">
               <img 
                 src={logoImage} 
                 alt="WRITORY Logo" 
                 className="w-full h-full object-contain"
               />
             </div>
-            {/* Title - responsive sizing with better spacing */}
+            {/* Title - responsive sizing */}
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold whitespace-nowrap truncate">
+              <h1 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold whitespace-nowrap truncate">
                 WRITORY POETRY CONTEST
               </h1>
             </div>
