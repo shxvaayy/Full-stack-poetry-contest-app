@@ -75,9 +75,9 @@ export const uploadPoemFileToCloudinary = async (
       throw new Error('Only PDF files are allowed for poem submissions');
     }
 
-    // Generate a unique filename
+    // Generate a unique filename in format: email_poemtitle_timestamp
     const timestamp = Date.now();
-    const sanitizedEmail = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+    const sanitizedEmail = email.replace(/[^a-zA-Z0-9@.]/g, '_'); // Keep full email with @ and .
     const sanitizedTitle = poemTitle 
       ? poemTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 30)
       : 'poem';
@@ -134,9 +134,9 @@ export const uploadPhotoFileToCloudinary = async (
       throw new Error('Only JPG, JPEG, and PNG files are allowed for photos');
     }
 
-    // Generate a unique filename
+    // Generate a unique filename in format: email_photo_timestamp
     const timestamp = Date.now();
-    const sanitizedEmail = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+    const sanitizedEmail = email.replace(/[^a-zA-Z0-9@.]/g, '_'); // Keep full email with @ and .
     const publicId = `writory_uploads/photos/${sanitizedEmail}_photo_${timestamp}`;
 
     console.log('📤 Uploading photo file with public ID:', publicId);
