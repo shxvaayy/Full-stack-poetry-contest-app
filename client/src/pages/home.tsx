@@ -125,16 +125,25 @@ export default function HomePage() {
       {/* Hero Section with Rotating Carousel */}
       <HeroCarousel>
         <div className="text-center text-white px-4 max-w-6xl mx-auto">
-          <div className="w-24 h-24 mx-auto mb-6">
-            <img 
-              src={logoImage} 
-              alt="Writory Logo" 
-              className="w-full h-full object-contain drop-shadow-lg"
-            />
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 text-white drop-shadow-2xl">
-            WRITORY
-          </h1>
+          {/* Hero Section */}
+          <div className="text-center mb-16 relative">
+            <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide">
+              WRITORY
+            </h1>
+
+            {/* Logo positioned below WRITORY heading */}
+            <div className="mb-8 flex justify-center">
+              <div className="relative">
+                <div className="w-32 h-32 md:w-40 md:h-40 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center shadow-2xl animate-float border border-white/20">
+                  <img 
+                    src={logoImage} 
+                    alt="Writory Logo" 
+                    className="w-24 h-24 md:w-32 md:h-32 object-contain"
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-full blur-xl opacity-50 animate-pulse"></div>
+              </div>
+            </div>
           <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
 
           {/* Moving Tagline */}
