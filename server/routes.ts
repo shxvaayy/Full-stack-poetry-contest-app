@@ -30,7 +30,7 @@ const upload = multer({
     });
 
     const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
-    
+
     // Allow only PDF and image files
     if (
       file.mimetype === 'application/pdf' ||
@@ -211,7 +211,7 @@ router.post('/api/test-cloudinary-upload', safeUploadAny, asyncHandler(async (re
   try {
     const file = req.files[0];
     const isImage = file.mimetype.startsWith('image/');
-    
+
     let uploadUrl;
     if (isImage) {
       uploadUrl = await uploadPhotoFileToCloudinary(file.buffer, 'test@example.com', file.originalname);
@@ -1602,7 +1602,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Poem file uploaded to Cloudinary:', poemFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload poem file to Cloudinary:', error);
-        
+
         // Return error to user if Cloudinary upload fails
         return res.status(500).json({
           success: false,
@@ -1628,7 +1628,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
         console.log('✅ Photo file uploaded to Cloudinary:', photoFileUrl);
       } catch (error) {
         console.error('❌ Failed to upload photo file to Cloudinary:', error);
-        
+
         // Continue with submission even if photo upload fails (photo is optional)
         console.log('⚠️ Continuing submission without photo URL (photo is optional)');
       }
@@ -1676,7 +1676,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       firstName,
       lastName: lastName || '',
       email,
-      phone: phone || '',
+      phone:phone || '',
       age: age ? parseInt(age) : null,
       poemTitle,
       tier,
@@ -1730,7 +1730,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           contestType: req.body.contestType || 'Theme-Based',
           challengeTitle: req.body.challengeTitle || submissionData.poemTitle,
           challengeDescription: req.body.challengeDescription || '',
-          poemText: req.body.poemText || ''
+          // Note: poem_text is stored in the file, not as text input
         });
         console.log('✅ Google Sheets updated for submission:', submission.id);
       } catch (sheetError) {
@@ -1935,20 +1935,20 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         for (let i = 0; i < poemFiles.length; i++) {
           const file = poemFiles[i];
           const poemTitle = titles[i] || `poem_${i + 1}`;
-          
+
           console.log(`📄 Uploading poem ${i + 1}/${poemFiles.length}: ${poemTitle}`);
-          
+
           const fileUrl = await uploadPoemFileToCloudinary(
             file.buffer,
             email,
             file.originalname,
             poemTitle
           );
-          
+
           poemFileUrls.push(fileUrl);
           console.log(`✅ Poem ${i + 1} uploaded to Cloudinary:`, fileUrl);
         }
-        
+
         console.log('✅ All poem files uploaded to Cloudinary:', poemFileUrls.length);
       } catch (error) {
         console.error('❌ Failed to upload poem files to Cloudinary:', error);
@@ -2090,7 +2090,7 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           contestType: req.body.contestType || 'Theme-Based',
           challengeTitles: titles,
           challengeDescriptions: titles.map((_, index) => req.body[`challengeDescription_${index}`] || ''),
-          poemTexts: titles.map((_, index) => req.body[`poemText_${index}`] || '')
+          // Note: poem_text is stored in the file, not as text input
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {
@@ -2620,6 +2620,7 @@ router.post('/api/debug/fix-user-links', asyncHandler(async (req: any, res: any)
             `${submission.first_name} ${submission.last_name || ''}`.trim()
           ]);
 
+          ```text
           user = newUserResult.rows[0];
           usersCreated++;
           console.log(`✅ Created user account for ${submission.email}`);

@@ -181,6 +181,11 @@ async function initializeApp() {
       await migrateContestFields();
       console.log('✅ Contest fields migration completed');
 
+      // Run poem text column fix
+      const { default: fixPoemTextColumn } = await import('./fix-poem-text-column.js');
+      await fixPoemTextColumn();
+      console.log('✅ Poem text column fix completed');
+
       // Run migrations to fix schema
       const migrationSuccess = await createTables();
 

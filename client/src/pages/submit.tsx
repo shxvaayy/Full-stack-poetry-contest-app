@@ -687,7 +687,6 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
         formDataToSend.append('poemTitle', selectedPoems[0].challenge.challengeTitle);
         formDataToSend.append('challengeTitle', selectedPoems[0].challenge.challengeTitle);
         formDataToSend.append('challengeDescription', selectedPoems[0].challenge.description);
-        formDataToSend.append('poemText', selectedPoems[0].text);
       } else {
         // Multiple poems submission
         const poemTitles = selectedPoems.map(p => p.challenge.challengeTitle);
@@ -697,7 +696,6 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
         selectedPoems.forEach((poem, index) => {
           formDataToSend.append(`challengeTitle_${index}`, poem.challenge.challengeTitle);
           formDataToSend.append(`challengeDescription_${index}`, poem.challenge.description);
-          formDataToSend.append(`poemText_${index}`, poem.text);
         });
       }
 
@@ -708,15 +706,12 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
       }
       //formDataToSend.append('poemTitles', JSON.stringify(allTitles));
 
-      // Add poem files
-      if (files.poem) {
-        formDataToSend.append('poems', files.poem);
-      }
-      for (let i = 1; i < poemCount; i++) {
-        if (multiplePoems.files[i]) {
-          formDataToSend.append('poems', multiplePoems.files[i] as File);
+      // Add poem files from selectedPoems
+      selectedPoems.forEach((poem, index) => {
+        if (poem.file) {
+          formDataToSend.append('poems', poem.file);
         }
-      }
+      });
 
       // Add photo file
       if (files.photo) {
@@ -1139,26 +1134,32 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                 </>
               )}
 
-              {/* Poem Text Input */}
+              {/* Poem File Upload */}
               {selectedPoems[currentPoemIndex]?.challenge && (
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor={`poem-text-${currentPoemIndex}`}>Write Your Poem *</Label>
-                    <Textarea
-                      id={`poem-text-${currentPoemIndex}`}
-                      placeholder="Write your poem here"
-                      value={selectedPoems[currentPoemIndex]?.text || ""}
+                    <Label htmlFor={`poem-file-${currentPoemIndex}`}>Upload Your Poem File * (PDF, DOC, DOCX)</Label>
+                    <Input
+                      id={`poem-file-${currentPoemIndex}`}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
                       onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
                         const updatedPoems = [...selectedPoems];
                         updatedPoems[currentPoemIndex] = {
                           ...updatedPoems[currentPoemIndex],
-                          text: e.target.value
+                          file: file
                         };
                         setSelectedPoems(updatedPoems);
                       }}
                       required
                       className="mt-2"
                     />
+                    {selectedPoems[currentPoemIndex]?.file && (
+                      <p className="text-sm text-green-600 mt-1">
+                        ✓ {selectedPoems[currentPoemIndex].file.name}
+                      </p>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -1181,12 +1182,12 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
 
                     <Button
                       onClick={() => {
-                        // Validate current poem has text
+                        // Validate current poem has file
                         const currentPoem = selectedPoems[currentPoemIndex];
-                        if (!currentPoem?.text?.trim()) {
+                        if (!currentPoem?.file) {
                           toast({
-                            title: "Please write your poem",
-                            description: "You need to write your poem before proceeding.",
+                            title: "Please upload your poem",
+                            description: "You need to upload your poem file before proceeding.",
                             variant: "destructive",
                           });
                           return;
@@ -1201,7 +1202,7 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                           setCurrentPoemIndex(currentPoemIndex + 1);
                         }
                       }}
-                      disabled={!selectedPoems[currentPoemIndex]?.text?.trim()}
+                      disabled={!selectedPoems[currentPoemIndex]?.file}
                     >
                       {currentPoemIndex === selectedTier.poems - 1 ? "Next: Submit Form" : "Next Poem"}
                     </Button>
@@ -1248,41 +1249,25 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
           <Card className="shadow-xl border-2 border-purple-200 bg-white/95 backdrop-blur-sm">
             <CardContent className="p-8 bg-gradient-to-br from-white to-purple-50">
               <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
-                {/* Poem Text Inputs */}
+                {/* Selected Poems Display */}
                 {selectedPoems.length > 0 && (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-gray-800">Your Poems</h2>
+                    <h2 className="text-xl font-bold text-gray-800">Your Selected Poems</h2>
                     {selectedPoems.map((poem, index) => (
                       poem.challenge && (
-                        <div key={index} className="space-y-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                        <div key={index} className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
                           <h3 className="text-lg font-semibold text-purple-800">
                             Poem {index + 1}: {poem.challenge.challengeTitle}
                           </h3>
-                          <p className="text-sm text-gray-600 italic">
+                          <p className="text-sm text-gray-600 italic mb-2">
                             {poem.challenge.description}
                           </p>
-                          <div>
-                            <Label htmlFor={`poem-file-${index}`}>Upload Poem File * (PDF, DOC, DOCX)</Label>
-                            <Input
-                              id={`poem-file-${index}`}
-                              type="file"
-                              accept=".pdf,.doc,.docx"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0] || null;
-                                const updatedPoems = [...selectedPoems];
-                                updatedPoems[index] = {
-                                  ...updatedPoems[index],
-                                  file: file
-                                };
-                                setSelectedPoems(updatedPoems);
-                              }}
-                              required
-                              className="mt-2"
-                            />
-                            {poem.file && (
-                              <p className="text-sm text-green-600 mt-1">✓ {poem.file.name}</p>
-                            )}
-                          </div>
+                          {poem.file && (
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <FileText className="w-4 h-4" />
+                              <span>✓ {poem.file.name}</span>
+                            </div>
+                          )}
                         </div>
                       )
                     ))}

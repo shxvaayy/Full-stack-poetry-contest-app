@@ -85,12 +85,9 @@ export default function SpinWheel({
         <CardContent className="flex flex-col items-center space-y-6 p-8 bg-gradient-to-br from-white to-purple-50">
           {/* Wheel Container */}
           <div className="relative w-80 h-80">
-            {/* Pointer - Perfectly centered at 12 o'clock */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20">
-              <div className="relative">
-                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[24px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
-                <div className="absolute top-[20px] left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-600 rounded-full border-2 border-white shadow-lg"></div>
-              </div>
+            {/* Arrow pointer - centered at top */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 z-10">
+              <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px] border-l-transparent border-r-transparent border-b-red-600 drop-shadow-lg"></div>
             </div>
 
             {/* Wheel */}
