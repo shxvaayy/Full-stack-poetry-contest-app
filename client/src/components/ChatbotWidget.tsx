@@ -221,7 +221,7 @@ export default function ChatbotWidget() {
               </div>
               <div>
                 <h3 className="font-semibold text-sm">Writory Assistant</h3>
-                <p className="text-xs text-green-100">Online</p>
+                <p className="text-xs text-cyan-100">Online</p>
               </div>
             </div>
             <Button
