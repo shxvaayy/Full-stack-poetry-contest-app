@@ -1327,6 +1327,45 @@ router.get('/api/test-cloudinary', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// Verify Google Sheets headers and structure
+router.get('/api/verify-sheets-structure', asyncHandler(async (req: any, res: any) => {
+  console.log('🔍 Verifying Google Sheets structure...');
+
+  try {
+    const { initializeSheetHeaders } = await import('./google-sheets.js');
+    await initializeSheetHeaders();
+
+    res.json({
+      success: true,
+      message: 'Google Sheets headers verified and initialized',
+      expectedColumns: [
+        'A: Timestamp',
+        'B: Name', 
+        'C: Email',
+        'D: Phone',
+        'E: Age',
+        'F: Poem Title',
+        'G: Tier',
+        'H: Amount',
+        'I: Photo',
+        'J: Poem File',
+        'K: Submission UUID',
+        'L: Poem Index',
+        'M: Contest Type',
+        'N: Challenge Title',
+        'O: Challenge Description',
+        'P: Poem Text'
+      ]
+    });
+  } catch (error) {
+    console.error('❌ Sheets verification failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}));
+
 // Test Google Sheets configuration
 router.get('/api/test-google-sheets', asyncHandler(async (req: any, res: any) => {
   console.log('🧪 Testing Google Sheets configuration...');
@@ -1775,17 +1814,18 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     // This ensures fast response to user while still completing necessary tasks
     setImmediate(async () => {
       try {
-        // Extract contest fields and poem text from request body
-        const contestType = req.body.contestType || 'Theme-Based';
-        const challengeTitle = req.body.challengeTitle || req.body.poemTitle || submissionData.poemTitle;
-        const challengeDescription = req.body.challengeDescription || '';
-        const poemText = req.body.poemText || '';
+        // Extract contest fields and poem text from request body with better field mapping
+        const contestType = req.body.contestType || req.body.contest_type || 'Theme-Based';
+        const challengeTitle = req.body.challengeTitle || req.body.challenge_title || req.body.poemTitle || submissionData.poemTitle;
+        const challengeDescription = req.body.challengeDescription || req.body.challenge_description || '';
+        const poemText = req.body.poemText || req.body.poem_text || '';
 
         console.log('🔍 Contest fields for Google Sheets:', {
           contestType,
           challengeTitle,
           challengeDescription: challengeDescription ? 'YES' : 'NO',
-          poemText: poemText ? 'YES' : 'NO'
+          poemText: poemText ? 'YES' : 'NO',
+          requestBodyKeys: Object.keys(req.body)
         });
 
         // Add to Google Sheets in background with proper file URLs
@@ -1813,7 +1853,12 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           contestType: contestType,
           challengeTitle: challengeTitle,
           challengeDescription: challengeDescription,
-          poemText: poemText
+          poemText: poemText,
+          // Additional mapping for backward compatibility
+          contest_type: contestType,
+          challenge_title: challengeTitle,
+          challenge_description: challengeDescription,
+          poem_text: poemText
         });
         console.log('✅ Google Sheets updated for submission:', submission.id);
       } catch (sheetError) {
@@ -2967,6 +3012,50 @@ router.get('/api/debug/winners', asyncHandler(async (req: any, res: any) => {
   } catch (error) {
     console.error('❌ Winners debug endpoint error:', error);
     res.status(500).json({ error: 'Debug query failed' });
+  }
+}));
+
+// Debug endpoint to test Google Sheets submission
+router.post('/api/debug/test-sheets-submission', asyncHandler(async (req: any, res: any) => {
+  try {
+    console.log('🧪 Testing Google Sheets submission with sample data...');
+    
+    const testData = {
+      firstName: 'Test',
+      lastName: 'User',
+      email: 'test@example.com',
+      phone: '1234567890',
+      age: 25,
+      poemTitle: 'Test Poem',
+      tier: 'single',
+      price: 50,
+      poemFileUrl: 'https://example.com/test-poem.pdf',
+      photoFileUrl: 'https://example.com/test-photo.jpg',
+      contestType: 'Theme-Based',
+      challengeTitle: 'Urban Symphony',
+      challengeDescription: 'Write a poem capturing the rhythm and sounds of city life',
+      poemText: 'This is a test poem content',
+      submissionUuid: 'test-uuid-123',
+      poemIndex: 1,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📊 Sending test data to Google Sheets:', testData);
+    
+    await addPoemSubmissionToSheet(testData);
+    
+    res.json({
+      success: true,
+      message: 'Test data sent to Google Sheets successfully',
+      testData
+    });
+  } catch (error) {
+    console.error('❌ Google Sheets test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      testData: req.body
+    });
   }
 }));
 

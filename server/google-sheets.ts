@@ -105,15 +105,21 @@ export async function addContactToSheet(contactData: ContactData) {
       hasTimestamp: !!contactData.timestamp
     });
 
+    const authClient = await getAuthClient();
+    if (!authClient) {
+      console.warn('⚠️ No Google Sheets auth client available - contact will not be saved to sheets');
+      return;
+    }
+
     const timestamp = contactData.timestamp || new Date().toISOString();
 
     const values = [
       [
         timestamp, // A: Timestamp
-        contactData.name, // B: Name
-        contactData.email, // C: Email
+        contactData.name || '', // B: Name
+        contactData.email || '', // C: Email
         contactData.phone || '', // D: Phone
-        contactData.message // E: Message
+        contactData.message || '' // E: Message
       ]
     ];
 
@@ -123,25 +129,29 @@ export async function addContactToSheet(contactData: ContactData) {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Contacts!A:E',
       valueInputOption: 'RAW',
-      resource: {
+      auth: authClient,
+      requestBody: {
         values: values
       }
     };
 
     const response = await sheets.spreadsheets.values.append(request);
-    console.log('✅ Contact added to Google Sheets successfully');
+    console.log('✅ Contact added to Google Sheets successfully:', response.data);
     return response;
 
   } catch (error) {
     console.error('❌ Error adding contact to Google Sheets:', error);
-    throw error;
+    console.error('Error details:', error.response?.data || error.message);
+    // Don't throw error to prevent contact form failure
+    console.warn('⚠️ Continuing with contact form despite Google Sheets error');
   }
 }
 
 // ✅ KEEP: Original function for single poem (backward compatibility)
 export async function addPoemSubmissionToSheet(data: any): Promise<void> {
   try {
-    console.log("📝 Adding poem submission to sheet:", data);
+    console.log("📝 Adding poem submission to sheet:");
+    console.log("📊 Raw input data:", JSON.stringify(data, null, 2));
 
     const authClient = await getAuthClient();
     if (!authClient) {
@@ -158,17 +168,18 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
     const poemFileUrl = data.poemFileUrl || data.poemFile || data.poem_file_url || data.fileUrl || '';
     const photoFileUrl = data.photoFileUrl || data.photo || data.photoUrl || data.photo_file_url || data.photoFile || '';
 
-    // CRITICAL: Extract contest fields and poem text properly
-    const contestType = data.contestType || 'Theme-Based';
-    const challengeTitle = data.challengeTitle || data.poemTitle || '';
-    const challengeDescription = data.challengeDescription || '';
-    const poemText = data.poemText || '';
+    // CRITICAL: Extract contest fields and poem text properly with better fallback logic
+    const contestType = data.contestType || data.contest_type || 'Theme-Based';
+    const challengeTitle = data.challengeTitle || data.challenge_title || data.poemTitle || '';
+    const challengeDescription = data.challengeDescription || data.challenge_description || '';
+    const poemText = data.poemText || data.poem_text || '';
 
     console.log('🔍 Contest fields being sent to sheets:', { 
       contestType, 
       challengeTitle, 
-      challengeDescription, 
-      poemText: poemText ? 'YES' : 'NO'
+      challengeDescription: challengeDescription ? 'YES' : 'NO',
+      poemText: poemText ? 'YES' : 'NO',
+      allDataKeys: Object.keys(data)
     });
 
     console.log('🔍 File URLs being sent to sheets:', { 
@@ -176,23 +187,26 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       photoFileUrl: photoFileUrl || 'EMPTY'
     });
 
+    // Ensure all fields have valid values
+    const safeString = (value: any) => value ? String(value).trim() : '';
+    
     const rowData = [
       timestamp,                               // A - Timestamp
-      name,                                   // B - Name
-      data.email || '',                       // C - Email
-      data.phone || '',                       // D - Phone
-      data.age || '',                         // E - Age
-      data.poemTitle || '',                   // F - Poem Title
-      data.tier || '',                        // G - Tier
-      amount.toString(),                      // H - Amount
-      photoFileUrl,                           // I - Photo Link (Photo URL)
-      poemFileUrl,                            // J - PDF Link (Poem File URL)
-      data.submissionUuid || '',              // K - Submission UUID
-      (data.poemIndex || 1).toString(),       // L - Poem Index
-      contestType,                            // M - Contest Type
-      challengeTitle,                         // N - Challenge Title
-      challengeDescription,                   // O - Challenge Description
-      poemText                                // P - Poem Text
+      safeString(name),                       // B - Name
+      safeString(data.email),                 // C - Email
+      safeString(data.phone),                 // D - Phone
+      safeString(data.age),                   // E - Age
+      safeString(data.poemTitle),             // F - Poem Title
+      safeString(data.tier),                  // G - Tier
+      safeString(amount),                     // H - Amount
+      safeString(photoFileUrl),               // I - Photo Link (Photo URL)
+      safeString(poemFileUrl),                // J - PDF Link (Poem File URL)
+      safeString(data.submissionUuid),        // K - Submission UUID
+      safeString(data.poemIndex || 1),        // L - Poem Index
+      safeString(contestType),                // M - Contest Type
+      safeString(challengeTitle),             // N - Challenge Title
+      safeString(challengeDescription),       // O - Challenge Description
+      safeString(poemText)                    // P - Poem Text
     ];
 
     console.log('📊 Full row data being sent to Google Sheets:', rowData);
@@ -234,7 +248,7 @@ export async function addMultiplePoemsToSheet(data: {
   submissionUuid: string;
   submissionIds: number[];
   poemFileUrls?: string[];
-  photoFileUrl?: string; // Add photo file URL
+  photoFileUrl?: string;
   contestType?: string;
   challengeTitles?: string[];
   challengeDescriptions?: string[];
@@ -246,7 +260,8 @@ export async function addMultiplePoemsToSheet(data: {
 
     const authClient = await getAuthClient();
     if (!authClient) {
-      throw new Error("No auth client available");
+      console.warn('⚠️ No Google Sheets auth client available - data will not be saved to sheets');
+      return;
     }
 
     const timestamp = new Date().toISOString();
@@ -262,30 +277,18 @@ export async function addMultiplePoemsToSheet(data: {
 
       console.log(`📄 Row ${index + 1}: ${title} - Poem: ${poemFileUrl ? 'YES' : 'NO'}, Photo: ${photoFileUrl ? 'YES' : 'NO'}`);
 
-      // Validate URLs before sending to sheets
-      if (data.poemFileUrls && Array.isArray(data.poemFileUrls)) {
-        data.poemFileUrls.forEach((url, index) => {
-          if (url && !url.startsWith('https://res.cloudinary.com/')) {
-            console.warn(`⚠️ Poem file URL ${index + 1} does not look like a Cloudinary link:`, url);
-          }
-        });
-      }
-      if (photoFileUrl && !photoFileUrl.startsWith('https://res.cloudinary.com/')) {
-        console.warn('⚠️ Photo file URL does not look like a Cloudinary link:', photoFileUrl);
-      }
-
       return [
         timestamp,                                           // A - Timestamp
         name,                                               // B - Name
-        data.email,                                         // C - Email
+        data.email || '',                                   // C - Email
         data.phone || '',                                   // D - Phone
         data.age || '',                                     // E - Age
-        title,                                              // F - Poem Title
-        data.tier,                                          // G - Tier
+        title || '',                                        // F - Poem Title
+        data.tier || '',                                    // G - Tier
         (data.price || 0).toString(),                       // H - Amount (same for all poems in submission)
         photoFileUrl,                                       // I - Photo (same for all poems)
         poemFileUrl,                                        // J - Poem File URL
-        data.submissionUuid,                                // K - Submission UUID
+        data.submissionUuid || '',                          // K - Submission UUID
         (index + 1).toString(),                             // L - Poem Index
         data.contestType || 'Theme-Based',                  // M - Contest Type
         challengeTitle,                                     // N - Challenge Title
@@ -294,26 +297,27 @@ export async function addMultiplePoemsToSheet(data: {
       ];
     });
 
-    // Use the correct Google Sheets API structure
+    console.log(`📊 Adding ${rowsToAdd.length} rows to Google Sheets:`, rowsToAdd);
+
     const request = {
       spreadsheetId: SPREADSHEET_ID,
       range: 'Poetry!A:P',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       auth: authClient,
-      requestBody: {  // Use requestBody instead of resource
+      requestBody: {
         values: rowsToAdd
       }
     };
 
-    console.log(`📊 Adding ${rowsToAdd.length} rows to Google Sheets with file URLs`);
-
-    await sheets.spreadsheets.values.append(request);
-    console.log(`✅ Successfully added ${rowsToAdd.length} poem rows to Google Sheets`);
+    const response = await sheets.spreadsheets.values.append(request);
+    console.log(`✅ Successfully added ${rowsToAdd.length} poem rows to Google Sheets:`, response.data);
 
   } catch (error) {
     console.error('❌ Error adding multiple poems to Google Sheets:', error);
-    throw error;
+    console.error('Error details:', error.response?.data || error.message);
+    // Don't throw error to prevent submission failure
+    console.warn('⚠️ Continuing with submission despite Google Sheets error');
   }
 }
 
