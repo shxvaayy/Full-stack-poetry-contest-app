@@ -13,7 +13,7 @@
   --card-foreground: hsl(20, 14.3%, 4.1%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(142, 76%, 36%);
+  --primary: hsl(188, 78%, 41%);
   --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(60, 4.8%, 95.9%);
   --secondary-foreground: hsl(24, 9.8%, 10%);
@@ -36,7 +36,7 @@
   --card-foreground: hsl(0, 0%, 98%);
   --border: hsl(240, 3.7%, 15.9%);
   --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(142, 76%, 36%);
+  --primary: hsl(188, 78%, 41%);
   --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(240, 3.7%, 15.9%);
   --secondary-foreground: hsl(0, 0%, 98%);
@@ -58,18 +58,18 @@
     overflow-x: hidden;
     max-width: 100vw;
   }
-  
+
   /* Prevent horizontal scroll on mobile */
   body {
     position: relative;
   }
-  
+
   /* Fix container widths on mobile */
   .container {
     max-width: 100vw;
     overflow-x: hidden;
   }
-  
+
   /* Ensure all direct children don't overflow */
   #root > * {
     max-width: 100vw;
@@ -80,10 +80,10 @@
 /* Chatbot Custom Animations */
 @keyframes glow {
   0% { 
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
   }
   100% { 
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.8), 0 0 40px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.8), 0 0 40px rgba(34, 211, 238, 0.6);
   }
 }
 
@@ -153,10 +153,10 @@
 }
 
 .chat-scrollbar::-webkit-scrollbar-track {
-  background: hsl(210, 40%, 96%);
+  background: hsl(188, 40%, 96%);
 }
 
 .chat-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(215, 14%, 81%);
+  background: hsl(188, 14%, 81%);
   border-radius: 4px;
 }

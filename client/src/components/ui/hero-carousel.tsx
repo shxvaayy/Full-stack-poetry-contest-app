@@ -17,7 +17,7 @@ const carouselItems = [
   {
     title: "Craft Your Legacy", 
     description: "Every poem is a piece of your soul, a legacy that will live on through generations.",
-    gradient: "bg-gradient-to-br from-green-600 to-teal-600"
+    gradient: "bg-gradient-to-br from-cyan-600 to-teal-600"
   },
   {
     title: "Find Your Voice",
