@@ -901,9 +901,7 @@ export default function UserProfile() {
                                     {submission.contestType}
                                   </Badge>
                                 )}
-                              </div></div>
-                        })}
-                      </div>
+                              </div>
                               <div className="flex items-center space-x-2">
                                 <Badge className={getTierColor(submission.tier)}>
                                   {getTierDisplayName(submission.tier)}
