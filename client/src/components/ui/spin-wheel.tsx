@@ -139,6 +139,24 @@ export default function SpinWheel({
           border-radius: 50%;
           animation: sparkle 1.5s ease-in-out infinite;
         }
+
+        .wheel-slice {
+          position: absolute;
+          width: 50%;
+          height: 50%;
+          transform-origin: 100% 100%;
+          overflow: hidden;
+        }
+
+        .slice-content {
+          position: absolute;
+          width: 200%;
+          height: 200%;
+          border-radius: 50%;
+          transform: rotate(-45deg);
+        }
+
+        
       `}</style>
 
       <div className="flex flex-col items-center space-y-6 p-6 relative">
@@ -172,7 +190,7 @@ export default function SpinWheel({
           </CardHeader>
           
           <CardContent className="flex flex-col items-center space-y-8 p-8 bg-gradient-to-br from-white to-purple-50 relative">
-            {/* Wheel Container */}
+            {/* Premium Wheel Container with 3D effect */}
             <div 
               className="relative w-80 h-80 flex items-center justify-center"
               style={{ 
@@ -181,7 +199,7 @@ export default function SpinWheel({
               }}
             >
               
-              {/* Arrow pointing down */}
+              {/* Perfect Center Arrow with 3D effect */}
               <div 
                 ref={arrowRef}
                 className="absolute z-30"
@@ -198,6 +216,7 @@ export default function SpinWheel({
                     filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
                   }}
                 >
+                  {/* Arrow with gradient and glow - rotated 180 degrees to point down */}
                   <div 
                     className="w-0 h-0 border-l-[20px] border-r-[20px] border-t-[35px] border-l-transparent border-r-transparent"
                     style={{
@@ -205,13 +224,14 @@ export default function SpinWheel({
                       filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))',
                     }}
                   />
+                  {/* Arrow highlight */}
                   <div 
                     className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-white opacity-40"
                   />
                 </div>
               </div>
 
-              {/* Wheel */}
+              {/* Premium Wheel with individual slice colors */}
               <div 
                 ref={wheelRef}
                 className={`w-80 h-80 rounded-full relative overflow-hidden ${
@@ -220,66 +240,73 @@ export default function SpinWheel({
                 style={{
                   transform: `rotate(${rotation}deg)`,
                   border: '8px solid #fbbf24',
-                  boxShadow: '0 0 0 4px rgba(251, 191, 36, 0.3), 0 20px 40px rgba(0,0,0,0.2)',
-                  background: 'white',
+                  boxShadow: `
+                    0 0 0 4px rgba(251, 191, 36, 0.3),
+                    0 20px 40px rgba(0,0,0,0.2),
+                    inset 0 0 60px rgba(255,255,255,0.1),
+                    inset 0 0 0 2px rgba(255,255,255,0.2)
+                  `,
                 }}
               >
-                {/* SVG for wheel slices */}
-                <svg width="100%" height="100%" className="absolute inset-0">
-                  {challenges.map((challenge, index) => {
-                    const startAngle = (index * segmentAngle - 90) * (Math.PI / 180); // Start from top
-                    const endAngle = ((index + 1) * segmentAngle - 90) * (Math.PI / 180);
-                    const largeArcFlag = segmentAngle > 180 ? 1 : 0;
-                    
-                    const x1 = 160 + 140 * Math.cos(startAngle);
-                    const y1 = 160 + 140 * Math.sin(startAngle);
-                    const x2 = 160 + 140 * Math.cos(endAngle);
-                    const y2 = 160 + 140 * Math.sin(endAngle);
-                    
-                    const pathData = `M 160 160 L ${x1} ${y1} A 140 140 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
-                    
-                    // Text position (middle of slice)
-                    const midAngle = startAngle + (endAngle - startAngle) / 2;
-                    const textRadius = 90;
-                    const textX = 160 + textRadius * Math.cos(midAngle);
-                    const textY = 160 + textRadius * Math.sin(midAngle);
-                    
-                    return (
-                      <g key={index}>
-                        <path
-                          d={pathData}
-                          fill={colorPalette[index % colorPalette.length]}
-                          stroke="white"
-                          strokeWidth="2"
-                        />
-                        <text
-                          x={textX}
-                          y={textY}
-                          fill="white"
-                          fontSize="11"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                          dominantBaseline="middle"
+                {/* Individual slices with unique colors */}
+                {challenges.map((challenge, index) => {
+                  const angle = index * segmentAngle;
+                  const color = colorPalette[index % colorPalette.length];
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="wheel-slice"
+                      style={{
+                        transform: `rotate(${angle}deg)`,
+                        clipPath: `polygon(0 0, ${Math.cos((segmentAngle * Math.PI) / 180) * 100}% ${Math.sin((segmentAngle * Math.PI) / 180) * 100}%, 0 100%)`,
+                        backgroundColor: color,
+                        borderRight: '2px solid rgba(255,255,255,0.3)',
+                      }}
+                    >
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          top: '30%',
+                          left: '70%',
+                          transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
+                          transformOrigin: 'center',
+                          width: '100px',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <span 
+                          className="font-bold"
                           style={{
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.9)',
+                            color: 'white',
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 1px 1px 2px rgba(0,0,0,0.8)',
+                            fontSize: challenge.challengeTitle.length > 15 ? '9px' : '11px',
+                            display: 'block',
+                            lineHeight: '1.1',
+                            fontWeight: '900',
+                            letterSpacing: '0.5px',
                           }}
-                          transform={`rotate(${(startAngle + endAngle) / 2 * (180 / Math.PI) + 90}, ${textX}, ${textY})`}
                         >
-                          {challenge.challengeTitle.length > 15 
-                            ? challenge.challengeTitle.substring(0, 12) + '...' 
+                          {challenge.challengeTitle.length > 18 
+                            ? challenge.challengeTitle.substring(0, 15) + '...' 
                             : challenge.challengeTitle
                           }
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
 
-                {/* Center Hub */}
+                {/* Premium Center Hub */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full z-20"
                   style={{
                     background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #1f2937 100%)',
-                    boxShadow: '0 0 0 4px rgba(255,255,255,0.9), 0 0 20px rgba(0,0,0,0.3)',
+                    boxShadow: `
+                      0 0 0 4px rgba(255,255,255,0.9),
+                      0 0 20px rgba(0,0,0,0.3),
+                      inset 0 4px 8px rgba(255,255,255,0.2),
+                      inset 0 -4px 8px rgba(0,0,0,0.2)
+                    `,
                   }}
                 >
                   <div className="w-full h-full flex items-center justify-center">
@@ -287,26 +314,34 @@ export default function SpinWheel({
                       className="w-12 h-12 rounded-full flex items-center justify-center"
                       style={{
                         background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
+                        boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)',
                       }}
                     >
                       <div 
                         className="w-6 h-6 rounded-full"
                         style={{
                           background: 'linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%)',
+                          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.6)',
                         }}
                       />
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Outer decorative rings for premium feel */}
+              <div className="absolute inset-0 w-80 h-80 rounded-full border-4 border-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 opacity-20 pointer-events-none animate-pulse" />
             </div>
 
-            {/* Spin Button */}
+            {/* Premium Spin Button */}
             {!selectedChallenge && (
               <Button 
                 onClick={handleSpin} 
                 disabled={isSpinning || disabled}
                 className="bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 hover:from-purple-700 hover:via-purple-800 hover:to-pink-700 text-white px-16 py-6 rounded-2xl font-bold text-xl shadow-2xl transform transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none border-2 border-white/20"
+                style={{
+                  boxShadow: '0 10px 30px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                }}
               >
                 {isSpinning ? (
                   <>
@@ -322,7 +357,7 @@ export default function SpinWheel({
               </Button>
             )}
 
-            {/* Spinning status */}
+            {/* Spinning status with premium styling */}
             {isSpinning && !selectedChallenge && (
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-3 text-purple-600 font-bold text-lg mb-4">
@@ -338,7 +373,7 @@ export default function SpinWheel({
           </CardContent>
         </Card>
 
-        {/* Selected Challenge Display */}
+        {/* Selected Challenge Display with celebration effect */}
         {selectedChallenge && (
           <Card className={`w-full max-w-lg border-4 border-green-500 shadow-2xl animate-pulse ${showCelebration ? 'animate-bounce' : ''}`}
             style={{
@@ -354,7 +389,12 @@ export default function SpinWheel({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              <div className="text-center p-6 bg-white rounded-xl shadow-inner border-2 border-green-200">
+              <div className="text-center p-6 bg-white rounded-xl shadow-inner border-2 border-green-200"
+                style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+                  boxShadow: 'inset 0 4px 8px rgba(34, 197, 94, 0.1), 0 4px 16px rgba(34, 197, 94, 0.2)',
+                }}
+              >
                 <h3 className="text-2xl font-bold text-gray-800 mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                   {selectedChallenge.challengeTitle}
                 </h3>
@@ -367,6 +407,9 @@ export default function SpinWheel({
                 <Button 
                   onClick={handleUseChallenge}
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 rounded-xl border-2 border-white/20"
+                  style={{
+                    boxShadow: '0 8px 24px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  }}
                 >
                   <Sparkles className="mr-2" size={20} />
                   Use This Challenge
