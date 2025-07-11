@@ -768,6 +768,7 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   if (!amount || amount <= 0) {
     console.error('❌ Invalid amount:', amount);
     return res.status(400).json({ 
+      success: false,
       error: 'Valid amount is required' 
     });
   }
@@ -775,6 +776,7 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   if (!tier) {
     console.error('❌ Missing tier');
     return res.status(400).json({ 
+      success: false,
       error: 'Tier is required' 
     });
   }
@@ -782,41 +784,49 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   // Check Razorpay configuration
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('❌ Razorpay not configured');
-    return res.status(500).
-json({ 
+    return res.status(500).json({ 
+      success: false,
       error: 'Payment system not configured' 
     });
   }
 
   console.log(`💰 Creating Razorpay order for amount: ₹${amount}`);
 
-  const orderOptions = {
-    amount: amount * 100, // Convert to paise
-    currency: 'INR',
-    receipt: `receipt_${Date.now()}_${tier}`,
-    notes: {
-      tier: tier,
-      amount: amount.toString(),
-      timestamp: new Date().toISOString(),
-      ...metadata
-    }
-  };
+  try {
+    const orderOptions = {
+      amount: amount * 100, // Convert to paise
+      currency: 'INR',
+      receipt: `receipt_${Date.now()}_${tier}`,
+      notes: {
+        tier: tier,
+        amount: amount.toString(),
+        timestamp: new Date().toISOString(),
+        ...metadata
+      }
+    };
 
-  console.log('🔄 Calling Razorpay create order with options:', orderOptions);
+    console.log('🔄 Calling Razorpay create order with options:', orderOptions);
 
-  const order = await razorpay.orders.create(orderOptions);
-  console.log('✅ Razorpay order created successfully:', order.id);
+    const order = await razorpay.orders.create(orderOptions);
+    console.log('✅ Razorpay order created successfully:', order.id);
 
-  res.json({
-    success: true,
-    key: process.env.RAZORPAY_KEY_ID,
-    amount: order.amount,
-    currency: order.currency,
-    orderId: order.id,
-    name: 'Writory Poetry Contest',
-    description: `Poetry Contest - ${tier}`,
-    receipt: order.receipt
-  });
+    res.json({
+      success: true,
+      key: process.env.RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      orderId: order.id,
+      name: 'Writory Poetry Contest',
+      description: `Poetry Contest - ${tier}`,
+      receipt: order.receipt
+    });
+  } catch (error) {
+    console.error('❌ Razorpay order creation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create Razorpay order: ' + error.message
+    });
+  }
 }));
 
 // Keep the original create-order endpoint for backward compatibility

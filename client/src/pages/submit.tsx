@@ -550,13 +550,12 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
     setIsSubmitting(true);
     setSubmissionStatus("Payment successful! Processing your submission...");
 
-        setCurrentStep("spin");
-        toast({
-          title: "Payment Successful!",
-          description: "Time to spin for your poetry challenges!",
-        });
+    toast({
+      title: "Payment Successful!",
+      description: "Processing your submission...",
+    });
 
-    // Immediately submit after payment success - no delay
+    // Immediately submit after payment success
     try {
       console.log('🔄 Immediately submitting after payment success...');
       await handleFormSubmitWithPaymentData(processedPaymentData);
@@ -570,7 +569,7 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
         description: "Payment successful but submission failed. Please contact support.",
         variant: "destructive",
       });
-      // Keep user on payment step so they can retry
+      // Keep user on form step so they can retry
       setCurrentStep("form");
     }
   };

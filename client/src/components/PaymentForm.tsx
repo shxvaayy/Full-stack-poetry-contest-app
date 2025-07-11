@@ -72,22 +72,13 @@ export default function PaymentForm({
       setIsProcessing(true);
       setError(null);
 
-      // First check if Razorpay is configured
-      console.log('🧪 Testing Razorpay configuration...');
-      const testResponse = await fetch('/api/test-razorpay');
-      const testData = await testResponse.json();
-      
-      if (!testData.success || !testData.configured) {
-        throw new Error('Razorpay is not properly configured on the server');
-      }
-
+      console.log('💳 Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay script. Please check your internet connection.');
       }
 
       console.log('💳 Creating Razorpay order...');
-
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: {
@@ -115,22 +106,24 @@ export default function PaymentForm({
         throw new Error('Invalid order data received from server');
       }
 
+      // Create and open Razorpay modal immediately
       const options = {
         key: orderData.key,
         amount: orderData.amount,
-        currency: orderData.currency,
+        currency: orderData.currency || 'INR',
         name: 'Writory Poetry Contest',
         description: `Poetry Contest - ${tier}`,
         order_id: orderData.orderId,
-        handler: async function (response: any) {
+        handler: function (response: any) {
           console.log('💰 Razorpay payment successful:', response);
-          
+          setIsProcessing(false);
+
           toast({
             title: "Payment Successful!",
             description: "Your payment has been processed successfully.",
           });
 
-          // Call success with Razorpay data - this will trigger form submission
+          // Call success with Razorpay data
           onSuccess({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -165,6 +158,7 @@ export default function PaymentForm({
         }
       };
 
+      console.log('🚀 Opening Razorpay modal...');
       const razorpay = new window.Razorpay(options);
       razorpay.open();
 
@@ -228,7 +222,7 @@ export default function PaymentForm({
 
       if (orderResponse.ok && responseData.success && responseData.approvalUrl) {
         console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
-        
+
         // Show success message before redirect
         toast({
           title: "Redirecting to PayPal",
@@ -358,14 +352,10 @@ export default function PaymentForm({
             <Button
               onClick={handleRazorpayPayment}
               disabled={isProcessing || isProcessingPayPal}
-              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center transition-colors"
-              type="button"
+              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center"
             >
               {isProcessing ? (
-                <div className="flex items-center">
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                  <span>Processing...</span>
-                </div>
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
@@ -383,14 +373,13 @@ export default function PaymentForm({
             <Button
               onClick={handlePayPalPayment}
               disabled={isProcessing || isProcessingPayPal}
-              className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center transition-colors"
-              type="button"
+              className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
             >
               {isProcessingPayPal ? (
-                <div className="flex items-center">
+                <>
                   <Loader2 className="w-6 h-6 animate-spin mr-2" />
                   <span>Connecting to PayPal...</span>
-                </div>
+                </>
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
