@@ -131,7 +131,7 @@ export default function SpinWheel({
     // Calculate which segment we landed on
     const normalizedAngle = (360 - (totalRotation % 360)) % 360;
     // Correct pointer alignment: pointer lands at center of segment
-    let pointerAngle = (normalizedAngle + segmentAngle / 2) % 360;
+    let pointerAngle = normalizedAngle;
     let selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
     if (selectedIndex < 0) selectedIndex += challenges.length;
 
