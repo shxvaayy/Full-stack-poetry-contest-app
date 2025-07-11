@@ -110,97 +110,78 @@ export default function PaymentForm({
     });
   };
 
+  // Add logging and robust error handling to all button handlers
   const handleRazorpayPayment = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     try {
+      console.log('[RZP] Razorpay button clicked');
       if (e) {
         e.preventDefault();
         e.stopPropagation();
       }
-      
-      console.log('🔍 Razorpay button clicked!');
-      console.log('🔍 Current state:', { 
-        isProcessing, 
-        isProcessingPayPal, 
-        amount, 
-        tier 
-      });
-
       if (isProcessing || isProcessingPayPal) {
-        console.log('⚠️ Payment already in progress, ignoring click');
+        console.log('[RZP] Payment already in progress, ignoring click');
         return;
       }
-      
       setIsProcessing(true);
       setError(null);
-
-      console.log('💳 Starting Razorpay payment flow...');
-      console.log('🔍 Button clicked - processing payment for amount:', amount);
-      
-      // Load Razorpay script first
-      console.log('📥 Loading Razorpay script...');
+      // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay script. Please check your internet connection.');
+        setError('Failed to load Razorpay script. Please check your internet connection.');
+        setIsProcessing(false);
+        toast({
+          title: 'Razorpay Error',
+          description: 'Failed to load Razorpay script. Please check your internet connection.',
+          variant: 'destructive',
+        });
+        return;
       }
-
       // Create order
-      console.log('💰 Creating Razorpay order...');
-      console.log('📤 Sending order request with data:', {
-        amount: amount,
-        tier: tier,
-        metadata: {
-          tier: tier,
-          amount: amount.toString()
-        }
-      });
-
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amount,
           tier: tier,
           metadata: {
             tier: tier,
-            amount: amount.toString()
-          }
+            amount: amount.toString(),
+          },
         }),
       });
-
-      console.log('📥 Order response status:', orderResponse.status);
-      console.log('📥 Order response headers:', Object.fromEntries(orderResponse.headers.entries()));
-
       if (!orderResponse.ok) {
         const errorText = await orderResponse.text();
-        console.error('❌ Order creation failed with status:', orderResponse.status);
-        console.error('❌ Error response:', errorText);
-        throw new Error(`Failed to create order: ${orderResponse.status} - ${errorText}`);
+        setError('Failed to create Razorpay order: ' + errorText);
+        setIsProcessing(false);
+        toast({
+          title: 'Razorpay Error',
+          description: 'Failed to create Razorpay order: ' + errorText,
+          variant: 'destructive',
+        });
+        return;
       }
-
       const orderData = await orderResponse.json();
-      console.log('📦 Order response data:', orderData);
-
-      if (!orderData.success) {
-        console.error('❌ Order creation failed:', orderData.error);
-        throw new Error(orderData.error || 'Failed to create payment order');
+      if (!orderData.success || !orderData.key || !orderData.orderId) {
+        setError('Invalid order data received from server');
+        setIsProcessing(false);
+        toast({
+          title: 'Razorpay Error',
+          description: 'Invalid order data received from server',
+          variant: 'destructive',
+        });
+        return;
       }
-
-      if (!orderData.key || !orderData.orderId) {
-        console.error('❌ Invalid order data:', orderData);
-        throw new Error('Invalid order data received from server');
-      }
-
-      // Verify Razorpay is loaded
       if (!window.Razorpay) {
-        console.error('❌ Razorpay not available on window object');
-        throw new Error('Razorpay not available. Please refresh and try again.');
+        setError('Razorpay not available. Please refresh and try again.');
+        setIsProcessing(false);
+        toast({
+          title: 'Razorpay Error',
+          description: 'Razorpay not available. Please refresh and try again.',
+          variant: 'destructive',
+        });
+        return;
       }
-
-      console.log('🚀 Opening Razorpay payment modal...');
-      console.log('🔑 Using Razorpay key:', orderData.key?.substring(0, 8) + '...');
-
+      // Open Razorpay modal
       const options = {
         key: orderData.key,
         amount: orderData.amount,
@@ -209,14 +190,12 @@ export default function PaymentForm({
         description: `Poetry Contest - ${tier}`,
         order_id: orderData.orderId,
         handler: function (response: any) {
-          console.log('✅ Razorpay payment successful:', response);
+          console.log('[RZP] Razorpay payment successful:', response);
           setIsProcessing(false);
-          
           toast({
-            title: "Payment Successful!",
-            description: "Your payment has been processed successfully.",
+            title: 'Payment Successful!',
+            description: 'Your payment has been processed successfully.',
           });
-
           onSuccess({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -224,66 +203,52 @@ export default function PaymentForm({
             amount: amount,
             currency: 'INR',
             payment_status: 'captured',
-            payment_method: 'razorpay'
+            payment_method: 'razorpay',
           });
         },
         prefill: {
           name: '',
           email: userEmail || '',
-          contact: ''
+          contact: '',
         },
         notes: {
-          tier: tier
+          tier: tier,
         },
         theme: {
-          color: '#8B5CF6'
+          color: '#8B5CF6',
         },
         modal: {
-          ondismiss: function() {
-            console.log('❌ Razorpay payment dismissed');
+          ondismiss: function () {
+            console.log('[RZP] Razorpay payment dismissed');
             setIsProcessing(false);
             toast({
-              title: "Payment Cancelled",
-              description: "Payment was cancelled.",
-              variant: "destructive"
+              title: 'Payment Cancelled',
+              description: 'Payment was cancelled.',
+              variant: 'destructive',
             });
-          }
-        }
+          },
+        },
       };
-
-      console.log('🔧 Razorpay options prepared:', {
-        key: options.key?.substring(0, 8) + '...',
-        amount: options.amount,
-        currency: options.currency,
-        order_id: options.order_id
-      });
-
       const razorpay = new window.Razorpay(options);
-      
       razorpay.on('payment.failed', function (response: any) {
-        console.error('❌ Razorpay payment failed:', response.error);
+        console.error('[RZP] Razorpay payment failed:', response.error);
         setIsProcessing(false);
         setError(response.error.description || 'Payment failed');
         toast({
-          title: "Payment Failed",
-          description: response.error.description || "Payment failed. Please try again.",
-          variant: "destructive"
+          title: 'Payment Failed',
+          description: response.error.description || 'Payment failed. Please try again.',
+          variant: 'destructive',
         });
       });
-
-      console.log('🎬 Opening Razorpay modal...');
       razorpay.open();
-
     } catch (error: any) {
-      console.error('❌ Razorpay error:', error);
-      console.error('❌ Error stack:', error.stack);
-      setError(error.message);
-      onError(error.message);
-
+      console.error('[RZP] Razorpay error:', error);
+      setError(error.message || 'Unexpected error occurred.');
+      onError(error.message || 'Unexpected error occurred.');
       toast({
-        title: "Payment Error",
-        description: error.message,
-        variant: "destructive"
+        title: 'Payment Error',
+        description: error.message || 'Unexpected error occurred.',
+        variant: 'destructive',
       });
     } finally {
       setIsProcessing(false);
@@ -292,6 +257,7 @@ export default function PaymentForm({
 
   const handlePayPalPayment = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     try {
+      console.log('[PP] PayPal button clicked');
       if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -367,6 +333,24 @@ export default function PaymentForm({
       });
     } finally {
       setIsProcessingPayPal(false);
+    }
+  };
+
+  // Make Back to Form always work
+  const handleBackToForm = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    try {
+      console.log('[BACK] Back to Form button clicked');
+      e.preventDefault();
+      e.stopPropagation();
+      if (onBack && typeof onBack === 'function') {
+        onBack();
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Navigation Error',
+        description: error.message || 'Failed to go back to form.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -513,16 +497,9 @@ export default function PaymentForm({
             </Button>
 
             <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onBack && typeof onBack === 'function') {
-                  onBack();
-                }
-              }}
+              onClick={handleBackToForm}
               variant="outline"
               className="w-full"
-              disabled={isProcessing || isProcessingPayPal}
               type="button"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
