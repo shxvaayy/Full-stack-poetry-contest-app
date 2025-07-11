@@ -62,7 +62,7 @@ export default function SpinWheel({
     }
   };
 
-  // Refined spin logic for perfect pointer/segment sync
+  // Fixed spin logic for accurate segment selection
   const handleSpin = () => {
     if (isSpinning || disabled) return;
 
@@ -73,13 +73,15 @@ export default function SpinWheel({
     // Pick a random index
     const targetIndex = Math.floor(Math.random() * challenges.length);
     const minSpins = 5;
-    const maxSpins = 10;
+    const maxSpins = 8;
     const spins = minSpins + Math.random() * (maxSpins - minSpins);
-    // Calculate the angle so the selected segment lands exactly at 0deg (pointer)
-    const finalAngle = 360 - (targetIndex * segmentAngle);
+    
+    // Calculate angle to land on target segment at 12 o'clock (top pointer)
+    // Since segments start at 0 degrees (3 o'clock) and go clockwise
+    const targetAngle = targetIndex * segmentAngle + (segmentAngle / 2); // Center of segment
+    const finalAngle = 360 - targetAngle; // Reverse to account for wheel rotation
     const totalRotation = spins * 360 + finalAngle;
 
-    // Random duration between 3-5 seconds for realistic feel
     const duration = 3000 + Math.random() * 2000;
 
     setRotation(totalRotation);
@@ -89,12 +91,7 @@ export default function SpinWheel({
     }
 
     setTimeout(() => {
-      // After spin, calculate the normalized angle and selected index
-      const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-      let selectedIndex = Math.round(normalizedAngle / segmentAngle) % challenges.length;
-      // Correction for edge case: if rounding puts us at challenges.length, wrap to 0
-      if (selectedIndex === challenges.length) selectedIndex = 0;
-      const selected = challenges[selectedIndex];
+      const selected = challenges[targetIndex];
       setSelectedChallenge(selected);
       setIsSpinning(false);
       animateArrow();
@@ -113,6 +110,17 @@ export default function SpinWheel({
     setShowCelebration(false);
     handleSpin();
   };
+
+  // Calculate which segment is currently at the top (under the pointer)
+  const getCurrentSegmentIndex = () => {
+    const normalizedRotation = ((rotation % 360) + 360) % 360;
+    const pointerAngle = (360 - normalizedRotation) % 360;
+    let segmentIndex = Math.floor(pointerAngle / segmentAngle);
+    if (segmentIndex >= challenges.length) segmentIndex = 0;
+    return segmentIndex;
+  };
+
+  const currentSelectedIndex = getCurrentSegmentIndex();
 
   return (
     <>
@@ -136,10 +144,11 @@ export default function SpinWheel({
         }
 
         @keyframes segmentPulse {
-          0% { box-shadow: 0 0 0 0 #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12); }
-          50% { box-shadow: 0 0 0 10px #fbbf24, 0 0 32px #fbbf24cc, inset 0 0 24px rgba(0,0,0,0.18); }
-          100% { box-shadow: 0 0 0 0 #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12); }
+          0% { box-shadow: 0 0 0 0 #fbbf24, 0 0 18px #fbbf24cc; }
+          50% { box-shadow: 0 0 0 8px #fbbf24, 0 0 32px #fbbf24cc; }
+          100% { box-shadow: 0 0 0 0 #fbbf24, 0 0 18px #fbbf24cc; }
         }
+
         @keyframes pointerBounce {
           0% { transform: translateX(-50%) scale(1); }
           30% { transform: translateX(-50%) scale(1.15); }
@@ -171,8 +180,6 @@ export default function SpinWheel({
           border-radius: 50%;
           transform: rotate(-45deg);
         }
-
-        
       `}</style>
 
       <div className="flex flex-col items-center space-y-6 p-6 relative">
@@ -215,13 +222,13 @@ export default function SpinWheel({
               }}
             >
               
-              {/* Perfect Center Arrow with 3D effect */}
+              {/* Perfect Center Arrow with 3D effect - Pointing DOWN to wheel */}
               <div 
                 ref={arrowRef}
                 className="absolute z-30"
                 style={{ 
                   position: 'absolute',
-                  top: '-32px',
+                  top: '-28px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))',
@@ -229,22 +236,15 @@ export default function SpinWheel({
                 }}
               >
                 <div 
-                  className="relative"
                   style={{
                     width: '0',
                     height: '0',
-                    borderLeft: '28px solid transparent',
-                    borderRight: '28px solid transparent',
-                    borderTop: '48px solid #fbbf24',
-                    borderRadius: '0 0 18px 18px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                    borderLeft: '20px solid transparent',
+                    borderRight: '20px solid transparent',
+                    borderTop: '40px solid #fbbf24',
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   }}
-                >
-                  {/* Arrow with gradient and glow - rotated 180 degrees to point down */}
-                  <div 
-                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-white opacity-50"
-                  />
-                </div>
+                />
               </div>
 
               {/* Premium Wheel with individual slice colors */}
@@ -268,64 +268,60 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  const gradient = `linear-gradient(135deg, ${color} 70%, #fff3 100%)`;
-                  // Robust pointer sync: calculate which segment is under the pointer
-                  const normalizedAngle = (360 - (rotation % 360)) % 360;
-                  let pointerIndex = Math.round(normalizedAngle / segmentAngle) % challenges.length;
-                  if (pointerIndex === challenges.length) pointerIndex = 0;
-                  const isSelected = index === pointerIndex;
+                  const isSelected = index === currentSelectedIndex && !isSpinning;
+                  
                   return (
                     <div
                       key={index}
                       className="wheel-slice"
                       style={{
                         transform: `rotate(${angle}deg)`,
-                        background: gradient,
-                        borderRight: '3px solid #fff',
-                        boxShadow: isSelected ? '0 0 0 5px #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)',
-                        animation: isSelected && !isSpinning ? 'segmentPulse 1.2s ease-in-out 1' : undefined
+                        background: `linear-gradient(135deg, ${color} 70%, rgba(255,255,255,0.2) 100%)`,
+                        borderRight: '2px solid rgba(255,255,255,0.3)',
+                        boxShadow: isSelected ? '0 0 0 4px #fbbf24, 0 0 20px #fbbf24aa' : 'none',
+                        animation: isSelected ? 'segmentPulse 1.5s ease-in-out infinite' : undefined,
+                        zIndex: isSelected ? 10 : 1
                       }}
                     >
+                      {/* Text positioned properly in each slice */}
                       <div
                         style={{
                           position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          width: '78%',
-                          minHeight: '28px',
-                          maxHeight: '36px',
-                          transform: `translate(-50%, -60%) rotate(${-angle}deg)`, // rotate text upright
+                          top: '15%',
+                          left: '55%',
+                          width: '90%',
+                          height: '70%',
+                          transform: `rotate(${segmentAngle / 2}deg)`,
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
+                          justifyContent: 'flex-start',
+                          transformOrigin: '0% 100%',
                           pointerEvents: 'none',
                           zIndex: 2
                         }}
                       >
                         <span
                           style={{
-                            display: '-webkit-box',
                             fontWeight: 700,
-                            fontSize: '0.75rem',
+                            fontSize: challenges.length > 8 ? '0.65rem' : '0.75rem',
                             color: '#fff',
-                            textShadow: '0 2px 8px rgba(0,0,0,0.7)',
-                            background: 'rgba(0,0,0,0.22)',
-                            borderRadius: '7px',
-                            padding: '2px 7px',
-                            whiteSpace: 'normal',
-                            wordBreak: 'break-word',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                            background: 'rgba(0,0,0,0.3)',
+                            borderRadius: '6px',
+                            padding: '3px 8px',
+                            whiteSpace: 'nowrap',
                             textAlign: 'center',
                             userSelect: 'none',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.13)',
-                            lineHeight: 1.13,
-                            maxHeight: '2em',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                            lineHeight: 1.1,
+                            maxWidth: '90px',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
                           }}
                         >
-                          {challenge.challengeTitle || challenge.title || challenge}
+                          {challenge.challengeTitle?.length > 12 
+                            ? challenge.challengeTitle.substring(0, 12) + '...'
+                            : challenge.challengeTitle || challenge.contestType || 'Challenge'}
                         </span>
                       </div>
                     </div>
@@ -333,27 +329,27 @@ export default function SpinWheel({
                 })}
 
                 {/* Premium Center Hub */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full z-20"
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full z-20"
                   style={{
                     background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #1f2937 100%)',
                     boxShadow: `
-                      0 0 0 4px rgba(255,255,255,0.9),
+                      0 0 0 3px rgba(255,255,255,0.9),
                       0 0 20px rgba(0,0,0,0.3),
-                      inset 0 4px 8px rgba(255,255,255,0.2),
-                      inset 0 -4px 8px rgba(0,0,0,0.2)
+                      inset 0 3px 6px rgba(255,255,255,0.2),
+                      inset 0 -3px 6px rgba(0,0,0,0.2)
                     `,
                   }}
                 >
                   <div className="w-full h-full flex items-center justify-center">
                     <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
                       style={{
                         background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
                         boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)',
                       }}
                     >
                       <div 
-                        className="w-6 h-6 rounded-full"
+                        className="w-4 h-4 rounded-full"
                         style={{
                           background: 'linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%)',
                           boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.6)',
@@ -365,8 +361,8 @@ export default function SpinWheel({
               </div>
 
               {/* Outer decorative rings for premium feel */}
-              <div className="absolute inset-0 w-80 h-80 rounded-full border-4 border-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 opacity-20 pointer-events-none animate-pulse" />
-              {/* Add a glossy overlay and more pronounced center hub for realism */}
+              <div className="absolute inset-0 w-80 h-80 rounded-full border-2 border-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 opacity-20 pointer-events-none animate-pulse" />
+              {/* Glossy overlay */}
               <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10"
                 style={{
                   borderRadius: '50%',
@@ -418,7 +414,7 @@ export default function SpinWheel({
 
         {/* Selected Challenge Display with celebration effect */}
         {selectedChallenge && (
-          <Card className={`w-full max-w-lg border-4 border-green-500 shadow-2xl animate-pulse ${showCelebration ? 'animate-bounce' : ''}`}
+          <Card className={`w-full max-w-lg border-4 border-green-500 shadow-2xl ${showCelebration ? 'animate-bounce' : ''}`}
             style={{
               background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
               animation: showCelebration ? 'glow 1s ease-in-out infinite alternate' : undefined,
@@ -456,6 +452,15 @@ export default function SpinWheel({
                 >
                   <Sparkles className="mr-2" size={20} />
                   Use This Challenge
+                </Button>
+                
+                <Button 
+                  onClick={handleSpinAgain}
+                  variant="outline"
+                  className="px-8 py-4 font-bold text-lg border-2 border-green-500 text-green-600 hover:bg-green-50 rounded-xl"
+                >
+                  <RefreshCw className="mr-2" size={20} />
+                  Spin Again
                 </Button>
               </div>
             </CardContent>
