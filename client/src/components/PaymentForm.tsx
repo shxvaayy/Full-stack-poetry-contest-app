@@ -91,13 +91,17 @@ export default function PaymentForm({
       setIsProcessing(true);
       setError(null);
 
-      console.log('💳 Loading Razorpay script...');
+      console.log('💳 Starting Razorpay payment flow...');
+      
+      // Load Razorpay script first
+      console.log('📥 Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay script. Please check your internet connection.');
       }
 
-      console.log('💳 Creating Razorpay order...');
+      // Create order
+      console.log('💰 Creating Razorpay order...');
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: {
@@ -113,19 +117,24 @@ export default function PaymentForm({
         }),
       });
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || 'Failed to create payment order');
-      }
-
       const orderData = await orderResponse.json();
-      console.log('✅ Razorpay order created:', orderData);
+      console.log('📦 Order response:', orderData);
+
+      if (!orderResponse.ok || !orderData.success) {
+        throw new Error(orderData.error || 'Failed to create payment order');
+      }
 
       if (!orderData.key || !orderData.orderId) {
         throw new Error('Invalid order data received from server');
       }
 
-      // Create and open Razorpay modal immediately
+      // Verify Razorpay is loaded
+      if (!window.Razorpay) {
+        throw new Error('Razorpay not available. Please refresh and try again.');
+      }
+
+      console.log('🚀 Opening Razorpay payment modal...');
+
       const options = {
         key: orderData.key,
         amount: orderData.amount,
@@ -134,14 +143,14 @@ export default function PaymentForm({
         description: `Poetry Contest - ${tier}`,
         order_id: orderData.orderId,
         handler: function (response: any) {
-          console.log('💰 Razorpay payment successful:', response);
+          console.log('✅ Razorpay payment successful:', response);
+          setIsProcessing(false);
           
           toast({
             title: "Payment Successful!",
             description: "Your payment has been processed successfully.",
           });
 
-          // Call success with Razorpay data
           onSuccess({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -165,29 +174,21 @@ export default function PaymentForm({
         },
         modal: {
           ondismiss: function() {
-            console.log('💳 Razorpay payment cancelled by user');
+            console.log('❌ Razorpay payment dismissed');
             setIsProcessing(false);
             toast({
               title: "Payment Cancelled",
-              description: "Payment was cancelled by user.",
+              description: "Payment was cancelled.",
               variant: "destructive"
             });
           }
         }
       };
 
-      console.log('🚀 Opening Razorpay modal with options:', options);
-      
-      // Ensure Razorpay is available before creating instance
-      if (!window.Razorpay) {
-        throw new Error('Razorpay script not loaded properly');
-      }
-
       const razorpay = new window.Razorpay(options);
       
-      // Add error handler for Razorpay instance
       razorpay.on('payment.failed', function (response: any) {
-        console.error('💳 Razorpay payment failed:', response.error);
+        console.error('❌ Razorpay payment failed:', response.error);
         setIsProcessing(false);
         setError(response.error.description || 'Payment failed');
         toast({
@@ -200,10 +201,10 @@ export default function PaymentForm({
       razorpay.open();
 
     } catch (error: any) {
-      console.error('❌ Razorpay payment error:', error);
+      console.error('❌ Razorpay error:', error);
+      setIsProcessing(false);
       setError(error.message);
       onError(error.message);
-      setIsProcessing(false);
 
       toast({
         title: "Payment Error",
@@ -218,20 +219,10 @@ export default function PaymentForm({
       setIsProcessingPayPal(true);
       setError(null);
 
-      console.log('💰 Testing PayPal configuration...');
+      console.log('💰 Starting PayPal payment flow...');
 
-      // Test PayPal config before creating order
-      const testResponse = await fetch('/api/test-paypal');
-      const testData = await testResponse.json();
-
-      console.log('PayPal config test result:', testData);
-
-      if (!testData.success || !testData.configured) {
-        throw new Error(`PayPal not configured: ${testData.error || 'Missing PayPal credentials'}`);
-      }
-
-      console.log('✅ PayPal configured, creating order...');
-
+      // Create PayPal order directly without pre-testing
+      console.log('📦 Creating PayPal order...');
       const orderResponse = await fetch('/api/create-paypal-order', {
         method: 'POST',
         headers: {
@@ -244,43 +235,45 @@ export default function PaymentForm({
         }),
       });
 
-      const responseText = await orderResponse.text();
-      console.log('PayPal raw response:', responseText);
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        console.error('❌ PayPal order request failed:', errorText);
+        throw new Error('Failed to connect to PayPal. Please try again.');
+      }
 
       let responseData;
       try {
+        const responseText = await orderResponse.text();
         responseData = JSON.parse(responseText);
+        console.log('📦 PayPal order response:', responseData);
       } catch (parseError) {
-        console.error('Failed to parse PayPal response:', responseText);
-        throw new Error(`PayPal server error: Invalid response format`);
+        console.error('❌ Failed to parse PayPal response');
+        throw new Error('Invalid response from PayPal. Please try again.');
       }
 
-      console.log('PayPal parsed response:', responseData);
+      if (responseData.success && responseData.approvalUrl) {
+        console.log('✅ PayPal order created, redirecting...');
 
-      if (orderResponse.ok && responseData.success && responseData.approvalUrl) {
-        console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
-
-        // Show success message before redirect
         toast({
           title: "Redirecting to PayPal",
-          description: "Please complete your payment on PayPal.",
+          description: "Opening PayPal in a moment...",
         });
 
-        // Small delay to show the toast before redirecting
+        // Redirect to PayPal
         setTimeout(() => {
           window.location.href = responseData.approvalUrl;
-        }, 1000);
+        }, 500);
       } else {
-        const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
-        console.error('PayPal order creation failed:', errorMsg);
+        const errorMsg = responseData.error || 'Failed to create PayPal order';
+        console.error('❌ PayPal order creation failed:', errorMsg);
         throw new Error(errorMsg);
       }
 
     } catch (error: any) {
-      console.error('❌ PayPal payment error:', error);
-      setError(`PayPal Error: ${error.message}`);
-      onError(`PayPal Error: ${error.message}`);
+      console.error('❌ PayPal error:', error);
       setIsProcessingPayPal(false);
+      setError(error.message);
+      onError(error.message);
 
       toast({
         title: "PayPal Error",
@@ -288,8 +281,6 @@ export default function PaymentForm({
         variant: "destructive"
       });
     }
-    // Note: Don't set setIsProcessingPayPal(false) here for successful cases 
-    // because we're redirecting to PayPal
   };
 
   const getPoemCount = (tier: string): number => {
@@ -387,12 +378,7 @@ export default function PaymentForm({
 
             {/* Razorpay Payment */}
             <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔘 Razorpay button clicked!');
-                handleRazorpayPayment();
-              }}
+              onClick={handleRazorpayPayment}
               disabled={isProcessing || isProcessingPayPal}
               className="w-full h-16 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-semibold flex items-center justify-center transition-all duration-200"
               type="button"
