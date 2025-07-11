@@ -85,13 +85,12 @@ export default function SpinWheel({
       wheelRef.current.style.transition = `transform ${duration}ms cubic-bezier(0.23, 1, 0.32, 1)`;
     }
 
-    // Calculate which segment we landed on - accounting for the arrow pointing at the top
-    // The arrow points at the top (0 degrees), so we need to adjust the calculation
-    const normalizedAngle = (totalRotation % 360);
-    // Since the arrow points at the top, we need to find which slice the top position lands on
-    // Add half segment angle to center the selection on the slice
-    const adjustedAngle = (normalizedAngle + (segmentAngle / 2)) % 360;
-    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+    // Calculate which segment we landed on - arrow points at top (0 degrees)
+    // We need to find which slice the arrow is pointing at after rotation
+    const normalizedAngle = totalRotation % 360;
+    // Since slices start at 0 degrees and arrow points down from top
+    // We need to find which slice the top position lands on
+    const selectedIndex = Math.floor((360 - normalizedAngle) / segmentAngle) % challenges.length;
 
     setTimeout(() => {
       const selected = challenges[selectedIndex];
@@ -144,21 +143,7 @@ export default function SpinWheel({
           animation: sparkle 1.5s ease-in-out infinite;
         }
 
-        .wheel-slice {
-          position: absolute;
-          width: 50%;
-          height: 50%;
-          transform-origin: 100% 100%;
-          overflow: hidden;
-        }
-
-        .slice-content {
-          position: absolute;
-          width: 200%;
-          height: 200%;
-          border-radius: 50%;
-          transform: rotate(-45deg);
-        }
+        
 
         
       `}</style>
@@ -243,12 +228,11 @@ export default function SpinWheel({
                 }`}
                 style={{
                   transform: `rotate(${rotation}deg)`,
-                  border: '8px solid #fbbf24',
+                  border: '6px solid #2d3748',
                   boxShadow: `
-                    0 0 0 4px rgba(251, 191, 36, 0.3),
-                    0 20px 40px rgba(0,0,0,0.2),
-                    inset 0 0 60px rgba(255,255,255,0.1),
-                    inset 0 0 0 2px rgba(255,255,255,0.2)
+                    0 0 0 2px rgba(45, 55, 72, 0.5),
+                    0 15px 35px rgba(0,0,0,0.3),
+                    inset 0 0 0 1px rgba(255,255,255,0.1)
                   `,
                 }}
               >
@@ -257,100 +241,80 @@ export default function SpinWheel({
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
                   
-                  // Split long titles into multiple lines
-                  const words = challenge.challengeTitle.split(' ');
-                  let line1 = '';
-                  let line2 = '';
-                  
-                  if (words.length === 1) {
-                    line1 = words[0].length > 12 ? words[0].substring(0, 10) + '..' : words[0];
-                  } else if (words.length === 2) {
-                    line1 = words[0].length > 8 ? words[0].substring(0, 6) + '..' : words[0];
-                    line2 = words[1].length > 8 ? words[1].substring(0, 6) + '..' : words[1];
-                  } else {
-                    // More than 2 words - try to balance the lines
-                    const midPoint = Math.ceil(words.length / 2);
-                    const firstHalf = words.slice(0, midPoint).join(' ');
-                    const secondHalf = words.slice(midPoint).join(' ');
-                    
-                    line1 = firstHalf.length > 12 ? firstHalf.substring(0, 10) + '..' : firstHalf;
-                    line2 = secondHalf.length > 12 ? secondHalf.substring(0, 10) + '..' : secondHalf;
-                  }
+                  // Use full challenge title
+                  const displayText = challenge.challengeTitle;
                   
                   return (
                     <div
                       key={index}
-                      className="wheel-slice"
                       style={{
+                        position: 'absolute',
+                        width: '50%',
+                        height: '50%',
+                        transformOrigin: '100% 100%',
                         transform: `rotate(${angle}deg)`,
                         clipPath: `polygon(0 0, ${Math.cos((segmentAngle * Math.PI) / 180) * 100}% ${Math.sin((segmentAngle * Math.PI) / 180) * 100}%, 0 100%)`,
                         backgroundColor: color,
-                        borderRight: '2px solid rgba(255,255,255,0.3)',
+                        borderRight: '1px solid rgba(255,255,255,0.2)',
                       }}
                     >
                       <div 
                         style={{
                           position: 'absolute',
-                          top: '40%',
-                          left: '50%',
+                          top: '45%',
+                          left: '30%',
+                          right: '5%',
                           transform: `rotate(${segmentAngle / 2}deg)`,
-                          transformOrigin: '0 0',
-                          width: '120px',
+                          transformOrigin: 'center',
                           textAlign: 'center',
+                          zIndex: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '40px',
                         }}
                       >
-                        <div 
-                          className="font-bold"
+                        <span 
                           style={{
-                            color: 'white',
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8), 1px 1px 2px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.8)',
-                            fontSize: '11px',
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            textShadow: '1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8), 1px -1px 2px rgba(0,0,0,0.8), -1px 1px 2px rgba(0,0,0,0.8)',
                             display: 'block',
-                            lineHeight: '1.1',
-                            fontWeight: '900',
+                            lineHeight: '1.2',
                             letterSpacing: '0.5px',
-                            background: 'rgba(0,0,0,0.3)',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255,255,255,0.3)',
+                            maxWidth: '100px',
+                            wordWrap: 'break-word',
+                            textAlign: 'center',
                           }}
                         >
-                          <div style={{ marginBottom: '1px' }}>{line1}</div>
-                          {line2 && <div>{line2}</div>}
-                        </div>
+                          {displayText}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
 
-                {/* Premium Center Hub */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full z-20"
+                {/* Center Hub */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full z-20"
                   style={{
-                    background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #1f2937 100%)',
+                    background: 'linear-gradient(135deg, #2d3748 0%, #4a5568 50%, #2d3748 100%)',
                     boxShadow: `
-                      0 0 0 4px rgba(255,255,255,0.9),
-                      0 0 20px rgba(0,0,0,0.3),
-                      inset 0 4px 8px rgba(255,255,255,0.2),
-                      inset 0 -4px 8px rgba(0,0,0,0.2)
+                      0 0 0 3px rgba(255,255,255,0.9),
+                      0 0 15px rgba(0,0,0,0.3),
+                      inset 0 2px 6px rgba(255,255,255,0.2),
+                      inset 0 -2px 6px rgba(0,0,0,0.3)
                     `,
                   }}
                 >
                   <div className="w-full h-full flex items-center justify-center">
                     <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
                       style={{
-                        background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
-                        boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)',
+                        background: 'linear-gradient(135deg, #f6ad55 0%, #ed8936 50%, #dd6b20 100%)',
+                        boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2)',
                       }}
-                    >
-                      <div 
-                        className="w-6 h-6 rounded-full"
-                        style={{
-                          background: 'linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%)',
-                          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.6)',
-                        }}
-                      />
-                    </div>
+                    />
                   </div>
                 </div>
               </div>
