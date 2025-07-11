@@ -110,33 +110,15 @@ export default function PaymentForm({
     });
   };
 
-  // Add logging and robust error handling to all button handlers
-  const handleRazorpayPayment = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  // Replace handlers and state logic with the old, working version
+  const handleRazorpayPayment = async () => {
     try {
-      console.log('[RZP] Razorpay button clicked');
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      if (isProcessing || isProcessingPayPal) {
-        console.log('[RZP] Payment already in progress, ignoring click');
-        return;
-      }
       setIsProcessing(true);
       setError(null);
-      // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        setError('Failed to load Razorpay script. Please check your internet connection.');
-        setIsProcessing(false);
-        toast({
-          title: 'Razorpay Error',
-          description: 'Failed to load Razorpay script. Please check your internet connection.',
-          variant: 'destructive',
-        });
-        return;
+        throw new Error('Failed to load Razorpay script');
       }
-      // Create order
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,47 +132,18 @@ export default function PaymentForm({
         }),
       });
       if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        setError('Failed to create Razorpay order: ' + errorText);
-        setIsProcessing(false);
-        toast({
-          title: 'Razorpay Error',
-          description: 'Failed to create Razorpay order: ' + errorText,
-          variant: 'destructive',
-        });
-        return;
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.error || 'Failed to create payment order');
       }
       const orderData = await orderResponse.json();
-      if (!orderData.success || !orderData.key || !orderData.orderId) {
-        setError('Invalid order data received from server');
-        setIsProcessing(false);
-        toast({
-          title: 'Razorpay Error',
-          description: 'Invalid order data received from server',
-          variant: 'destructive',
-        });
-        return;
-      }
-      if (!window.Razorpay) {
-        setError('Razorpay not available. Please refresh and try again.');
-        setIsProcessing(false);
-        toast({
-          title: 'Razorpay Error',
-          description: 'Razorpay not available. Please refresh and try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      // Open Razorpay modal
       const options = {
         key: orderData.key,
         amount: orderData.amount,
-        currency: orderData.currency || 'INR',
+        currency: orderData.currency,
         name: 'Writory Poetry Contest',
         description: `Poetry Contest - ${tier}`,
         order_id: orderData.orderId,
-        handler: function (response: any) {
-          console.log('[RZP] Razorpay payment successful:', response);
+        handler: async function (response: any) {
           setIsProcessing(false);
           toast({
             title: 'Payment Successful!',
@@ -219,117 +172,67 @@ export default function PaymentForm({
         },
         modal: {
           ondismiss: function () {
-            console.log('[RZP] Razorpay payment dismissed');
             setIsProcessing(false);
             toast({
               title: 'Payment Cancelled',
-              description: 'Payment was cancelled.',
+              description: 'Payment was cancelled by user.',
               variant: 'destructive',
             });
           },
         },
       };
       const razorpay = new window.Razorpay(options);
-      razorpay.on('payment.failed', function (response: any) {
-        console.error('[RZP] Razorpay payment failed:', response.error);
-        setIsProcessing(false);
-        setError(response.error.description || 'Payment failed');
-        toast({
-          title: 'Payment Failed',
-          description: response.error.description || 'Payment failed. Please try again.',
-          variant: 'destructive',
-        });
-      });
       razorpay.open();
     } catch (error: any) {
-      console.error('[RZP] Razorpay error:', error);
-      setError(error.message || 'Unexpected error occurred.');
-      onError(error.message || 'Unexpected error occurred.');
+      setError(error.message);
+      onError(error.message);
+      setIsProcessing(false);
       toast({
         title: 'Payment Error',
-        description: error.message || 'Unexpected error occurred.',
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  const handlePayPalPayment = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  const handlePayPalPayment = async () => {
     try {
-      console.log('[PP] PayPal button clicked');
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      if (isProcessing || isProcessingPayPal) {
-        console.log('⚠️ Payment already in progress, ignoring click');
-        return;
-      }
-      
       setIsProcessingPayPal(true);
       setError(null);
-
-      console.log('💰 Starting PayPal payment flow...');
-
-      // Create PayPal order directly without pre-testing
-      console.log('📦 Creating PayPal order...');
-      const orderResponse = await fetch('/api/create-paypal-order', {
+      const testResponse = await fetch('/api/test-paypal');
+      const testData = await testResponse.json();
+      if (!testData.success || !testData.configured) {
+        throw new Error(`PayPal Configuration Issue: ${testData.error || 'PayPal not properly configured'}`);
+      }
+      const response = await fetch('/api/create-paypal-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amount,
           tier: tier,
-          currency: 'USD'
+          currency: 'USD',
         }),
       });
-
-      if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        console.error('❌ PayPal order request failed:', errorText);
-        throw new Error('Failed to connect to PayPal. Please try again.');
-      }
-
       let responseData;
       try {
-        const responseText = await orderResponse.text();
-        responseData = JSON.parse(responseText);
-        console.log('📦 PayPal order response:', responseData);
+        responseData = await response.json();
       } catch (parseError) {
-        console.error('❌ Failed to parse PayPal response');
-        throw new Error('Invalid response from PayPal. Please try again.');
+        const responseText = await response.text();
+        throw new Error(`PayPal server error: ${responseText}`);
       }
-
-      if (responseData.success && responseData.approvalUrl) {
-        console.log('✅ PayPal order created, redirecting...');
-
-        toast({
-          title: "Redirecting to PayPal",
-          description: "Opening PayPal in a moment...",
-        });
-
-        // Redirect to PayPal
-        setTimeout(() => {
-          window.location.href = responseData.approvalUrl;
-        }, 500);
+      if (response.ok && responseData.success && responseData.approvalUrl) {
+        window.location.href = responseData.approvalUrl;
       } else {
-        const errorMsg = responseData.error || 'Failed to create PayPal order';
-        console.error('❌ PayPal order creation failed:', errorMsg);
+        const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
         throw new Error(errorMsg);
       }
-
     } catch (error: any) {
-      console.error('❌ PayPal error:', error);
-      setError(error.message);
-      onError(error.message);
-
+      setError(`PayPal Error: ${error.message}`);
+      onError(`PayPal Error: ${error.message}`);
       toast({
-        title: "PayPal Error",
+        title: 'PayPal Error',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setIsProcessingPayPal(false);
@@ -477,6 +380,7 @@ export default function PaymentForm({
               onClick={handlePayPalPayment}
               disabled={isProcessing || isProcessingPayPal}
               className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
+              type="button"
             >
               {isProcessingPayPal ? (
                 <>
@@ -497,9 +401,10 @@ export default function PaymentForm({
             </Button>
 
             <Button
-              onClick={handleBackToForm}
+              onClick={onBack}
               variant="outline"
               className="w-full"
+              disabled={isProcessing || isProcessingPayPal}
               type="button"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
