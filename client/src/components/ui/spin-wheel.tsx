@@ -390,7 +390,7 @@ export default function SpinWheel({
                 >
                   {/* Individual Wheel Segments */}
                   {challenges.map((challenge, index) => {
-                    const angle = (index * segmentAngle) - 90;
+                    const angle = index * segmentAngle;
                     const gradientColor = colorPalette[index % colorPalette.length];
                     const displayText = challenge.challengeTitle;
                     
