@@ -252,21 +252,13 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  // Center the text in the segment, always upright
+                  // Center the text in the segment, always upright, allow wrapping
                   return (
                     <div
                       key={index}
                       className="wheel-slice"
                       style={{
-                        transform: `rotate(${angle}deg)`,
-                        clipPath: `polygon(100% 100%, 0 0, ${
-                          100 + 100 * Math.cos((segmentAngle * Math.PI) / 180)
-                        }% ${
-                          100 - 100 * Math.sin((segmentAngle * Math.PI) / 180)
-                        }%, 100% 100%)`,
-                        backgroundColor: color,
-                        borderRight: '3px solid #fff',
-                        boxShadow: 'inset 0 0 16px rgba(0,0,0,0.12)',
+                        transform: `rotate(${angle}deg)`
                       }}
                     >
                       <div
@@ -274,7 +266,7 @@ export default function SpinWheel({
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          width: '60%',
+                          width: '80%', // wider for more text
                           transform: `translate(-50%, -70%)`,
                           display: 'flex',
                           alignItems: 'center',
@@ -287,16 +279,14 @@ export default function SpinWheel({
                           style={{
                             display: 'block',
                             fontWeight: 700,
-                            fontSize: '1.1rem',
+                            fontSize: challenge.challengeTitle && challenge.challengeTitle.length > 18 ? '0.95rem' : '1.1rem',
                             color: '#fff',
                             textShadow: '0 2px 8px rgba(0,0,0,0.7)',
                             background: 'rgba(0,0,0,0.25)',
                             borderRadius: '8px',
                             padding: '2px 10px',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '100%',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
+                            whiteSpace: 'normal', // allow wrapping
+                            wordBreak: 'break-word',
                             textAlign: 'center',
                             userSelect: 'none',
                             boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
