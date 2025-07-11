@@ -547,7 +547,36 @@ export default function SpinWheel({
                       transition={{ duration: 0.6, type: "spring" }}
                       className="text-center space-y-6 max-w-lg"
                     >
-                      <div className="p-8 bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl border border-blue-100">
+                      <div 
+                        className="p-8 rounded-2xl shadow-xl border-2"
+                        style={{
+                          background: selectedChallenge ? (() => {
+                            const normalizedAngle = (rotation % 360 + 360) % 360;
+                            const adjustedAngle = (normalizedAngle + 90) % 360;
+                            const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+                            const segmentColor = colorPalette[selectedIndex % colorPalette.length];
+                            return `${segmentColor}, rgba(255,255,255,0.9)`;
+                          })() : 'linear-gradient(to-br, white, rgb(239 246 255))',
+                          borderColor: selectedChallenge ? (() => {
+                            const normalizedAngle = (rotation % 360 + 360) % 360;
+                            const adjustedAngle = (normalizedAngle + 90) % 360;
+                            const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+                            const segmentColor = colorPalette[selectedIndex % colorPalette.length];
+                            // Extract the main color from the gradient
+                            const colorMatch = segmentColor.match(/#[a-fA-F0-9]{6}/);
+                            return colorMatch ? colorMatch[0] : '#ffd700';
+                          })() : 'rgb(191 219 254)',
+                          boxShadow: selectedChallenge ? (() => {
+                            const normalizedAngle = (rotation % 360 + 360) % 360;
+                            const adjustedAngle = (normalizedAngle + 90) % 360;
+                            const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+                            const segmentColor = colorPalette[selectedIndex % colorPalette.length];
+                            const colorMatch = segmentColor.match(/#[a-fA-F0-9]{6}/);
+                            const shadowColor = colorMatch ? colorMatch[0] : '#ffd700';
+                            return `0 25px 50px -12px ${shadowColor}40, 0 0 0 1px ${shadowColor}20`;
+                          })() : '0 25px 50px -12px rgba(0,0,0,0.25)',
+                        }}
+                      >
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
