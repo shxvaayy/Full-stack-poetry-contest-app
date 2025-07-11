@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, Loader2, Info, ArrowLeft } from 'lucide-react';
@@ -109,7 +110,7 @@ export default function PaymentForm({
     });
   };
 
-  const handleRazorpayPayment = async (e) => {
+  const handleRazorpayPayment = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     try {
       if (e) {
         e.preventDefault();
@@ -276,7 +277,6 @@ export default function PaymentForm({
     } catch (error: any) {
       console.error('❌ Razorpay error:', error);
       console.error('❌ Error stack:', error.stack);
-      setIsProcessing(false);
       setError(error.message);
       onError(error.message);
 
@@ -285,10 +285,12 @@ export default function PaymentForm({
         description: error.message,
         variant: "destructive"
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handlePayPalPayment = async (e) => {
+  const handlePayPalPayment = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     try {
       if (e) {
         e.preventDefault();
@@ -355,7 +357,6 @@ export default function PaymentForm({
 
     } catch (error: any) {
       console.error('❌ PayPal error:', error);
-      setIsProcessingPayPal(false);
       setError(error.message);
       onError(error.message);
 
@@ -364,6 +365,8 @@ export default function PaymentForm({
         description: error.message,
         variant: "destructive"
       });
+    } finally {
+      setIsProcessingPayPal(false);
     }
   };
 
