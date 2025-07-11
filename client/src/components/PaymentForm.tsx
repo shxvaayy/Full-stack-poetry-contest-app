@@ -72,14 +72,22 @@ export default function PaymentForm({
       setIsProcessing(true);
       setError(null);
 
+      // First check if Razorpay is configured
+      console.log('🧪 Testing Razorpay configuration...');
+      const testResponse = await fetch('/api/test-razorpay');
+      const testData = await testResponse.json();
+      
+      if (!testData.success || !testData.configured) {
+        throw new Error('Razorpay is not properly configured on the server');
+      }
+
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay script');
+        throw new Error('Failed to load Razorpay script. Please check your internet connection.');
       }
 
       console.log('💳 Creating Razorpay order...');
 
-      // Use the correct endpoint from your working backup
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: {
@@ -102,6 +110,10 @@ export default function PaymentForm({
 
       const orderData = await orderResponse.json();
       console.log('✅ Razorpay order created:', orderData);
+
+      if (!orderData.key || !orderData.orderId) {
+        throw new Error('Invalid order data received from server');
+      }
 
       const options = {
         key: orderData.key,
@@ -132,7 +144,7 @@ export default function PaymentForm({
         },
         prefill: {
           name: '',
-          email: '',
+          email: userEmail || '',
           contact: ''
         },
         notes: {
@@ -176,7 +188,7 @@ export default function PaymentForm({
       setIsProcessingPayPal(true);
       setError(null);
 
-      console.log('💰 Testing PayPal configuration first...');
+      console.log('💰 Testing PayPal configuration...');
 
       // Test PayPal config before creating order
       const testResponse = await fetch('/api/test-paypal');
@@ -185,12 +197,12 @@ export default function PaymentForm({
       console.log('PayPal config test result:', testData);
 
       if (!testData.success || !testData.configured) {
-        throw new Error(`PayPal Configuration Issue: ${testData.error || 'PayPal not properly configured'}`);
+        throw new Error(`PayPal not configured: ${testData.error || 'Missing PayPal credentials'}`);
       }
 
-      console.log('✅ PayPal configured properly, creating order...');
+      console.log('✅ PayPal configured, creating order...');
 
-      const response = await fetch('/api/create-paypal-order', {
+      const orderResponse = await fetch('/api/create-paypal-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,22 +214,35 @@ export default function PaymentForm({
         }),
       });
 
+      const responseText = await orderResponse.text();
+      console.log('PayPal raw response:', responseText);
+
       let responseData;
       try {
-        responseData = await response.json();
+        responseData = JSON.parse(responseText);
       } catch (parseError) {
-        const responseText = await response.text();
         console.error('Failed to parse PayPal response:', responseText);
-        throw new Error(`PayPal server error: ${responseText}`);
+        throw new Error(`PayPal server error: Invalid response format`);
       }
 
-      console.log('PayPal order response:', responseData);
+      console.log('PayPal parsed response:', responseData);
 
-      if (response.ok && responseData.success && responseData.approvalUrl) {
+      if (orderResponse.ok && responseData.success && responseData.approvalUrl) {
         console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
-        window.location.href = responseData.approvalUrl;
+        
+        // Show success message before redirect
+        toast({
+          title: "Redirecting to PayPal",
+          description: "Please complete your payment on PayPal.",
+        });
+
+        // Small delay to show the toast before redirecting
+        setTimeout(() => {
+          window.location.href = responseData.approvalUrl;
+        }, 1000);
       } else {
         const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
+        console.error('PayPal order creation failed:', errorMsg);
         throw new Error(errorMsg);
       }
 
@@ -225,15 +250,16 @@ export default function PaymentForm({
       console.error('❌ PayPal payment error:', error);
       setError(`PayPal Error: ${error.message}`);
       onError(`PayPal Error: ${error.message}`);
+      setIsProcessingPayPal(false);
 
       toast({
         title: "PayPal Error",
         description: error.message,
         variant: "destructive"
       });
-    } finally {
-      setIsProcessingPayPal(false);
     }
+    // Note: Don't set setIsProcessingPayPal(false) here for successful cases 
+    // because we're redirecting to PayPal
   };
 
   const getPoemCount = (tier: string): number => {
@@ -357,7 +383,10 @@ export default function PaymentForm({
               className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
             >
               {isProcessingPayPal ? (
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <>
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  <span>Connecting to PayPal...</span>
+                </>
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">

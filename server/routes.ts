@@ -1260,6 +1260,60 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// Test PayPal configuration
+router.get('/api/test-paypal', asyncHandler(async (req: any, res: any) => {
+  console.log('🧪 Testing PayPal configuration...');
+
+  const hasCredentials = !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  const isDemo = process.env.PAYPAL_CLIENT_ID === 'demo_client_id';
+
+  if (!hasCredentials || isDemo) {
+    return res.json({
+      success: false,
+      configured: false,
+      error: 'PayPal credentials not configured properly'
+    });
+  }
+
+  try {
+    // Test PayPal connection by getting access token
+    const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
+      ? 'https://api-m.paypal.com' 
+      : 'https://api-m.sandbox.paypal.com';
+
+    const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
+
+    const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return res.json({
+        success: true,
+        configured: true,
+        message: 'PayPal is properly configured',
+        environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
+      });
+    } else {
+      throw new Error(`PayPal auth failed: ${response.status}`);
+    }
+
+  } catch (error: any) {
+    console.error('❌ PayPal test failed:', error);
+    res.json({
+      success: false,
+      configured: false,
+      error: 'PayPal test failed: ' + error.message
+    });
+  }
+}));
+
 // Test Cloudinary configuration
 router.get('/api/test-cloudinary', asyncHandler(async (req: any, res: any) => {
   console.log('🧪 Testing Cloudinary configuration...');
