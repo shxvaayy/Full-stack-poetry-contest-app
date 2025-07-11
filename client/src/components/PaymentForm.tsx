@@ -54,16 +54,35 @@ export default function PaymentForm({
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
+      // Check if Razorpay is already loaded
       if (window.Razorpay) {
+        console.log('✅ Razorpay script already loaded');
         resolve(true);
         return;
       }
 
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        console.log('⏳ Razorpay script already loading, waiting...');
+        existingScript.addEventListener('load', () => resolve(true));
+        existingScript.addEventListener('error', () => resolve(false));
+        return;
+      }
+
+      console.log('📥 Loading Razorpay script...');
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
+      script.async = true;
+      script.onload = () => {
+        console.log('✅ Razorpay script loaded successfully');
+        resolve(true);
+      };
+      script.onerror = () => {
+        console.error('❌ Failed to load Razorpay script');
+        resolve(false);
+      };
+      document.head.appendChild(script);
     });
   };
 
@@ -116,8 +135,7 @@ export default function PaymentForm({
         order_id: orderData.orderId,
         handler: function (response: any) {
           console.log('💰 Razorpay payment successful:', response);
-          setIsProcessing(false);
-
+          
           toast({
             title: "Payment Successful!",
             description: "Your payment has been processed successfully.",
@@ -158,8 +176,27 @@ export default function PaymentForm({
         }
       };
 
-      console.log('🚀 Opening Razorpay modal...');
+      console.log('🚀 Opening Razorpay modal with options:', options);
+      
+      // Ensure Razorpay is available before creating instance
+      if (!window.Razorpay) {
+        throw new Error('Razorpay script not loaded properly');
+      }
+
       const razorpay = new window.Razorpay(options);
+      
+      // Add error handler for Razorpay instance
+      razorpay.on('payment.failed', function (response: any) {
+        console.error('💳 Razorpay payment failed:', response.error);
+        setIsProcessing(false);
+        setError(response.error.description || 'Payment failed');
+        toast({
+          title: "Payment Failed",
+          description: response.error.description || "Payment failed. Please try again.",
+          variant: "destructive"
+        });
+      });
+
       razorpay.open();
 
     } catch (error: any) {
@@ -350,12 +387,21 @@ export default function PaymentForm({
 
             {/* Razorpay Payment */}
             <Button
-              onClick={handleRazorpayPayment}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔘 Razorpay button clicked!');
+                handleRazorpayPayment();
+              }}
               disabled={isProcessing || isProcessingPayPal}
-              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center"
+              className="w-full h-16 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-semibold flex items-center justify-center transition-all duration-200"
+              type="button"
             >
               {isProcessing ? (
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <>
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  <span>Processing...</span>
+                </>
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">

@@ -784,13 +784,16 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   // Check Razorpay configuration
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     console.error('❌ Razorpay not configured');
+    console.error('❌ KEY_ID exists:', !!process.env.RAZORPAY_KEY_ID);
+    console.error('❌ KEY_SECRET exists:', !!process.env.RAZORPAY_KEY_SECRET);
     return res.status(500).json({ 
       success: false,
-      error: 'Payment system not configured' 
+      error: 'Payment system not configured. Please contact support.' 
     });
   }
 
   console.log(`💰 Creating Razorpay order for amount: ₹${amount}`);
+  console.log('🔑 Using Razorpay Key ID:', process.env.RAZORPAY_KEY_ID?.substring(0, 8) + '...');
 
   try {
     const orderOptions = {
@@ -805,12 +808,20 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
       }
     };
 
-    console.log('🔄 Calling Razorpay create order with options:', orderOptions);
+    console.log('🔄 Calling Razorpay create order with options:', {
+      ...orderOptions,
+      amount: `${orderOptions.amount} paise (₹${amount})`
+    });
 
     const order = await razorpay.orders.create(orderOptions);
-    console.log('✅ Razorpay order created successfully:', order.id);
+    console.log('✅ Razorpay order created successfully:', {
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      status: order.status
+    });
 
-    res.json({
+    const responseData = {
       success: true,
       key: process.env.RAZORPAY_KEY_ID,
       amount: order.amount,
@@ -819,12 +830,26 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
       name: 'Writory Poetry Contest',
       description: `Poetry Contest - ${tier}`,
       receipt: order.receipt
+    };
+
+    console.log('📤 Sending response:', {
+      ...responseData,
+      key: responseData.key?.substring(0, 8) + '...'
     });
-  } catch (error) {
+
+    res.json(responseData);
+  } catch (error: any) {
     console.error('❌ Razorpay order creation failed:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode
+    });
+    
     res.status(500).json({
       success: false,
-      error: 'Failed to create Razorpay order: ' + error.message
+      error: 'Failed to create payment order. Please try again or contact support.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }));
