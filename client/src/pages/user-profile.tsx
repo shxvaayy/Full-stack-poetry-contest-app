@@ -533,6 +533,29 @@ export default function UserProfile() {
     ), [submissions]
   );
 
+  // Utility to clean challenge titles (already present)
+  const getCleanChallengeTitle = (challengeTitle: string | undefined) => {
+    if (!challengeTitle) return null;
+    if (typeof challengeTitle === 'string') {
+      try {
+        if (challengeTitle.startsWith('{') || challengeTitle.startsWith('[')) {
+          const parsed = JSON.parse(challengeTitle);
+          if (Array.isArray(parsed)) {
+            return parsed.filter(Boolean).join(', ') || null;
+          }
+          if (typeof parsed === 'object' && parsed !== null) {
+            const values = Object.values(parsed).filter(v => v && typeof v === 'string' && v.trim());
+            return values.length > 0 ? values.join(', ') : null;
+          }
+        }
+        return challengeTitle;
+      } catch {
+        return challengeTitle.replace(/[{}"\[\]]/g, '').trim() || null;
+      }
+    }
+    return challengeTitle;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
@@ -846,33 +869,6 @@ export default function UserProfile() {
                       <div className="space-y-3">
                         {submissions.slice(0, 5).map((submission) => {
                           // Clean up challenge title display
-                          const getCleanChallengeTitle = (challengeTitle: string | undefined) => {
-                            if (!challengeTitle) return null;
-                            
-                            // Handle cases where challengeTitle might be a stringified array or object
-                            if (typeof challengeTitle === 'string') {
-                              try {
-                                // Try to parse if it looks like JSON
-                                if (challengeTitle.startsWith('{') || challengeTitle.startsWith('[')) {
-                                  const parsed = JSON.parse(challengeTitle);
-                                  if (Array.isArray(parsed)) {
-                                    return parsed.filter(Boolean).join(', ') || null;
-                                  }
-                                  if (typeof parsed === 'object' && parsed !== null) {
-                                    // Extract meaningful values from object
-                                    const values = Object.values(parsed).filter(v => v && typeof v === 'string' && v.trim());
-                                    return values.length > 0 ? values.join(', ') : null;
-                                  }
-                                }
-                                return challengeTitle;
-                              } catch {
-                                // If parsing fails, return as-is but clean up obvious formatting issues
-                                return challengeTitle.replace(/[{}"\[\]]/g, '').trim() || null;
-                              }
-                            }
-                            return challengeTitle;
-                          };
-
                           const cleanChallengeTitle = submission.poems?.[0]?.challengeTitle 
                             ? getCleanChallengeTitle(submission.poems[0].challengeTitle)
                             : submission.challengeTitle 
@@ -1003,7 +999,7 @@ export default function UserProfile() {
                                       </span>
                                       {poem.challengeTitle && (
                                         <p className="text-xs text-gray-600 mt-1">
-                                          Challenge: {poem.challengeTitle}
+                                          Challenge: {getCleanChallengeTitle(poem.challengeTitle)}
                                         </p>
                                       )}
                                     </div>
@@ -1087,7 +1083,7 @@ export default function UserProfile() {
                                         <p className="text-sm text-gray-600">{positionText}</p>
                                         {winner.challengeTitle && (
                                           <p className="text-xs text-gray-500 mt-1">
-                                            Challenge: {winner.challengeTitle}
+                                            Challenge: {getCleanChallengeTitle(winner.challengeTitle)}
                                           </p>
                                         )}
                                         {winner.contestType && (
@@ -1126,7 +1122,7 @@ export default function UserProfile() {
                                       <p className="text-sm text-gray-600">Evaluated</p>
                                       {poem.challengeTitle && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                          Challenge: {poem.challengeTitle}
+                                          Challenge: {getCleanChallengeTitle(poem.challengeTitle)}
                                         </p>
                                       )}
                                       <div className="flex gap-2 mt-2">
