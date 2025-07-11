@@ -558,13 +558,9 @@ export default function SpinWheel({
                             colorPalette[selectedSegmentIndex % colorPalette.length] : 
                             'linear-gradient(to-br, white, rgb(239 246 255))',
                           borderColor: selectedChallenge && selectedSegmentIndex !== null ? 
-                            colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : 
                             '#4d96ff' : 'rgb(191 219 254)',
                           boxShadow: selectedChallenge && selectedSegmentIndex !== null ? 
-                            `0 25px 50px -12px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}40, 0 0 0 1px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}20` : 
+                            `0 25px 50px -12px rgba(77, 150, 255, 0.25), 0 0 0 1px rgba(77, 150, 255, 0.12)` : 
                             '0 25px 50px -12px rgba(0,0,0,0.25)',
                         }}
                       >
