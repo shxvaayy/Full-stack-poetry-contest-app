@@ -135,6 +135,18 @@ export default function SpinWheel({
           50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.6); }
         }
 
+        @keyframes segmentPulse {
+          0% { box-shadow: 0 0 0 0 #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12); }
+          50% { box-shadow: 0 0 0 10px #fbbf24, 0 0 32px #fbbf24cc, inset 0 0 24px rgba(0,0,0,0.18); }
+          100% { box-shadow: 0 0 0 0 #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12); }
+        }
+        @keyframes pointerBounce {
+          0% { transform: translateX(-50%) scale(1); }
+          30% { transform: translateX(-50%) scale(1.15); }
+          60% { transform: translateX(-50%) scale(0.95); }
+          100% { transform: translateX(-50%) scale(1); }
+        }
+
         .celebration-sparkle {
           position: absolute;
           width: 8px;
@@ -213,6 +225,7 @@ export default function SpinWheel({
                   left: '50%',
                   transform: 'translateX(-50%)',
                   filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))',
+                  animation: !isSpinning && selectedChallenge ? 'pointerBounce 0.7s' : undefined
                 }}
               >
                 <div 
@@ -269,7 +282,8 @@ export default function SpinWheel({
                         transform: `rotate(${angle}deg)`,
                         background: gradient,
                         borderRight: '3px solid #fff',
-                        boxShadow: isSelected ? '0 0 0 5px #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)'
+                        boxShadow: isSelected ? '0 0 0 5px #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)',
+                        animation: isSelected && !isSpinning ? 'segmentPulse 1.2s ease-in-out 1' : undefined
                       }}
                     >
                       <div
@@ -280,7 +294,7 @@ export default function SpinWheel({
                           width: '78%',
                           minHeight: '28px',
                           maxHeight: '36px',
-                          transform: `translate(-50%, -60%)`,
+                          transform: `translate(-50%, -60%) rotate(${-angle}deg)`, // rotate text upright
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
