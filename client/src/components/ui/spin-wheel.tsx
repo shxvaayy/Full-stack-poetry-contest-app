@@ -34,20 +34,20 @@ export default function SpinWheel({
   const arrowRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Ultra-vibrant color palette for premium feel
+  // Ultra-vibrant color palette for premium feel - now with both gradient and primary color
   const colorPalette = [
-    "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)", // Vibrant Red
-    "linear-gradient(135deg, #ffd93d 0%, #f39c12 100%)", // Golden Yellow  
-    "linear-gradient(135deg, #6bcb77 0%, #27ae60 100%)", // Emerald Green
-    "linear-gradient(135deg, #4d96ff 0%, #2980b9 100%)", // Royal Blue
-    "linear-gradient(135deg, #b983ff 0%, #9b59b6 100%)", // Purple Magic
-    "linear-gradient(135deg, #ff85a2 0%, #e91e63 100%)", // Rose Pink
-    "linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%)", // Ocean Blue
-    "linear-gradient(135deg, #ff9f43 0%, #f39c12 100%)", // Sunset Orange
-    "linear-gradient(135deg, #26de81 0%, #20bf6b 100%)", // Fresh Green
-    "linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%)", // Lavender
-    "linear-gradient(135deg, #fd79a8 0%, #e84393 100%)", // Magenta
-    "linear-gradient(135deg, #00cec9 0%, #00b894 100%)"  // Turquoise
+    { gradient: "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)", primary: "#ff6b6b" }, // Vibrant Red
+    { gradient: "linear-gradient(135deg, #ffd93d 0%, #f39c12 100%)", primary: "#ffd93d" }, // Golden Yellow  
+    { gradient: "linear-gradient(135deg, #6bcb77 0%, #27ae60 100%)", primary: "#6bcb77" }, // Emerald Green
+    { gradient: "linear-gradient(135deg, #4d96ff 0%, #2980b9 100%)", primary: "#4d96ff" }, // Royal Blue
+    { gradient: "linear-gradient(135deg, #b983ff 0%, #9b59b6 100%)", primary: "#b983ff" }, // Purple Magic
+    { gradient: "linear-gradient(135deg, #ff85a2 0%, #e91e63 100%)", primary: "#ff85a2" }, // Rose Pink
+    { gradient: "linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%)", primary: "#00d2ff" }, // Ocean Blue
+    { gradient: "linear-gradient(135deg, #ff9f43 0%, #f39c12 100%)", primary: "#ff9f43" }, // Sunset Orange
+    { gradient: "linear-gradient(135deg, #26de81 0%, #20bf6b 100%)", primary: "#26de81" }, // Fresh Green
+    { gradient: "linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%)", primary: "#a29bfe" }, // Lavender
+    { gradient: "linear-gradient(135deg, #fd79a8 0%, #e84393 100%)", primary: "#fd79a8" }, // Magenta
+    { gradient: "linear-gradient(135deg, #00cec9 0%, #00b894 100%)", primary: "#00cec9" }  // Turquoise
   ];
 
   const segmentAngle = 360 / challenges.length;
@@ -144,7 +144,8 @@ export default function SpinWheel({
       clearInterval(velocityDecrease);
       const selected = challenges[selectedIndex];
       setSelectedChallenge(selected);
-      setSelectedColor(colorPalette[selectedIndex % colorPalette.length]); // ensure color matches segment
+      // Fix: Set the primary color instead of the gradient
+      setSelectedColor(colorPalette[selectedIndex % colorPalette.length].primary);
       setSelectedSegmentIndex(selectedIndex);
       setIsSpinning(false);
       animateArrow();
@@ -268,7 +269,7 @@ export default function SpinWheel({
                   style={{
                     left: `${Math.random() * 100}%`,
                     top: '100%',
-                    backgroundColor: colorPalette[i % colorPalette.length].split(' ')[1] || '#ffd700',
+                    backgroundColor: colorPalette[i % colorPalette.length].primary,
                     animationDelay: `${Math.random() * 1}s`,
                   }}
                 />
@@ -391,7 +392,7 @@ export default function SpinWheel({
                   {/* Individual Wheel Segments */}
                   {challenges.map((challenge, index) => {
                     const angle = index * segmentAngle;
-                    const gradientColor = colorPalette[index % colorPalette.length];
+                    const gradientColor = colorPalette[index % colorPalette.length].gradient;
                     const displayText = challenge.challengeTitle;
                     
                     return (
@@ -559,16 +560,11 @@ export default function SpinWheel({
                         className="p-8 rounded-2xl shadow-xl border-2"
                         style={{
                           background: selectedColor
-                            ? selectedColor
+                            ? `linear-gradient(135deg, ${selectedColor}20 0%, ${selectedColor}40 100%)`
                             : 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', // fallback
-                          borderColor: selectedChallenge && selectedSegmentIndex !== null ? 
-                            colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : 
-                            '#4d96ff' : 'rgb(191 219 254)',
-                          boxShadow: selectedChallenge && selectedSegmentIndex !== null ? 
-                            `0 25px 50px -12px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}40, 0 0 0 1px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}20` : 
+                          borderColor: selectedColor || '#4d96ff',
+                          boxShadow: selectedColor ? 
+                            `0 25px 50px -12px ${selectedColor}40, 0 0 0 1px ${selectedColor}20` : 
                             '0 25px 50px -12px rgba(0,0,0,0.25)',
                         }}
                       >
@@ -625,3 +621,4 @@ export default function SpinWheel({
     </>
   );
 }
+
