@@ -1,7 +1,3 @@
-` tags. I will pay close attention to indentation, structure, and completeness.
-
-```
-<replit_final_file>
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,39 +54,104 @@ export default function PaymentForm({
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
+      // Check if Razorpay is already loaded
       if (window.Razorpay) {
+        console.log('✅ Razorpay script already loaded');
         resolve(true);
         return;
       }
 
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        console.log('⏳ Razorpay script already loading, waiting...');
+        
+        // Add timeout to prevent hanging
+        const timeout = setTimeout(() => {
+          console.error('❌ Script loading timeout');
+          resolve(false);
+        }, 10000);
+
+        existingScript.addEventListener('load', () => {
+          clearTimeout(timeout);
+          resolve(true);
+        });
+        existingScript.addEventListener('error', () => {
+          clearTimeout(timeout);
+          resolve(false);
+        });
+        return;
+      }
+
+      console.log('📥 Loading Razorpay script...');
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
+      script.async = true;
+      
+      // Add timeout for script loading
+      const timeout = setTimeout(() => {
+        console.error('❌ Script loading timeout');
+        document.head.removeChild(script);
+        resolve(false);
+      }, 10000);
+
+      script.onload = () => {
+        clearTimeout(timeout);
+        console.log('✅ Razorpay script loaded successfully');
+        resolve(true);
+      };
+      script.onerror = () => {
+        clearTimeout(timeout);
+        console.error('❌ Failed to load Razorpay script');
+        resolve(false);
+      };
+      document.head.appendChild(script);
     });
   };
 
-  const handleRazorpayPayment = async () => {
+  const handleRazorpayPayment = async (e) => {
     try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
       console.log('🔍 Razorpay button clicked!');
+      console.log('🔍 Current state:', { 
+        isProcessing, 
+        isProcessingPayPal, 
+        amount, 
+        tier 
+      });
 
       if (isProcessing || isProcessingPayPal) {
         console.log('⚠️ Payment already in progress, ignoring click');
         return;
       }
-
+      
       setIsProcessing(true);
       setError(null);
 
       console.log('💳 Starting Razorpay payment flow...');
-
+      console.log('🔍 Button clicked - processing payment for amount:', amount);
+      
+      // Load Razorpay script first
+      console.log('📥 Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error('Failed to load Razorpay script');
+        throw new Error('Failed to load Razorpay script. Please check your internet connection.');
       }
 
+      // Create order
       console.log('💰 Creating Razorpay order...');
+      console.log('📤 Sending order request with data:', {
+        amount: amount,
+        tier: tier,
+        metadata: {
+          tier: tier,
+          amount: amount.toString()
+        }
+      });
 
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
@@ -107,13 +168,37 @@ export default function PaymentForm({
         }),
       });
 
+      console.log('📥 Order response status:', orderResponse.status);
+      console.log('📥 Order response headers:', Object.fromEntries(orderResponse.headers.entries()));
+
       if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || 'Failed to create payment order');
+        const errorText = await orderResponse.text();
+        console.error('❌ Order creation failed with status:', orderResponse.status);
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Failed to create order: ${orderResponse.status} - ${errorText}`);
       }
 
       const orderData = await orderResponse.json();
-      console.log('✅ Razorpay order created:', orderData);
+      console.log('📦 Order response data:', orderData);
+
+      if (!orderData.success) {
+        console.error('❌ Order creation failed:', orderData.error);
+        throw new Error(orderData.error || 'Failed to create payment order');
+      }
+
+      if (!orderData.key || !orderData.orderId) {
+        console.error('❌ Invalid order data:', orderData);
+        throw new Error('Invalid order data received from server');
+      }
+
+      // Verify Razorpay is loaded
+      if (!window.Razorpay) {
+        console.error('❌ Razorpay not available on window object');
+        throw new Error('Razorpay not available. Please refresh and try again.');
+      }
+
+      console.log('🚀 Opening Razorpay payment modal...');
+      console.log('🔑 Using Razorpay key:', orderData.key?.substring(0, 8) + '...');
 
       const options = {
         key: orderData.key,
@@ -122,16 +207,15 @@ export default function PaymentForm({
         name: 'Writory Poetry Contest',
         description: `Poetry Contest - ${tier}`,
         order_id: orderData.orderId,
-        handler: async function (response: any) {
-          console.log('💰 Razorpay payment successful:', response);
+        handler: function (response: any) {
+          console.log('✅ Razorpay payment successful:', response);
           setIsProcessing(false);
-
+          
           toast({
             title: "Payment Successful!",
             description: "Your payment has been processed successfully.",
           });
 
-          // Call success with Razorpay data - this will trigger form submission
           onSuccess({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -144,7 +228,7 @@ export default function PaymentForm({
         },
         prefill: {
           name: '',
-          email: '',
+          email: userEmail || '',
           contact: ''
         },
         notes: {
@@ -155,25 +239,46 @@ export default function PaymentForm({
         },
         modal: {
           ondismiss: function() {
-            console.log('💳 Razorpay payment cancelled by user');
+            console.log('❌ Razorpay payment dismissed');
             setIsProcessing(false);
             toast({
               title: "Payment Cancelled",
-              description: "Payment was cancelled by user.",
+              description: "Payment was cancelled.",
               variant: "destructive"
             });
           }
         }
       };
 
+      console.log('🔧 Razorpay options prepared:', {
+        key: options.key?.substring(0, 8) + '...',
+        amount: options.amount,
+        currency: options.currency,
+        order_id: options.order_id
+      });
+
       const razorpay = new window.Razorpay(options);
+      
+      razorpay.on('payment.failed', function (response: any) {
+        console.error('❌ Razorpay payment failed:', response.error);
+        setIsProcessing(false);
+        setError(response.error.description || 'Payment failed');
+        toast({
+          title: "Payment Failed",
+          description: response.error.description || "Payment failed. Please try again.",
+          variant: "destructive"
+        });
+      });
+
+      console.log('🎬 Opening Razorpay modal...');
       razorpay.open();
 
     } catch (error: any) {
-      console.error('❌ Razorpay payment error:', error);
+      console.error('❌ Razorpay error:', error);
+      console.error('❌ Error stack:', error.stack);
+      setIsProcessing(false);
       setError(error.message);
       onError(error.message);
-      setIsProcessing(false);
 
       toast({
         title: "Payment Error",
@@ -183,31 +288,26 @@ export default function PaymentForm({
     }
   };
 
-  const handlePayPalPayment = async () => {
+  const handlePayPalPayment = async (e) => {
     try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
       if (isProcessing || isProcessingPayPal) {
         console.log('⚠️ Payment already in progress, ignoring click');
         return;
       }
-
+      
       setIsProcessingPayPal(true);
       setError(null);
 
-      console.log('💰 Testing PayPal configuration first...');
+      console.log('💰 Starting PayPal payment flow...');
 
-      // Test PayPal config before creating order
-      const testResponse = await fetch('/api/test-paypal');
-      const testData = await testResponse.json();
-
-      console.log('PayPal config test result:', testData);
-
-      if (!testData.success || !testData.configured) {
-        throw new Error(`PayPal Configuration Issue: ${testData.error || 'PayPal not properly configured'}`);
-      }
-
-      console.log('✅ PayPal configured properly, creating order...');
-
-      const response = await fetch('/api/create-paypal-order', {
+      // Create PayPal order directly without pre-testing
+      console.log('📦 Creating PayPal order...');
+      const orderResponse = await fetch('/api/create-paypal-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,37 +319,51 @@ export default function PaymentForm({
         }),
       });
 
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (parseError) {
-        const responseText = await response.text();
-        console.error('Failed to parse PayPal response:', responseText);
-        throw new Error(`PayPal server error: ${responseText}`);
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        console.error('❌ PayPal order request failed:', errorText);
+        throw new Error('Failed to connect to PayPal. Please try again.');
       }
 
-      console.log('PayPal order response:', responseData);
+      let responseData;
+      try {
+        const responseText = await orderResponse.text();
+        responseData = JSON.parse(responseText);
+        console.log('📦 PayPal order response:', responseData);
+      } catch (parseError) {
+        console.error('❌ Failed to parse PayPal response');
+        throw new Error('Invalid response from PayPal. Please try again.');
+      }
 
-      if (response.ok && responseData.success && responseData.approvalUrl) {
-        console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
-        window.location.href = responseData.approvalUrl;
+      if (responseData.success && responseData.approvalUrl) {
+        console.log('✅ PayPal order created, redirecting...');
+
+        toast({
+          title: "Redirecting to PayPal",
+          description: "Opening PayPal in a moment...",
+        });
+
+        // Redirect to PayPal
+        setTimeout(() => {
+          window.location.href = responseData.approvalUrl;
+        }, 500);
       } else {
-        const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
+        const errorMsg = responseData.error || 'Failed to create PayPal order';
+        console.error('❌ PayPal order creation failed:', errorMsg);
         throw new Error(errorMsg);
       }
 
     } catch (error: any) {
-      console.error('❌ PayPal payment error:', error);
-      setError(`PayPal Error: ${error.message}`);
-      onError(`PayPal Error: ${error.message}`);
+      console.error('❌ PayPal error:', error);
+      setIsProcessingPayPal(false);
+      setError(error.message);
+      onError(error.message);
 
       toast({
         title: "PayPal Error",
         description: error.message,
         variant: "destructive"
       });
-    } finally {
-      setIsProcessingPayPal(false);
     }
   };
 
@@ -396,7 +510,13 @@ export default function PaymentForm({
             </Button>
 
             <Button
-              onClick={onBack}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onBack && typeof onBack === 'function') {
+                  onBack();
+                }
+              }}
               variant="outline"
               className="w-full"
               disabled={isProcessing || isProcessingPayPal}
@@ -421,29 +541,29 @@ export default function PaymentForm({
 }
 
 const validateCoupon = async (code: string) => {
-  try {
-    const response = await fetch('/api/validate-coupon', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-    });
+      try {
+        const response = await fetch('/api/validate-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Coupon validation error:', error);
-    return { valid: false, message: 'Network error' };
-  }
-};
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Coupon validation error:', error);
+        return { valid: false, message: 'Network error' };
+      }
+    };
 
-const markCouponAsUsed = async (code: string, email: string) => {
-  try {
-    await fetch('/api/use-coupon', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, email }),
-    });
-  } catch (error) {
-    console.error('Error marking coupon as used:', error);
-  }
-};
+    const markCouponAsUsed = async (code: string, email: string) => {
+      try {
+        await fetch('/api/use-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, email }),
+        });
+      } catch (error) {
+        console.error('Error marking coupon as used:', error);
+      }
+    };
