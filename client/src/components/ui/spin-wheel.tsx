@@ -252,8 +252,7 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  // For text: rotate so it's always upright, and position at the center of the arc
-                  const textRotation = angle + segmentAngle / 2;
+                  // Center the text in the segment, always upright
                   return (
                     <div
                       key={index}
@@ -275,10 +274,9 @@ export default function SpinWheel({
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          width: '120px',
+                          width: '110px',
                           height: '32px',
-                          transform: `rotate(${-textRotation}deg) translate(-50%, -120px)`,
-                          transformOrigin: 'center center',
+                          transform: 'translate(-50%, -120px)', // always upright, not rotated
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -289,17 +287,19 @@ export default function SpinWheel({
                           className="font-bold"
                           style={{
                             color: '#fff',
-                            textShadow: '2px 2px 6px rgba(0,0,0,0.7)',
-                            fontSize: challenge.challengeTitle.length > 15 ? '10px' : '13px',
+                            textShadow: '0 2px 8px rgba(0,0,0,0.7), 0 0 2px #000',
+                            fontSize: challenge.challengeTitle.length > 15 ? '11px' : '15px',
                             fontWeight: 900,
                             letterSpacing: '0.5px',
-                            background: 'rgba(0,0,0,0.18)',
+                            background: 'rgba(0,0,0,0.35)',
                             borderRadius: '8px',
-                            padding: '2px 8px',
-                            maxWidth: '110px',
+                            padding: '4px 10px',
+                            maxWidth: '100px',
                             overflow: 'hidden',
                             whiteSpace: 'nowrap',
                             textOverflow: 'ellipsis',
+                            textAlign: 'center',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
                           }}
                         >
                           {challenge.challengeTitle.length > 18
