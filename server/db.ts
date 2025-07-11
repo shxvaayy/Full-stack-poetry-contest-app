@@ -1,44 +1,49 @@
+
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client } from 'pg';
 
 // Database configuration
 const connectionString = process.env.DATABASE_URL;
 
+// Create mock client for development mode
+const createMockClient = () => ({
+  query: async (...args: any[]) => {
+    console.log('⚠️ Mock database query (no DATABASE_URL):', args[0]);
+    return { rows: [] };
+  },
+  end: async () => {},
+  on: () => {},
+  removeListener: () => {}
+} as any);
+
+// Initialize client and database connection
+let client: any;
+let db: any;
+let connectDatabase: () => Promise<void>;
+let isConnected = false;
+
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL environment variable not found');
   console.log('💡 Please check your Secrets configuration in Replit');
   console.log('💡 Server will continue in development mode - database features disabled');
+  console.log('🔄 Running in development mode without database');
 
-  // In development, create a mock client to prevent crashes
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔄 Running in development mode without database');
-    // Export a mock client that prevents crashes but logs errors
-    export const client = {
-      query: async (...args: any[]) => {
-        console.log('⚠️ Mock database query (no DATABASE_URL):', args[0]);
-        return { rows: [] };
-      },
-      end: async () => {},
-      on: () => {},
-      removeListener: () => {}
-    } as any;
+  // Export mock client for development
+  client = createMockClient();
+  
+  connectDatabase = async () => {
+    console.log('⚠️ Mock database connection (no DATABASE_URL)');
+    return Promise.resolve();
+  };
 
-    export async function connectDatabase() {
-      console.log('⚠️ Mock database connection (no DATABASE_URL)');
-      return Promise.resolve();
-    }
-
-    // Exit early to prevent actual database code from running
-  } else {
-    throw new Error('DATABASE_URL environment variable is required in production');
-  }
+  db = null; // No drizzle instance in mock mode
 } else {
   console.log('🔍 Database Configuration:');
   console.log('- DATABASE_URL exists:', !!connectionString);
   console.log('- Environment:', process.env.NODE_ENV);
 
-  // Create client but don't connect yet
-  const client = new Client({
+  // Create real client
+  client = new Client({
     connectionString,
     ssl: process.env.NODE_ENV === 'production' ? { 
       rejectUnauthorized: false 
@@ -50,12 +55,11 @@ if (!process.env.DATABASE_URL) {
 
   // Global connection state
   let connectionPromise: Promise<void> | null = null;
-  let isConnected = false;
   let connectionAttempts = 0;
   const MAX_CONNECTION_ATTEMPTS = 3;
 
   // Single connection function with retry logic
-  async function connectDatabase() {
+  connectDatabase = async () => {
     if (isConnected) {
       // Test connection to make sure it's still alive
       try {
@@ -112,7 +116,7 @@ if (!process.env.DATABASE_URL) {
     })();
 
     return connectionPromise;
-  }
+  };
 
   // Handle connection errors
   client.on('error', (err) => {
@@ -144,6 +148,8 @@ if (!process.env.DATABASE_URL) {
   process.on('SIGTERM', cleanup);
   process.on('SIGINT', cleanup);
 
-  export const db = drizzle(client);
-  export { client, connectDatabase, isConnected };
+  db = drizzle(client);
 }
+
+// Export everything consistently
+export { client, connectDatabase, isConnected, db };
