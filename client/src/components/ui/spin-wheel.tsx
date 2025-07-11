@@ -255,7 +255,6 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  // Gradient overlay for 3D effect
                   const gradient = `linear-gradient(135deg, ${color} 70%, #fff3 100%)`;
                   // Robust pointer sync: calculate which segment is under the pointer
                   const normalizedAngle = (360 - (rotation % 360)) % 360;
@@ -270,7 +269,7 @@ export default function SpinWheel({
                         transform: `rotate(${angle}deg)`,
                         background: gradient,
                         borderRight: '3px solid #fff',
-                        boxShadow: isSelected ? '0 0 0 4px #fbbf24, 0 0 16px #fbbf2488, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)'
+                        boxShadow: isSelected ? '0 0 0 5px #fbbf24, 0 0 18px #fbbf24cc, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)'
                       }}
                     >
                       <div
@@ -278,9 +277,9 @@ export default function SpinWheel({
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          width: '80%',
-                          minHeight: '32px',
-                          maxHeight: '40px',
+                          width: '78%',
+                          minHeight: '28px',
+                          maxHeight: '36px',
                           transform: `translate(-50%, -60%)`,
                           display: 'flex',
                           alignItems: 'center',
@@ -293,19 +292,19 @@ export default function SpinWheel({
                           style={{
                             display: '-webkit-box',
                             fontWeight: 700,
-                            fontSize: '0.8rem',
+                            fontSize: '0.75rem',
                             color: '#fff',
                             textShadow: '0 2px 8px rgba(0,0,0,0.7)',
                             background: 'rgba(0,0,0,0.22)',
                             borderRadius: '7px',
-                            padding: '2px 8px',
+                            padding: '2px 7px',
                             whiteSpace: 'normal',
                             wordBreak: 'break-word',
                             textAlign: 'center',
                             userSelect: 'none',
                             boxShadow: '0 1px 4px rgba(0,0,0,0.13)',
-                            lineHeight: 1.15,
-                            maxHeight: '2.1em',
+                            lineHeight: 1.13,
+                            maxHeight: '2em',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             WebkitLineClamp: 2,
