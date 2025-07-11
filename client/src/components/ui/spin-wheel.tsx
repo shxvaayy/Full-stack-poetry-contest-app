@@ -255,7 +255,10 @@ export default function SpinWheel({
                       key={index}
                       className="wheel-slice"
                       style={{
-                        transform: `rotate(${angle}deg)`
+                        transform: `rotate(${angle}deg)`,
+                        background: color,
+                        borderRight: '3px solid #fff',
+                        boxShadow: 'inset 0 0 16px rgba(0,0,0,0.12)'
                       }}
                     >
                       <div
