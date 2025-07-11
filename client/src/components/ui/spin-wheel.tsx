@@ -130,8 +130,8 @@ export default function SpinWheel({
 
     // Calculate which segment we landed on
     const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    // Offset by -90 degrees so the pointer at the top matches the correct segment
-    let pointerAngle = (normalizedAngle - 90 + 360) % 360;
+    // Correct pointer alignment: pointer lands at center of segment
+    let pointerAngle = (normalizedAngle + segmentAngle / 2) % 360;
     let selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
     if (selectedIndex < 0) selectedIndex += challenges.length;
 
@@ -144,10 +144,9 @@ export default function SpinWheel({
       clearInterval(velocityDecrease);
       const selected = challenges[selectedIndex];
       setSelectedChallenge(selected);
-      setSelectedColor(colorPalette[selectedIndex % colorPalette.length]); // <-- store color
+      setSelectedColor(colorPalette[selectedIndex % colorPalette.length]); // ensure color matches segment
       setSelectedSegmentIndex(selectedIndex);
       setIsSpinning(false);
-      setSpinVelocity(0);
       animateArrow();
       triggerCelebration();
       
