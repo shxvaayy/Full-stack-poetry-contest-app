@@ -414,14 +414,6 @@ export default function SpinWheel({
                   <Sparkles className="mr-2" size={20} />
                   Use This Challenge
                 </Button>
-                <Button 
-                  onClick={handleSpinAgain}
-                  variant="outline"
-                  className="border-3 border-green-600 text-green-600 hover:bg-green-50 px-10 py-4 font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 rounded-xl bg-white/80 backdrop-blur-sm"
-                >
-                  <RefreshCw className="mr-2" size={20} />
-                  Spin Again
-                </Button>
               </div>
             </CardContent>
           </Card>
