@@ -124,9 +124,10 @@ export default function SpinWheel({
       wheelRef.current.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.02, 0.05, 0.95)`;
     }
 
-    // Calculate landing position with precision
+    // Calculate landing position with precision - fixed to match wheel layout
     const normalizedAngle = (totalRotation % 360 + 360) % 360;
-    const adjustedAngle = (360 - normalizedAngle + 90) % 360;
+    // Adjust for arrow position (top center) and wheel rotation offset
+    const adjustedAngle = (normalizedAngle + 90) % 360;
     const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
 
     // Gradual velocity decrease simulation
@@ -418,16 +419,15 @@ export default function SpinWheel({
                         >
                           <span 
                             style={{
-                              color: '#ffffff',
+                              color: '#000000',
                               fontSize: displayText.length > 15 ? '10px' : '12px',
                               fontWeight: '900',
                               textShadow: `
-                                3px 3px 6px rgba(0,0,0,1), 
-                                -2px -2px 4px rgba(0,0,0,0.8), 
-                                2px -2px 4px rgba(0,0,0,0.8), 
-                                -2px 2px 4px rgba(0,0,0,0.8), 
-                                0 0 8px rgba(0,0,0,0.9),
-                                0 0 16px rgba(0,0,0,0.5)
+                                1px 1px 2px rgba(255,255,255,0.8), 
+                                -1px -1px 2px rgba(255,255,255,0.8), 
+                                1px -1px 2px rgba(255,255,255,0.8), 
+                                -1px 1px 2px rgba(255,255,255,0.8), 
+                                0 0 4px rgba(255,255,255,0.6)
                               `,
                               display: 'block',
                               lineHeight: '1.1',
