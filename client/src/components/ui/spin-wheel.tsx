@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+import * as React from 'react';
+import { useState, useRef } from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
 import { RefreshCw, Play, Sparkles } from 'lucide-react';
@@ -205,28 +206,27 @@ export default function SpinWheel({
                 className="absolute z-30"
                 style={{ 
                   position: 'absolute',
-                  top: '-20px',
+                  top: '-32px',
                   left: '50%',
                   transform: 'translateX(-50%)',
+                  filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))',
                 }}
               >
                 <div 
                   className="relative"
                   style={{
-                    filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
+                    width: '0',
+                    height: '0',
+                    borderLeft: '28px solid transparent',
+                    borderRight: '28px solid transparent',
+                    borderTop: '48px solid #fbbf24',
+                    borderRadius: '0 0 18px 18px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
                   }}
                 >
                   {/* Arrow with gradient and glow - rotated 180 degrees to point down */}
                   <div 
-                    className="w-0 h-0 border-l-[20px] border-r-[20px] border-t-[35px] border-l-transparent border-r-transparent"
-                    style={{
-                      borderTopColor: '#ef4444',
-                      filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))',
-                    }}
-                  />
-                  {/* Arrow highlight */}
-                  <div 
-                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-white opacity-40"
+                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-white opacity-50"
                   />
                 </div>
               </div>
@@ -252,45 +252,59 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  
+                  // For text: rotate so it's always upright, and position at the center of the arc
+                  const textRotation = angle + segmentAngle / 2;
                   return (
                     <div
                       key={index}
                       className="wheel-slice"
                       style={{
                         transform: `rotate(${angle}deg)`,
-                        clipPath: `polygon(0 0, ${Math.cos((segmentAngle * Math.PI) / 180) * 100}% ${Math.sin((segmentAngle * Math.PI) / 180) * 100}%, 0 100%)`,
+                        clipPath: `polygon(100% 100%, 0 0, ${
+                          100 + 100 * Math.cos((segmentAngle * Math.PI) / 180)
+                        }% ${
+                          100 - 100 * Math.sin((segmentAngle * Math.PI) / 180)
+                        }%, 100% 100%)`,
                         backgroundColor: color,
-                        borderRight: '2px solid rgba(255,255,255,0.3)',
+                        borderRight: '3px solid #fff',
+                        boxShadow: 'inset 0 0 16px rgba(0,0,0,0.12)',
                       }}
                     >
-                      <div 
+                      <div
                         style={{
                           position: 'absolute',
-                          top: '30%',
-                          left: '70%',
-                          transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
-                          transformOrigin: 'center',
-                          width: '100px',
-                          textAlign: 'center',
+                          top: '50%',
+                          left: '50%',
+                          width: '120px',
+                          height: '32px',
+                          transform: `rotate(${-textRotation}deg) translate(-50%, -120px)`,
+                          transformOrigin: 'center center',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          pointerEvents: 'none',
                         }}
                       >
-                        <span 
+                        <span
                           className="font-bold"
                           style={{
-                            color: 'white',
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 1px 1px 2px rgba(0,0,0,0.8)',
-                            fontSize: challenge.challengeTitle.length > 15 ? '9px' : '11px',
-                            display: 'block',
-                            lineHeight: '1.1',
-                            fontWeight: '900',
+                            color: '#fff',
+                            textShadow: '2px 2px 6px rgba(0,0,0,0.7)',
+                            fontSize: challenge.challengeTitle.length > 15 ? '10px' : '13px',
+                            fontWeight: 900,
                             letterSpacing: '0.5px',
+                            background: 'rgba(0,0,0,0.18)',
+                            borderRadius: '8px',
+                            padding: '2px 8px',
+                            maxWidth: '110px',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
                           }}
                         >
-                          {challenge.challengeTitle.length > 18 
-                            ? challenge.challengeTitle.substring(0, 15) + '...' 
-                            : challenge.challengeTitle
-                          }
+                          {challenge.challengeTitle.length > 18
+                            ? challenge.challengeTitle.substring(0, 15) + '...'
+                            : challenge.challengeTitle}
                         </span>
                       </div>
                     </div>
@@ -331,6 +345,14 @@ export default function SpinWheel({
 
               {/* Outer decorative rings for premium feel */}
               <div className="absolute inset-0 w-80 h-80 rounded-full border-4 border-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 opacity-20 pointer-events-none animate-pulse" />
+              {/* Add a glossy overlay and more pronounced center hub for realism */}
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10"
+                style={{
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle at 60% 30%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 60%, transparent 100%)',
+                  boxShadow: '0 0 32px 8px rgba(255,255,255,0.12) inset',
+                }}
+              />
             </div>
 
             {/* Premium Spin Button */}
