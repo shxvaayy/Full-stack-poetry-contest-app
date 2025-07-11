@@ -129,10 +129,11 @@ export default function SpinWheel({
     }
 
     // Calculate which segment we landed on
-    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    // Correct pointer alignment: pointer lands at center of segment
-    let pointerAngle = normalizedAngle;
-    let selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
+    // The wheel rotates clockwise, but we need to account for the pointer position
+    const normalizedAngle = (totalRotation % 360);
+    // Adjust for pointer position at top (0 degrees) and account for segment offset
+    const adjustedAngle = (360 - normalizedAngle + (segmentAngle / 2)) % 360;
+    let selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
     if (selectedIndex < 0) selectedIndex += challenges.length;
 
     // Gradual velocity decrease simulation
