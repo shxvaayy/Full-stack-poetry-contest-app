@@ -128,12 +128,11 @@ export default function SpinWheel({
       wheelRef.current.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.02, 0.05, 0.95)`;
     }
 
-    // Calculate landing position with precision - fixed to match wheel layout
-    const normalizedAngle = (totalRotation % 360 + 360) % 360;
-    // The pointer is at the top (12 o'clock position), so we need to account for that
-    // Segments start from 0 degrees and go clockwise
-    const pointerAngle = (360 - normalizedAngle) % 360;
-    const selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
+    // Calculate which segment we landed on
+    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
+    let selectedIndex = Math.round(normalizedAngle / segmentAngle) % challenges.length;
+    // Ensure index wraps correctly
+    if (selectedIndex === challenges.length) selectedIndex = 0;
 
     // Gradual velocity decrease simulation
     const velocityDecrease = setInterval(() => {
