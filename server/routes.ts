@@ -175,26 +175,38 @@ import { paypalRouter } from './paypal.js';
 let razorpay: any = null;
 
 function initializeRazorpay() {
-  if (!razorpay && process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-    try {
-      razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID,
-        key_secret: process.env.RAZORPAY_KEY_SECRET,
-      });
-      console.log('✅ Razorpay initialized successfully');
-    } catch (error) {
-      console.error('❌ Failed to initialize Razorpay:', error);
+  try {
+    // Always try to get fresh environment variables
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    
+    console.log('🔧 Razorpay Configuration Check:');
+    console.log('- Key ID exists:', !!keyId);
+    console.log('- Key Secret exists:', !!keySecret);
+    console.log('- Key ID value:', keyId ? keyId.substring(0, 8) + '...' : 'NOT_SET');
+    
+    if (!keyId || !keySecret) {
+      console.error('❌ Missing Razorpay credentials');
+      return null;
     }
+    
+    if (!razorpay) {
+      razorpay = new Razorpay({
+        key_id: keyId,
+        key_secret: keySecret,
+      });
+      console.log('✅ Razorpay initialized successfully with key:', keyId.substring(0, 8) + '...');
+    }
+    
+    return razorpay;
+  } catch (error) {
+    console.error('❌ Failed to initialize Razorpay:', error);
+    return null;
   }
-  return razorpay;
 }
 
-console.log('🔧 Razorpay Configuration Check:');
-console.log('- Key ID exists:', !!process.env.RAZORPAY_KEY_ID);
-console.log('- Key Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
-
-// Try to initialize Razorpay
-initializeRazorpay();
+// Don't initialize at startup - do it when needed
+console.log('🔧 Razorpay will be initialized on first use');
 
 // Add PayPal routes
 router.use('/', paypalRouter);
@@ -796,21 +808,20 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
     });
   }
 
-  // Check Razorpay configuration
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    console.error('❌ Razorpay not configured');
-    console.error('❌ KEY_ID exists:', !!process.env.RAZORPAY_KEY_ID);
-    console.error('❌ KEY_SECRET exists:', !!process.env.RAZORPAY_KEY_SECRET);
-    return res.status(500).json({ 
-      success: false,
-      error: 'Payment system not configured. Please contact support.' 
-    });
-  }
-
   console.log(`💰 Creating Razorpay order for amount: ₹${amount}`);
-  console.log('🔑 Using Razorpay Key ID:', process.env.RAZORPAY_KEY_ID?.substring(0, 8) + '...');
 
   try {
+    // Initialize Razorpay with fresh credentials
+    const razorpayInstance = initializeRazorpay();
+    
+    if (!razorpayInstance) {
+      console.error('❌ Razorpay initialization failed');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Payment system not configured. Please check your credentials and try again.' 
+      });
+    }
+
     const orderOptions = {
       amount: amount * 100, // Convert to paise
       currency: 'INR',
@@ -827,12 +838,6 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
       ...orderOptions,
       amount: `${orderOptions.amount} paise (₹${amount})`
     });
-
-    // Ensure Razorpay is initialized
-    const razorpayInstance = initializeRazorpay();
-    if (!razorpayInstance) {
-      throw new Error('Razorpay not properly configured. Please check your credentials.');
-    }
 
     const order = await razorpayInstance.orders.create(orderOptions);
     console.log('✅ Razorpay order created successfully:', {
@@ -864,12 +869,21 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
     console.error('❌ Error details:', {
       message: error.message,
       code: error.code,
-      statusCode: error.statusCode
+      statusCode: error.statusCode,
+      stack: error.stack
     });
+    
+    // More specific error messages
+    let errorMessage = 'Failed to create payment order. Please try again.';
+    if (error.message?.includes('authentication')) {
+      errorMessage = 'Payment system authentication failed. Please check your credentials.';
+    } else if (error.message?.includes('network')) {
+      errorMessage = 'Network error. Please check your internet connection and try again.';
+    }
     
     res.status(500).json({
       success: false,
-      error: 'Failed to create payment order. Please try again or contact support.',
+      error: errorMessage,
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -1294,11 +1308,24 @@ router.post('/api/record-coupon-usage', asyncHandler(async (req: any, res: any) 
 router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
   console.log('🧪 Testing Razorpay configuration...');
 
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  console.log('🔍 Environment check:');
+  console.log('- RAZORPAY_KEY_ID exists:', !!keyId);
+  console.log('- RAZORPAY_KEY_SECRET exists:', !!keySecret);
+  console.log('- RAZORPAY_KEY_ID value:', keyId ? keyId.substring(0, 8) + '...' : 'NOT_SET');
+  console.log('- RAZORPAY_KEY_SECRET length:', keySecret ? keySecret.length : 0);
+
+  if (!keyId || !keySecret) {
     return res.json({
       success: false,
       configured: false,
-      message: 'Razorpay credentials not configured'
+      message: 'Razorpay credentials not configured',
+      details: {
+        keyId: !!keyId,
+        keySecret: !!keySecret
+      }
     });
   }
 
@@ -1309,25 +1336,37 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
       throw new Error('Razorpay not initialized');
     }
     
+    console.log('🔄 Creating test order...');
     const testOrder = await razorpayInstance.orders.create({
       amount: 100, // ₹1 in paise
       currency: 'INR',
       receipt: `test_${Date.now()}`
     });
 
+    console.log('✅ Test order created successfully:', testOrder.id);
+
     res.json({
       success: true,
       configured: true,
-      message: 'Razorpay is properly configured',
-      testOrderId: testOrder.id
+      message: 'Razorpay is properly configured and working',
+      testOrderId: testOrder.id,
+      keyId: keyId.substring(0, 8) + '...'
     });
 
   } catch (error: any) {
     console.error('❌ Razorpay test failed:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode
+    });
+    
     res.json({
       success: false,
       configured: false,
-      message: 'Razorpay test failed: ' + error.message
+      message: 'Razorpay test failed: ' + error.message,
+      errorCode: error.code,
+      errorStatusCode: error.statusCode
     });
   }
 }));

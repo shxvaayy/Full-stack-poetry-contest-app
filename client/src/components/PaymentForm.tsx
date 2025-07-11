@@ -92,6 +92,7 @@ export default function PaymentForm({
       setError(null);
 
       console.log('💳 Starting Razorpay payment flow...');
+      console.log('🔍 Button clicked - processing payment for amount:', amount);
       
       // Load Razorpay script first
       console.log('📥 Loading Razorpay script...');
@@ -102,6 +103,15 @@ export default function PaymentForm({
 
       // Create order
       console.log('💰 Creating Razorpay order...');
+      console.log('📤 Sending order request with data:', {
+        amount: amount,
+        tier: tier,
+        metadata: {
+          tier: tier,
+          amount: amount.toString()
+        }
+      });
+
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: {
@@ -117,23 +127,37 @@ export default function PaymentForm({
         }),
       });
 
-      const orderData = await orderResponse.json();
-      console.log('📦 Order response:', orderData);
+      console.log('📥 Order response status:', orderResponse.status);
+      console.log('📥 Order response headers:', Object.fromEntries(orderResponse.headers.entries()));
 
-      if (!orderResponse.ok || !orderData.success) {
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        console.error('❌ Order creation failed with status:', orderResponse.status);
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Failed to create order: ${orderResponse.status} - ${errorText}`);
+      }
+
+      const orderData = await orderResponse.json();
+      console.log('📦 Order response data:', orderData);
+
+      if (!orderData.success) {
+        console.error('❌ Order creation failed:', orderData.error);
         throw new Error(orderData.error || 'Failed to create payment order');
       }
 
       if (!orderData.key || !orderData.orderId) {
+        console.error('❌ Invalid order data:', orderData);
         throw new Error('Invalid order data received from server');
       }
 
       // Verify Razorpay is loaded
       if (!window.Razorpay) {
+        console.error('❌ Razorpay not available on window object');
         throw new Error('Razorpay not available. Please refresh and try again.');
       }
 
       console.log('🚀 Opening Razorpay payment modal...');
+      console.log('🔑 Using Razorpay key:', orderData.key?.substring(0, 8) + '...');
 
       const options = {
         key: orderData.key,
@@ -185,6 +209,13 @@ export default function PaymentForm({
         }
       };
 
+      console.log('🔧 Razorpay options prepared:', {
+        key: options.key?.substring(0, 8) + '...',
+        amount: options.amount,
+        currency: options.currency,
+        order_id: options.order_id
+      });
+
       const razorpay = new window.Razorpay(options);
       
       razorpay.on('payment.failed', function (response: any) {
@@ -198,10 +229,12 @@ export default function PaymentForm({
         });
       });
 
+      console.log('🎬 Opening Razorpay modal...');
       razorpay.open();
 
     } catch (error: any) {
       console.error('❌ Razorpay error:', error);
+      console.error('❌ Error stack:', error.stack);
       setIsProcessing(false);
       setError(error.message);
       onError(error.message);
