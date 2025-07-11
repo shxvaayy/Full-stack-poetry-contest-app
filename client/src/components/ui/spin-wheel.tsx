@@ -25,6 +25,7 @@ export default function SpinWheel({
 }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [rotation, setRotation] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   const [spinVelocity, setSpinVelocity] = useState(0);
@@ -102,6 +103,7 @@ export default function SpinWheel({
 
     setIsSpinning(true);
     setSelectedChallenge(null);
+    setSelectedSegmentIndex(null);
     setShowCelebration(false);
 
     // Ultra-realistic physics calculation
@@ -139,6 +141,7 @@ export default function SpinWheel({
       clearInterval(velocityDecrease);
       const selected = challenges[selectedIndex];
       setSelectedChallenge(selected);
+      setSelectedSegmentIndex(selectedIndex);
       setIsSpinning(false);
       setSpinVelocity(0);
       animateArrow();
@@ -159,6 +162,7 @@ export default function SpinWheel({
 
   const handleSpinAgain = () => {
     setSelectedChallenge(null);
+    setSelectedSegmentIndex(null);
     setShowCelebration(false);
     handleSpin();
   };
@@ -550,33 +554,18 @@ export default function SpinWheel({
                       <div 
                         className="p-8 rounded-2xl shadow-xl border-2"
                         style={{
-                          background: selectedChallenge ? (() => {
-                            // Calculate the exact same way we do in handleSpin
-                            const normalizedAngle = (rotation % 360 + 360) % 360;
-                            const adjustedAngle = (normalizedAngle + 90) % 360;
-                            const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
-                            const segmentGradient = colorPalette[selectedIndex % colorPalette.length];
-                            // Mix the segment gradient with white for better readability
-                            return `linear-gradient(135deg, ${segmentGradient.split('(')[1].split(')')[0]}, rgba(255,255,255,0.8))`;
-                          })() : 'linear-gradient(to-br, white, rgb(239 246 255))',
-                          borderColor: selectedChallenge ? (() => {
-                            const normalizedAngle = (rotation % 360 + 360) % 360;
-                            const adjustedAngle = (normalizedAngle + 90) % 360;
-                            const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
-                            const segmentGradient = colorPalette[selectedIndex % colorPalette.length];
-                            // Extract the primary color from the gradient
-                            const firstColor = segmentGradient.split('#')[1]?.split(' ')[0];
-                            return firstColor ? `#${firstColor}` : '#4d96ff';
-                          })() : 'rgb(191 219 254)',
-                          boxShadow: selectedChallenge ? (() => {
-                            const normalizedAngle = (rotation % 360 + 360) % 360;
-                            const adjustedAngle = (normalizedAngle + 90) % 360;
-                            const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
-                            const segmentGradient = colorPalette[selectedIndex % colorPalette.length];
-                            const firstColor = segmentGradient.split('#')[1]?.split(' ')[0];
-                            const shadowColor = firstColor ? `#${firstColor}` : '#4d96ff';
-                            return `0 25px 50px -12px ${shadowColor}40, 0 0 0 1px ${shadowColor}20`;
-                          })() : '0 25px 50px -12px rgba(0,0,0,0.25)',
+                          background: selectedChallenge && selectedSegmentIndex !== null ? 
+                            colorPalette[selectedSegmentIndex % colorPalette.length] : 
+                            'linear-gradient(to-br, white, rgb(239 246 255))',
+                          borderColor: selectedChallenge && selectedSegmentIndex !== null ? 
+                            colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
+                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : 
+                            '#4d96ff' : 'rgb(191 219 254)',
+                          boxShadow: selectedChallenge && selectedSegmentIndex !== null ? 
+                            `0 25px 50px -12px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
+                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}40, 0 0 0 1px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
+                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}20` : 
+                            '0 25px 50px -12px rgba(0,0,0,0.25)',
                         }}
                       >
                         <motion.div
