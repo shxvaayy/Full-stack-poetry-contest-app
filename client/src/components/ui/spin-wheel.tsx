@@ -216,17 +216,17 @@ export default function SpinWheel({
                     filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
                   }}
                 >
-                  {/* Arrow with gradient and glow */}
+                  {/* Arrow with gradient and glow - rotated 180 degrees to point down */}
                   <div 
-                    className="w-0 h-0 border-l-[20px] border-r-[20px] border-b-[35px] border-l-transparent border-r-transparent"
+                    className="w-0 h-0 border-l-[20px] border-r-[20px] border-t-[35px] border-l-transparent border-r-transparent"
                     style={{
-                      borderBottomColor: '#ef4444',
+                      borderTopColor: '#ef4444',
                       filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))',
                     }}
                   />
                   {/* Arrow highlight */}
                   <div 
-                    className="absolute top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-white opacity-40"
+                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-white opacity-40"
                   />
                 </div>
               </div>
