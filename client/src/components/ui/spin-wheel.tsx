@@ -129,11 +129,38 @@ export default function SpinWheel({
     }
 
     // Calculate which segment we landed on
-    // The wheel rotates clockwise, but we need to account for the pointer position
-    const normalizedAngle = (totalRotation % 360);
-    // Adjust for pointer position at top (0 degrees) and account for segment offset
-    const adjustedAngle = (360 - normalizedAngle + (segmentAngle / 2)) % 360;
-    let selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+    // The wheel rotates clockwise. The pointer is at the top (0 degrees).
+    // We need to find the segment that the pointer is over.
+    // The segments are drawn starting from 0 degrees (top) and going clockwise.
+    // A segment at index `i` covers angles from `i * segmentAngle` to `(i + 1) * segmentAngle`.
+    // The pointer is fixed at the top, so we need to see which segment rotates under it.
+    // The wheel's rotation is `totalRotation`.
+    // A point on the wheel that was originally at `0` degrees (top of segment 0) will be at `totalRotation` degrees.
+    // The pointer is at 0 degrees (top).
+    // We need to find the segment whose center aligns with the pointer after rotation.
+    
+    // First, normalize the total rotation to be within 0-360 degrees.
+    const currentRotation = totalRotation % 360;
+
+    // The pointer is at the top (0 degrees). The segments are drawn clockwise.
+    // If the wheel rotates by `currentRotation` degrees, a point that was at `X` degrees
+    // is now at `X + currentRotation` degrees. We are interested in the point that ends up at 0 degrees (the pointer).
+    // So, we need to find `X` such that `X + currentRotation = 0 (mod 360)`.
+    // This means `X = -currentRotation (mod 360)`.
+    // Or, `X = (360 - currentRotation) % 360`.
+    // This `X` is the angle on the *original* wheel that is now under the pointer.
+    const angleUnderPointer = (360 - currentRotation) % 360;
+
+    // Now, determine which segment this `angleUnderPointer` falls into.
+    // Segments are 0-indexed, starting from the top (0 degrees) and going clockwise.
+    // Segment 0: 0 to segmentAngle
+    // Segment 1: segmentAngle to 2*segmentAngle
+    // ...
+    // Segment N: N*segmentAngle to (N+1)*segmentAngle
+    let selectedIndex = Math.floor(angleUnderPointer / segmentAngle);
+
+    // Ensure selectedIndex is within bounds (0 to challenges.length - 1)
+    selectedIndex = selectedIndex % challenges.length;
     if (selectedIndex < 0) selectedIndex += challenges.length;
 
     // Gradual velocity decrease simulation
@@ -165,13 +192,7 @@ export default function SpinWheel({
     }
   };
 
-  const handleSpinAgain = () => {
-    setSelectedChallenge(null);
-    setSelectedColor(null); // <-- reset color
-    setSelectedSegmentIndex(null);
-    setShowCelebration(false);
-    handleSpin();
-  };
+
 
   return (
     <>
@@ -588,27 +609,17 @@ export default function SpinWheel({
                           {selectedChallenge.description}
                         </p>
                         
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button 
-                              onClick={handleUseChallenge}
-                              size="lg"
-                              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-green-500/25 transition-all duration-300"
-                            >
-                              ✨ Use This Challenge
-                            </Button>
-                          </motion.div>
-                          
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button 
-                              onClick={handleSpinAgain}
-                              variant="outline"
-                              size="lg"
-                              className="border-2 border-purple-300 text-purple-700 hover:bg-purple-50 font-semibold px-8 py-3 rounded-xl transition-all duration-300"
-                            >
-                              🎲 Spin Again
-                            </Button>
-                          </motion.div>
+                        <div className="flex gap-4 justify-center">
+                          <Button 
+                            onClick={handleUseChallenge}
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 rounded-xl border-2 border-white/20"
+                            style={{
+                              boxShadow: '0 8px 24px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                            }}
+                          >
+                            <Sparkles className="mr-2" size={20} />
+                            Use This Challenge
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
