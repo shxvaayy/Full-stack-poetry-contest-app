@@ -870,8 +870,8 @@ export default function UserProfile() {
 
                                       return (
                                         <Badge key={index} className={getStatusColor(actualStatus)} size="sm">{getStatusIcon(actualStatus)}
-                                          <span className="ml-1">{actualStatusspan>
-                                          {submission.poems.length > 1 && <span className="ml-1">({index + 1})</span>}
+                                            <span className="ml-1">{actualStatus}</span>
+                                            {submission.poems.length > 1 && <span className="ml-1">({index + 1})</span>}
                                         </Badge>
                                       );
                                     })}
@@ -1076,10 +1076,7 @@ export default function UserProfile() {
                                       <p className="text-sm text-gray-600">Evaluated</p>
                                       {poem.challengeTitle && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                          Challenge: {typeof poem.challengeTitle === 'string' 
-                                            ? poem.challengeTitle.replace(/[{}]/g, '').replace(/"/g, '')
-                                            : poem.challengeTitle
-                                          }
+                                          Challenge: {poem.challengeTitle}
                                         </p>
                                       )}
                                       <div className="flex gap-2 mt-2">
