@@ -86,10 +86,11 @@ export default function SpinWheel({
     }
 
     // Calculate which segment we landed on - arrow points at top (0 degrees)
-    // Since segments start at -90 degrees, we need to adjust for that offset
+    // Normalize angle to 0-360 range
     const normalizedAngle = (totalRotation % 360 + 360) % 360;
-    // Add 90 degrees to account for our segment offset, then add half segment for center alignment
-    const adjustedAngle = (normalizedAngle + 90 + (segmentAngle / 2)) % 360;
+    // Since we start from -90 degrees, we need to adjust
+    // Arrow points up, so we calculate from the top (0 degrees)
+    const adjustedAngle = (360 - normalizedAngle + 90) % 360;
     const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
 
     setTimeout(() => {
@@ -262,14 +263,14 @@ export default function SpinWheel({
                       <div 
                         style={{
                           position: 'absolute',
-                          top: '15%',
-                          left: '50%',
+                          top: '25%',
+                          left: '75%',
                           transform: `rotate(${segmentAngle / 2}deg)`,
-                          transformOrigin: '0% 150%',
+                          transformOrigin: '0 0',
                           textAlign: 'center',
                           zIndex: 10,
-                          width: '120px',
-                          height: '40px',
+                          width: '80px',
+                          height: '30px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -278,20 +279,21 @@ export default function SpinWheel({
                         <span 
                           style={{
                             color: '#ffffff',
-                            fontSize: displayText.length > 15 ? '11px' : '13px',
-                            fontWeight: '800',
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 1px -1px 2px rgba(0,0,0,0.7), -1px 1px 2px rgba(0,0,0,0.7)',
+                            fontSize: displayText.length > 15 ? '9px' : '11px',
+                            fontWeight: '900',
+                            textShadow: '3px 3px 6px rgba(0,0,0,1), -2px -2px 4px rgba(0,0,0,0.8), 2px -2px 4px rgba(0,0,0,0.8), -2px 2px 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.9)',
                             display: 'block',
-                            lineHeight: '1.2',
-                            letterSpacing: '0.5px',
+                            lineHeight: '1.1',
+                            letterSpacing: '0.3px',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            maxWidth: '100px',
+                            maxWidth: '70px',
+                            textTransform: 'uppercase',
                           }}
                         >
-                          {displayText.length > 16 ? displayText.substring(0, 13) + '...' : displayText}
+                          {displayText.length > 14 ? displayText.substring(0, 11) + '...' : displayText}
                         </span>
                       </div>
                     </div>
