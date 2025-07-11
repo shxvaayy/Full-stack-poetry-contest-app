@@ -124,8 +124,7 @@ export default function PaymentForm({
         order_id: orderData.orderId,
         handler: async function (response: any) {
           console.log('💰 Razorpay payment successful:', response);
-          setIsProcessing(false);
-
+          
           toast({
             title: "Payment Successful!",
             description: "Your payment has been processed successfully.",
@@ -359,10 +358,14 @@ export default function PaymentForm({
             <Button
               onClick={handleRazorpayPayment}
               disabled={isProcessing || isProcessingPayPal}
-              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center"
+              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center transition-colors"
+              type="button"
             >
               {isProcessing ? (
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <div className="flex items-center">
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  <span>Processing...</span>
+                </div>
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
@@ -380,13 +383,14 @@ export default function PaymentForm({
             <Button
               onClick={handlePayPalPayment}
               disabled={isProcessing || isProcessingPayPal}
-              className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
+              className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center transition-colors"
+              type="button"
             >
               {isProcessingPayPal ? (
-                <>
+                <div className="flex items-center">
                   <Loader2 className="w-6 h-6 animate-spin mr-2" />
                   <span>Connecting to PayPal...</span>
-                </>
+                </div>
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
