@@ -140,19 +140,23 @@ export default function SpinWheel({
           animation: sparkle 1.5s ease-in-out infinite;
         }
 
-        
-
-        .slice-text {
+        .wheel-slice {
           position: absolute;
-          top: 15%;
-          left: 50%;
-          transform: translateX(-50%);
-          text-align: center;
-          width: 120px;
-          line-height: 1.1;
-          word-wrap: break-word;
-          pointer-events: none;
+          width: 50%;
+          height: 50%;
+          transform-origin: 100% 100%;
+          overflow: hidden;
         }
+
+        .slice-content {
+          position: absolute;
+          width: 200%;
+          height: 200%;
+          border-radius: 50%;
+          transform: rotate(-45deg);
+        }
+
+        
       `}</style>
 
       <div className="flex flex-col items-center space-y-6 p-6 relative">
@@ -248,37 +252,39 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  const textAngle = angle + (segmentAngle / 2);
                   
                   return (
                     <div
                       key={index}
-                      className="absolute inset-0"
+                      className="wheel-slice"
                       style={{
-                        clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((angle * Math.PI) / 180)}% ${50 + 50 * Math.sin((angle * Math.PI) / 180)}%, ${50 + 50 * Math.cos(((angle + segmentAngle) * Math.PI) / 180)}% ${50 + 50 * Math.sin(((angle + segmentAngle) * Math.PI) / 180)}%)`,
+                        transform: `rotate(${angle}deg)`,
+                        clipPath: `polygon(0 0, ${Math.cos((segmentAngle * Math.PI) / 180) * 100}% ${Math.sin((segmentAngle * Math.PI) / 180) * 100}%, 0 100%)`,
                         backgroundColor: color,
+                        borderRight: '2px solid rgba(255,255,255,0.3)',
                       }}
                     >
-                      {/* Text positioned along radius */}
-                      <div
-                        className="absolute"
+                      <div 
                         style={{
-                          top: '50%',
-                          left: '50%',
-                          transform: `translate(-50%, -50%) rotate(${textAngle}deg) translateY(-120px)`,
+                          position: 'absolute',
+                          top: '30%',
+                          left: '70%',
+                          transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
                           transformOrigin: 'center',
+                          width: '100px',
+                          textAlign: 'center',
                         }}
                       >
                         <span 
-                          className="font-bold text-white block"
+                          className="font-bold"
                           style={{
-                            fontSize: challenge.challengeTitle.length > 15 ? '11px' : '13px',
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.5)',
-                            textAlign: 'center',
+                            color: 'white',
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 1px 1px 2px rgba(0,0,0,0.8)',
+                            fontSize: challenge.challengeTitle.length > 15 ? '9px' : '11px',
+                            display: 'block',
                             lineHeight: '1.1',
-                            maxWidth: '100px',
-                            wordBreak: 'break-word',
-                            transform: textAngle > 90 && textAngle < 270 ? 'rotate(180deg)' : 'none',
+                            fontWeight: '900',
+                            letterSpacing: '0.5px',
                           }}
                         >
                           {challenge.challengeTitle.length > 18 
