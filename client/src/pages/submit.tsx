@@ -1162,51 +1162,43 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                     )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Reset the challenge for the current poem
-                        const updatedPoems = [...selectedPoems];
-                        updatedPoems[currentPoemIndex] = {
-                          challenge: null,
-                          text: ""
-                        };
-                        setSelectedPoems(updatedPoems);
-                      }}
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Spin Again
-                    </Button>
-
-                    <Button
-                      onClick={() => {
-                        // Validate current poem has file
-                        const currentPoem = selectedPoems[currentPoemIndex];
-                        if (!currentPoem?.file) {
-                          toast({
-                            title: "Please upload your poem",
-                            description: "You need to upload your poem file before proceeding.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-
-                        // Check if it's the last poem
-                        if (currentPoemIndex === selectedTier.poems - 1) {
-                          // Move to the form
-                          setCurrentStep("form");
-                        } else {
-                          // Move to the next poem
-                          setCurrentPoemIndex(currentPoemIndex + 1);
-                        }
-                      }}
-                      disabled={!selectedPoems[currentPoemIndex]?.file}
-                    >
-                      {currentPoemIndex === selectedTier.poems - 1 ? "Next: Submit Form" : "Next Poem"}
-                    </Button>
-                  </div>
+                  {/* Actions for challenge selection */}
+                  {selectedPoems[currentPoemIndex]?.challenge && (
+                    <div className="flex gap-4 mt-4">
+                      <Button
+                        onClick={() => {
+                          // Validate current poem has file
+                          const currentPoem = selectedPoems[currentPoemIndex];
+                          if (!currentPoem?.file) {
+                            toast({
+                              title: "Please upload your poem",
+                              description: "You need to upload your poem file before proceeding.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          // Check if it's the last poem
+                          if (currentPoemIndex === selectedTier.poems - 1) {
+                            setCurrentStep("form");
+                          } else {
+                            setCurrentPoemIndex(currentPoemIndex + 1);
+                          }
+                        }}
+                        disabled={!selectedPoems[currentPoemIndex]?.file}
+                      >
+                        {currentPoemIndex === selectedTier.poems - 1 ? "Next: Submit Form" : "Next Poem"}
+                      </Button>
+                      {selectedTier.poems > 1 && currentPoemIndex > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUsePreviousChallenge(currentPoemIndex)}
+                        >
+                          Use Previous Challenge
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

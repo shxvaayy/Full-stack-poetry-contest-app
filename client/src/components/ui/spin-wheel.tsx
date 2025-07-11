@@ -249,14 +249,15 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
-                  // Center the text in the segment, always upright, allow wrapping
+                  // Gradient overlay for 3D effect
+                  const gradient = `linear-gradient(135deg, ${color} 70%, #fff3 100%)`;
                   return (
                     <div
                       key={index}
                       className="wheel-slice"
                       style={{
                         transform: `rotate(${angle}deg)`,
-                        background: color,
+                        background: gradient,
                         borderRight: '3px solid #fff',
                         boxShadow: 'inset 0 0 16px rgba(0,0,0,0.12)'
                       }}
@@ -266,8 +267,10 @@ export default function SpinWheel({
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          width: '80%', // wider for more text
-                          transform: `translate(-50%, -70%)`,
+                          width: '70%',
+                          minHeight: '38px',
+                          maxHeight: '44px',
+                          transform: `translate(-50%, -60%)`,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -278,18 +281,25 @@ export default function SpinWheel({
                         <span
                           style={{
                             display: 'block',
-                            fontWeight: 700,
-                            fontSize: challenge.challengeTitle && challenge.challengeTitle.length > 18 ? '0.95rem' : '1.1rem',
+                            fontWeight: 600,
+                            fontSize: challenge.challengeTitle && challenge.challengeTitle.length > 16 ? '0.92rem' : '1.05rem',
                             color: '#fff',
                             textShadow: '0 2px 8px rgba(0,0,0,0.7)',
-                            background: 'rgba(0,0,0,0.25)',
-                            borderRadius: '8px',
-                            padding: '2px 10px',
-                            whiteSpace: 'normal', // allow wrapping
+                            background: 'rgba(0,0,0,0.22)',
+                            borderRadius: '7px',
+                            padding: '2px 8px',
+                            whiteSpace: 'normal',
                             wordBreak: 'break-word',
                             textAlign: 'center',
                             userSelect: 'none',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.13)',
+                            lineHeight: 1.15,
+                            maxHeight: '2.3em',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            WebkitLineClamp: 2,
+                            display: '-webkit-box',
+                            WebkitBoxOrient: 'vertical',
                           }}
                         >
                           {challenge.challengeTitle || challenge.title || challenge}
@@ -423,14 +433,6 @@ export default function SpinWheel({
                 >
                   <Sparkles className="mr-2" size={20} />
                   Use This Challenge
-                </Button>
-                <Button 
-                  onClick={handleSpinAgain}
-                  variant="outline"
-                  className="border-3 border-green-600 text-green-600 hover:bg-green-50 px-10 py-4 font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 rounded-xl bg-white/80 backdrop-blur-sm"
-                >
-                  <RefreshCw className="mr-2" size={20} />
-                  Spin Again
                 </Button>
               </div>
             </CardContent>
