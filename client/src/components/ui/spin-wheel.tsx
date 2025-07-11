@@ -30,20 +30,20 @@ export default function SpinWheel({
   const wheelRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLDivElement>(null);
 
-  // Premium color palette with gradients
+  // Vibrant color palette for distinct slices
   const colorPalette = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-    'linear-gradient(135deg, #ff8a80 0%, #ea80fc 100%)',
-    'linear-gradient(135deg, #8fd3f4 0%, #84fab0 100%)',
-    'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
-    'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)'
+    "#FF6B6B", // Red
+    "#FFD93D", // Yellow
+    "#6BCB77", // Green
+    "#4D96FF", // Blue
+    "#B983FF", // Purple
+    "#FFB5E8", // Pink
+    "#00C2CB", // Teal
+    "#FF9F1C", // Orange
+    "#A8E6CF", // Light Green
+    "#FFB3BA", // Light Pink
+    "#BFEFFF", // Light Blue
+    "#FFFACD"  // Light Yellow
   ];
 
   const segmentAngle = 360 / challenges.length;
@@ -139,6 +139,33 @@ export default function SpinWheel({
           border-radius: 50%;
           animation: sparkle 1.5s ease-in-out infinite;
         }
+
+        .wheel-slice {
+          position: absolute;
+          width: 50%;
+          height: 50%;
+          transform-origin: 100% 100%;
+          overflow: hidden;
+        }
+
+        .slice-content {
+          position: absolute;
+          width: 200%;
+          height: 200%;
+          border-radius: 50%;
+          transform: rotate(-45deg);
+        }
+
+        .slice-text {
+          position: absolute;
+          top: 25%;
+          left: 60%;
+          transform: translateX(-50%);
+          text-align: center;
+          width: 80px;
+          line-height: 1.2;
+          word-wrap: break-word;
+        }
       `}</style>
 
       <div className="flex flex-col items-center space-y-6 p-6 relative">
@@ -186,8 +213,9 @@ export default function SpinWheel({
                 ref={arrowRef}
                 className="absolute z-30"
                 style={{ 
-                  top: '-15px', 
-                  left: '50%', 
+                  position: 'absolute',
+                  top: '-20px',
+                  left: '50%',
                   transform: 'translateX(-50%)',
                 }}
               >
@@ -202,7 +230,6 @@ export default function SpinWheel({
                     className="w-0 h-0 border-l-[20px] border-r-[20px] border-b-[35px] border-l-transparent border-r-transparent"
                     style={{
                       borderBottomColor: '#ef4444',
-                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                       filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))',
                     }}
                   />
@@ -213,7 +240,7 @@ export default function SpinWheel({
                 </div>
               </div>
 
-              {/* Premium Wheel with 3D effect and gradients */}
+              {/* Premium Wheel with individual slice colors */}
               <div 
                 ref={wheelRef}
                 className={`w-80 h-80 rounded-full relative overflow-hidden ${
@@ -221,19 +248,7 @@ export default function SpinWheel({
                 }`}
                 style={{
                   transform: `rotate(${rotation}deg)`,
-                  background: `conic-gradient(${challenges.map((_, index) => {
-                    const startAngle = (index * segmentAngle);
-                    const endAngle = ((index + 1) * segmentAngle);
-                    return `${colorPalette[index % colorPalette.length]} ${startAngle}deg ${endAngle}deg`;
-                  }).join(', ')})`,
-                  border: '8px solid transparent',
-                  backgroundOrigin: 'border-box',
-                  backgroundClip: 'padding-box, border-box',
-                  backgroundImage: `conic-gradient(${challenges.map((_, index) => {
-                    const startAngle = (index * segmentAngle);
-                    const endAngle = ((index + 1) * segmentAngle);
-                    return `${colorPalette[index % colorPalette.length]} ${startAngle}deg ${endAngle}deg`;
-                  }).join(', ')}), linear-gradient(45deg, #fbbf24, #f59e0b, #d97706)`,
+                  border: '8px solid #fbbf24',
                   boxShadow: `
                     0 0 0 4px rgba(251, 191, 36, 0.3),
                     0 20px 40px rgba(0,0,0,0.2),
@@ -242,40 +257,37 @@ export default function SpinWheel({
                   `,
                 }}
               >
-                {/* Challenge Labels with better positioning */}
+                {/* Individual slices with unique colors */}
                 {challenges.map((challenge, index) => {
-                  const angle = (index * segmentAngle) + (segmentAngle / 2);
-                  const radius = 120;
-
+                  const angle = index * segmentAngle;
+                  const color = colorPalette[index % colorPalette.length];
+                  
                   return (
                     <div
                       key={index}
-                      className="absolute"
+                      className="wheel-slice"
                       style={{
-                        top: '50%',
-                        left: '50%',
-                        transform: `rotate(${angle}deg) translate(0, -${radius}px) rotate(-${angle}deg)`,
-                        transformOrigin: '0 0',
-                        width: '120px',
-                        marginLeft: '-60px',
-                        marginTop: '-20px'
+                        transform: `rotate(${angle}deg)`,
+                        clipPath: `polygon(0 0, ${Math.cos((segmentAngle * Math.PI) / 180) * 100}% ${Math.sin((segmentAngle * Math.PI) / 180) * 100}%, 0 100%)`,
+                        backgroundColor: color,
+                        borderRight: '2px solid rgba(255,255,255,0.3)',
                       }}
                     >
-                      <div 
-                        className="text-white text-center leading-tight font-bold px-3 py-2 rounded-lg"
-                        style={{
-                          textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.6)',
-                          fontSize: challenge.challengeTitle.length > 15 ? '11px' : '13px',
-                          lineHeight: '1.2',
-                          background: 'rgba(0,0,0,0.2)',
-                          backdropFilter: 'blur(4px)',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                        }}
-                      >
-                        {challenge.challengeTitle.length > 20 
-                          ? challenge.challengeTitle.substring(0, 17) + '...' 
-                          : challenge.challengeTitle
-                        }
+                      <div className="slice-text">
+                        <span 
+                          className="text-white font-bold text-xs"
+                          style={{
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.6)',
+                            fontSize: challenge.challengeTitle.length > 15 ? '10px' : '12px',
+                            display: 'block',
+                            transform: `rotate(${segmentAngle / 2}deg)`,
+                          }}
+                        >
+                          {challenge.challengeTitle.length > 20 
+                            ? challenge.challengeTitle.substring(0, 17) + '...' 
+                            : challenge.challengeTitle
+                          }
+                        </span>
                       </div>
                     </div>
                   );
@@ -311,22 +323,6 @@ export default function SpinWheel({
                     </div>
                   </div>
                 </div>
-
-                {/* Decorative segments dividers */}
-                {Array.from({ length: challenges.length }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="absolute w-1 bg-white opacity-30"
-                    style={{
-                      height: '140px',
-                      top: '20px',
-                      left: '50%',
-                      transformOrigin: '50% 140px',
-                      transform: `translateX(-50%) rotate(${index * segmentAngle}deg)`,
-                      boxShadow: '0 0 4px rgba(0,0,0,0.3)'
-                    }}
-                  />
-                ))}
               </div>
 
               {/* Outer decorative rings for premium feel */}
