@@ -87,10 +87,10 @@ export default function SpinWheel({
 
     // Calculate which segment we landed on - arrow points at top (0 degrees)
     // We need to find which slice the arrow is pointing at after rotation
-    const normalizedAngle = totalRotation % 360;
-    // Since slices start at 0 degrees and arrow points down from top
-    // We need to find which slice the top position lands on
-    const selectedIndex = Math.floor((360 - normalizedAngle) / segmentAngle) % challenges.length;
+    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
+    // Add half segment angle to account for the center of each slice
+    const adjustedAngle = (normalizedAngle + (segmentAngle / 2)) % 360;
+    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
 
     setTimeout(() => {
       const selected = challenges[selectedIndex];
@@ -261,34 +261,36 @@ export default function SpinWheel({
                       <div 
                         style={{
                           position: 'absolute',
-                          top: '45%',
-                          left: '30%',
-                          right: '5%',
-                          transform: `rotate(${segmentAngle / 2}deg)`,
+                          top: '20%',
+                          left: '60%',
+                          transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
                           transformOrigin: 'center',
                           textAlign: 'center',
                           zIndex: 10,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '40px',
+                          width: '90px',
+                          height: '30px',
                         }}
                       >
                         <span 
                           style={{
                             color: '#ffffff',
-                            fontSize: '12px',
+                            fontSize: displayText.length > 15 ? '10px' : '12px',
                             fontWeight: '700',
                             textShadow: '1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8), 1px -1px 2px rgba(0,0,0,0.8), -1px 1px 2px rgba(0,0,0,0.8)',
                             display: 'block',
-                            lineHeight: '1.2',
-                            letterSpacing: '0.5px',
-                            maxWidth: '100px',
+                            lineHeight: '1.1',
+                            letterSpacing: '0.3px',
                             wordWrap: 'break-word',
                             textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
                         >
-                          {displayText}
+                          {displayText.length > 18 ? displayText.substring(0, 15) + '...' : displayText}
                         </span>
                       </div>
                     </div>
