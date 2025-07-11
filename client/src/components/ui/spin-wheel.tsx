@@ -128,10 +128,9 @@ export default function SpinWheel({
 
     // Calculate landing position with precision - fixed to match wheel layout
     const normalizedAngle = (totalRotation % 360 + 360) % 360;
-    // The pointer is at the top (12 o'clock position), so we need to account for that
-    // Segments start from 0 degrees and go clockwise
-    const pointerAngle = (360 - normalizedAngle) % 360;
-    const selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
+    // Adjust for arrow position (top center) and wheel rotation offset
+    const adjustedAngle = (normalizedAngle + 90) % 360;
+    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
 
     // Gradual velocity decrease simulation
     const velocityDecrease = setInterval(() => {
@@ -559,13 +558,9 @@ export default function SpinWheel({
                             colorPalette[selectedSegmentIndex % colorPalette.length] : 
                             'linear-gradient(to-br, white, rgb(239 246 255))',
                           borderColor: selectedChallenge && selectedSegmentIndex !== null ? 
-                            colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : 
                             '#4d96ff' : 'rgb(191 219 254)',
                           boxShadow: selectedChallenge && selectedSegmentIndex !== null ? 
-                            `0 25px 50px -12px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}40, 0 0 0 1px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
-                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}20` : 
+                            `0 25px 50px -12px rgba(77, 150, 255, 0.25), 0 0 0 1px rgba(77, 150, 255, 0.12)` : 
                             '0 25px 50px -12px rgba(0,0,0,0.25)',
                         }}
                       >
