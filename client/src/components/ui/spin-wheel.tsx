@@ -404,14 +404,14 @@ export default function SpinWheel({
                         <div 
                           style={{
                             position: 'absolute',
-                            top: '30%',
-                            left: '70%',
+                            top: '25%',
+                            left: '60%',
                             transform: `rotate(${segmentAngle / 2}deg)`,
                             transformOrigin: '0 0',
                             textAlign: 'center',
                             zIndex: 10,
-                            width: '90px',
-                            height: '40px',
+                            width: '100px',
+                            height: '50px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -419,28 +419,35 @@ export default function SpinWheel({
                         >
                           <span 
                             style={{
-                              color: '#000000',
-                              fontSize: displayText.length > 15 ? '10px' : '12px',
+                              color: '#1a1a1a',
+                              fontSize: displayText.length > 15 ? '11px' : '13px',
                               fontWeight: '900',
                               textShadow: `
-                                1px 1px 2px rgba(255,255,255,0.8), 
-                                -1px -1px 2px rgba(255,255,255,0.8), 
-                                1px -1px 2px rgba(255,255,255,0.8), 
-                                -1px 1px 2px rgba(255,255,255,0.8), 
-                                0 0 4px rgba(255,255,255,0.6)
+                                2px 2px 0 rgba(255,255,255,0.9), 
+                                -2px -2px 0 rgba(255,255,255,0.9), 
+                                2px -2px 0 rgba(255,255,255,0.9), 
+                                -2px 2px 0 rgba(255,255,255,0.9),
+                                1px 1px 0 rgba(255,255,255,0.9), 
+                                -1px -1px 0 rgba(255,255,255,0.9), 
+                                1px -1px 0 rgba(255,255,255,0.9), 
+                                -1px 1px 0 rgba(255,255,255,0.9),
+                                0 0 6px rgba(255,255,255,0.8),
+                                0 0 10px rgba(255,255,255,0.5)
                               `,
                               display: 'block',
-                              lineHeight: '1.1',
-                              letterSpacing: '0.5px',
+                              lineHeight: '1.2',
+                              letterSpacing: '0.8px',
                               textAlign: 'center',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              maxWidth: '80px',
+                              maxWidth: '90px',
                               textTransform: 'uppercase',
+                              fontFamily: 'Arial, sans-serif',
+                              WebkitTextStroke: '1px rgba(255,255,255,0.5)',
                             }}
                           >
-                            {displayText.length > 14 ? displayText.substring(0, 11) + '...' : displayText}
+                            {displayText.length > 12 ? displayText.substring(0, 9) + '...' : displayText}
                           </span>
                         </div>
                       </div>
