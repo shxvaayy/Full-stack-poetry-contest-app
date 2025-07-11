@@ -274,37 +274,35 @@ export default function SpinWheel({
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          width: '110px',
-                          height: '32px',
-                          transform: 'translate(-50%, -120px)', // always upright, not rotated
+                          width: '60%',
+                          transform: `translate(-50%, -70%)`,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           pointerEvents: 'none',
+                          zIndex: 2
                         }}
                       >
                         <span
-                          className="font-bold"
                           style={{
+                            display: 'block',
+                            fontWeight: 700,
+                            fontSize: '1.1rem',
                             color: '#fff',
-                            textShadow: '0 2px 8px rgba(0,0,0,0.7), 0 0 2px #000',
-                            fontSize: challenge.challengeTitle.length > 15 ? '11px' : '15px',
-                            fontWeight: 900,
-                            letterSpacing: '0.5px',
-                            background: 'rgba(0,0,0,0.35)',
+                            textShadow: '0 2px 8px rgba(0,0,0,0.7)',
+                            background: 'rgba(0,0,0,0.25)',
                             borderRadius: '8px',
-                            padding: '4px 10px',
-                            maxWidth: '100px',
-                            overflow: 'hidden',
+                            padding: '2px 10px',
                             whiteSpace: 'nowrap',
+                            maxWidth: '100%',
+                            overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             textAlign: 'center',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                            userSelect: 'none',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
                           }}
                         >
-                          {challenge.challengeTitle.length > 18
-                            ? challenge.challengeTitle.substring(0, 15) + '...'
-                            : challenge.challengeTitle}
+                          {challenge.challengeTitle || challenge.title || challenge}
                         </span>
                       </div>
                     </div>
