@@ -818,7 +818,18 @@ export default function UserProfile() {
                       </div>
                       <div className="text-center p-4 bg-orange-50 rounded-lg">
                         <div className="text-2xl font-bold text-orange-600">
-                          {new Set(submissions.map(s => s.contestType).filter(Boolean)).size}
+                          {(() => {
+                            const contestTypes = new Set();
+                            submissions.forEach(s => {
+                              // Check submission level contest type
+                              if (s.contestType) contestTypes.add(s.contestType);
+                              // Check individual poem contest types
+                              s.poems.forEach(p => {
+                                if (p.contestType) contestTypes.add(p.contestType);
+                              });
+                            });
+                            return contestTypes.size;
+                          })()}
                         </div>
                         <div className="text-sm text-gray-600">Contest Types</div>
                       </div>
@@ -834,6 +845,40 @@ export default function UserProfile() {
                     {submissions.length > 0 ? (
                       <div className="space-y-3">
                         {submissions.slice(0, 5).map((submission) => {
+                          // Clean up challenge title display
+                          const getCleanChallengeTitle = (challengeTitle: string | undefined) => {
+                            if (!challengeTitle) return null;
+                            
+                            // Handle cases where challengeTitle might be a stringified array or object
+                            if (typeof challengeTitle === 'string') {
+                              try {
+                                // Try to parse if it looks like JSON
+                                if (challengeTitle.startsWith('{') || challengeTitle.startsWith('[')) {
+                                  const parsed = JSON.parse(challengeTitle);
+                                  if (Array.isArray(parsed)) {
+                                    return parsed.filter(Boolean).join(', ') || null;
+                                  }
+                                  if (typeof parsed === 'object' && parsed !== null) {
+                                    // Extract meaningful values from object
+                                    const values = Object.values(parsed).filter(v => v && typeof v === 'string' && v.trim());
+                                    return values.length > 0 ? values.join(', ') : null;
+                                  }
+                                }
+                                return challengeTitle;
+                              } catch {
+                                // If parsing fails, return as-is but clean up obvious formatting issues
+                                return challengeTitle.replace(/[{}"\[\]]/g, '').trim() || null;
+                              }
+                            }
+                            return challengeTitle;
+                          };
+
+                          const cleanChallengeTitle = submission.poems?.[0]?.challengeTitle 
+                            ? getCleanChallengeTitle(submission.poems[0].challengeTitle)
+                            : submission.challengeTitle 
+                              ? getCleanChallengeTitle(submission.challengeTitle)
+                              : null;
+
                           return (
                             <div key={submission.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                               <div>
@@ -846,12 +891,19 @@ export default function UserProfile() {
                                 <div className="text-sm text-gray-600">
                                   {formatDate(submission.submittedAt)}
                                 </div>
+                                {cleanChallengeTitle && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Challenge: {cleanChallengeTitle}
+                                  </div>
+                                )}
                                 {submission.contestType && (
                                   <Badge className={getContestTypeColor(submission.contestType)} size="sm">
                                     {submission.contestType}
                                   </Badge>
                                 )}
-                              </div>
+                              </div></div>
+                        })}
+                      </div>
                               <div className="flex items-center space-x-2">
                                 <Badge className={getTierColor(submission.tier)}>
                                   {getTierDisplayName(submission.tier)}
