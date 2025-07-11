@@ -1948,6 +1948,11 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     }
 
     // Create submission data
+    const contestType = req.body.contestType || req.body.contest_type || 'Theme-Based';
+    const challengeTitle = req.body.challengeTitle || req.body.challenge_title || poemTitle;
+    const challengeDescription = req.body.challengeDescription || req.body.challenge_description || '';
+    const poemText = req.body.poemText || req.body.poem_text || '';
+
     const submissionData = {
       userId: user?.id || null, // CRITICAL: Link to user
       firstName,
@@ -1961,13 +1966,17 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       paymentId: paymentId || null,
       paymentMethod: paymentMethod || 'free',
       poemFileUrl: poemFileUrl,
-        photoFileUrl: photoFileUrl,
-        submissionUuid: crypto.randomUUID(),
+      photoFileUrl: photoFileUrl,
+      submissionUuid: crypto.randomUUID(),
       poemIndex: 1,
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
       status: 'Pending',
-      type: 'Human'
+      type: 'Human',
+      contestType,
+      challengeTitle,
+      challengeDescription,
+      poemText
     };
 
     console.log('🔗 Linking submission to user ID:', user?.id);
@@ -1982,20 +1991,6 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     // This ensures fast response to user while still completing necessary tasks
     setImmediate(async () => {
       try {
-        // Extract contest fields and poem text from request body with better field mapping
-        const contestType = req.body.contestType || req.body.contest_type || 'Theme-Based';
-        const challengeTitle = req.body.challengeTitle || req.body.challenge_title || req.body.poemTitle || submissionData.poemTitle;
-        const challengeDescription = req.body.challengeDescription || req.body.challenge_description || '';
-        const poemText = req.body.poemText || req.body.poem_text || '';
-
-        console.log('🔍 Contest fields for Google Sheets:', {
-          contestType,
-          challengeTitle,
-          challengeDescription: challengeDescription ? 'YES' : 'NO',
-          poemText: poemText ? 'YES' : 'NO',
-          requestBodyKeys: Object.keys(req.body)
-        });
-
         // Add to Google Sheets in background with proper file URLs
         console.log('🔍 File URLs being sent to sheets:', { 
           poemFileUrl: poemFileUrl || 'EMPTY', 
@@ -2314,6 +2309,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
     const submissions = [];
 
     for (let i = 0; i < titles.length; i++) {
+      const contestTypeMulti = req.body.contestType || req.body.contest_type || 'Theme-Based';
+      const challengeTitleMulti = req.body[`challengeTitle_${i}`] || req.body.challengeTitle || titles[i];
+      const challengeDescriptionMulti = req.body[`challengeDescription_${i}`] || req.body.challengeDescription || '';
+
       const submissionData = {
         userId: user?.id || null, // CRITICAL: Link to user
         firstName,
@@ -2333,7 +2332,10 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         totalPoemsInSubmission: titles.length,
         submittedAt: new Date(),
         status: 'Pending',
-        type: 'Human'
+        type: 'Human',
+        contestType: contestTypeMulti,
+        challengeTitle: challengeTitleMulti,
+        challengeDescription: challengeDescriptionMulti
       };
 
       console.log(`💾 Saving submission ${i + 1}/${titles.length}: ${titles[i]}`);
