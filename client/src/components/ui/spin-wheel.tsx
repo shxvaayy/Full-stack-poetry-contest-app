@@ -551,28 +551,30 @@ export default function SpinWheel({
                         className="p-8 rounded-2xl shadow-xl border-2"
                         style={{
                           background: selectedChallenge ? (() => {
+                            // Calculate the exact same way we do in handleSpin
                             const normalizedAngle = (rotation % 360 + 360) % 360;
                             const adjustedAngle = (normalizedAngle + 90) % 360;
                             const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
-                            const segmentColor = colorPalette[selectedIndex % colorPalette.length];
-                            return `${segmentColor}, rgba(255,255,255,0.9)`;
+                            const segmentGradient = colorPalette[selectedIndex % colorPalette.length];
+                            // Mix the segment gradient with white for better readability
+                            return `linear-gradient(135deg, ${segmentGradient.split('(')[1].split(')')[0]}, rgba(255,255,255,0.8))`;
                           })() : 'linear-gradient(to-br, white, rgb(239 246 255))',
                           borderColor: selectedChallenge ? (() => {
                             const normalizedAngle = (rotation % 360 + 360) % 360;
                             const adjustedAngle = (normalizedAngle + 90) % 360;
                             const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
-                            const segmentColor = colorPalette[selectedIndex % colorPalette.length];
-                            // Extract the main color from the gradient
-                            const colorMatch = segmentColor.match(/#[a-fA-F0-9]{6}/);
-                            return colorMatch ? colorMatch[0] : '#ffd700';
+                            const segmentGradient = colorPalette[selectedIndex % colorPalette.length];
+                            // Extract the primary color from the gradient
+                            const firstColor = segmentGradient.split('#')[1]?.split(' ')[0];
+                            return firstColor ? `#${firstColor}` : '#4d96ff';
                           })() : 'rgb(191 219 254)',
                           boxShadow: selectedChallenge ? (() => {
                             const normalizedAngle = (rotation % 360 + 360) % 360;
                             const adjustedAngle = (normalizedAngle + 90) % 360;
                             const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
-                            const segmentColor = colorPalette[selectedIndex % colorPalette.length];
-                            const colorMatch = segmentColor.match(/#[a-fA-F0-9]{6}/);
-                            const shadowColor = colorMatch ? colorMatch[0] : '#ffd700';
+                            const segmentGradient = colorPalette[selectedIndex % colorPalette.length];
+                            const firstColor = segmentGradient.split('#')[1]?.split(' ')[0];
+                            const shadowColor = firstColor ? `#${firstColor}` : '#4d96ff';
                             return `0 25px 50px -12px ${shadowColor}40, 0 0 0 1px ${shadowColor}20`;
                           })() : '0 25px 50px -12px rgba(0,0,0,0.25)',
                         }}
