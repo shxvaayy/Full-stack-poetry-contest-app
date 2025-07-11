@@ -257,8 +257,11 @@ export default function SpinWheel({
                   const color = colorPalette[index % colorPalette.length];
                   // Gradient overlay for 3D effect
                   const gradient = `linear-gradient(135deg, ${color} 70%, #fff3 100%)`;
-                  // Highlight the selected segment (for dev/debug)
-                  const isSelected = selectedChallenge && ((360 - (rotation % 360)) % 360) / segmentAngle % challenges.length === index;
+                  // Robust pointer sync: calculate which segment is under the pointer
+                  const normalizedAngle = (360 - (rotation % 360)) % 360;
+                  let pointerIndex = Math.round(normalizedAngle / segmentAngle) % challenges.length;
+                  if (pointerIndex === challenges.length) pointerIndex = 0;
+                  const isSelected = index === pointerIndex;
                   return (
                     <div
                       key={index}
@@ -267,7 +270,7 @@ export default function SpinWheel({
                         transform: `rotate(${angle}deg)`,
                         background: gradient,
                         borderRight: '3px solid #fff',
-                        boxShadow: isSelected ? '0 0 0 4px #22d3ee, 0 0 16px #22d3ee88, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)'
+                        boxShadow: isSelected ? '0 0 0 4px #fbbf24, 0 0 16px #fbbf2488, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)'
                       }}
                     >
                       <div
@@ -276,8 +279,8 @@ export default function SpinWheel({
                           top: '50%',
                           left: '50%',
                           width: '80%',
-                          minHeight: '38px',
-                          maxHeight: '48px',
+                          minHeight: '32px',
+                          maxHeight: '40px',
                           transform: `translate(-50%, -60%)`,
                           display: 'flex',
                           alignItems: 'center',
@@ -289,8 +292,8 @@ export default function SpinWheel({
                         <span
                           style={{
                             display: '-webkit-box',
-                            fontWeight: 600,
-                            fontSize: challenge.challengeTitle && challenge.challengeTitle.length > 18 ? '0.85rem' : '1.05rem',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
                             color: '#fff',
                             textShadow: '0 2px 8px rgba(0,0,0,0.7)',
                             background: 'rgba(0,0,0,0.22)',
@@ -302,7 +305,7 @@ export default function SpinWheel({
                             userSelect: 'none',
                             boxShadow: '0 1px 4px rgba(0,0,0,0.13)',
                             lineHeight: 1.15,
-                            maxHeight: '2.3em',
+                            maxHeight: '2.1em',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             WebkitLineClamp: 2,
