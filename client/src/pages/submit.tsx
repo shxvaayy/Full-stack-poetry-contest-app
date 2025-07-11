@@ -1600,10 +1600,6 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                   userEmail={formData.email}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
-                  isProcessing={isProcessingPayment}
-                  setIsProcessing={setIsProcessingPayment}
-                  isProcessingPayPal={setIsProcessingPayPal}
-                  setIsProcessingPayPal={setIsProcessingPayPal}
                   onBack={() => setCurrentStep("form")}
                   onQRPayment={(qrData) => {
                     setQrPaymentData(qrData);
