@@ -105,11 +105,7 @@ export default function SpinWheel({
     }
   };
 
-  const handleSpinAgain = () => {
-    setSelectedChallenge(null);
-    setShowCelebration(false);
-    handleSpin();
-  };
+  
 
   // Calculate which segment is currently at the top (under the pointer)
   const getCurrentSegmentIndex = () => {
@@ -165,21 +161,7 @@ export default function SpinWheel({
           animation: sparkle 1.5s ease-in-out infinite;
         }
 
-        .wheel-slice {
-          position: absolute;
-          width: 50%;
-          height: 50%;
-          transform-origin: 100% 100%;
-          overflow: hidden;
-        }
-
-        .slice-content {
-          position: absolute;
-          width: 200%;
-          height: 200%;
-          border-radius: 50%;
-          transform: rotate(-45deg);
-        }
+        
       `}</style>
 
       <div className="flex flex-col items-center space-y-6 p-6 relative">
@@ -273,29 +255,42 @@ export default function SpinWheel({
                   return (
                     <div
                       key={index}
-                      className="wheel-slice"
                       style={{
+                        position: 'absolute',
+                        width: '50%',
+                        height: '50%',
+                        transformOrigin: '100% 100%',
                         transform: `rotate(${angle}deg)`,
-                        background: `linear-gradient(135deg, ${color} 70%, rgba(255,255,255,0.2) 100%)`,
+                        overflow: 'hidden',
                         borderRight: '2px solid rgba(255,255,255,0.3)',
                         boxShadow: isSelected ? '0 0 0 4px #fbbf24, 0 0 20px #fbbf24aa' : 'none',
                         animation: isSelected ? 'segmentPulse 1.5s ease-in-out infinite' : undefined,
                         zIndex: isSelected ? 10 : 1
                       }}
                     >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          width: '200%',
+                          height: '200%',
+                          borderRadius: '50%',
+                          transform: 'rotate(-45deg)',
+                          background: `linear-gradient(135deg, ${color} 70%, rgba(255,255,255,0.2) 100%)`,
+                        }}
+                      />
                       {/* Text positioned properly in each slice */}
                       <div
                         style={{
                           position: 'absolute',
-                          top: '15%',
-                          left: '55%',
-                          width: '90%',
-                          height: '70%',
+                          top: '20%',
+                          left: '60%',
+                          width: '80%',
+                          height: '60%',
                           transform: `rotate(${segmentAngle / 2}deg)`,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'flex-start',
-                          transformOrigin: '0% 100%',
+                          transformOrigin: '0% 50%',
                           pointerEvents: 'none',
                           zIndex: 2
                         }}
@@ -303,24 +298,25 @@ export default function SpinWheel({
                         <span
                           style={{
                             fontWeight: 700,
-                            fontSize: challenges.length > 8 ? '0.65rem' : '0.75rem',
+                            fontSize: challenges.length > 8 ? '0.6rem' : challenges.length > 6 ? '0.7rem' : '0.8rem',
                             color: '#fff',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-                            background: 'rgba(0,0,0,0.3)',
-                            borderRadius: '6px',
-                            padding: '3px 8px',
+                            textShadow: '0 2px 6px rgba(0,0,0,0.9)',
+                            background: 'rgba(0,0,0,0.4)',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
                             whiteSpace: 'nowrap',
                             textAlign: 'center',
                             userSelect: 'none',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                            lineHeight: 1.1,
-                            maxWidth: '90px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                            lineHeight: 1.2,
+                            maxWidth: challenges.length > 8 ? '70px' : '80px',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            display: 'block',
                           }}
                         >
-                          {challenge.challengeTitle?.length > 12 
-                            ? challenge.challengeTitle.substring(0, 12) + '...'
+                          {challenge.challengeTitle?.length > 10 
+                            ? challenge.challengeTitle.substring(0, 10) + '...'
                             : challenge.challengeTitle || challenge.contestType || 'Challenge'}
                         </span>
                       </div>
@@ -452,15 +448,6 @@ export default function SpinWheel({
                 >
                   <Sparkles className="mr-2" size={20} />
                   Use This Challenge
-                </Button>
-                
-                <Button 
-                  onClick={handleSpinAgain}
-                  variant="outline"
-                  className="px-8 py-4 font-bold text-lg border-2 border-green-500 text-green-600 hover:bg-green-50 rounded-xl"
-                >
-                  <RefreshCw className="mr-2" size={20} />
-                  Spin Again
                 </Button>
               </div>
             </CardContent>
