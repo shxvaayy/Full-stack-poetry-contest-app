@@ -25,6 +25,7 @@ export default function SpinWheel({
 }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null); // <-- add this
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [rotation, setRotation] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -103,6 +104,7 @@ export default function SpinWheel({
 
     setIsSpinning(true);
     setSelectedChallenge(null);
+    setSelectedColor(null); // <-- reset color
     setSelectedSegmentIndex(null);
     setShowCelebration(false);
 
@@ -128,9 +130,10 @@ export default function SpinWheel({
 
     // Calculate landing position with precision - fixed to match wheel layout
     const normalizedAngle = (totalRotation % 360 + 360) % 360;
-    // Adjust for arrow position (top center) and wheel rotation offset
-    const adjustedAngle = (normalizedAngle + 90) % 360;
-    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
+    // The pointer is at the top (12 o'clock position), so we need to account for that
+    // Segments start from 0 degrees and go clockwise
+    const pointerAngle = (360 - normalizedAngle) % 360;
+    const selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
 
     // Gradual velocity decrease simulation
     const velocityDecrease = setInterval(() => {
@@ -141,6 +144,7 @@ export default function SpinWheel({
       clearInterval(velocityDecrease);
       const selected = challenges[selectedIndex];
       setSelectedChallenge(selected);
+      setSelectedColor(colorPalette[selectedIndex % colorPalette.length]); // <-- store color
       setSelectedSegmentIndex(selectedIndex);
       setIsSpinning(false);
       setSpinVelocity(0);
@@ -162,6 +166,7 @@ export default function SpinWheel({
 
   const handleSpinAgain = () => {
     setSelectedChallenge(null);
+    setSelectedColor(null); // <-- reset color
     setSelectedSegmentIndex(null);
     setShowCelebration(false);
     handleSpin();
@@ -554,13 +559,17 @@ export default function SpinWheel({
                       <div 
                         className="p-8 rounded-2xl shadow-xl border-2"
                         style={{
-                          background: selectedChallenge && selectedSegmentIndex !== null ? 
-                            colorPalette[selectedSegmentIndex % colorPalette.length] : 
-                            'linear-gradient(to-br, white, rgb(239 246 255))',
+                          background: selectedColor
+                            ? selectedColor
+                            : 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', // fallback
                           borderColor: selectedChallenge && selectedSegmentIndex !== null ? 
+                            colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
+                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : 
                             '#4d96ff' : 'rgb(191 219 254)',
                           boxShadow: selectedChallenge && selectedSegmentIndex !== null ? 
-                            `0 25px 50px -12px rgba(77, 150, 255, 0.25), 0 0 0 1px rgba(77, 150, 255, 0.12)` : 
+                            `0 25px 50px -12px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
+                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}40, 0 0 0 1px ${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1]?.split(' ')[0] ? 
+                            `#${colorPalette[selectedSegmentIndex % colorPalette.length].split('#')[1].split(' ')[0]}` : '#4d96ff'}20` : 
                             '0 25px 50px -12px rgba(0,0,0,0.25)',
                         }}
                       >
