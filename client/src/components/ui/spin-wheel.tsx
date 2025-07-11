@@ -140,31 +140,18 @@ export default function SpinWheel({
           animation: sparkle 1.5s ease-in-out infinite;
         }
 
-        .wheel-slice {
-          position: absolute;
-          width: 50%;
-          height: 50%;
-          transform-origin: 100% 100%;
-          overflow: hidden;
-        }
-
-        .slice-content {
-          position: absolute;
-          width: 200%;
-          height: 200%;
-          border-radius: 50%;
-          transform: rotate(-45deg);
-        }
+        
 
         .slice-text {
           position: absolute;
-          top: 25%;
-          left: 60%;
+          top: 15%;
+          left: 50%;
           transform: translateX(-50%);
           text-align: center;
-          width: 80px;
-          line-height: 1.2;
+          width: 120px;
+          line-height: 1.1;
           word-wrap: break-word;
+          pointer-events: none;
         }
       `}</style>
 
@@ -261,30 +248,41 @@ export default function SpinWheel({
                 {challenges.map((challenge, index) => {
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
+                  const textAngle = angle + (segmentAngle / 2);
                   
                   return (
                     <div
                       key={index}
-                      className="wheel-slice"
+                      className="absolute inset-0"
                       style={{
-                        transform: `rotate(${angle}deg)`,
-                        clipPath: `polygon(0 0, ${Math.cos((segmentAngle * Math.PI) / 180) * 100}% ${Math.sin((segmentAngle * Math.PI) / 180) * 100}%, 0 100%)`,
+                        clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((angle * Math.PI) / 180)}% ${50 + 50 * Math.sin((angle * Math.PI) / 180)}%, ${50 + 50 * Math.cos(((angle + segmentAngle) * Math.PI) / 180)}% ${50 + 50 * Math.sin(((angle + segmentAngle) * Math.PI) / 180)}%)`,
                         backgroundColor: color,
-                        borderRight: '2px solid rgba(255,255,255,0.3)',
                       }}
                     >
-                      <div className="slice-text">
+                      {/* Text positioned along radius */}
+                      <div
+                        className="absolute"
+                        style={{
+                          top: '50%',
+                          left: '50%',
+                          transform: `translate(-50%, -50%) rotate(${textAngle}deg) translateY(-120px)`,
+                          transformOrigin: 'center',
+                        }}
+                      >
                         <span 
-                          className="text-white font-bold text-xs"
+                          className="font-bold text-white block"
                           style={{
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.6)',
-                            fontSize: challenge.challengeTitle.length > 15 ? '10px' : '12px',
-                            display: 'block',
-                            transform: `rotate(${segmentAngle / 2}deg)`,
+                            fontSize: challenge.challengeTitle.length > 15 ? '11px' : '13px',
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.5)',
+                            textAlign: 'center',
+                            lineHeight: '1.1',
+                            maxWidth: '100px',
+                            wordBreak: 'break-word',
+                            transform: textAngle > 90 && textAngle < 270 ? 'rotate(180deg)' : 'none',
                           }}
                         >
-                          {challenge.challengeTitle.length > 20 
-                            ? challenge.challengeTitle.substring(0, 17) + '...' 
+                          {challenge.challengeTitle.length > 18 
+                            ? challenge.challengeTitle.substring(0, 15) + '...' 
                             : challenge.challengeTitle
                           }
                         </span>
