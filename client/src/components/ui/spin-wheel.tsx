@@ -69,12 +69,13 @@ export default function SpinWheel({
     setSelectedChallenge(null);
     setShowCelebration(false);
 
-    // Realistic spin physics
+    // New logic: select a random index, and rotate so it lands at 0deg (top)
+    const targetIndex = Math.floor(Math.random() * challenges.length);
     const minSpins = 5;
     const maxSpins = 10;
     const spins = minSpins + Math.random() * (maxSpins - minSpins);
-    const finalAngle = Math.random() * 360;
-    const totalRotation = rotation + (spins * 360) + finalAngle;
+    const finalAngle = 360 - (targetIndex * segmentAngle);
+    const totalRotation = spins * 360 + finalAngle;
 
     // Random duration between 3-5 seconds for realistic feel
     const duration = 3000 + Math.random() * 2000;
@@ -86,12 +87,8 @@ export default function SpinWheel({
       wheelRef.current.style.transition = `transform ${duration}ms cubic-bezier(0.23, 1, 0.32, 1)`;
     }
 
-    // Calculate which segment we landed on
-    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    const selectedIndex = Math.floor(normalizedAngle / segmentAngle) % challenges.length;
-
     setTimeout(() => {
-      const selected = challenges[selectedIndex];
+      const selected = challenges[targetIndex];
       setSelectedChallenge(selected);
       setIsSpinning(false);
       animateArrow();
