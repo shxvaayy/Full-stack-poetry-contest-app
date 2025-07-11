@@ -26,6 +26,14 @@ console.log('🔍 Available environment keys:', Object.keys(process.env).filter(
 console.log('🔍 DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('🔍 DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
 
+// Check Razorpay credentials specifically
+console.log('💳 Razorpay Environment Check:');
+console.log('- RAZORPAY_KEY_ID exists:', !!process.env.RAZORPAY_KEY_ID);
+console.log('- RAZORPAY_KEY_SECRET exists:', !!process.env.RAZORPAY_KEY_SECRET);
+if (process.env.RAZORPAY_KEY_ID) {
+  console.log('- RAZORPAY_KEY_ID preview:', process.env.RAZORPAY_KEY_ID.substring(0, 8) + '...');
+}
+
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL environment variable is required');
   console.error('💡 Please check your Secrets configuration in Replit');

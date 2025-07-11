@@ -171,15 +171,30 @@ const uploadFields = []; // upload.fields([]);  // Modified as upload is not def
 
 import { paypalRouter } from './paypal.js';
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// Initialize Razorpay conditionally
+let razorpay: any = null;
+
+function initializeRazorpay() {
+  if (!razorpay && process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+    try {
+      razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      });
+      console.log('✅ Razorpay initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Razorpay:', error);
+    }
+  }
+  return razorpay;
+}
 
 console.log('🔧 Razorpay Configuration Check:');
 console.log('- Key ID exists:', !!process.env.RAZORPAY_KEY_ID);
 console.log('- Key Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
+
+// Try to initialize Razorpay
+initializeRazorpay();
 
 // Add PayPal routes
 router.use('/', paypalRouter);
@@ -813,7 +828,13 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
       amount: `${orderOptions.amount} paise (₹${amount})`
     });
 
-    const order = await razorpay.orders.create(orderOptions);
+    // Ensure Razorpay is initialized
+    const razorpayInstance = initializeRazorpay();
+    if (!razorpayInstance) {
+      throw new Error('Razorpay not properly configured. Please check your credentials.');
+    }
+
+    const order = await razorpayInstance.orders.create(orderOptions);
     console.log('✅ Razorpay order created successfully:', {
       orderId: order.id,
       amount: order.amount,
@@ -898,7 +919,13 @@ router.post('/api/create-order', asyncHandler(async (req: any, res: any) => {
 
   console.log('🔄 Calling Razorpay create order with options:', orderOptions);
 
-  const order = await razorpay.orders.create(orderOptions);
+  // Ensure Razorpay is initialized
+  const razorpayInstance = initializeRazorpay();
+  if (!razorpayInstance) {
+    throw new Error('Razorpay not properly configured');
+  }
+
+  const order = await razorpayInstance.orders.create(orderOptions);
   console.log('✅ Razorpay order created successfully:', order.id);
 
   res.json({
@@ -951,7 +978,12 @@ router.post('/api/verify-payment', asyncHandler(async (req: any, res: any) => {
 
     // Fetch additional payment details for verification
     try {
-      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      const razorpayInstance = initializeRazorpay();
+      if (!razorpayInstance) {
+        throw new Error('Razorpay not available for payment verification');
+      }
+      
+      const payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
       console.log('💳 Payment details from Razorpay:', {        id: payment.id,
         amount: payment.amount,
         status: payment.status,
@@ -1272,7 +1304,12 @@ router.get('/api/test-razorpay', asyncHandler(async (req: any, res: any) => {
 
   try {
     // Try to create a test order
-    const testOrder = await razorpay.orders.create({
+    const razorpayInstance = initializeRazorpay();
+    if (!razorpayInstance) {
+      throw new Error('Razorpay not initialized');
+    }
+    
+    const testOrder = await razorpayInstance.orders.create({
       amount: 100, // ₹1 in paise
       currency: 'INR',
       receipt: `test_${Date.now()}`
