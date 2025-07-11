@@ -86,10 +86,10 @@ export default function SpinWheel({
     }
 
     // Calculate which segment we landed on - arrow points at top (0 degrees)
-    // We need to find which slice the arrow is pointing at after rotation
-    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    // Add half segment angle to account for the center of each slice
-    const adjustedAngle = (normalizedAngle + (segmentAngle / 2)) % 360;
+    // Since segments start at -90 degrees, we need to adjust for that offset
+    const normalizedAngle = (totalRotation % 360 + 360) % 360;
+    // Add 90 degrees to account for our segment offset, then add half segment for center alignment
+    const adjustedAngle = (normalizedAngle + 90 + (segmentAngle / 2)) % 360;
     const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
 
     setTimeout(() => {
@@ -238,7 +238,8 @@ export default function SpinWheel({
               >
                 {/* Individual slices with unique colors */}
                 {challenges.map((challenge, index) => {
-                  const angle = index * segmentAngle;
+                  // Start from -90 degrees to align first segment with top pointer
+                  const angle = (index * segmentAngle) - 90;
                   const color = colorPalette[index % colorPalette.length];
                   
                   // Use full challenge title
@@ -261,36 +262,36 @@ export default function SpinWheel({
                       <div 
                         style={{
                           position: 'absolute',
-                          top: '20%',
-                          left: '60%',
-                          transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
-                          transformOrigin: 'center',
+                          top: '15%',
+                          left: '50%',
+                          transform: `rotate(${segmentAngle / 2}deg)`,
+                          transformOrigin: '0% 150%',
                           textAlign: 'center',
                           zIndex: 10,
+                          width: '120px',
+                          height: '40px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '90px',
-                          height: '30px',
                         }}
                       >
                         <span 
                           style={{
                             color: '#ffffff',
-                            fontSize: displayText.length > 15 ? '10px' : '12px',
-                            fontWeight: '700',
-                            textShadow: '1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8), 1px -1px 2px rgba(0,0,0,0.8), -1px 1px 2px rgba(0,0,0,0.8)',
+                            fontSize: displayText.length > 15 ? '11px' : '13px',
+                            fontWeight: '800',
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 1px -1px 2px rgba(0,0,0,0.7), -1px 1px 2px rgba(0,0,0,0.7)',
                             display: 'block',
-                            lineHeight: '1.1',
-                            letterSpacing: '0.3px',
-                            wordWrap: 'break-word',
+                            lineHeight: '1.2',
+                            letterSpacing: '0.5px',
                             textAlign: 'center',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            maxWidth: '100px',
                           }}
                         >
-                          {displayText.length > 18 ? displayText.substring(0, 15) + '...' : displayText}
+                          {displayText.length > 16 ? displayText.substring(0, 13) + '...' : displayText}
                         </span>
                       </div>
                     </div>
