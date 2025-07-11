@@ -518,7 +518,13 @@ async function initializeApp() {
     console.error('Stack trace:', error.stack);
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('💡 Check your environment variables and database connection');
-    process.exit(1);
+    
+    // Don't exit in development/demo mode, continue with limited functionality
+    if (!process.env.DATABASE_URL) {
+      console.warn('⚠️ Continuing in demo mode without database...');
+    } else {
+      process.exit(1);
+    }
   }
 }
 

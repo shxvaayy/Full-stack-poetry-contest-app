@@ -88,6 +88,14 @@ export default function PaymentForm({
 
   const handleRazorpayPayment = async () => {
     try {
+      console.log('🔍 Razorpay button clicked!');
+      console.log('🔍 Current state:', { 
+        isProcessing, 
+        isProcessingPayPal, 
+        amount, 
+        tier 
+      });
+      
       setIsProcessing(true);
       setError(null);
 
@@ -411,7 +419,12 @@ export default function PaymentForm({
 
             {/* Razorpay Payment */}
             <Button
-              onClick={handleRazorpayPayment}
+              onClick={(e) => {
+                console.log('🔍 Razorpay button click event triggered');
+                e.preventDefault();
+                e.stopPropagation();
+                handleRazorpayPayment();
+              }}
               disabled={isProcessing || isProcessingPayPal}
               className="w-full h-16 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-semibold flex items-center justify-center transition-all duration-200"
               type="button"
@@ -436,7 +449,12 @@ export default function PaymentForm({
 
             {/* PayPal Payment */}
             <Button
-              onClick={handlePayPalPayment}
+              onClick={(e) => {
+                console.log('🔍 PayPal button click event triggered');
+                e.preventDefault();
+                e.stopPropagation();
+                handlePayPalPayment();
+              }}
               disabled={isProcessing || isProcessingPayPal}
               className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
             >
