@@ -789,7 +789,8 @@ router.post('/api/create-razorpay-order', asyncHandler(async (req: any, res: any
   console.log('💳 Razorpay order creation endpoint hit!');
   console.log('📥 Request received at /api/create-razorpay-order');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
-  console.log('Request headers:', req.headers);
+  console.log('Request method:', req.method);
+  console.log('Content-Type:', req.headers['content-type']);
 
   const { amount, tier, metadata } = req.body;
 

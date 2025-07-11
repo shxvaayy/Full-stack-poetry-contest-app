@@ -65,8 +65,21 @@ export default function PaymentForm({
       const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
       if (existingScript) {
         console.log('⏳ Razorpay script already loading, waiting...');
-        existingScript.addEventListener('load', () => resolve(true));
-        existingScript.addEventListener('error', () => resolve(false));
+        
+        // Add timeout to prevent hanging
+        const timeout = setTimeout(() => {
+          console.error('❌ Script loading timeout');
+          resolve(false);
+        }, 10000);
+
+        existingScript.addEventListener('load', () => {
+          clearTimeout(timeout);
+          resolve(true);
+        });
+        existingScript.addEventListener('error', () => {
+          clearTimeout(timeout);
+          resolve(false);
+        });
         return;
       }
 
@@ -74,11 +87,21 @@ export default function PaymentForm({
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
+      
+      // Add timeout for script loading
+      const timeout = setTimeout(() => {
+        console.error('❌ Script loading timeout');
+        document.head.removeChild(script);
+        resolve(false);
+      }, 10000);
+
       script.onload = () => {
+        clearTimeout(timeout);
         console.log('✅ Razorpay script loaded successfully');
         resolve(true);
       };
       script.onerror = () => {
+        clearTimeout(timeout);
         console.error('❌ Failed to load Razorpay script');
         resolve(false);
       };
@@ -86,8 +109,13 @@ export default function PaymentForm({
     });
   };
 
-  const handleRazorpayPayment = async () => {
+  const handleRazorpayPayment = async (e) => {
     try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
       console.log('🔍 Razorpay button clicked!');
       console.log('🔍 Current state:', { 
         isProcessing, 
@@ -95,6 +123,11 @@ export default function PaymentForm({
         amount, 
         tier 
       });
+
+      if (isProcessing || isProcessingPayPal) {
+        console.log('⚠️ Payment already in progress, ignoring click');
+        return;
+      }
       
       setIsProcessing(true);
       setError(null);
@@ -255,8 +288,18 @@ export default function PaymentForm({
     }
   };
 
-  const handlePayPalPayment = async () => {
+  const handlePayPalPayment = async (e) => {
     try {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (isProcessing || isProcessingPayPal) {
+        console.log('⚠️ Payment already in progress, ignoring click');
+        return;
+      }
+      
       setIsProcessingPayPal(true);
       setError(null);
 
@@ -419,12 +462,7 @@ export default function PaymentForm({
 
             {/* Razorpay Payment */}
             <Button
-              onClick={(e) => {
-                console.log('🔍 Razorpay button click event triggered');
-                e.preventDefault();
-                e.stopPropagation();
-                handleRazorpayPayment();
-              }}
+              onClick={handleRazorpayPayment}
               disabled={isProcessing || isProcessingPayPal}
               className="w-full h-16 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-semibold flex items-center justify-center transition-all duration-200"
               type="button"
@@ -449,12 +487,7 @@ export default function PaymentForm({
 
             {/* PayPal Payment */}
             <Button
-              onClick={(e) => {
-                console.log('🔍 PayPal button click event triggered');
-                e.preventDefault();
-                e.stopPropagation();
-                handlePayPalPayment();
-              }}
+              onClick={handlePayPalPayment}
               disabled={isProcessing || isProcessingPayPal}
               className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
             >
@@ -477,10 +510,17 @@ export default function PaymentForm({
             </Button>
 
             <Button
-              onClick={onBack}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onBack && typeof onBack === 'function') {
+                  onBack();
+                }
+              }}
               variant="outline"
               className="w-full"
               disabled={isProcessing || isProcessingPayPal}
+              type="button"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Form
