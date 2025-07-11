@@ -1,7 +1,3 @@
-` tags. I will pay close attention to indentation, structure, and completeness.
-
-```
-<replit_final_file>
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,25 +69,17 @@ export default function PaymentForm({
 
   const handleRazorpayPayment = async () => {
     try {
-      console.log('🔍 Razorpay button clicked!');
-
-      if (isProcessing || isProcessingPayPal) {
-        console.log('⚠️ Payment already in progress, ignoring click');
-        return;
-      }
-
       setIsProcessing(true);
       setError(null);
-
-      console.log('💳 Starting Razorpay payment flow...');
 
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay script');
       }
 
-      console.log('💰 Creating Razorpay order...');
+      console.log('💳 Creating Razorpay order...');
 
+      // Use the correct endpoint from your working backup
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
         headers: {
@@ -118,7 +106,7 @@ export default function PaymentForm({
       const options = {
         key: orderData.key,
         amount: orderData.amount,
-        currency: orderData.currency || 'INR',
+        currency: orderData.currency,
         name: 'Writory Poetry Contest',
         description: `Poetry Contest - ${tier}`,
         order_id: orderData.orderId,
@@ -185,11 +173,6 @@ export default function PaymentForm({
 
   const handlePayPalPayment = async () => {
     try {
-      if (isProcessing || isProcessingPayPal) {
-        console.log('⚠️ Payment already in progress, ignoring click');
-        return;
-      }
-
       setIsProcessingPayPal(true);
       setError(null);
 
@@ -350,14 +333,10 @@ export default function PaymentForm({
             <Button
               onClick={handleRazorpayPayment}
               disabled={isProcessing || isProcessingPayPal}
-              className="w-full h-16 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-semibold flex items-center justify-center transition-all duration-200"
-              type="button"
+              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold flex items-center justify-center"
             >
               {isProcessing ? (
-                <>
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                  <span>Processing...</span>
-                </>
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
@@ -378,10 +357,7 @@ export default function PaymentForm({
               className="w-full h-16 bg-yellow-500 hover:bg-yellow-600 text-white text-lg font-semibold flex items-center justify-center"
             >
               {isProcessingPayPal ? (
-                <>
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                  <span>Connecting to PayPal...</span>
-                </>
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
               ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
@@ -400,7 +376,6 @@ export default function PaymentForm({
               variant="outline"
               className="w-full"
               disabled={isProcessing || isProcessingPayPal}
-              type="button"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Form
@@ -421,29 +396,29 @@ export default function PaymentForm({
 }
 
 const validateCoupon = async (code: string) => {
-  try {
-    const response = await fetch('/api/validate-coupon', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-    });
+      try {
+        const response = await fetch('/api/validate-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Coupon validation error:', error);
-    return { valid: false, message: 'Network error' };
-  }
-};
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Coupon validation error:', error);
+        return { valid: false, message: 'Network error' };
+      }
+    };
 
-const markCouponAsUsed = async (code: string, email: string) => {
-  try {
-    await fetch('/api/use-coupon', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, email }),
-    });
-  } catch (error) {
-    console.error('Error marking coupon as used:', error);
-  }
-};
+    const markCouponAsUsed = async (code: string, email: string) => {
+      try {
+        await fetch('/api/use-coupon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, email }),
+        });
+      } catch (error) {
+        console.error('Error marking coupon as used:', error);
+      }
+    };
