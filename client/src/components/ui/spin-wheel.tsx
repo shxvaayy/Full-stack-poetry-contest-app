@@ -130,9 +130,10 @@ export default function SpinWheel({
 
     // Calculate which segment we landed on
     const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    let selectedIndex = Math.round(normalizedAngle / segmentAngle) % challenges.length;
-    // Ensure index wraps correctly
-    if (selectedIndex === challenges.length) selectedIndex = 0;
+    // Offset by -90 degrees so the pointer at the top matches the correct segment
+    let pointerAngle = (normalizedAngle - 90 + 360) % 360;
+    let selectedIndex = Math.floor(pointerAngle / segmentAngle) % challenges.length;
+    if (selectedIndex < 0) selectedIndex += challenges.length;
 
     // Gradual velocity decrease simulation
     const velocityDecrease = setInterval(() => {
