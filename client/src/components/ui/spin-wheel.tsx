@@ -62,6 +62,7 @@ export default function SpinWheel({
     }
   };
 
+  // Refined spin logic for perfect pointer/segment sync
   const handleSpin = () => {
     if (isSpinning || disabled) return;
 
@@ -69,11 +70,12 @@ export default function SpinWheel({
     setSelectedChallenge(null);
     setShowCelebration(false);
 
-    // New logic: select a random index, and rotate so it lands at 0deg (top)
+    // Pick a random index
     const targetIndex = Math.floor(Math.random() * challenges.length);
     const minSpins = 5;
     const maxSpins = 10;
     const spins = minSpins + Math.random() * (maxSpins - minSpins);
+    // Calculate the angle so the selected segment lands exactly at 0deg (pointer)
     const finalAngle = 360 - (targetIndex * segmentAngle);
     const totalRotation = spins * 360 + finalAngle;
 
@@ -82,13 +84,17 @@ export default function SpinWheel({
 
     setRotation(totalRotation);
 
-    // Apply CSS transition with ease-out for deceleration effect
     if (wheelRef.current) {
       wheelRef.current.style.transition = `transform ${duration}ms cubic-bezier(0.23, 1, 0.32, 1)`;
     }
 
     setTimeout(() => {
-      const selected = challenges[targetIndex];
+      // After spin, calculate the normalized angle and selected index
+      const normalizedAngle = (360 - (totalRotation % 360)) % 360;
+      let selectedIndex = Math.round(normalizedAngle / segmentAngle) % challenges.length;
+      // Correction for edge case: if rounding puts us at challenges.length, wrap to 0
+      if (selectedIndex === challenges.length) selectedIndex = 0;
+      const selected = challenges[selectedIndex];
       setSelectedChallenge(selected);
       setIsSpinning(false);
       animateArrow();
@@ -251,6 +257,8 @@ export default function SpinWheel({
                   const color = colorPalette[index % colorPalette.length];
                   // Gradient overlay for 3D effect
                   const gradient = `linear-gradient(135deg, ${color} 70%, #fff3 100%)`;
+                  // Highlight the selected segment (for dev/debug)
+                  const isSelected = selectedChallenge && ((360 - (rotation % 360)) % 360) / segmentAngle % challenges.length === index;
                   return (
                     <div
                       key={index}
@@ -259,7 +267,7 @@ export default function SpinWheel({
                         transform: `rotate(${angle}deg)`,
                         background: gradient,
                         borderRight: '3px solid #fff',
-                        boxShadow: 'inset 0 0 16px rgba(0,0,0,0.12)'
+                        boxShadow: isSelected ? '0 0 0 4px #22d3ee, 0 0 16px #22d3ee88, inset 0 0 16px rgba(0,0,0,0.12)' : 'inset 0 0 16px rgba(0,0,0,0.12)'
                       }}
                     >
                       <div
@@ -267,9 +275,9 @@ export default function SpinWheel({
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          width: '70%',
+                          width: '80%',
                           minHeight: '38px',
-                          maxHeight: '44px',
+                          maxHeight: '48px',
                           transform: `translate(-50%, -60%)`,
                           display: 'flex',
                           alignItems: 'center',
@@ -280,9 +288,9 @@ export default function SpinWheel({
                       >
                         <span
                           style={{
-                            display: 'block',
+                            display: '-webkit-box',
                             fontWeight: 600,
-                            fontSize: challenge.challengeTitle && challenge.challengeTitle.length > 16 ? '0.92rem' : '1.05rem',
+                            fontSize: challenge.challengeTitle && challenge.challengeTitle.length > 18 ? '0.85rem' : '1.05rem',
                             color: '#fff',
                             textShadow: '0 2px 8px rgba(0,0,0,0.7)',
                             background: 'rgba(0,0,0,0.22)',
@@ -298,7 +306,6 @@ export default function SpinWheel({
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             WebkitLineClamp: 2,
-                            display: '-webkit-box',
                             WebkitBoxOrient: 'vertical',
                           }}
                         >
