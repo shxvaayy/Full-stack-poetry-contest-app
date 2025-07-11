@@ -291,10 +291,10 @@ export default function SpinWheel({
                       <div 
                         style={{
                           position: 'absolute',
-                          top: '25%',
-                          left: '65%',
-                          transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
-                          transformOrigin: 'center',
+                          top: '40%',
+                          left: '50%',
+                          transform: `rotate(${segmentAngle / 2}deg)`,
+                          transformOrigin: '0 0',
                           width: '120px',
                           textAlign: 'center',
                         }}
@@ -303,15 +303,19 @@ export default function SpinWheel({
                           className="font-bold"
                           style={{
                             color: 'white',
-                            textShadow: '3px 3px 6px rgba(0,0,0,0.9), -2px -2px 4px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.8)',
-                            fontSize: '10px',
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8), 1px 1px 2px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.8)',
+                            fontSize: '11px',
                             display: 'block',
-                            lineHeight: '1.2',
+                            lineHeight: '1.1',
                             fontWeight: '900',
-                            letterSpacing: '0.3px',
+                            letterSpacing: '0.5px',
+                            background: 'rgba(0,0,0,0.3)',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255,255,255,0.3)',
                           }}
                         >
-                          <div style={{ marginBottom: '2px' }}>{line1}</div>
+                          <div style={{ marginBottom: '1px' }}>{line1}</div>
                           {line2 && <div>{line2}</div>}
                         </div>
                       </div>
