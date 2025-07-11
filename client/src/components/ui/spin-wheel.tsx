@@ -404,50 +404,49 @@ export default function SpinWheel({
                         <div 
                           style={{
                             position: 'absolute',
-                            top: '25%',
-                            left: '60%',
-                            transform: `rotate(${segmentAngle / 2}deg)`,
+                            top: '15%',
+                            left: '40%',
+                            transform: `rotate(${segmentAngle / 2}deg) translateX(20px)`,
                             transformOrigin: '0 0',
-                            textAlign: 'center',
+                            textAlign: 'left',
                             zIndex: 10,
-                            width: '100px',
-                            height: '50px',
+                            width: '80px',
+                            height: '40px',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
+                            justifyContent: 'flex-start',
                           }}
                         >
                           <span 
                             style={{
-                              color: '#1a1a1a',
-                              fontSize: displayText.length > 15 ? '11px' : '13px',
+                              color: '#000000',
+                              fontSize: displayText.length > 12 ? '8px' : displayText.length > 8 ? '9px' : '10px',
                               fontWeight: '900',
                               textShadow: `
-                                2px 2px 0 rgba(255,255,255,0.9), 
-                                -2px -2px 0 rgba(255,255,255,0.9), 
-                                2px -2px 0 rgba(255,255,255,0.9), 
-                                -2px 2px 0 rgba(255,255,255,0.9),
-                                1px 1px 0 rgba(255,255,255,0.9), 
-                                -1px -1px 0 rgba(255,255,255,0.9), 
-                                1px -1px 0 rgba(255,255,255,0.9), 
-                                -1px 1px 0 rgba(255,255,255,0.9),
-                                0 0 6px rgba(255,255,255,0.8),
-                                0 0 10px rgba(255,255,255,0.5)
+                                1px 1px 0 rgba(255,255,255,1), 
+                                -1px -1px 0 rgba(255,255,255,1), 
+                                1px -1px 0 rgba(255,255,255,1), 
+                                -1px 1px 0 rgba(255,255,255,1),
+                                0 1px 0 rgba(255,255,255,1),
+                                1px 0 0 rgba(255,255,255,1),
+                                0 -1px 0 rgba(255,255,255,1),
+                                -1px 0 0 rgba(255,255,255,1),
+                                0 0 4px rgba(255,255,255,0.8)
                               `,
                               display: 'block',
-                              lineHeight: '1.2',
-                              letterSpacing: '0.8px',
-                              textAlign: 'center',
+                              lineHeight: '1.1',
+                              letterSpacing: '0.5px',
+                              textAlign: 'left',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              maxWidth: '90px',
+                              maxWidth: '70px',
                               textTransform: 'uppercase',
                               fontFamily: 'Arial, sans-serif',
-                              WebkitTextStroke: '1px rgba(255,255,255,0.5)',
+                              WebkitTextStroke: '0.5px rgba(255,255,255,0.8)',
                             }}
                           >
-                            {displayText.length > 12 ? displayText.substring(0, 9) + '...' : displayText}
+                            {displayText.length > 10 ? displayText.substring(0, 8) + '..' : displayText}
                           </span>
                         </div>
                       </div>
