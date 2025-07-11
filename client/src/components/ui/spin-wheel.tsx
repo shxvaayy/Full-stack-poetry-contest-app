@@ -85,9 +85,13 @@ export default function SpinWheel({
       wheelRef.current.style.transition = `transform ${duration}ms cubic-bezier(0.23, 1, 0.32, 1)`;
     }
 
-    // Calculate which segment we landed on
-    const normalizedAngle = (360 - (totalRotation % 360)) % 360;
-    const selectedIndex = Math.floor(normalizedAngle / segmentAngle) % challenges.length;
+    // Calculate which segment we landed on - accounting for the arrow pointing at the top
+    // The arrow points at the top (0 degrees), so we need to adjust the calculation
+    const normalizedAngle = (totalRotation % 360);
+    // Since the arrow points at the top, we need to find which slice the top position lands on
+    // Add half segment angle to center the selection on the slice
+    const adjustedAngle = (normalizedAngle + (segmentAngle / 2)) % 360;
+    const selectedIndex = Math.floor(adjustedAngle / segmentAngle) % challenges.length;
 
     setTimeout(() => {
       const selected = challenges[selectedIndex];
@@ -253,6 +257,26 @@ export default function SpinWheel({
                   const angle = index * segmentAngle;
                   const color = colorPalette[index % colorPalette.length];
                   
+                  // Split long titles into multiple lines
+                  const words = challenge.challengeTitle.split(' ');
+                  let line1 = '';
+                  let line2 = '';
+                  
+                  if (words.length === 1) {
+                    line1 = words[0].length > 12 ? words[0].substring(0, 10) + '..' : words[0];
+                  } else if (words.length === 2) {
+                    line1 = words[0].length > 8 ? words[0].substring(0, 6) + '..' : words[0];
+                    line2 = words[1].length > 8 ? words[1].substring(0, 6) + '..' : words[1];
+                  } else {
+                    // More than 2 words - try to balance the lines
+                    const midPoint = Math.ceil(words.length / 2);
+                    const firstHalf = words.slice(0, midPoint).join(' ');
+                    const secondHalf = words.slice(midPoint).join(' ');
+                    
+                    line1 = firstHalf.length > 12 ? firstHalf.substring(0, 10) + '..' : firstHalf;
+                    line2 = secondHalf.length > 12 ? secondHalf.substring(0, 10) + '..' : secondHalf;
+                  }
+                  
                   return (
                     <div
                       key={index}
@@ -267,31 +291,29 @@ export default function SpinWheel({
                       <div 
                         style={{
                           position: 'absolute',
-                          top: '30%',
-                          left: '70%',
+                          top: '25%',
+                          left: '65%',
                           transform: `rotate(${segmentAngle / 2}deg) translateX(-50%)`,
                           transformOrigin: 'center',
-                          width: '100px',
+                          width: '120px',
                           textAlign: 'center',
                         }}
                       >
-                        <span 
+                        <div 
                           className="font-bold"
                           style={{
                             color: 'white',
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.7), 1px 1px 2px rgba(0,0,0,0.8)',
-                            fontSize: challenge.challengeTitle.length > 15 ? '9px' : '11px',
+                            textShadow: '3px 3px 6px rgba(0,0,0,0.9), -2px -2px 4px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.8)',
+                            fontSize: '10px',
                             display: 'block',
-                            lineHeight: '1.1',
+                            lineHeight: '1.2',
                             fontWeight: '900',
-                            letterSpacing: '0.5px',
+                            letterSpacing: '0.3px',
                           }}
                         >
-                          {challenge.challengeTitle.length > 18 
-                            ? challenge.challengeTitle.substring(0, 15) + '...' 
-                            : challenge.challengeTitle
-                          }
-                        </span>
+                          <div style={{ marginBottom: '2px' }}>{line1}</div>
+                          {line2 && <div>{line2}</div>}
+                        </div>
                       </div>
                     </div>
                   );
@@ -375,13 +397,18 @@ export default function SpinWheel({
 
         {/* Selected Challenge Display with celebration effect */}
         {selectedChallenge && (
-          <Card className={`w-full max-w-lg border-4 border-green-500 shadow-2xl animate-pulse ${showCelebration ? 'animate-bounce' : ''}`}
+          <Card className={`w-full max-w-lg border-4 shadow-2xl animate-pulse ${showCelebration ? 'animate-bounce' : ''}`}
             style={{
-              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+              borderColor: colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length],
+              background: `linear-gradient(135deg, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}15 0%, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}25 100%)`,
               animation: showCelebration ? 'glow 1s ease-in-out infinite alternate' : undefined,
             }}
           >
-            <CardHeader className="text-center bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+            <CardHeader className="text-center text-white"
+              style={{
+                background: `linear-gradient(135deg, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]} 0%, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}dd 100%)`,
+              }}
+            >
               <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
                 <span className="text-3xl animate-bounce">🎉</span>
                 Challenge Selected!
@@ -389,13 +416,21 @@ export default function SpinWheel({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 p-6">
-              <div className="text-center p-6 bg-white rounded-xl shadow-inner border-2 border-green-200"
+              <div className="text-center p-6 bg-white rounded-xl shadow-inner border-2"
                 style={{
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
-                  boxShadow: 'inset 0 4px 8px rgba(34, 197, 94, 0.1), 0 4px 16px rgba(34, 197, 94, 0.2)',
+                  borderColor: `${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}50`,
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+                  boxShadow: `inset 0 4px 8px ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}20, 0 4px 16px ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}30`,
                 }}
               >
-                <h3 className="text-2xl font-bold text-gray-800 mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold text-gray-800 mb-4"
+                  style={{
+                    background: `linear-gradient(135deg, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]} 0%, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}cc 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
                   {selectedChallenge.challengeTitle}
                 </h3>
                 <p className="text-gray-700 text-base leading-relaxed font-medium">
@@ -406,9 +441,18 @@ export default function SpinWheel({
               <div className="flex gap-4 justify-center">
                 <Button 
                   onClick={handleUseChallenge}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-10 py-4 font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 rounded-xl border-2 border-white/20"
+                  className="text-white px-10 py-4 font-bold text-lg shadow-xl transform transition-all duration-200 hover:scale-105 rounded-xl border-2 border-white/20"
                   style={{
-                    boxShadow: '0 8px 24px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    background: `linear-gradient(135deg, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]} 0%, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}dd 100%)`,
+                    boxShadow: `0 8px 24px ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}60, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                  }}
+                  onMouseEnter={(e) => {
+                    const target = e.currentTarget as HTMLElement;
+                    target.style.background = `linear-gradient(135deg, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}dd 0%, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}bb 100%)`;
+                  }}
+                  onMouseLeave={(e) => {
+                    const target = e.currentTarget as HTMLElement;
+                    target.style.background = `linear-gradient(135deg, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]} 0%, ${colorPalette[challenges.findIndex(c => c.challengeTitle === selectedChallenge.challengeTitle) % colorPalette.length]}dd 100%)`;
                   }}
                 >
                   <Sparkles className="mr-2" size={20} />
