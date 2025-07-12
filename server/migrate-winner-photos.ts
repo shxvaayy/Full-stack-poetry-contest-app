@@ -47,22 +47,4 @@ export async function createWinnerPhotosTable() {
   } catch (error) {
     return false;
   }
-}
-
-// Run migration if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  createWinnerPhotosTable()
-    .then((success) => {
-      if (success) {
-        console.log('🎉 Winner photos migration completed successfully');
-        process.exit(0);
-      } else {
-        console.error('💥 Winner photos migration failed');
-        process.exit(1);
-      }
-    })
-    .catch((error) => {
-      console.error('💥 Migration error:', error);
-      process.exit(1);
-    });
 } 
