@@ -197,7 +197,7 @@ export default function SpinWheel({
   return (
     <>
       {/* Advanced CSS Keyframes and Styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes arrowBounce {
           0% { transform: translateX(-50%) translateY(0px) scale(1) rotate(0deg); }
           20% { transform: translateX(-50%) translateY(-12px) scale(1.15) rotate(-3deg); }
@@ -331,10 +331,11 @@ export default function SpinWheel({
             <CardContent className="flex flex-col items-center space-y-10 p-12 bg-gradient-to-br from-white to-blue-50 relative">
               {/* Ultra-Premium Wheel Container */}
               <div 
-                className={`relative w-96 h-96 flex items-center justify-center ${isSpinning ? 'premium-glow' : ''}`}
+                className={`relative w-full max-w-xs sm:max-w-md md:w-96 md:h-96 h-[70vw] sm:h-96 flex items-center justify-center mx-auto ${isSpinning ? 'premium-glow' : ''}`}
                 style={{ 
                   filter: 'drop-shadow(0 25px 50px rgba(0,0,0,0.15))',
-                  marginTop: '50px' 
+                  marginTop: '32px',
+                  aspectRatio: '1/1',
                 }}
               >
                 
@@ -385,9 +386,7 @@ export default function SpinWheel({
                 {/* Premium Wheel with Enhanced Visuals */}
                 <motion.div 
                   ref={wheelRef}
-                  className={`w-96 h-96 rounded-full relative overflow-hidden ${
-                    !isSpinning ? 'transition-none' : ''
-                  }`}
+                  className={`w-full h-full rounded-full relative overflow-hidden ${!isSpinning ? 'transition-none' : ''}`}
                   style={{
                     transform: `rotate(${rotation}deg)`,
                     background: 'conic-gradient(from 0deg, #8b4513, #d2691e, #8b4513)',
@@ -399,6 +398,7 @@ export default function SpinWheel({
                       inset 0 0 0 2px rgba(255,255,255,0.1),
                       inset 0 0 20px rgba(0,0,0,0.2)
                     `,
+                    aspectRatio: '1/1',
                   }}
                   animate={{
                     boxShadow: isSpinning 
