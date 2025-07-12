@@ -25,15 +25,6 @@ const pool = new Pool({
   min: 20, // Minimum number of connections in the pool (increased from 10)
   idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
   connectionTimeoutMillis: 3000, // Reduced from 5000 for faster connection establishment
-  acquireTimeoutMillis: 5000, // Reduced from 10000 for faster acquisition
-  reapIntervalMillis: 1000, // Check for dead connections every second
-  createTimeoutMillis: 3000, // Reduced from 5000 for faster creation
-  destroyTimeoutMillis: 3000, // Reduced from 5000 for faster destruction
-  createRetryIntervalMillis: 100, // Reduced from 200 for faster retries
-  propagateCreateError: false, // Don't propagate connection creation errors
-  // Additional optimizations for high concurrency
-  allowExitOnIdle: false, // Keep connections alive
-  maxUses: 7500, // Recycle connections after 7500 uses to prevent memory leaks
 });
 
 // Global connection state
@@ -86,7 +77,7 @@ async function connectDatabase() {
   }
 
   // All attempts failed
-  throw new Error(`Database pool connection failed after ${MAX_CONNECTION_ATTEMPTS} attempts: ${lastError?.message}`);
+  throw new Error(`Database pool connection failed after ${MAX_CONNECTION_ATTEMPTS} attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
 }
 
 // Handle pool errors
@@ -128,3 +119,6 @@ export const db = drizzle(pool);
 
 // Export pool for direct access when needed
 export { pool, connectDatabase, isConnected };
+
+// Backward compatibility: export pool as client for existing imports
+export const client = pool;
