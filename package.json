@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push",
     "migrate": "tsx server/migrate.ts",
     "migrate:force": "tsx server/migrate.ts",
+    "migrate:winner-photos": "tsx server/migrate-winner-photos.ts",
     "fix-db": "tsx server/fix-database.ts",
     "render-build": "npm install && npm run build",
     "render-start": "npm start"
