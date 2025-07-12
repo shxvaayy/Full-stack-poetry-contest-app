@@ -14,23 +14,26 @@ console.log('🔍 Database Configuration:');
 console.log('- DATABASE_URL exists:', !!connectionString);
 console.log('- Environment:', process.env.NODE_ENV);
 
-// Create connection pool for high concurrency
+// Create connection pool for high concurrency (5-10k users)
 const pool = new Pool({
   connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { 
     rejectUnauthorized: false 
   } : false,
-  // Pool configuration for 2000+ concurrent users
-  max: 50, // Maximum number of connections in the pool
-  min: 10, // Minimum number of connections in the pool
+  // Pool configuration for 5-10k concurrent users
+  max: 200, // Maximum number of connections in the pool (increased from 50)
+  min: 20, // Minimum number of connections in the pool (increased from 10)
   idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-  connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
-  acquireTimeoutMillis: 10000, // Return an error after 10 seconds if a connection could not be acquired
+  connectionTimeoutMillis: 3000, // Reduced from 5000 for faster connection establishment
+  acquireTimeoutMillis: 5000, // Reduced from 10000 for faster acquisition
   reapIntervalMillis: 1000, // Check for dead connections every second
-  createTimeoutMillis: 5000, // Return an error after 5 seconds if a connection could not be created
-  destroyTimeoutMillis: 5000, // Return an error after 5 seconds if a connection could not be destroyed
-  createRetryIntervalMillis: 200, // Wait 200ms before retrying connection creation
+  createTimeoutMillis: 3000, // Reduced from 5000 for faster creation
+  destroyTimeoutMillis: 3000, // Reduced from 5000 for faster destruction
+  createRetryIntervalMillis: 100, // Reduced from 200 for faster retries
   propagateCreateError: false, // Don't propagate connection creation errors
+  // Additional optimizations for high concurrency
+  allowExitOnIdle: false, // Keep connections alive
+  maxUses: 7500, // Recycle connections after 7500 uses to prevent memory leaks
 });
 
 // Global connection state

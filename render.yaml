@@ -3,7 +3,7 @@ services:
     name: writory-poetry-contest
     env: node
     region: oregon
-    plan: starter # Upgraded from free to starter plan for 2000+ users
+    plan: pro # Upgraded to pro plan for 5-10k users
     buildCommand: cd server && npm run render-build
     startCommand: cd server && npm run render-start
     healthCheckPath: /health
@@ -12,11 +12,16 @@ services:
         value: production
       - key: PORT
         value: 3000
-    # Performance optimizations for high concurrency
+    # Performance optimizations for 5-10k concurrent users
     scaling:
-      minInstances: 1
-      maxInstances: 3 # Auto-scale up to 3 instances for high load
-    # Resource allocation for 2000+ users
+      minInstances: 2
+      maxInstances: 10 # Auto-scale up to 10 instances for high load
+    # Resource allocation for 5-10k users
     resources:
-      cpu: 0.5 # 0.5 CPU cores (starter plan)
-      memory: 1GB # 1GB RAM (starter plan)
+      cpu: 2 # 2 CPU cores (pro plan)
+      memory: 4GB # 4GB RAM (pro plan)
+    # Advanced performance settings
+    performance:
+      enableCaching: true
+      enableCompression: true
+      enableGzip: true

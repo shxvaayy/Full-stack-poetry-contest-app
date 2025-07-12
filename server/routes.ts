@@ -16,13 +16,13 @@ import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
 const router = Router();
 
-// Configure multer for file uploads - optimized for 2000+ concurrent users
+// Configure multer for file uploads - optimized for 5-10k concurrent users
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // Reduced to 5MB for better performance
-    files: 5, // Maximum 5 files per request
-    fieldSize: 1024 * 1024, // 1MB for text fields
+    fileSize: 3 * 1024 * 1024, // Reduced to 3MB for better performance with high concurrency
+    files: 3, // Reduced to 3 files per request for better performance
+    fieldSize: 512 * 1024, // Reduced to 512KB for text fields
   },
   fileFilter: (req, file, cb) => {
     console.log('📁 Multer file filter:', {
@@ -58,6 +58,33 @@ const upload = multer({
     }
   }
 });
+
+// Simple in-memory cache for high-traffic endpoints
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cache middleware for static data
+const cacheMiddleware = (duration = CACHE_TTL) => (req: any, res: any, next: any) => {
+  const key = req.originalUrl;
+  const cached = cache.get(key);
+  
+  if (cached && Date.now() - cached.timestamp < duration) {
+    console.log('📦 Serving from cache:', key);
+    return res.json(cached.data);
+  }
+  
+  // Store original send method
+  const originalSend = res.json;
+  res.json = function(data: any) {
+    cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+    originalSend.call(this, data);
+  };
+  
+  next();
+};
 
 // MINIMAL FIX: Only set JSON header for API routes
 router.use('/api/*', (req, res, next) => {
