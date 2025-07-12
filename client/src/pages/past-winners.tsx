@@ -12,6 +12,7 @@ interface WinnerPhoto {
   poemTitle?: string;
   uploadedBy: string;
   createdAt: string;
+  score?: number; // Added score property
 }
 
 export default function PastWinnersPage() {
@@ -48,20 +49,34 @@ export default function PastWinnersPage() {
     return winnerPhotos.find(photo => photo.position === position);
   };
 
+  // Find the latest contest month with all 3 positions
+  const groupByMonth: Record<string, WinnerPhoto[]> = {};
+  winnerPhotos.forEach(photo => {
+    const key = `${photo.contestYear}-${photo.contestMonth}`;
+    if (!groupByMonth[key]) groupByMonth[key] = [];
+    groupByMonth[key].push(photo);
+  });
+  const sortedMonths = Object.keys(groupByMonth).sort().reverse();
+  let latestSet: WinnerPhoto[] = [];
+  for (const month of sortedMonths) {
+    if (groupByMonth[month].length >= 3) {
+      latestSet = groupByMonth[month];
+      break;
+    }
+  }
+
   const WinnerCard = ({ position, icon: Icon, color, title }: { position: number, icon: any, color: string, title: string }) => {
-    const photo = getWinnerPhotoByPosition(position);
-    
+    const photo = latestSet.find(p => p.position === position);
     return (
       <div className="text-center">
         <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
           <Icon className="text-2xl text-white" size={24} />
         </div>
         <h4 className="font-semibold text-gray-900 mb-2">{title}</h4>
-        
         {photo && photo.photoUrl ? (
           <div className="mt-4">
-            <img 
-              src={photo.photoUrl} 
+            <img
+              src={photo.photoUrl}
               alt={`${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
               className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 shadow-lg"
             />
@@ -69,9 +84,7 @@ export default function PastWinnersPage() {
               <p className="font-semibold text-gray-900">
                 {photo.winnerName || `${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
               </p>
-              {photo.poemTitle && (
-                <p className="text-sm text-gray-600 italic">"{photo.poemTitle}"</p>
-              )}
+              <p className="text-sm text-gray-600">Score: {photo.score ?? 'N/A'}/100</p>
               <p className="text-xs text-gray-500">
                 Contest: {photo.contestMonth} {photo.contestYear}
               </p>

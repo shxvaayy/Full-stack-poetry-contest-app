@@ -3255,11 +3255,18 @@ router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: an
   try {
     console.log('🏆 Fetching all winner photos for admin');
 
+    // Join winner_photos with submissions to get the score for each winner
     const result = await client.query(`
-      SELECT id, position, contest_month, contest_year, photo_url, winner_name, poem_title, uploaded_by, created_at, updated_at
-      FROM winner_photos 
-      WHERE is_active = true
-      ORDER BY contest_year DESC, contest_month DESC, position ASC
+      SELECT wp.id, wp.position, wp.contest_month, wp.contest_year, wp.photo_url, wp.winner_name, wp.poem_title, wp.uploaded_by, wp.created_at, wp.updated_at,
+             s.score
+      FROM winner_photos wp
+      LEFT JOIN submissions s
+        ON s.contest_month = wp.contest_month
+        AND s.contest_year = wp.contest_year
+        AND s.winner_position = wp.position
+        AND s.is_winner = true
+      WHERE wp.is_active = true
+      ORDER BY wp.contest_year DESC, wp.contest_month DESC, wp.position ASC
     `);
 
     const winnerPhotos = result.rows.map(photo => ({
@@ -3269,7 +3276,7 @@ router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: an
       contestYear: photo.contest_year,
       photoUrl: photo.photo_url,
       winnerName: photo.winner_name,
-      poemTitle: photo.poem_title,
+      score: photo.score,
       uploadedBy: photo.uploaded_by,
       createdAt: photo.created_at,
       updatedAt: photo.updated_at
