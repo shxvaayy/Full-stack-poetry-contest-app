@@ -20,10 +20,19 @@ console.log('🔍 Database Configuration:');
 console.log('- DATABASE_URL exists:', !!connectionString);
 console.log('- Environment:', process.env.NODE_ENV);
 
+// Determine SSL configuration based on environment and connection string
+const shouldUseSSL = () => {
+  if (!connectionString) return false;
+  if (process.env.NODE_ENV !== 'production') return false;
+  // Don't use SSL for localhost connections
+  if (connectionString.includes('localhost') || connectionString.includes('127.0.0.1')) return false;
+  return true;
+};
+
 // Create connection pool for high concurrency (5-10k users)
 const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { 
+  ssl: shouldUseSSL() ? { 
     rejectUnauthorized: false 
   } : false,
   // Pool configuration for 5-10k concurrent users

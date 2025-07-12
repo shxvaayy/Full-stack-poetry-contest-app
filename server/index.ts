@@ -40,12 +40,16 @@ if (process.env.RAZORPAY_KEY_ID) {
 
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL environment variable is required');
-  console.error('💡 Please check your Secrets configuration in Replit');
-  console.error('💡 Using fallback local database URL for development');
-  
-  // Fallback for development
-  process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/writory_dev';
-  console.log('⚠️ Using development database URL');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('💥 FATAL: DATABASE_URL is required in production environment');
+    console.error('💡 Please configure DATABASE_URL in your Render environment variables');
+    process.exit(1);
+  } else {
+    console.error('💡 Using fallback local database URL for development');
+    // Fallback for development only
+    process.env.DATABASE_URL = 'postgresql://localhost:5432/writory_dev';
+    console.log('⚠️ Using development database URL');
+  }
 }
 
 // Check other services but don't fail startup
