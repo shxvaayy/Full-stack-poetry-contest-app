@@ -268,14 +268,18 @@ router.post('/api/test-cloudinary-upload', safeUploadAny, asyncHandler(async (re
 // Get admin settings
 router.get('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, res: any) => {
   console.log('🔧 Getting admin settings...');
+  console.log('🔐 Admin auth check for GET settings...');
 
   try {
     const settings = await getAllSettings();
+    console.log('📊 Retrieved settings:', settings);
+    
     const settingsObj = settings.reduce((acc, setting) => {
       acc[setting.setting_key] = setting.setting_value;
       return acc;
     }, {} as Record<string, string>);
 
+    console.log('✅ Returning settings object:', settingsObj);
     res.json({
       success: true,
       settings: settingsObj
@@ -399,7 +403,13 @@ router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
     // Ensure database connection
     await connectDatabase();
     
+    // First, let's check if the user exists at all
+    const allUsers = await client.query('SELECT uid, email FROM users ORDER BY created_at DESC LIMIT 5');
+    console.log('📊 Recent users in database:', allUsers.rows.map(u => ({ uid: u.uid, email: u.email })));
+    
     const result = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
+    console.log('🔍 Query result for UID', uid, ':', result.rows.length, 'rows found');
+    
     if (result.rows.length === 0) {
       console.warn('⚠️ User not found for UID:', uid);
       return res.status(404).json({ error: 'User not found', uid });
