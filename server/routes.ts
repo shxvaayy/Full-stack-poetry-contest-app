@@ -392,14 +392,39 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
 
 // Get user by UID
 router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
-  const { uid } = req.params;
-  console.log('🔍 Fetching user by UID:', uid);
-  const result = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
-  if (result.rows.length === 0) {
-    console.warn('⚠️ User not found for UID:', uid);
-    return res.status(404).json({ error: 'User not found', uid });
+  try {
+    const { uid } = req.params;
+    console.log('🔍 Fetching user by UID:', uid);
+    
+    // Ensure database connection
+    await connectDatabase();
+    
+    const result = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
+    if (result.rows.length === 0) {
+      console.warn('⚠️ User not found for UID:', uid);
+      return res.status(404).json({ error: 'User not found', uid });
+    }
+    
+    const user = result.rows[0];
+    console.log('✅ User found:', user.email);
+    
+    // Transform user data to match frontend expectations
+    const transformedUser = {
+      id: user.id,
+      uid: user.uid,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      profilePictureUrl: user.profile_picture_url,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
+    
+    res.json(transformedUser);
+  } catch (error) {
+    console.error('❌ Error fetching user by UID:', error);
+    res.status(500).json({ error: 'Failed to fetch user', message: error.message });
   }
-  res.json({ user: result.rows[0] });
 }));
 
 // Update user profile with Cloudinary photo upload
