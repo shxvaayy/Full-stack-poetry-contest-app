@@ -375,6 +375,20 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
   }
 });
 
+// Test PayPal configuration endpoint
+router.get('/api/test-paypal', (req, res) => {
+  console.log('🔧 Testing PayPal configuration...');
+  res.json({
+    success: true,
+    configured: !!(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET && PAYPAL_CLIENT_ID !== 'demo_client_id'),
+    environment: process.env.NODE_ENV || 'development',
+    baseUrl: PAYPAL_BASE_URL,
+    hasClientId: !!PAYPAL_CLIENT_ID,
+    hasClientSecret: !!PAYPAL_CLIENT_SECRET,
+    isDemoCredentials: PAYPAL_CLIENT_ID === 'demo_client_id'
+  });
+});
+
 // Health check endpoint
 router.get('/health', (req, res) => {
   res.json({ 
