@@ -292,18 +292,25 @@ async function initializeApp() {
       await migrateCouponTable();
       console.log('✅ Coupon table migration completed');
 
-      // Remove call to createTables();
-      // const migrationSuccess = await createTables();
-      // if (!migrationSuccess) {
-      //   console.error('❌ Database migration failed - cannot continue');
-      //   console.error('💡 Please check your database connection and permissions');
-      //   process.exit(1);
-      // }
+      // Run winner photos migration
+      const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
+      await createWinnerPhotosTable();
+      console.log('✅ Winner photos table migration completed');
 
       console.log('🎉 Database schema synchronized successfully!');
       console.log('✅ All tables created with proper updated_at columns');
     } else {
-      console.log('✅ Database already initialized, skipping migrations');
+      console.log('✅ Database already initialized, running essential migrations...');
+      
+      // Always run winner photos migration to ensure score column exists
+      try {
+        const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
+        await createWinnerPhotosTable();
+        console.log('✅ Winner photos table migration completed');
+      } catch (error) {
+        console.log('⚠️ Winner photos migration skipped (non-critical):', error.message);
+      }
+      
       console.log('📊 Preserving existing user data and submissions');
     }
 
