@@ -18,30 +18,8 @@ interface WinnerPhoto {
 export default function PastWinnersPage() {
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [latestMonth, setLatestMonth] = useState<string | null>(null);
-
-  // Step 1: Find the latest contestMonth from admin endpoint (for available months)
-  useEffect(() => {
-    const findLatestMonth = async () => {
-      try {
-        const response = await fetch('/api/admin/winner-photos');
-        if (response.ok) {
-          const data = await response.json();
-          const allPhotos: WinnerPhoto[] = data.winnerPhotos || [];
-          // Group by contestMonth
-          const months = Array.from(new Set(allPhotos.map(p => p.contestMonth)));
-          // Sort descending (latest first)
-          months.sort().reverse();
-          if (months.length > 0) {
-            setLatestMonth(months[0]);
-          }
-        }
-      } catch (error) {
-        // fallback: do nothing
-      }
-    };
-    findLatestMonth();
-  }, []);
+  // Set the contest month directly to '2025-07' (remove admin endpoint call)
+  const [latestMonth] = useState<string>('2025-07');
 
   // Step 2: Fetch winner photos for the latest contestMonth using the public endpoint
   useEffect(() => {
