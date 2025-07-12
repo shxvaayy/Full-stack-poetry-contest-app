@@ -1,6 +1,6 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { Client } from 'pg';
+import { Pool } from 'pg';
 
 // Database configuration
 const connectionString = process.env.DATABASE_URL;
@@ -16,140 +16,112 @@ const createMockClient = () => ({
   removeListener: () => {}
 } as any);
 
-// Initialize client and database connection
-let client: any;
-let db: any;
-let connectDatabase: () => Promise<void>;
+console.log('🔍 Database Configuration:');
+console.log('- DATABASE_URL exists:', !!connectionString);
+console.log('- Environment:', process.env.NODE_ENV);
+
+// Create connection pool for high concurrency (5-10k users)
+const pool = new Pool({
+  connectionString,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false 
+  } : false,
+  // Pool configuration for 5-10k concurrent users
+  max: 200, // Maximum number of connections in the pool (increased from 50)
+  min: 20, // Minimum number of connections in the pool (increased from 10)
+  idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+  connectionTimeoutMillis: 3000, // Reduced from 5000 for faster connection establishment
+});
+
+// Global connection state
 let isConnected = false;
 
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL environment variable not found');
-  console.log('💡 Please check your Secrets configuration in Replit');
-  console.log('💡 Server will continue in development mode - database features disabled');
-  console.log('🔄 Running in development mode without database');
+// Single connection function with retry logic
+async function connectDatabase() {
+  if (isConnected) {
+    // Test connection to make sure it's still alive
+    try {
+      const client = await pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      console.log('✅ Database pool already connected and verified');
+      return;
+    } catch (error) {
+      console.log('⚠️ Existing pool connection dead, reconnecting...');
+      isConnected = false;
+    }
+  }
 
-  // Export mock client for development
-  client = createMockClient();
-  
-  connectDatabase = async () => {
-    console.log('⚠️ Mock database connection (no DATABASE_URL)');
-    return Promise.resolve();
-  };
-
-  db = null; // No drizzle instance in mock mode
-} else {
-  console.log('🔍 Database Configuration:');
-  console.log('- DATABASE_URL exists:', !!connectionString);
-  console.log('- Environment:', process.env.NODE_ENV);
-
-  // Create real client
-  client = new Client({
-    connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { 
-      rejectUnauthorized: false 
-    } : false,
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    query_timeout: 60000,
-  });
-
-  // Global connection state
-  let connectionPromise: Promise<void> | null = null;
-  let connectionAttempts = 0;
+  let lastError;
   const MAX_CONNECTION_ATTEMPTS = 3;
 
-  // Single connection function with retry logic
-  connectDatabase = async () => {
-    if (isConnected) {
-      // Test connection to make sure it's still alive
-      try {
-        await client.query('SELECT 1');
-        console.log('✅ Database already connected and verified');
-        return;
-      } catch (error) {
-        console.log('⚠️ Existing connection dead, reconnecting...');
-        isConnected = false;
-        connectionPromise = null;
+  for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
+    try {
+      console.log(`🔌 Connecting to database pool (attempt ${attempt}/${MAX_CONNECTION_ATTEMPTS})...`);
+      
+      // Test the pool connection
+      const client = await pool.connect();
+      const result = await client.query('SELECT NOW()');
+      client.release();
+      
+      isConnected = true;
+      console.log('✅ Database pool connected successfully');
+      console.log('✅ Database test query successful:', result.rows[0].now);
+      console.log(`📊 Pool stats: ${pool.totalCount} total connections, ${pool.idleCount} idle, ${pool.waitingCount} waiting`);
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error(`❌ Database pool connection attempt ${attempt} failed:`, error);
+
+      if (attempt < MAX_CONNECTION_ATTEMPTS) {
+        console.log(`⏳ Retrying in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
+  }
 
-    if (connectionPromise) {
-      console.log('⏳ Database connection in progress, waiting...');
-      try {
-        return await connectionPromise;
-      } catch (error) {
-        // Reset promise if it failed
-        connectionPromise = null;
-        throw error;
-      }
-    }
-
-    connectionPromise = (async () => {
-      let lastError;
-
-      for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt++) {
-        try {
-          console.log(`🔌 Connecting to database (attempt ${attempt}/${MAX_CONNECTION_ATTEMPTS})...`);
-          await client.connect();
-          isConnected = true;
-          connectionAttempts = 0;
-          console.log('✅ Database connected successfully');
-
-          // Test the connection
-          const result = await client.query('SELECT NOW()');
-          console.log('✅ Database test query successful:', result.rows[0].now);
-          return;
-        } catch (error) {
-          lastError = error;
-          console.error(`❌ Database connection attempt ${attempt} failed:`, error);
-
-          if (attempt < MAX_CONNECTION_ATTEMPTS) {
-            console.log(`⏳ Retrying in 2 seconds...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        }
-      }
-
-      // All attempts failed
-      connectionPromise = null;
-      throw new Error(`Database connection failed after ${MAX_CONNECTION_ATTEMPTS} attempts: ${lastError?.message}`);
-    })();
-
-    return connectionPromise;
-  };
-
-  // Handle connection errors
-  client.on('error', (err) => {
-    console.error('❌ Database client error:', err);
-    isConnected = false;
-    connectionPromise = null;
-  });
-
-  client.on('end', () => {
-    console.log('🔌 Database connection ended');
-    isConnected = false;
-    connectionPromise = null;
-  });
-
-  // Graceful shutdown
-  const cleanup = async () => {
-    if (isConnected) {
-      console.log('🛑 Closing database connection...');
-      try {
-        await client.end();
-      } catch (error) {
-        console.error('Error closing database connection:', error);
-      }
-      isConnected = false;
-      connectionPromise = null;
-    }
-  };
-
-  process.on('SIGTERM', cleanup);
-  process.on('SIGINT', cleanup);
-
-  db = drizzle(client);
+  // All attempts failed
+  throw new Error(`Database pool connection failed after ${MAX_CONNECTION_ATTEMPTS} attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
 }
 
-// Export everything consistently
-export { client, connectDatabase, isConnected, db };
+// Handle pool errors
+pool.on('error', (err) => {
+  console.error('❌ Database pool error:', err);
+  isConnected = false;
+});
+
+pool.on('connect', (client) => {
+  console.log('🔌 New client connected to pool');
+});
+
+pool.on('acquire', (client) => {
+  console.log('🔌 Client acquired from pool');
+});
+
+pool.on('release', (client) => {
+  console.log('🔌 Client released back to pool');
+});
+
+// Graceful shutdown
+const cleanup = async () => {
+  if (isConnected) {
+    console.log('🛑 Closing database pool...');
+    try {
+      await pool.end();
+    } catch (error) {
+      console.error('Error closing database pool:', error);
+    }
+  }
+};
+
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);
+
+// Create drizzle instance with pool
+export const db = drizzle(pool);
+
+// Export pool for direct access when needed
+export { pool, connectDatabase, isConnected };
+
+// Backward compatibility: export pool as client for existing imports
+export const client = pool;

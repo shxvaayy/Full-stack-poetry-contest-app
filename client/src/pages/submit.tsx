@@ -172,15 +172,15 @@ export default function SubmitPage() {
   // Check URL parameters for payment status
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
     const paymentSuccess = urlParams.get('payment_success');
     const paymentCancelled = urlParams.get('payment_cancelled');
     const paypalOrderId = urlParams.get('paypal_order_id');
+    const razorpayOrderId = urlParams.get('razorpay_order_id');
     const paymentError = urlParams.get('payment_error');
 
-    if (sessionId && paymentSuccess === 'true') {
-      console.log('🎉 Stripe payment successful, verifying session:', sessionId);
-      verifyPayment(sessionId);
+    if (razorpayOrderId && paymentSuccess === 'true') {
+      console.log('🎉 Razorpay payment successful, verifying order:', razorpayOrderId);
+      verifyRazorpayPayment(razorpayOrderId);
     } else if (paypalOrderId && paymentSuccess === 'true') {
       console.log('🎉 PayPal payment successful, verifying order:', paypalOrderId);
       verifyPayPalPayment(paypalOrderId);
@@ -202,47 +202,48 @@ export default function SubmitPage() {
     }
 
     // Clean up URL parameters
-    if (sessionId || paymentSuccess || paymentCancelled || paypalOrderId || paymentError) {
+    if (razorpayOrderId || paypalOrderId || paymentSuccess || paymentCancelled || paymentError) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
-  const verifyPayment = async (sessionId: string) => {
+  const verifyRazorpayPayment = async (orderId: string) => {
     try {
-      console.log('🔍 Verifying payment session:', sessionId);
-
-      const response = await fetch('/api/verify-checkout-session', {
+      console.log('🔍 Verifying Razorpay order:', orderId);
+      const response = await fetch('/api/verify-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ orderId }),
         credentials: 'same-origin',
       });
-
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Payment verified successfully:', data);
-
-        setSessionId(sessionId);
+        console.log('✅ Razorpay payment verified successfully:', data);
+        setPaymentData({
+          razorpay_order_id: orderId,
+          payment_method: 'razorpay',
+          payment_status: 'completed',
+          amount: selectedTier?.price || 0
+        });
+        setSessionId(orderId);
         setPaymentCompleted(true);
         setCurrentStep("form");
-
         toast({
-          title: "Payment Successful!",
+          title: "Razorpay Payment Successful!",
           description: "Processing your submission...",
         });
-
-        // Immediately submit after payment verification
+        // Immediately submit after Razorpay verification
         try {
           setIsSubmitting(true);
           await handleFormSubmitWithPaymentData({
-            stripe_session_id: sessionId,
-            payment_method: 'stripe',
+            razorpay_order_id: orderId,
+            payment_method: 'razorpay',
             amount: selectedTier?.price || 0
           });
         } catch (error) {
-          console.error('❌ Submission after verification failed:', error);
+          console.error('❌ Submission after Razorpay verification failed:', error);
           setIsSubmitting(false);
           toast({
             title: "Submission Error",
@@ -252,14 +253,14 @@ export default function SubmitPage() {
         }
       } else {
         const errorData = await response.json();
-        console.error('❌ Payment verification failed:', errorData);
-        throw new Error(errorData.error || 'Payment verification failed');
+        console.error('❌ Razorpay payment verification failed:', errorData);
+        throw new Error(errorData.error || 'Razorpay payment verification failed');
       }
     } catch (error: any) {
-      console.error('❌ Payment verification error:', error);
+      console.error('❌ Razorpay payment verification error:', error);
       toast({
-        title: "Payment Verification Failed",
-        description: error.message || "There was an issue verifying your payment. Please contact support.",
+        title: "Razorpay Payment Verification Failed",
+        description: error.message || "There was an issue verifying your Razorpay payment. Please contact support.",
         variant: "destructive",
       });
     }
