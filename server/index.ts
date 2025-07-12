@@ -441,3 +441,16 @@ async function addProfilePictureColumn() {
     console.error('❌ Error adding profile_picture_url column:', error.message);
   }
 }
+
+// Serve static files from the frontend build directory
+const publicPath = path.join(__dirname, '../dist/public');
+app.use(express.static(publicPath));
+
+// React SPA fallback: serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api/')) {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  } else {
+    res.status(404).json({ error: 'API endpoint not found' });
+  }
+});
