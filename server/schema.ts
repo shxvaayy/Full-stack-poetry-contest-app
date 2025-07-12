@@ -193,7 +193,7 @@ export const winnerPhotos = pgTable('winner_photos', {
   contestYear: integer('contest_year').notNull(),
   photoUrl: varchar('photo_url', { length: 500 }).notNull(), // Cloudinary URL
   winnerName: varchar('winner_name', { length: 255 }), // Optional: winner's name
-  poemTitle: varchar('poem_title', { length: 255 }), // Optional: winning poem title
+  score: integer('score'), // Score out of 100
   isActive: boolean('is_active').default(true).notNull(), // For soft deletion
   uploadedBy: varchar('uploaded_by', { length: 255 }).notNull(), // Admin email
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -266,6 +266,7 @@ export const schema = {
   adminLogs,
   adminSettings,
   adminUsers,
+  winnerPhotos,
   usersRelations,
   submissionsRelations,
   couponsRelations,
