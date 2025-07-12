@@ -324,7 +324,17 @@ async function initializeApp() {
       console.log('🎉 Database schema synchronized successfully!');
       console.log('✅ All tables created with proper updated_at columns');
     } else {
-      console.log('✅ Database already initialized, checking poem_text column...');
+      console.log('✅ Database already initialized, running essential migrations...');
+      
+      // Always run winner photos migration to ensure score column exists
+      try {
+        const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
+        await createWinnerPhotosTable();
+        console.log('✅ Winner photos table migration completed');
+      } catch (error) {
+        console.log('⚠️ Winner photos migration skipped (non-critical):', error.message);
+      }
+      
       // Even for existing databases, ensure poem_text column exists
       await addPoemTextColumnDirectly();
       console.log('📊 Preserving existing user data and submissions');
