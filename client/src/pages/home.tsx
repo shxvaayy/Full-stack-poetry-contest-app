@@ -151,7 +151,7 @@ export default function HomePage() {
 
             <Link href="/submit">
               <Button size="lg" className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
-                🚀 Start Your Journey
+                🚀 Enter the Contest
               </Button>
             </Link>
 
