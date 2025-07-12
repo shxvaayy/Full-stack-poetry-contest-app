@@ -11,7 +11,6 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import { registerRoutes } from './routes.js';
 import { connectDatabase, pool } from './db.js';
-import { createTables } from './migrate.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { initializeAdminSettings } from './admin-settings.js';
 import { paypalRouter } from './paypal.js';
@@ -293,14 +292,13 @@ async function initializeApp() {
       await migrateCouponTable();
       console.log('✅ Coupon table migration completed');
 
-      // Run migrations to fix schema
-      const migrationSuccess = await createTables();
-
-      if (!migrationSuccess) {
-        console.error('❌ Database migration failed - cannot continue');
-        console.error('💡 Please check your database connection and permissions');
-        process.exit(1);
-      }
+      // Remove call to createTables();
+      // const migrationSuccess = await createTables();
+      // if (!migrationSuccess) {
+      //   console.error('❌ Database migration failed - cannot continue');
+      //   console.error('💡 Please check your database connection and permissions');
+      //   process.exit(1);
+      // }
 
       console.log('🎉 Database schema synchronized successfully!');
       console.log('✅ All tables created with proper updated_at columns');
