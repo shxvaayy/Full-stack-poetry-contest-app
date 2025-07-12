@@ -51,12 +51,13 @@ export default function AdminSettingsPage() {
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState<number | null>(null);
+  // In the uploadForm state, replace poemTitle with score
   const [uploadForm, setUploadForm] = useState({
     position: '1',
     contestMonth: '',
     contestYear: new Date().getFullYear().toString(),
     winnerName: '',
-    poemTitle: '',
+    score: '',
     photoFile: null as File | null
   });
 
@@ -181,7 +182,7 @@ export default function AdminSettingsPage() {
       formData.append('contestMonth', uploadForm.contestMonth);
       formData.append('contestYear', uploadForm.contestYear);
       formData.append('winnerName', uploadForm.winnerName);
-      formData.append('poemTitle', uploadForm.poemTitle);
+      formData.append('score', uploadForm.score);
 
       const response = await fetch('/api/admin/winner-photos', {
         method: 'POST',
@@ -208,7 +209,7 @@ export default function AdminSettingsPage() {
         contestMonth: '',
         contestYear: new Date().getFullYear().toString(),
         winnerName: '',
-        poemTitle: '',
+        score: '',
         photoFile: null
       });
       loadWinnerPhotos();
@@ -575,13 +576,16 @@ export default function AdminSettingsPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="poemTitle">Poem Title (Optional)</Label>
+                  <Label htmlFor="score">Score (out of 100)</Label>
                   <Input
-                    id="poemTitle"
-                    type="text"
-                    placeholder="Winning poem title"
-                    value={uploadForm.poemTitle}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, poemTitle: e.target.value }))}
+                    id="score"
+                    type="number"
+                    min={0}
+                    max={100}
+                    required
+                    placeholder="Score"
+                    value={uploadForm.score}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, score: e.target.value }))}
                   />
                 </div>
               </div>
@@ -651,9 +655,7 @@ export default function AdminSettingsPage() {
                           <p className="text-sm font-medium">{photo.winnerName}</p>
                         )}
                         
-                        {photo.poemTitle && (
-                          <p className="text-sm text-gray-500 italic">"{photo.poemTitle}"</p>
-                        )}
+                        {/* poemTitle is removed */}
                         
                         <p className="text-xs text-gray-400">
                           Uploaded: {new Date(photo.createdAt).toLocaleDateString()}

@@ -3113,7 +3113,7 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
 // Upload winner photo
 router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto'), asyncHandler(async (req: any, res: any) => {
   try {
-    const { position, contestMonth, contestYear, winnerName, poemTitle } = req.body;
+    const { position, contestMonth, contestYear, winnerName, score } = req.body;
     const winnerPhotoFile = req.file;
     const adminEmail = req.headers['x-user-email'] as string;
 
@@ -3122,7 +3122,7 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
       contestMonth,
       contestYear,
       winnerName,
-      poemTitle,
+      score,
       hasPhotoFile: !!winnerPhotoFile,
       adminEmail
     });
@@ -3152,6 +3152,15 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
       });
     }
 
+    // Validate score
+    const scoreNum = parseInt(score);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Score must be a number between 0 and 100'
+      });
+    }
+
     // Upload photo to Cloudinary
     let photoUrl;
     try {
@@ -3173,10 +3182,10 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
 
     // Save to database
     const result = await client.query(`
-      INSERT INTO winner_photos (position, contest_month, contest_year, photo_url, winner_name, poem_title, uploaded_by, created_at, updated_at)
+      INSERT INTO winner_photos (position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
       RETURNING *
-    `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName || null, poemTitle || null, adminEmail]);
+    `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName || null, scoreNum, adminEmail]);
 
     const winnerPhoto = result.rows[0];
     console.log('✅ Winner photo saved to database:', winnerPhoto.id);
@@ -3191,7 +3200,7 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
         contestYear: winnerPhoto.contest_year,
         photoUrl: winnerPhoto.photo_url,
         winnerName: winnerPhoto.winner_name,
-        poemTitle: winnerPhoto.poem_title,
+        score: winnerPhoto.score,
         uploadedBy: winnerPhoto.uploaded_by,
         createdAt: winnerPhoto.created_at
       }
@@ -3214,7 +3223,7 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
     console.log('🏆 Fetching winner photos for contest month:', contestMonth);
 
     const result = await client.query(`
-      SELECT id, position, contest_month, contest_year, photo_url, winner_name, poem_title, uploaded_by, created_at
+      SELECT id, position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at
       FROM winner_photos 
       WHERE contest_month = $1 AND is_active = true
       ORDER BY position ASC
@@ -3227,7 +3236,7 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
       contestYear: photo.contest_year,
       photoUrl: photo.photo_url,
       winnerName: photo.winner_name,
-      poemTitle: photo.poem_title,
+      score: photo.score,
       uploadedBy: photo.uploaded_by,
       createdAt: photo.created_at
     }));

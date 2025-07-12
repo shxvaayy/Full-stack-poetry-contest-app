@@ -15,6 +15,15 @@ export async function createWinnerPhotosTable() {
 
     if (tableExists.rows[0].exists) {
       console.log('✅ winner_photos table already exists');
+      // Add score column if it does not exist
+      const scoreCol = await pool.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name='winner_photos' AND column_name='score'
+      `);
+      if (scoreCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE winner_photos ADD COLUMN score INTEGER`);
+        console.log('✅ Added score column to winner_photos');
+      }
       return true;
     }
 
@@ -27,7 +36,7 @@ export async function createWinnerPhotosTable() {
         contest_year INTEGER NOT NULL,
         photo_url VARCHAR(500) NOT NULL,
         winner_name VARCHAR(255),
-        poem_title VARCHAR(255),
+        score INTEGER,
         is_active BOOLEAN DEFAULT true NOT NULL,
         uploaded_by VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT NOW() NOT NULL,
