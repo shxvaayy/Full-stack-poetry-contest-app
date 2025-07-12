@@ -52,7 +52,8 @@ export default function PastWinnersPage() {
   // Find the latest contest month with any winner photos (not requiring all 3)
   const groupByMonth: Record<string, WinnerPhoto[]> = {};
   winnerPhotos.forEach(photo => {
-    const key = `${photo.contestYear}-${photo.contestMonth}`;
+    // FIX: Use contestMonth as the key (already in YYYY-MM format)
+    const key = `${photo.contestMonth}`;
     if (!groupByMonth[key]) groupByMonth[key] = [];
     groupByMonth[key].push(photo);
   });
