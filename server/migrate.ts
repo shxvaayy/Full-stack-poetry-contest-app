@@ -1,13 +1,11 @@
 // migrate.ts
 import { client, connectDatabase } from './db.js';
 import { addProfilePictureColumn } from './add-profile-picture-column.js';
-import { createTables } from './migrate.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { createWinnerPhotosTable } from './migrate-winner-photos.js';
 import { initializeAdminSettings } from './admin-settings.js';
 
 async function runAllMigrations() {
-  await createTables();
   await migrateCouponTable();
   await createWinnerPhotosTable(); // <-- Ensure winner_photos table is created
   await initializeAdminSettings();
