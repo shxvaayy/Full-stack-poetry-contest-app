@@ -3,7 +3,7 @@ services:
     name: writory-poetry-contest
     env: node
     region: oregon
-    plan: free
+    plan: starter # Upgraded from free to starter plan for 2000+ users
     buildCommand: cd server && npm run render-build
     startCommand: cd server && npm run render-start
     healthCheckPath: /health
@@ -12,3 +12,11 @@ services:
         value: production
       - key: PORT
         value: 3000
+    # Performance optimizations for high concurrency
+    scaling:
+      minInstances: 1
+      maxInstances: 3 # Auto-scale up to 3 instances for high load
+    # Resource allocation for 2000+ users
+    resources:
+      cpu: 0.5 # 0.5 CPU cores (starter plan)
+      memory: 1GB # 1GB RAM (starter plan)

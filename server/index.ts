@@ -7,8 +7,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import rateLimit from 'express-rate-limit';
 import { registerRoutes } from './routes.js';
-import { connectDatabase, client } from './db.js';
+import { connectDatabase, pool } from './db.js';
 import { createTables } from './migrate.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { initializeAdminSettings } from './admin-settings.js';
@@ -56,9 +57,60 @@ app.use(cors({
   maxAge: 86400 // 24 hours
 }));
 
+// Rate limiting for 2000+ concurrent users
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+});
+
+// Stricter rate limiting for payment endpoints
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // limit each IP to 50 payment requests per windowMs
+  message: {
+    error: 'Too many payment requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+});
+
+// Stricter rate limiting for file uploads
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 upload requests per windowMs
+  message: {
+    error: 'Too many file uploads from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+});
+
+// Apply rate limiting
+app.use(generalLimiter);
+app.use('/api/create-razorpay-order', paymentLimiter);
+app.use('/api/create-paypal-order', paymentLimiter);
+app.use('/api/verify-payment', paymentLimiter);
+app.use('/api/verify-paypal-payment', paymentLimiter);
+app.use('/api/submit-poem', uploadLimiter);
+app.use('/api/submit-multiple-poems', uploadLimiter);
+
 // Enhanced middleware with better error handling
 app.use(express.json({ 
-  limit: '50mb',
+  limit: '10mb', // Reduced from 50mb for better performance
   verify: (req, res, buf) => {
     try {
       JSON.parse(buf.toString());
@@ -72,8 +124,8 @@ app.use(express.json({
 
 app.use(express.urlencoded({ 
   extended: true, 
-  limit: '50mb',
-  parameterLimit: 50000
+  limit: '10mb', // Reduced from 50mb for better performance
+  parameterLimit: 1000 // Reduced from 50000 for better performance
 }));
 
 // Security headers
@@ -108,7 +160,37 @@ app.use((req, res, next) => {
   next();
 });
 
-// Enhanced health check with system info
+// Request queue management for high concurrency
+let activeRequests = 0;
+const MAX_CONCURRENT_REQUESTS = 1000; // Limit concurrent requests
+
+// Request queue middleware
+app.use((req, res, next) => {
+  if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
+    console.log(`⚠️ Request queue full (${activeRequests}/${MAX_CONCURRENT_REQUESTS}), rejecting request`);
+    return res.status(503).json({
+      error: 'Server is experiencing high load. Please try again in a few moments.',
+      retryAfter: 30
+    });
+  }
+  
+  activeRequests++;
+  
+  // Log request start
+  const startTime = Date.now();
+  console.log(`📥 Request started: ${req.method} ${req.path} (${activeRequests}/${MAX_CONCURRENT_REQUESTS} active)`);
+  
+  // Log request end
+  res.on('finish', () => {
+    activeRequests--;
+    const duration = Date.now() - startTime;
+    console.log(`📤 Request finished: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms) - (${activeRequests}/${MAX_CONCURRENT_REQUESTS} active)`);
+  });
+  
+  next();
+});
+
+// Enhanced health check with system info and pool stats
 app.get('/health', (req, res) => {
   const uptime = process.uptime();
   const memoryUsage = process.memoryUsage();
@@ -123,6 +205,16 @@ app.get('/health', (req, res) => {
       heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
       heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`
     },
+    performance: {
+      activeRequests: activeRequests,
+      maxConcurrentRequests: MAX_CONCURRENT_REQUESTS,
+      requestQueueStatus: activeRequests >= MAX_CONCURRENT_REQUESTS ? 'full' : 'available'
+    },
+    database: {
+      totalConnections: pool.totalCount,
+      idleConnections: pool.idleCount,
+      waitingConnections: pool.waitingCount
+    },
     version: process.version,
     platform: process.platform
   });
@@ -131,12 +223,19 @@ app.get('/health', (req, res) => {
 // Database status endpoint
 app.get('/api/db-status', async (req, res) => {
   try {
-    await connectDatabase();
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
     console.log('✅ Database connection test successful');
     res.json({
       status: 'connected',
       timestamp: new Date().toISOString(),
-      message: 'Database connection is healthy'
+      message: 'Database connection is healthy',
+      poolStats: {
+        totalConnections: pool.totalCount,
+        idleConnections: pool.idleCount,
+        waitingConnections: pool.waitingCount
+      }
     });
   } catch (error) {
     console.error('❌ Database connection test failed:', error);
@@ -161,7 +260,7 @@ async function initializeApp() {
     console.log('✅ Database connected successfully');
 
     // Step 2: Check if this is first deployment or development
-    const tablesExist = await client.query(`
+    const tablesExist = await pool.query(`
       SELECT table_name FROM information_schema.tables
       WHERE table_schema = 'public' AND table_name IN ('users', 'submissions')
     `);
@@ -196,7 +295,7 @@ async function initializeApp() {
     console.log('🔧 Quick users table verification...');
     try {
       // Just check if the table exists - no complex operations
-      const tableCheck = await client.query(`
+      const tableCheck = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name IN ('profile_picture_url', 'updated_at')
       `);
@@ -543,7 +642,7 @@ initializeApp().catch((error) => {
 // Add profile picture column to users table if it doesn't exist
 async function addProfilePictureColumn() {
   try {
-    const checkColumnExists = await client.query(`
+    const checkColumnExists = await pool.query(`
       SELECT column_name
       FROM information_schema.columns
       WHERE table_name = 'users' AND column_name = 'profile_picture_url'
@@ -551,7 +650,7 @@ async function addProfilePictureColumn() {
 
     if (checkColumnExists.rows.length === 0) {
       console.log('➕ Adding profile_picture_url column to users table...');
-      await client.query(`
+      await pool.query(`
         ALTER TABLE users
         ADD COLUMN profile_picture_url VARCHAR(255);
       `);

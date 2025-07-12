@@ -16,11 +16,13 @@ import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
 const router = Router();
 
-// Configure multer for file uploads
+// Configure multer for file uploads - optimized for 2000+ concurrent users
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit for all files
+    fileSize: 5 * 1024 * 1024, // Reduced to 5MB for better performance
+    files: 5, // Maximum 5 files per request
+    fieldSize: 1024 * 1024, // 1MB for text fields
   },
   fileFilter: (req, file, cb) => {
     console.log('📁 Multer file filter:', {
