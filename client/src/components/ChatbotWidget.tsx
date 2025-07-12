@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, MessageCircle, CheckCircle, User } from "lucide-react";
-import logoImage from "@/assets/chatbot.png";
+import logoImage from "@/assets/chatbot-avatar.png";
 
 interface Message {
   id: string;
