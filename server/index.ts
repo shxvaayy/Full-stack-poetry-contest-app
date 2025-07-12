@@ -332,6 +332,23 @@ async function initializeApp() {
     registerRoutes(app);
     console.log('✅ Routes registered successfully');
 
+    // Step 4.5: Serve static files and SPA fallback (AFTER API routes)
+    console.log('🔧 Setting up static file serving and SPA fallback...');
+    const publicPath = path.join(__dirname, '../dist/public');
+    app.use(express.static(publicPath));
+
+    // React SPA fallback: serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+      // Only handle non-API routes for SPA fallback
+      if (!req.path.startsWith('/api/')) {
+        res.sendFile(path.join(publicPath, 'index.html'));
+      } else {
+        // For API routes that don't exist, return 404
+        res.status(404).json({ error: 'API endpoint not found' });
+      }
+    });
+    console.log('✅ Static file serving and SPA fallback configured');
+
     // Step 5: Start server with optimized settings for 5-10k users
     const server = app.listen(PORT, () => {
       console.log('🎉 Server started successfully!');
@@ -445,15 +462,4 @@ async function addProfilePictureColumn() {
   }
 }
 
-// Serve static files from the frontend build directory
-const publicPath = path.join(__dirname, '../dist/public');
-app.use(express.static(publicPath));
-
-// React SPA fallback: serve index.html for all non-API routes
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api/')) {
-    res.sendFile(path.join(publicPath, 'index.html'));
-  } else {
-    res.status(404).json({ error: 'API endpoint not found' });
-  }
-});
+// Static file serving and SPA fallback moved to after route registration
