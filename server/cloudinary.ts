@@ -184,4 +184,63 @@ export const deleteFileFromCloudinary = async (publicId: string): Promise<void> 
   }
 };
 
+// Upload winner photo to Cloudinary
+export const uploadWinnerPhotoToCloudinary = async (
+  fileBuffer: Buffer,
+  position: number,
+  contestMonth: string,
+  originalName: string
+): Promise<string> => {
+  try {
+    console.log('🏆 Uploading winner photo to Cloudinary for position:', position, 'contest:', contestMonth);
+
+    // Validate file buffer
+    if (!fileBuffer || fileBuffer.length === 0) {
+      throw new Error('Winner photo file buffer is empty');
+    }
+
+    // Validate file type (only images allowed)
+    const fileExtension = originalName.split('.').pop()?.toLowerCase();
+    if (!['jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
+      throw new Error('Only JPG, JPEG, and PNG files are allowed for winner photos');
+    }
+
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const sanitizedMonth = contestMonth.replace(/[^a-zA-Z0-9-]/g, '_');
+    const publicId = `writory/winner_photos/${sanitizedMonth}_position_${position}_${timestamp}`;
+
+    console.log('📤 Uploading winner photo with public ID:', publicId);
+
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          public_id: publicId,
+          folder: 'writory/winner_photos',
+          resource_type: 'image',
+          transformation: [
+            { width: 800, height: 600, crop: 'limit' },
+            { quality: 'auto', fetch_format: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) {
+            console.error('❌ Cloudinary winner photo upload error:', error);
+            reject(error);
+          } else {
+            console.log('✅ Winner photo uploaded successfully:', result?.secure_url);
+            resolve(result);
+          }
+        }
+      ).end(fileBuffer);
+    });
+
+    return (result as any).secure_url;
+  } catch (error) {
+    console.error('❌ Error uploading winner photo to Cloudinary:', error);
+    throw error;
+  }
+};
+
 export { cloudinary };

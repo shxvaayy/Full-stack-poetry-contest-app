@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import multer from 'multer';
-import { uploadProfilePhotoToCloudinary, uploadPoemFileToCloudinary, uploadPhotoFileToCloudinary } from './cloudinary.js';
+import { uploadProfilePhotoToCloudinary, uploadPoemFileToCloudinary, uploadPhotoFileToCloudinary, uploadWinnerPhotoToCloudinary } from './cloudinary.js';
 import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
@@ -3104,6 +3104,227 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
       success: false,
       error: 'Failed to update profile',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}));
+
+// ===== WINNER PHOTO MANAGEMENT ENDPOINTS =====
+
+// Upload winner photo
+router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto'), asyncHandler(async (req: any, res: any) => {
+  try {
+    const { position, contestMonth, contestYear, winnerName, poemTitle } = req.body;
+    const winnerPhotoFile = req.file;
+    const adminEmail = req.headers['x-user-email'] as string;
+
+    console.log('🏆 Uploading winner photo:', {
+      position,
+      contestMonth,
+      contestYear,
+      winnerName,
+      poemTitle,
+      hasPhotoFile: !!winnerPhotoFile,
+      adminEmail
+    });
+
+    if (!position || !contestMonth || !contestYear || !winnerPhotoFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'Position, contest month, contest year, and photo file are required'
+      });
+    }
+
+    // Validate position (1, 2, 3)
+    const positionNum = parseInt(position);
+    if (![1, 2, 3].includes(positionNum)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Position must be 1, 2, or 3'
+      });
+    }
+
+    // Validate contest month format (YYYY-MM)
+    const monthRegex = /^\d{4}-\d{2}$/;
+    if (!monthRegex.test(contestMonth)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Contest month must be in YYYY-MM format'
+      });
+    }
+
+    // Upload photo to Cloudinary
+    let photoUrl;
+    try {
+      photoUrl = await uploadWinnerPhotoToCloudinary(
+        winnerPhotoFile.buffer,
+        positionNum,
+        contestMonth,
+        winnerPhotoFile.originalname
+      );
+      console.log('✅ Winner photo uploaded to Cloudinary:', photoUrl);
+    } catch (uploadError) {
+      console.error('❌ Cloudinary upload failed:', uploadError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to upload winner photo',
+        message: uploadError.message
+      });
+    }
+
+    // Save to database
+    const result = await client.query(`
+      INSERT INTO winner_photos (position, contest_month, contest_year, photo_url, winner_name, poem_title, uploaded_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      RETURNING *
+    `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName || null, poemTitle || null, adminEmail]);
+
+    const winnerPhoto = result.rows[0];
+    console.log('✅ Winner photo saved to database:', winnerPhoto.id);
+
+    res.json({
+      success: true,
+      message: `Winner photo for ${positionNum === 1 ? '1st' : positionNum === 2 ? '2nd' : '3rd'} place uploaded successfully`,
+      winnerPhoto: {
+        id: winnerPhoto.id,
+        position: winnerPhoto.position,
+        contestMonth: winnerPhoto.contest_month,
+        contestYear: winnerPhoto.contest_year,
+        photoUrl: winnerPhoto.photo_url,
+        winnerName: winnerPhoto.winner_name,
+        poemTitle: winnerPhoto.poem_title,
+        uploadedBy: winnerPhoto.uploaded_by,
+        createdAt: winnerPhoto.created_at
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error uploading winner photo:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload winner photo',
+      message: error.message
+    });
+  }
+}));
+
+// Get winner photos for a specific contest month
+router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res: any) => {
+  try {
+    const { contestMonth } = req.params;
+    console.log('🏆 Fetching winner photos for contest month:', contestMonth);
+
+    const result = await client.query(`
+      SELECT id, position, contest_month, contest_year, photo_url, winner_name, poem_title, uploaded_by, created_at
+      FROM winner_photos 
+      WHERE contest_month = $1 AND is_active = true
+      ORDER BY position ASC
+    `, [contestMonth]);
+
+    const winnerPhotos = result.rows.map(photo => ({
+      id: photo.id,
+      position: photo.position,
+      contestMonth: photo.contest_month,
+      contestYear: photo.contest_year,
+      photoUrl: photo.photo_url,
+      winnerName: photo.winner_name,
+      poemTitle: photo.poem_title,
+      uploadedBy: photo.uploaded_by,
+      createdAt: photo.created_at
+    }));
+
+    console.log('✅ Found', winnerPhotos.length, 'winner photos for', contestMonth);
+
+    res.json({
+      success: true,
+      contestMonth,
+      winnerPhotos
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching winner photos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch winner photos',
+      message: error.message
+    });
+  }
+}));
+
+// Get all winner photos (for admin)
+router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  try {
+    console.log('🏆 Fetching all winner photos for admin');
+
+    const result = await client.query(`
+      SELECT id, position, contest_month, contest_year, photo_url, winner_name, poem_title, uploaded_by, created_at, updated_at
+      FROM winner_photos 
+      WHERE is_active = true
+      ORDER BY contest_year DESC, contest_month DESC, position ASC
+    `);
+
+    const winnerPhotos = result.rows.map(photo => ({
+      id: photo.id,
+      position: photo.position,
+      contestMonth: photo.contest_month,
+      contestYear: photo.contest_year,
+      photoUrl: photo.photo_url,
+      winnerName: photo.winner_name,
+      poemTitle: photo.poem_title,
+      uploadedBy: photo.uploaded_by,
+      createdAt: photo.created_at,
+      updatedAt: photo.updated_at
+    }));
+
+    console.log('✅ Found', winnerPhotos.length, 'total winner photos');
+
+    res.json({
+      success: true,
+      winnerPhotos
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching all winner photos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch winner photos',
+      message: error.message
+    });
+  }
+}));
+
+// Delete winner photo (soft delete)
+router.delete('/api/admin/winner-photos/:id', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    console.log('🗑️ Soft deleting winner photo:', id);
+
+    const result = await client.query(`
+      UPDATE winner_photos 
+      SET is_active = false, updated_at = NOW()
+      WHERE id = $1 AND is_active = true
+      RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Winner photo not found'
+      });
+    }
+
+    console.log('✅ Winner photo soft deleted:', id);
+
+    res.json({
+      success: true,
+      message: 'Winner photo deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting winner photo:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete winner photo',
+      message: error.message
     });
   }
 }));

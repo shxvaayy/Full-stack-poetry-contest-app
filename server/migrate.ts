@@ -182,6 +182,9 @@ async function createTables() {
       CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code);
       CREATE INDEX IF NOT EXISTS idx_coupon_usage_coupon_id ON coupon_usage(coupon_id);
       CREATE INDEX IF NOT EXISTS idx_admin_settings_key ON admin_settings(setting_key);
+      CREATE INDEX IF NOT EXISTS idx_winner_photos_contest_month ON winner_photos(contest_month);
+      CREATE INDEX IF NOT EXISTS idx_winner_photos_position ON winner_photos(position);
+      CREATE INDEX IF NOT EXISTS idx_winner_photos_active ON winner_photos(is_active);
     `);
 
     // Create trigger function for updating updated_at columns
@@ -202,6 +205,23 @@ async function createTables() {
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         role VARCHAR(50) DEFAULT 'admin' NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    console.log('🏆 Creating winner_photos table...');
+    await client.query(`
+      CREATE TABLE winner_photos (
+        id SERIAL PRIMARY KEY,
+        position INTEGER NOT NULL,
+        contest_month VARCHAR(7) NOT NULL,
+        contest_year INTEGER NOT NULL,
+        photo_url VARCHAR(500) NOT NULL,
+        winner_name VARCHAR(255),
+        poem_title VARCHAR(255),
+        is_active BOOLEAN DEFAULT true NOT NULL,
+        uploaded_by VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT NOW() NOT NULL,
         updated_at TIMESTAMP DEFAULT NOW() NOT NULL
       );
