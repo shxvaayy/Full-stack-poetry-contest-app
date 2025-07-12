@@ -393,31 +393,13 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
 // Get user by UID
 router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
   const { uid } = req.params;
-  console.log('🔍 Getting user by UID:', uid);
-
-  try {
-    let user = await storage.getUserByUid(uid);
-
-    if (!user) {
-      console.log('⚠️ User not found for UID:', uid, '- This might be a new user');
-      // Return a basic user structure instead of error
-      // The frontend can handle this and show appropriate UI
-      return res.json({
-        uid: uid,
-        email: '',
-        name: '',
-        phone: null,
-        id: null,
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    console.log('✅ User found:', user.email);
-    res.json(user);
-  } catch (error) {
-    console.error('❌ Error getting user:', error);
-    res.status(500).json({ error: 'Failed to get user' });
+  console.log('🔍 Fetching user by UID:', uid);
+  const result = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
+  if (result.rows.length === 0) {
+    console.warn('⚠️ User not found for UID:', uid);
+    return res.status(404).json({ error: 'User not found', uid });
   }
+  res.json({ user: result.rows[0] });
 }));
 
 // Update user profile with Cloudinary photo upload
@@ -3167,3 +3149,15 @@ router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req:
 
 // Updated free tier check logic to use reset timestamp and consistent formatting.
 // This change ensures accurate determination of free tier availability after a reset.
+
+// Submission count endpoint
+router.get('/api/submission-count', asyncHandler(async (req, res) => {
+  try {
+    const result = await client.query('SELECT COUNT(*) FROM submissions');
+    const count = result.rows[0]?.count || 0;
+    res.json({ count: parseInt(count, 10) });
+  } catch (error) {
+    console.error('❌ Error fetching submission count:', error);
+    res.status(500).json({ error: 'Failed to fetch submission count' });
+  }
+}));
