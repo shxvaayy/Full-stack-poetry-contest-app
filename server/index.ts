@@ -279,8 +279,8 @@ app.get('/api/db-status', async (req, res) => {
 // Initialize database and start server
 async function initializeApp() {
   try {
-    console.log('🚀 Initializing application for 5-10k concurrent users...');
-    console.log('📅 Start time:', new Date().toISOString());
+    console.log('🚀 [INIT] Application initialization started');
+    console.log('📅 [INIT] Start time:', new Date().toISOString());
 
     // Step 1: Connect to database
     console.log('🔌 Connecting to database pool...');
@@ -381,6 +381,7 @@ async function initializeApp() {
     console.log('✅ Static file serving and SPA fallback configured - FIXED ROUTE ORDER');
 
     // Step 5: Start server with optimized settings for 5-10k users
+    console.log('🟢 [STARTUP] About to start server on port', PORT);
     const server = app.listen(PORT, () => {
       console.log('🎉 Server started successfully!');
       console.log(`🌐 Server running on port ${PORT}`);
@@ -421,10 +422,14 @@ async function initializeApp() {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-  } catch (error: any) {
-    console.error('❌ Failed to initialize application:', error);
-    console.error('💡 Error details:', error.message);
-    console.error('💡 Stack trace:', error.stack);
+  } catch (error: unknown) {
+    console.error('❌ [FATAL] Failed to initialize application:', error);
+    if (error && typeof error === 'object' && 'message' in error) {
+      console.error('💡 [FATAL] Error details:', (error as any).message);
+    }
+    if (error && typeof error === 'object' && 'stack' in error) {
+      console.error('💡 [FATAL] Stack trace:', (error as any).stack);
+    }
     process.exit(1);
   }
 }
@@ -432,7 +437,7 @@ async function initializeApp() {
 // Removed the problematic fixUserSubmissionLinks function that was causing server hangs
 
 // Enhanced graceful shutdown handling
-const gracefulShutdown = (signal) => {
+const gracefulShutdown = (signal: string) => {
   console.log(`\n👋 Received ${signal}, initiating graceful shutdown...`);
   console.log('🔄 Closing server...');
 
@@ -447,15 +452,17 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', (error: unknown) => {
   console.error('🚨 UNCAUGHT EXCEPTION:', error);
-  console.error('Stack:', error.stack);
+  if (error && typeof error === 'object' && 'stack' in error) {
+    console.error('Stack:', (error as any).stack);
+  }
   console.error('💥 Process will exit...');
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise) => {
   console.error('🚨 UNHANDLED PROMISE REJECTION at:', promise);
   console.error('Reason:', reason);
   console.error('💥 Process will exit...');
@@ -488,8 +495,12 @@ async function addProfilePictureColumn() {
     } else {
       console.log('✅ profile_picture_url column already exists in users table');
     }
-  } catch (error) {
-    console.error('❌ Error adding profile_picture_url column:', error.message);
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'message' in error) {
+      console.error('❌ Error adding profile_picture_url column:', (error as any).message);
+    } else {
+      console.error('❌ Error adding profile_picture_url column:', error);
+    }
   }
 }
 
@@ -523,8 +534,12 @@ async function addPoemTextColumnDirectly() {
     } else {
       console.log('✅ poem_text column already exists in submissions table');
     }
-  } catch (error) {
-    console.error('❌ Error checking/adding poem_text column:', error.message);
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'message' in error) {
+      console.error('❌ Error checking/adding poem_text column:', (error as any).message);
+    } else {
+      console.error('❌ Error checking/adding poem_text column:', error);
+    }
     // Don't throw - continue with server startup
   }
 }
