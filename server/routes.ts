@@ -3117,16 +3117,6 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
     const winnerPhotoFile = req.file;
     const adminEmail = req.headers['x-user-email'] as string;
 
-    console.log('🏆 Uploading winner photo:', {
-      position,
-      contestMonth,
-      contestYear,
-      winnerName,
-      score,
-      hasPhotoFile: !!winnerPhotoFile,
-      adminEmail
-    });
-
     if (!position || !contestMonth || !contestYear || !winnerPhotoFile) {
       return res.status(400).json({
         success: false,
@@ -3170,9 +3160,7 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
         contestMonth,
         winnerPhotoFile.originalname
       );
-      console.log('✅ Winner photo uploaded to Cloudinary:', photoUrl);
     } catch (uploadError) {
-      console.error('❌ Cloudinary upload failed:', uploadError);
       return res.status(500).json({
         success: false,
         error: 'Failed to upload winner photo',
@@ -3188,8 +3176,6 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
     `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName || null, scoreNum, adminEmail]);
 
     const winnerPhoto = result.rows[0];
-    console.log('✅ Winner photo saved to database:', winnerPhoto.id);
-
     res.json({
       success: true,
       message: `Winner photo for ${positionNum === 1 ? '1st' : positionNum === 2 ? '2nd' : '3rd'} place uploaded successfully`,
@@ -3205,9 +3191,7 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
         createdAt: winnerPhoto.created_at
       }
     });
-
   } catch (error) {
-    console.error('❌ Error uploading winner photo:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to upload winner photo',
@@ -3220,15 +3204,12 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
 router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res: any) => {
   try {
     const { contestMonth } = req.params;
-    console.log('🏆 Fetching winner photos for contest month:', contestMonth);
-
     const result = await client.query(`
       SELECT id, position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at
       FROM winner_photos 
       WHERE contest_month = $1 AND is_active = true
       ORDER BY position ASC
     `, [contestMonth]);
-
     const winnerPhotos = result.rows.map(photo => ({
       id: photo.id,
       position: photo.position,
@@ -3240,17 +3221,12 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
       uploadedBy: photo.uploaded_by,
       createdAt: photo.created_at
     }));
-
-    console.log('✅ Found', winnerPhotos.length, 'winner photos for', contestMonth);
-
     res.json({
       success: true,
       contestMonth,
       winnerPhotos
     });
-
   } catch (error) {
-    console.error('❌ Error fetching winner photos:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch winner photos',
@@ -3262,9 +3238,6 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
 // Get all winner photos (for admin)
 router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: any, res: any) => {
   try {
-    console.log('🏆 Fetching all winner photos for admin');
-
-    // Join winner_photos with submissions to get the score for each winner
     const result = await client.query(`
       SELECT wp.id, wp.position, wp.contest_month, wp.contest_year, wp.photo_url, wp.winner_name, wp.poem_title, wp.uploaded_by, wp.created_at, wp.updated_at,
              s.score
@@ -3277,7 +3250,6 @@ router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: an
       WHERE wp.is_active = true
       ORDER BY wp.contest_year DESC, wp.contest_month DESC, wp.position ASC
     `);
-
     const winnerPhotos = result.rows.map(photo => ({
       id: photo.id,
       position: photo.position,
@@ -3290,16 +3262,11 @@ router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: an
       createdAt: photo.created_at,
       updatedAt: photo.updated_at
     }));
-
-    console.log('✅ Found', winnerPhotos.length, 'total winner photos');
-
     res.json({
       success: true,
       winnerPhotos
     });
-
   } catch (error) {
-    console.error('❌ Error fetching all winner photos:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch winner photos',
@@ -3312,31 +3279,23 @@ router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: an
 router.delete('/api/admin/winner-photos/:id', requireAdmin, asyncHandler(async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    console.log('🗑️ Soft deleting winner photo:', id);
-
     const result = await client.query(`
       UPDATE winner_photos 
       SET is_active = false, updated_at = NOW()
       WHERE id = $1 AND is_active = true
       RETURNING *
     `, [id]);
-
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Winner photo not found'
       });
     }
-
-    console.log('✅ Winner photo soft deleted:', id);
-
     res.json({
       success: true,
       message: 'Winner photo deleted successfully'
     });
-
   } catch (error) {
-    console.error('❌ Error deleting winner photo:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to delete winner photo',

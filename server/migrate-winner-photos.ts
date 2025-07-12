@@ -2,8 +2,6 @@ import { pool } from './db.js';
 
 export async function createWinnerPhotosTable() {
   try {
-    console.log('🏆 Creating winner_photos table...');
-
     // Check if table already exists
     const tableExists = await pool.query(`
       SELECT EXISTS (
@@ -12,9 +10,7 @@ export async function createWinnerPhotosTable() {
         AND table_name = 'winner_photos'
       );
     `);
-
     if (tableExists.rows[0].exists) {
-      console.log('✅ winner_photos table already exists');
       // Add score column if it does not exist
       const scoreCol = await pool.query(`
         SELECT column_name FROM information_schema.columns
@@ -22,11 +18,9 @@ export async function createWinnerPhotosTable() {
       `);
       if (scoreCol.rows.length === 0) {
         await pool.query(`ALTER TABLE winner_photos ADD COLUMN score INTEGER`);
-        console.log('✅ Added score column to winner_photos');
       }
       return true;
     }
-
     // Create the winner_photos table
     await pool.query(`
       CREATE TABLE winner_photos (
@@ -43,19 +37,14 @@ export async function createWinnerPhotosTable() {
         updated_at TIMESTAMP DEFAULT NOW() NOT NULL
       );
     `);
-
     // Add indexes for better performance
     await pool.query(`
       CREATE INDEX idx_winner_photos_contest_month ON winner_photos(contest_month);
       CREATE INDEX idx_winner_photos_position ON winner_photos(position);
       CREATE INDEX idx_winner_photos_active ON winner_photos(is_active);
     `);
-
-    console.log('✅ winner_photos table created successfully');
     return true;
-
   } catch (error) {
-    console.error('❌ Error creating winner_photos table:', error);
     return false;
   }
 }
