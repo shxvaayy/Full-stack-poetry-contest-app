@@ -13,6 +13,7 @@ interface WinnerPhoto {
   poemTitle?: string;
   uploadedBy: string;
   createdAt: string;
+  score?: number; // Added score to the interface
 }
 
 export default function WinningPoemsPage() {
@@ -71,6 +72,8 @@ export default function WinningPoemsPage() {
             <p className="font-semibold text-gray-900">
               {photo.winnerName || `${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
             </p>
+            {/* Show score if available */}
+            <p className="text-sm text-gray-600">Score: {photo.score ?? 'N/A'}/100</p>
             {photo.poemTitle && (
               <p className="text-sm text-gray-600 italic">"{photo.poemTitle}"</p>
             )}

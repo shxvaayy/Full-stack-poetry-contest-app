@@ -49,7 +49,7 @@ export default function PastWinnersPage() {
     return winnerPhotos.find(photo => photo.position === position);
   };
 
-  // Find the latest contest month with all 3 positions
+  // Find the latest contest month with any winner photos (not requiring all 3)
   const groupByMonth: Record<string, WinnerPhoto[]> = {};
   winnerPhotos.forEach(photo => {
     const key = `${photo.contestYear}-${photo.contestMonth}`;
@@ -59,7 +59,7 @@ export default function PastWinnersPage() {
   const sortedMonths = Object.keys(groupByMonth).sort().reverse();
   let latestSet: WinnerPhoto[] = [];
   for (const month of sortedMonths) {
-    if (groupByMonth[month].length >= 3) {
+    if (groupByMonth[month].length > 0) { // Show as soon as any winner photo exists
       latestSet = groupByMonth[month];
       break;
     }
@@ -139,24 +139,15 @@ export default function PastWinnersPage() {
               <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
               
               <div className="grid md:grid-cols-3 gap-8">
-                <WinnerCard 
-                  position={1} 
-                  icon={Trophy} 
-                  color="bg-yellow-500" 
-                  title="1st Place Winner" 
-                />
-                <WinnerCard 
-                  position={2} 
-                  icon={Medal} 
-                  color="bg-gray-400" 
-                  title="2nd Place Winner" 
-                />
-                <WinnerCard 
-                  position={3} 
-                  icon={Award} 
-                  color="bg-yellow-600" 
-                  title="3rd Place Winner" 
-                />
+                {[1, 2, 3].map(pos => (
+                  <WinnerCard 
+                    key={pos}
+                    position={pos}
+                    icon={pos === 1 ? Trophy : pos === 2 ? Medal : Award}
+                    color={pos === 1 ? "bg-yellow-500" : pos === 2 ? "bg-gray-400" : "bg-yellow-600"}
+                    title={pos === 1 ? "1st Place Winner" : pos === 2 ? "2nd Place Winner" : "3rd Place Winner"}
+                  />
+                ))}
               </div>
             </div>
           </CardContent>
