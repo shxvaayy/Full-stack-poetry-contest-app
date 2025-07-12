@@ -269,13 +269,13 @@ app.get('/api/db-status', async (req, res) => {
         waitingConnections: pool.waitingCount
       }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Database connection test failed:', error);
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
       error: 'Database connection failed',
-      message: error.message
+      message: (typeof error === 'object' && error !== null && 'message' in error) ? (error as any).message : String(error)
     });
   }
 });
@@ -283,155 +283,107 @@ app.get('/api/db-status', async (req, res) => {
 // Initialize database and start server
 async function initializeApp() {
   try {
-    console.log('🚀 [INIT] Application initialization started');
-    console.log('📅 [INIT] Start time:', new Date().toISOString());
+    console.log('🟢 [INIT] initializeApp() started');
+    console.log('🚀 Initializing application for 5-10k concurrent users...');
+    console.log('📅 Start time:', new Date().toISOString());
 
     // Step 1: Connect to database
-    console.log('🔌 Connecting to database pool...');
+    console.log('🔌 [STEP] Connecting to database pool...');
     await connectDatabase();
-    console.log('✅ Database pool connected successfully');
+    console.log('✅ [STEP] Database pool connected successfully');
 
     // Step 2: Check if this is first deployment or development
+    console.log('🔍 [STEP] Checking for existing tables...');
     const tablesExist = await pool.query(`
       SELECT table_name FROM information_schema.tables
       WHERE table_schema = 'public' AND table_name IN ('users', 'submissions')
     `);
+    console.log('✅ [STEP] Table check complete');
 
     const isFirstDeploy = tablesExist.rows.length === 0;
     const isDevelopment = process.env.NODE_ENV === 'development';
 
     if (isFirstDeploy || isDevelopment) {
-      console.log('🔧 Running database migrations...');
-
-      // Run coupon table migration
+      console.log('🔧 [STEP] Running database migrations...');
       await migrateCouponTable();
-      console.log('✅ Coupon table migration completed');
-
-      // Run winner photos migration
+      console.log('✅ [STEP] Coupon table migration completed');
       const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
       await createWinnerPhotosTable();
-      console.log('✅ Winner photos table migration completed');
-
-      // Run coupon table migration
-      await migrateCouponTable();
-      console.log('✅ Coupon table migration completed');
-
-      // Run contest fields migration
-      const { migrateContestFields } = await import('./migrate-contest-fields.js');
-      await migrateContestFields();
-      console.log('✅ Contest fields migration completed');
-
-      // CRITICAL: Fix poem_text column
-      await addPoemTextColumnDirectly();
-      console.log('✅ Poem text column fix completed');
-
-      console.log('🎉 Database schema synchronized successfully!');
-      console.log('✅ All tables created with proper updated_at columns');
+      console.log('✅ [STEP] Winner photos table migration completed');
+      console.log('🎉 [STEP] Database schema synchronized successfully!');
+      console.log('✅ [STEP] All tables created with proper updated_at columns');
     } else {
-      console.log('✅ Database already initialized, running essential migrations...');
-      
-      // Always run winner photos migration to ensure score column exists
+      console.log('✅ [STEP] Database already initialized, running essential migrations...');
       try {
         const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
         await createWinnerPhotosTable();
-        console.log('✅ Winner photos table migration completed');
+        console.log('✅ [STEP] Winner photos table migration completed');
       } catch (error) {
-        console.log('⚠️ Winner photos migration skipped (non-critical):', error.message);
+        console.log('⚠️ [STEP] Winner photos migration skipped (non-critical):', error.message);
       }
-      
-      // Even for existing databases, ensure poem_text column exists
-      await addPoemTextColumnDirectly();
-      console.log('📊 Preserving existing user data and submissions');
+      console.log('📊 [STEP] Preserving existing user data and submissions');
     }
 
     // Step 2.5: Quick users table verification (without hanging imports)
-    console.log('🔧 Quick users table verification...');
+    console.log('🔧 [STEP] Quick users table verification...');
     try {
-      // Just check if the table exists - no complex operations
       const tableCheck = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name IN ('profile_picture_url', 'updated_at')
       `);
-      console.log('✅ Users table verification completed');
+      console.log('✅ [STEP] Users table verification completed');
     } catch (error) {
-      console.log('⚠️ Users table verification skipped (non-critical)');
+      console.log('⚠️ [STEP] Users table verification skipped (non-critical)');
     }
 
     // Step 3: Initialize admin settings
-    console.log('🔧 Initializing admin settings...');
+    console.log('🔧 [STEP] Initializing admin settings...');
     await initializeAdminSettings();
-    console.log('✅ Admin settings initialized');
+    console.log('✅ [STEP] Admin settings initialized');
 
     // Step 4: Register routes
-    console.log('🔧 Registering routes...');
+    console.log('🔧 [STEP] Registering routes...');
     registerRoutes(app);
-    console.log('✅ Routes registered successfully');
+    console.log('✅ [STEP] Routes registered successfully');
 
     // Step 4.5: Serve static files and SPA fallback (AFTER API routes)
-    console.log('🔧 Setting up static file serving and SPA fallback...');
+    console.log('🔧 [STEP] Setting up static file serving and SPA fallback...');
     const publicPath = path.join(__dirname, '../dist/public');
+    if (!fs.existsSync(publicPath)) {
+      console.warn('⚠️ [WARNING] Static files directory does not exist:', publicPath);
+    } else {
+      console.log('✅ [STEP] Static files directory found:', publicPath);
+    }
     app.use(express.static(publicPath));
 
     // React SPA fallback: serve index.html for all non-API routes
     app.get('*', (req, res) => {
-      // Only handle non-API routes for SPA fallback
       if (!req.path.startsWith('/api/')) {
         res.sendFile(path.join(publicPath, 'index.html'));
       } else {
-        // For API routes that don't exist, return 404
         res.status(404).json({ error: 'API endpoint not found' });
       }
     });
-    console.log('✅ Static file serving and SPA fallback configured - FIXED ROUTE ORDER');
+    console.log('✅ [STEP] Static file serving and SPA fallback configured - FIXED ROUTE ORDER');
 
     // Step 5: Start server with optimized settings for 5-10k users
-    console.log('🟢 [STARTUP] About to start server on port', PORT);
+    console.log('🟢 [STEP] About to start server on port', PORT);
     const server = app.listen(PORT, () => {
-      console.log('🎉 Server started successfully!');
-      console.log(`🌐 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🚀 Ready for 5-10k concurrent users!`);
-      console.log(`📈 Performance optimizations active:`);
-      console.log(`   - Database pool: ${pool.totalCount} connections`);
-      console.log(`   - Rate limiting: 5000 req/15min per IP`);
-      console.log(`   - Request queue: ${MAX_CONCURRENT_REQUESTS} concurrent`);
-      console.log(`   - Compression: enabled`);
-      console.log(`   - File uploads: 3MB max, 3 files per request`);
+      console.log('🎉 [SERVER] Server started successfully!');
+      console.log(`🌐 [SERVER] Server running on port ${PORT}`);
+      console.log(`📊 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🚀 [SERVER] Ready for 5-10k concurrent users!`);
     });
-
-    // Optimize server settings for high concurrency
-    server.maxConnections = 10000; // Allow up to 10k connections
-    server.keepAliveTimeout = 65000; // 65 seconds
-    server.headersTimeout = 66000; // 66 seconds
-
-    // Graceful shutdown
-    const gracefulShutdown = (signal: string) => {
-      console.log(`🛑 Received ${signal}, shutting down gracefully...`);
-      
-      server.close(() => {
-        console.log('✅ HTTP server closed');
-        pool.end(() => {
-          console.log('✅ Database pool closed');
-          process.exit(0);
-        });
-      });
-
-      // Force close after 30 seconds
-      setTimeout(() => {
-        console.error('❌ Could not close connections in time, forcefully shutting down');
-        process.exit(1);
-      }, 30000);
-    };
-
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-  } catch (error: unknown) {
+    server.maxConnections = 10000;
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+    console.log('🟢 [INIT] initializeApp() completed - server should be running');
+  } catch (error) {
     console.error('❌ [FATAL] Failed to initialize application:', error);
-    if (error && typeof error === 'object' && 'message' in error) {
+    if (typeof error === 'object' && error !== null && 'message' in error) {
       console.error('💡 [FATAL] Error details:', (error as any).message);
     }
-    if (error && typeof error === 'object' && 'stack' in error) {
+    if (typeof error === 'object' && error !== null && 'stack' in error) {
       console.error('💡 [FATAL] Stack trace:', (error as any).stack);
     }
     process.exit(1);
@@ -458,7 +410,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: unknown) => {
   console.error('🚨 UNCAUGHT EXCEPTION:', error);
-  if (error && typeof error === 'object' && 'stack' in error) {
+  if (typeof error === 'object' && error !== null && 'stack' in error) {
     console.error('Stack:', (error as any).stack);
   }
   console.error('💥 Process will exit...');
@@ -500,10 +452,10 @@ async function addProfilePictureColumn() {
       console.log('✅ profile_picture_url column already exists in users table');
     }
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'message' in error) {
+    if (typeof error === 'object' && error !== null && 'message' in error) {
       console.error('❌ Error adding profile_picture_url column:', (error as any).message);
     } else {
-      console.error('❌ Error adding profile_picture_url column:', error);
+      console.error('❌ Error adding profile_picture_url column:', String(error));
     }
   }
 }
@@ -539,10 +491,10 @@ async function addPoemTextColumnDirectly() {
       console.log('✅ poem_text column already exists in submissions table');
     }
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'message' in error) {
+    if (typeof error === 'object' && error !== null && 'message' in error) {
       console.error('❌ Error checking/adding poem_text column:', (error as any).message);
     } else {
-      console.error('❌ Error checking/adding poem_text column:', error);
+      console.error('❌ Error checking/adding poem_text column:', String(error));
     }
     // Don't throw - continue with server startup
   }

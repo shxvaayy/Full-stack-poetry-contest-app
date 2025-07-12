@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, MessageCircle, CheckCircle, User } from "lucide-react";
-import logoImage from "@/assets/chatbot.png";
+import logoImage from "@/assets/chatbot-avatar.png";
 
 interface Message {
   id: string;
@@ -91,7 +91,7 @@ export default function ChatbotWidget() {
   useEffect(() => {
     const welcomeMessage: Message = {
       id: '1',
-      text: "Hey! This is Writory Chat bot. How can I help you? 😊",
+      text: "Hey! This is Writora. How can I help you? 😊",
       sender: 'bot',
       timestamp: new Date()
     };
@@ -220,7 +220,7 @@ export default function ChatbotWidget() {
                 />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">Writory Assistant</h3>
+                <h3 className="font-semibold text-sm">Writora</h3>
                 <p className="text-xs text-cyan-100">Online</p>
               </div>
             </div>

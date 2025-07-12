@@ -18,55 +18,38 @@ interface WinnerPhoto {
 export default function PastWinnersPage() {
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  // Set the contest month directly to '2025-07' (remove admin endpoint call)
+  const [latestMonth] = useState<string>('2025-07');
 
-  // Load all winner photos from database
+  // Step 2: Fetch winner photos for the latest contestMonth using the public endpoint
   useEffect(() => {
+    if (!latestMonth) return;
     const loadWinnerPhotos = async () => {
       try {
         setLoading(true);
-        
-        // For past winners, we'll show all available winner photos
-        // You can modify this to show specific contest months
-        const response = await fetch('/api/admin/winner-photos');
+        const response = await fetch(`/api/winner-photos/${latestMonth}`);
         if (response.ok) {
           const data = await response.json();
           setWinnerPhotos(data.winnerPhotos || []);
         } else {
-          console.log('No winner photos found');
+          setWinnerPhotos([]);
         }
       } catch (error) {
-        console.error('Error loading winner photos:', error);
+        setWinnerPhotos([]);
       } finally {
         setLoading(false);
       }
     };
-
     loadWinnerPhotos();
-  }, []);
+  }, [latestMonth]);
 
   // Helper function to get winner photo by position
   const getWinnerPhotoByPosition = (position: number) => {
     return winnerPhotos.find(photo => photo.position === position);
   };
 
-  // Find the latest contest month with any winner photos (not requiring all 3)
-  const groupByMonth: Record<string, WinnerPhoto[]> = {};
-  winnerPhotos.forEach(photo => {
-    const key = `${photo.contestYear}-${photo.contestMonth}`;
-    if (!groupByMonth[key]) groupByMonth[key] = [];
-    groupByMonth[key].push(photo);
-  });
-  const sortedMonths = Object.keys(groupByMonth).sort().reverse();
-  let latestSet: WinnerPhoto[] = [];
-  for (const month of sortedMonths) {
-    if (groupByMonth[month].length > 0) { // Show as soon as any winner photo exists
-      latestSet = groupByMonth[month];
-      break;
-    }
-  }
-
   const WinnerCard = ({ position, icon: Icon, color, title }: { position: number, icon: any, color: string, title: string }) => {
-    const photo = latestSet.find(p => p.position === position);
+    const photo = getWinnerPhotoByPosition(position);
     return (
       <div className="text-center">
         <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
