@@ -347,7 +347,7 @@ async function initializeApp() {
         res.status(404).json({ error: 'API endpoint not found' });
       }
     });
-    console.log('✅ Static file serving and SPA fallback configured');
+    console.log('✅ Static file serving and SPA fallback configured - FIXED ROUTE ORDER');
 
     // Step 5: Start server with optimized settings for 5-10k users
     const server = app.listen(PORT, () => {
