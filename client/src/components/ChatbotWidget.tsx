@@ -1,3 +1,4 @@
+// CURSOR SYNC TEST: This comment was added by Cursor AI to verify deployment sync with Render.
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
