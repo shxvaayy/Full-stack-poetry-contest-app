@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
 import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
+import SpinWheel from '@/components/ui/spin-wheel';
 
 const TIERS = [
   { 
@@ -982,6 +983,12 @@ export default function SubmitPage() {
               {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
             </p>
           </div>
+
+          {currentStep === "form" && (
+            <div className="mb-8">
+              <SpinWheel />
+            </div>
+          )}
 
           <Card className="shadow-xl">
             <CardContent className="p-8">
