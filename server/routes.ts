@@ -3437,3 +3437,62 @@ if (ip) {
   } catch (e) { /* ignore */ }
 }
 // ... existing code ...
+
+// Notify on login page visit
+router.post('/api/notify-login-page-visit', async (req, res) => {
+  try {
+    const ip = getClientIp(req);
+    let location = 'Unknown';
+    if (ip) {
+      try {
+        const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
+        const geo = await geoRes.json();
+        if (geo && geo.status === 'success') {
+          location = `${geo.city || ''}, ${geo.country || ''}`.trim();
+        }
+      } catch (e) { /* ignore */ }
+    }
+    const nowIST = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const emailContent = `
+      <h2>Login Page Visited</h2>
+      <p><strong>IP Address:</strong> ${ip || 'Unknown'}</p>
+      <p><strong>Location:</strong> ${location}</p>
+      <p><strong>Time (IST):</strong> ${nowIST}</p>
+    `;
+    await sendNotificationEmail('Login Page Visited', emailContent);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Notify on login success
+router.post('/api/notify-login-success', async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const ip = getClientIp(req);
+    let location = 'Unknown';
+    if (ip) {
+      try {
+        const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
+        const geo = await geoRes.json();
+        if (geo && geo.status === 'success') {
+          location = `${geo.city || ''}, ${geo.country || ''}`.trim();
+        }
+      } catch (e) { /* ignore */ }
+    }
+    const nowIST2 = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const emailContent2 = `
+      <h2>User Logged In</h2>
+      <p><strong>Name:</strong> ${name || 'Unknown'}</p>
+      <p><strong>Email:</strong> ${email || 'Unknown'}</p>
+      <p><strong>IP Address:</strong> ${ip || 'Unknown'}</p>
+      <p><strong>Location:</strong> ${location}</p>
+      <p><strong>Time (IST):</strong> ${nowIST2}</p>
+    `;
+    await sendNotificationEmail('User Logged In', emailContent2);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
