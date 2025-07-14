@@ -31,11 +31,13 @@ const upload = multer({
 
     const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
     
-    // Allow only PDF and image files
+    // Allow only PDF, DOC, DOCX and image files
     if (
       file.mimetype === 'application/pdf' ||
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.mimetype.startsWith('image/') ||
-      ['pdf', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
+      ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
     ) {
       console.log('✅ File accepted:', file.originalname);
       cb(null, true);
@@ -52,7 +54,7 @@ const upload = multer({
     // Reject other file types
     else {
       console.error('❌ File type rejected:', file.mimetype, file.originalname);
-      cb(new Error(`File type not allowed: ${file.mimetype}. Please upload only PDF files for poems and JPG/PNG images for photos.`));
+      cb(new Error('Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed.'));
     }
   }
 });

@@ -69,10 +69,10 @@ export const uploadPoemFileToCloudinary = async (
       throw new Error('File buffer is empty');
     }
 
-    // Validate file type (only PDF allowed for poems)
+    // Validate file type (PDF, DOC, DOCX allowed for poems)
     const fileExtension = originalName.split('.').pop()?.toLowerCase();
-    if (fileExtension !== 'pdf') {
-      throw new Error('Only PDF files are allowed for poem submissions');
+    if (!['pdf', 'doc', 'docx'].includes(fileExtension || '')) {
+      throw new Error('Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed.');
     }
 
     // Generate a unique filename in format: email_poemtitle_timestamp
@@ -92,8 +92,8 @@ export const uploadPoemFileToCloudinary = async (
         {
           public_id: publicId,
           folder: 'writory_uploads/poems',
-          resource_type: 'raw', // For non-image files like PDF
-          format: 'pdf'
+          resource_type: 'raw', // For non-image files like PDF, DOC, DOCX
+          format: fileExtension
         },
         (error, result) => {
           if (error) {
@@ -131,7 +131,7 @@ export const uploadPhotoFileToCloudinary = async (
     // Validate file type (only images allowed)
     const fileExtension = originalName.split('.').pop()?.toLowerCase();
     if (!['jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
-      throw new Error('Only JPG, JPEG, and PNG files are allowed for photos');
+      throw new Error('Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed.');
     }
 
     // Generate a unique filename in format: email_photo_timestamp
