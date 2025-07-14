@@ -23,6 +23,7 @@ import EmailVerifiedPage from "@/pages/email-verified";
 import EmailVerificationHandler from "@/pages/email-verification-handler";
 import PasswordResetHandler from "@/pages/password-reset-handler";
 import EventPage from "@/pages/event";
+import PoetsVoicePage from "@/pages/poets-voice";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 function AppContent() {
@@ -52,6 +53,7 @@ function AppContent() {
                 <Route path="/contact" component={ContactPage} />
                 <Route path="/profile" component={UserProfilePage} />
                 <Route path="/event" component={EventPage} />
+                <Route path="/poets-voice" component={PoetsVoicePage} />
                 <Route path="/admin-upload" component={AdminUploadPage} />
                 <Route path="/admin-settings" component={AdminSettingsPage} />
                 <Route path="/not-found" component={NotFoundPage} />
