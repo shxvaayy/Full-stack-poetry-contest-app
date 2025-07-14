@@ -72,7 +72,7 @@ export const uploadPoemFileToCloudinary = async (
     // Validate file type (PDF, DOC, DOCX allowed for poems)
     const fileExtension = originalName.split('.').pop()?.toLowerCase();
     if (!['pdf', 'doc', 'docx'].includes(fileExtension || '')) {
-      throw new Error('Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed.');
+      throw new Error('Upload failed: Only PDF, DOC, DOCX for poems');
     }
 
     // Generate a unique filename in format: email_poemtitle_timestamp
@@ -131,7 +131,7 @@ export const uploadPhotoFileToCloudinary = async (
     // Validate file type (only images allowed)
     const fileExtension = originalName.split('.').pop()?.toLowerCase();
     if (!['jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
-      throw new Error('Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed.');
+      throw new Error('Upload failed: Only JPG, PNG for images are allowed');
     }
 
     // Generate a unique filename in format: email_photo_timestamp

@@ -56,7 +56,21 @@ const upload = multer({
     // Reject other file types
     else {
       console.error('❌ File type rejected:', file.mimetype, file.originalname);
-      cb(new Error('Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed.'));
+      
+      // Determine if this is likely a poem file or photo file based on fieldname
+      const isPoemFile = file.fieldname === 'poem' || file.fieldname === 'poems' || file.fieldname === 'poemFile';
+      const isPhotoFile = file.fieldname === 'photo' || file.fieldname === 'photoFile';
+      
+      let errorMessage;
+      if (isPoemFile) {
+        errorMessage = 'Upload failed: Only PDF, DOC, DOCX for poems';
+      } else if (isPhotoFile) {
+        errorMessage = 'Upload failed: Only JPG, PNG for images are allowed';
+      } else {
+        errorMessage = 'Upload failed: Only PDF, DOC, DOCX for poems and JPG, PNG for images are allowed';
+      }
+      
+      cb(new Error(errorMessage));
     }
   }
 });
