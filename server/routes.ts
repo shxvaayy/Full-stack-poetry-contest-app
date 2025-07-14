@@ -13,6 +13,8 @@ import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.j
 import { client, connectDatabase } from './db.js';
 import { initializeAdminSettings, getSetting, updateSetting, getAllSettings, resetFreeTierSubmissions } from './admin-settings.js';
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
+import nodemailer from 'nodemailer';
+import fetch from 'node-fetch';
 
 const router = Router();
 
@@ -3408,3 +3410,77 @@ router.get('/api/submission-count', asyncHandler(async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch submission count' });
   }
 }));
+
+// Notify on login page visit
+router.post('/api/notify-login-page-visit', async (req, res) => {
+  try {
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || 'unknown';
+    let location = 'Unknown';
+    try {
+      const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
+      const geo = await geoRes.json();
+      if (geo && geo.status === 'success') {
+        location = `${geo.city || ''}, ${geo.country || ''}`.trim();
+      }
+    } catch (e) { /* ignore */ }
+
+    const emailContent = `
+      <h2>Login Page Visited</h2>
+      <p><strong>IP Address:</strong> ${ip}</p>
+      <p><strong>Location:</strong> ${location}</p>
+      <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+    `;
+    await sendNotificationEmail('Login Page Visited', emailContent);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Notify on login success
+router.post('/api/notify-login-success', async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || 'unknown';
+    let location = 'Unknown';
+    try {
+      const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
+      const geo = await geoRes.json();
+      if (geo && geo.status === 'success') {
+        location = `${geo.city || ''}, ${geo.country || ''}`.trim();
+      }
+    } catch (e) { /* ignore */ }
+
+    const emailContent = `
+      <h2>User Logged In</h2>
+      <p><strong>Name:</strong> ${name || 'Unknown'}</p>
+      <p><strong>Email:</strong> ${email || 'Unknown'}</p>
+      <p><strong>IP Address:</strong> ${ip}</p>
+      <p><strong>Location:</strong> ${location}</p>
+      <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+    `;
+    await sendNotificationEmail('User Logged In', emailContent);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Helper to send notification email
+async function sendNotificationEmail(subject, html) {
+  const EMAIL_USER = process.env.EMAIL_USER || 'writorycontest@gmail.com';
+  const EMAIL_TO = 'writorycontest@gmail.com';
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: EMAIL_USER,
+      pass: process.env.EMAIL_PASS || 'ertdwlvfjtraptqw',
+    },
+  });
+  await transporter.sendMail({
+    from: `Writory Notification <${EMAIL_USER}>`,
+    to: EMAIL_TO,
+    subject: `[Writory] ${subject}`,
+    html,
+  });
+}

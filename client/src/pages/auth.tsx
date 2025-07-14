@@ -163,6 +163,16 @@ export default function AuthPage() {
           title: "Welcome back!",
           description: "Successfully signed in!",
         });
+
+        // Notify backend on login success
+        fetch("/api/notify-login-success", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: user.displayName || user.email?.split("@")[0] || "User",
+            email: user.email || "",
+          }),
+        });
       } else {
         await signUpWithEmail(email, password);
         setVerificationEmail(email);
@@ -209,6 +219,17 @@ export default function AuthPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        fetch("/api/notify-login-success", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: currentUser.displayName || currentUser.email?.split("@")[0] || "User",
+            email: currentUser.email || "",
+          }),
+        });
+      }
       toast({
         title: "Success",
         description: "Successfully signed in with Google!",
@@ -425,6 +446,11 @@ export default function AuthPage() {
     localStorage.removeItem('signup_email');
     localStorage.removeItem('signup_password');
   }, [isSignIn]);
+
+  // Notify backend on login page visit
+  useEffect(() => {
+    fetch("/api/notify-login-page-visit", { method: "POST" });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
