@@ -384,4 +384,19 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Test PayPal configuration endpoint
+router.get('/api/test-paypal', (req, res) => {
+  console.log('🧪 Testing PayPal configuration...');
+  
+  const isConfigured = !!(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET && PAYPAL_CLIENT_ID !== 'demo_client_id');
+  
+  res.json({ 
+    success: isConfigured,
+    configured: isConfigured,
+    environment: process.env.NODE_ENV || 'development',
+    baseUrl: PAYPAL_BASE_URL,
+    error: isConfigured ? null : 'PayPal credentials not configured properly'
+  });
+});
+
 export { router as paypalRouter };
