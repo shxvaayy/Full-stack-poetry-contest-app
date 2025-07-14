@@ -92,7 +92,7 @@ export default function ChatbotWidget() {
   useEffect(() => {
     const welcomeMessage: Message = {
       id: '1',
-      text: "Hey! This is Writora. How can I help you? 😊",
+      text: "Hey! This is Wribot. How can I help you? 😊",
       sender: 'bot',
       timestamp: new Date()
     };
