@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import multer from 'multer';
-import { uploadProfilePhotoToCloudinary, uploadPoemFileToCloudinary, uploadPhotoFileToCloudinary } from './cloudinary.js';
+import { uploadProfilePhotoToCloudinary, uploadPoemFileToCloudinary, uploadPhotoFileToCloudinary, uploadWinnerPhotoToCloudinary } from './cloudinary.js';
 import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
@@ -16,11 +16,13 @@ import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 
 const router = Router();
 
-// Configure multer for file uploads
+// Configure multer for file uploads - optimized for 5-10k concurrent users
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit for all files
+    fileSize: 3 * 1024 * 1024, // Reduced to 3MB for better performance with high concurrency
+    files: 3, // Reduced to 3 files per request for better performance
+    fieldSize: 512 * 1024, // Reduced to 512KB for text fields
   },
   fileFilter: (req, file, cb) => {
     console.log('📁 Multer file filter:', {
@@ -58,6 +60,33 @@ const upload = multer({
     }
   }
 });
+
+// Simple in-memory cache for high-traffic endpoints
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cache middleware for static data
+const cacheMiddleware = (duration = CACHE_TTL) => (req: any, res: any, next: any) => {
+  const key = req.originalUrl;
+  const cached = cache.get(key);
+  
+  if (cached && Date.now() - cached.timestamp < duration) {
+    console.log('📦 Serving from cache:', key);
+    return res.json(cached.data);
+  }
+  
+  // Store original send method
+  const originalSend = res.json;
+  res.json = function(data: any) {
+    cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+    originalSend.call(this, data);
+  };
+  
+  next();
+};
 
 // MINIMAL FIX: Only set JSON header for API routes
 router.use('/api/*', (req, res, next) => {
@@ -241,14 +270,18 @@ router.post('/api/test-cloudinary-upload', safeUploadAny, asyncHandler(async (re
 // Get admin settings
 router.get('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, res: any) => {
   console.log('🔧 Getting admin settings...');
+  console.log('🔐 Admin auth check for GET settings...');
 
   try {
     const settings = await getAllSettings();
+    console.log('📊 Retrieved settings:', settings);
+    
     const settingsObj = settings.reduce((acc, setting) => {
       acc[setting.setting_key] = setting.setting_value;
       return acc;
     }, {} as Record<string, string>);
 
+    console.log('✅ Returning settings object:', settingsObj);
     res.json({
       success: true,
       settings: settingsObj
@@ -365,31 +398,44 @@ router.post('/api/test-upload', safeUploadAny, asyncHandler(async (req: any, res
 
 // Get user by UID
 router.get('/api/users/:uid', asyncHandler(async (req: any, res: any) => {
-  const { uid } = req.params;
-  console.log('🔍 Getting user by UID:', uid);
-
   try {
-    let user = await storage.getUserByUid(uid);
-
-    if (!user) {
-      console.log('⚠️ User not found for UID:', uid, '- This might be a new user');
-      // Return a basic user structure instead of error
-      // The frontend can handle this and show appropriate UI
-      return res.json({
-        uid: uid,
-        email: '',
-        name: '',
-        phone: null,
-        id: null,
-        createdAt: new Date().toISOString()
-      });
+    const { uid } = req.params;
+    console.log('🔍 Fetching user by UID:', uid);
+    
+    // Ensure database connection
+    await connectDatabase();
+    
+    // First, let's check if the user exists at all
+    const allUsers = await client.query('SELECT uid, email FROM users ORDER BY created_at DESC LIMIT 5');
+    console.log('📊 Recent users in database:', allUsers.rows.map(u => ({ uid: u.uid, email: u.email })));
+    
+    const result = await client.query('SELECT * FROM users WHERE uid = $1', [uid]);
+    console.log('🔍 Query result for UID', uid, ':', result.rows.length, 'rows found');
+    
+    if (result.rows.length === 0) {
+      console.warn('⚠️ User not found for UID:', uid);
+      return res.status(404).json({ error: 'User not found', uid });
     }
-
+    
+    const user = result.rows[0];
     console.log('✅ User found:', user.email);
-    res.json(user);
+    
+    // Transform user data to match frontend expectations
+    const transformedUser = {
+      id: user.id,
+      uid: user.uid,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      profilePictureUrl: user.profile_picture_url,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
+    
+    res.json(transformedUser);
   } catch (error) {
-    console.error('❌ Error getting user:', error);
-    res.status(500).json({ error: 'Failed to get user' });
+    console.error('❌ Error fetching user by UID:', error);
+    res.status(500).json({ error: 'Failed to fetch user', message: error.message });
   }
 }));
 
@@ -3064,6 +3110,202 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
   }
 }));
 
+// ===== WINNER PHOTO MANAGEMENT ENDPOINTS =====
+
+// Upload winner photo
+router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto'), asyncHandler(async (req: any, res: any) => {
+  try {
+    const { position, contestMonth, contestYear, winnerName, score } = req.body;
+    const winnerPhotoFile = req.file;
+    const adminEmail = req.headers['x-user-email'] as string;
+
+    if (!position || !contestMonth || !contestYear || !winnerPhotoFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'Position, contest month, contest year, and photo file are required'
+      });
+    }
+
+    // Validate position (1, 2, 3)
+    const positionNum = parseInt(position);
+    if (![1, 2, 3].includes(positionNum)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Position must be 1, 2, or 3'
+      });
+    }
+
+    // Validate contest month format (YYYY-MM)
+    const monthRegex = /^\d{4}-\d{2}$/;
+    if (!monthRegex.test(contestMonth)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Contest month must be in YYYY-MM format'
+      });
+    }
+
+    // Validate score
+    const scoreNum = parseInt(score);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Score must be a number between 0 and 100'
+      });
+    }
+
+    // Upload photo to Cloudinary
+    let photoUrl;
+    try {
+      photoUrl = await uploadWinnerPhotoToCloudinary(
+        winnerPhotoFile.buffer,
+        positionNum,
+        contestMonth,
+        winnerPhotoFile.originalname
+      );
+    } catch (uploadError) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to upload winner photo',
+        message: uploadError.message
+      });
+    }
+
+    // Save to database
+    const result = await client.query(`
+      INSERT INTO winner_photos (position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      RETURNING *
+    `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName || null, scoreNum, adminEmail]);
+
+    const winnerPhoto = result.rows[0];
+    res.json({
+      success: true,
+      message: `Winner photo for ${positionNum === 1 ? '1st' : positionNum === 2 ? '2nd' : '3rd'} place uploaded successfully`,
+      winnerPhoto: {
+        id: winnerPhoto.id,
+        position: winnerPhoto.position,
+        contestMonth: winnerPhoto.contest_month,
+        contestYear: winnerPhoto.contest_year,
+        photoUrl: winnerPhoto.photo_url,
+        winnerName: winnerPhoto.winner_name,
+        score: winnerPhoto.score,
+        uploadedBy: winnerPhoto.uploaded_by,
+        createdAt: winnerPhoto.created_at
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload winner photo',
+      message: error.message
+    });
+  }
+}));
+
+// Get winner photos for a specific contest month
+router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res: any) => {
+  try {
+    const { contestMonth } = req.params;
+    const result = await client.query(`
+      SELECT id, position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at
+      FROM winner_photos 
+      WHERE contest_month = $1 AND is_active = true
+      ORDER BY position ASC
+    `, [contestMonth]);
+    const winnerPhotos = result.rows.map(photo => ({
+      id: photo.id,
+      position: photo.position,
+      contestMonth: photo.contest_month,
+      contestYear: photo.contest_year,
+      photoUrl: photo.photo_url,
+      winnerName: photo.winner_name,
+      score: photo.score,
+      uploadedBy: photo.uploaded_by,
+      createdAt: photo.created_at
+    }));
+    res.json({
+      success: true,
+      contestMonth,
+      winnerPhotos
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch winner photos',
+      message: error.message
+    });
+  }
+}));
+
+// Get all winner photos (for admin)
+router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  try {
+    const result = await client.query(`
+      SELECT wp.id, wp.position, wp.contest_month, wp.contest_year, wp.photo_url, wp.winner_name, wp.poem_title, wp.uploaded_by, wp.created_at, wp.updated_at,
+             s.score
+      FROM winner_photos wp
+      LEFT JOIN submissions s
+        ON s.contest_month = wp.contest_month
+        AND s.contest_year = wp.contest_year
+        AND s.winner_position = wp.position
+        AND s.is_winner = true
+      WHERE wp.is_active = true
+      ORDER BY wp.contest_year DESC, wp.contest_month DESC, wp.position ASC
+    `);
+    const winnerPhotos = result.rows.map(photo => ({
+      id: photo.id,
+      position: photo.position,
+      contestMonth: photo.contest_month,
+      contestYear: photo.contest_year,
+      photoUrl: photo.photo_url,
+      winnerName: photo.winner_name,
+      score: photo.score,
+      uploadedBy: photo.uploaded_by,
+      createdAt: photo.created_at,
+      updatedAt: photo.updated_at
+    }));
+    res.json({
+      success: true,
+      winnerPhotos
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch winner photos',
+      message: error.message
+    });
+  }
+}));
+
+// Delete winner photo (soft delete)
+router.delete('/api/admin/winner-photos/:id', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const result = await client.query(`
+      UPDATE winner_photos 
+      SET is_active = false, updated_at = NOW()
+      WHERE id = $1 AND is_active = true
+      RETURNING *
+    `, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Winner photo not found'
+      });
+    }
+    res.json({
+      success: true,
+      message: 'Winner photo deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete winner photo',
+      message: error.message
+    });
+  }
+}));
+
 // Final error handler
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 Final error handler:', error);
@@ -3140,3 +3382,15 @@ router.post('/api/admin/reset-free-tier', requireAdmin, asyncHandler(async (req:
 
 // Updated free tier check logic to use reset timestamp and consistent formatting.
 // This change ensures accurate determination of free tier availability after a reset.
+
+// Submission count endpoint
+router.get('/api/submission-count', asyncHandler(async (req, res) => {
+  try {
+    const result = await client.query('SELECT COUNT(*) FROM submissions');
+    const count = result.rows[0]?.count || 0;
+    res.json({ count: parseInt(count, 10) });
+  } catch (error) {
+    console.error('❌ Error fetching submission count:', error);
+    res.status(500).json({ error: 'Failed to fetch submission count' });
+  }
+}));

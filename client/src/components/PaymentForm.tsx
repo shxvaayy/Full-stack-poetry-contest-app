@@ -54,16 +54,58 @@ export default function PaymentForm({
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
+      // Check if Razorpay is already loaded
       if (window.Razorpay) {
+        console.log('✅ Razorpay script already loaded');
         resolve(true);
         return;
       }
 
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        console.log('⏳ Razorpay script already loading, waiting...');
+        
+        // Add timeout to prevent hanging
+        const timeout = setTimeout(() => {
+          console.error('❌ Script loading timeout');
+          resolve(false);
+        }, 10000);
+
+        existingScript.addEventListener('load', () => {
+          clearTimeout(timeout);
+          resolve(true);
+        });
+        existingScript.addEventListener('error', () => {
+          clearTimeout(timeout);
+          resolve(false);
+        });
+        return;
+      }
+
+      console.log('📥 Loading Razorpay script...');
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
+      script.async = true;
+      
+      // Add timeout for script loading
+      const timeout = setTimeout(() => {
+        console.error('❌ Script loading timeout');
+        document.head.removeChild(script);
+        resolve(false);
+      }, 10000);
+
+      script.onload = () => {
+        clearTimeout(timeout);
+        console.log('✅ Razorpay script loaded successfully');
+        resolve(true);
+      };
+      script.onerror = () => {
+        clearTimeout(timeout);
+        console.error('❌ Failed to load Razorpay script');
+        resolve(false);
+      };
+      document.head.appendChild(script);
     });
   };
 
@@ -132,8 +174,8 @@ export default function PaymentForm({
         },
         prefill: {
           name: '',
-          email: '',
-          contact: ''
+          email: userEmail || '',
+          contact: '',
         },
         notes: {
           tier: tier
@@ -175,61 +217,40 @@ export default function PaymentForm({
     try {
       setIsProcessingPayPal(true);
       setError(null);
-
-      console.log('💰 Testing PayPal configuration first...');
-
-      // Test PayPal config before creating order
       const testResponse = await fetch('/api/test-paypal');
       const testData = await testResponse.json();
-
-      console.log('PayPal config test result:', testData);
-
       if (!testData.success || !testData.configured) {
         throw new Error(`PayPal Configuration Issue: ${testData.error || 'PayPal not properly configured'}`);
       }
-
-      console.log('✅ PayPal configured properly, creating order...');
-
       const response = await fetch('/api/create-paypal-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amount,
           tier: tier,
-          currency: 'USD'
+          currency: 'USD',
         }),
       });
-
       let responseData;
       try {
         responseData = await response.json();
       } catch (parseError) {
         const responseText = await response.text();
-        console.error('Failed to parse PayPal response:', responseText);
         throw new Error(`PayPal server error: ${responseText}`);
       }
-
-      console.log('PayPal order response:', responseData);
-
       if (response.ok && responseData.success && responseData.approvalUrl) {
-        console.log('✅ Redirecting to PayPal:', responseData.approvalUrl);
         window.location.href = responseData.approvalUrl;
       } else {
         const errorMsg = responseData.error || responseData.details || 'Failed to create PayPal order';
         throw new Error(errorMsg);
       }
-
     } catch (error: any) {
-      console.error('❌ PayPal payment error:', error);
       setError(`PayPal Error: ${error.message}`);
       onError(`PayPal Error: ${error.message}`);
-
       toast({
-        title: "PayPal Error",
+        title: 'PayPal Error',
         description: error.message,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } finally {
       setIsProcessingPayPal(false);

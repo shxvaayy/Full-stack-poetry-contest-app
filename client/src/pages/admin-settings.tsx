@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -23,6 +24,19 @@ interface AdminSettings {
   free_tier_enabled: string;
 }
 
+interface WinnerPhoto {
+  id: number;
+  position: number;
+  contestMonth: string;
+  contestYear: number;
+  photoUrl: string;
+  winnerName?: string;
+  poemTitle?: string;
+  uploadedBy: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export default function AdminSettingsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -32,6 +46,20 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  
+  // Winner photo management state
+  const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deletingPhoto, setDeletingPhoto] = useState<number | null>(null);
+  // In the uploadForm state, replace poemTitle with score
+  const [uploadForm, setUploadForm] = useState({
+    position: '1',
+    contestMonth: '',
+    contestYear: new Date().getFullYear().toString(),
+    winnerName: '',
+    score: '',
+    photoFile: null as File | null
+  });
 
   // Check if user is admin
   const adminEmails = [
@@ -60,9 +88,10 @@ export default function AdminSettingsPage() {
     );
   }
 
-  // Load current settings
+  // Load current settings and winner photos
   useEffect(() => {
     loadSettings();
+    loadWinnerPhotos();
   }, []);
 
   const loadSettings = async () => {
@@ -98,6 +127,143 @@ export default function AdminSettingsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load winner photos
+  const loadWinnerPhotos = async () => {
+    try {
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      const response = await fetch('/api/admin/winner-photos', {
+        headers: {
+          'x-user-email': user.email,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load winner photos');
+      }
+
+      const data = await response.json();
+      setWinnerPhotos(data.winnerPhotos || []);
+    } catch (error: any) {
+      console.error('❌ Error loading winner photos:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load winner photos: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Upload winner photo
+  const uploadWinnerPhoto = async () => {
+    try {
+      setUploadingPhoto(true);
+
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      if (!uploadForm.photoFile) {
+        throw new Error('Please select a photo file');
+      }
+
+      if (!uploadForm.contestMonth) {
+        throw new Error('Please enter contest month (YYYY-MM format)');
+      }
+
+      const formData = new FormData();
+      formData.append('winnerPhoto', uploadForm.photoFile);
+      formData.append('position', uploadForm.position);
+      formData.append('contestMonth', uploadForm.contestMonth);
+      formData.append('contestYear', uploadForm.contestYear);
+      formData.append('winnerName', uploadForm.winnerName);
+      formData.append('score', uploadForm.score);
+
+      const response = await fetch('/api/admin/winner-photos', {
+        method: 'POST',
+        headers: {
+          'x-user-email': user.email,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload winner photo');
+      }
+
+      toast({
+        title: "Success",
+        description: data.message || "Winner photo uploaded successfully!",
+      });
+
+      // Reset form and reload photos
+      setUploadForm({
+        position: '1',
+        contestMonth: '',
+        contestYear: new Date().getFullYear().toString(),
+        winnerName: '',
+        score: '',
+        photoFile: null
+      });
+      loadWinnerPhotos();
+
+    } catch (error: any) {
+      console.error('❌ Error uploading winner photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload winner photo: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  // Delete winner photo
+  const deleteWinnerPhoto = async (photoId: number) => {
+    try {
+      setDeletingPhoto(photoId);
+
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      const response = await fetch(`/api/admin/winner-photos/${photoId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-email': user.email,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete winner photo');
+      }
+
+      toast({
+        title: "Success",
+        description: "Winner photo deleted successfully!",
+      });
+
+      loadWinnerPhotos();
+
+    } catch (error: any) {
+      console.error('❌ Error deleting winner photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete winner photo: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingPhoto(null);
     }
   };
 
@@ -331,6 +497,174 @@ export default function AdminSettingsPage() {
                   </>
                 )}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Winner Photo Management Card */}
+        <Card className="shadow-xl mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Trophy className="mr-2" size={24} />
+              Winner Photo Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            
+            {/* Upload Form */}
+            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-lg font-semibold">Upload Winner Photo</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="position">Position</Label>
+                  <select
+                    id="position"
+                    value={uploadForm.position}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, position: e.target.value }))}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="1">1st Place</option>
+                    <option value="2">2nd Place</option>
+                    <option value="3">3rd Place</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="contestMonth">Contest Month (YYYY-MM)</Label>
+                  <Input
+                    id="contestMonth"
+                    type="text"
+                    placeholder="2024-12"
+                    value={uploadForm.contestMonth}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, contestMonth: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="contestYear">Contest Year</Label>
+                  <Input
+                    id="contestYear"
+                    type="number"
+                    value={uploadForm.contestYear}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, contestYear: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="photoFile">Photo File</Label>
+                  <Input
+                    id="photoFile"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setUploadForm(prev => ({ 
+                      ...prev, 
+                      photoFile: e.target.files?.[0] || null 
+                    }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="winnerName">Winner Name (Optional)</Label>
+                  <Input
+                    id="winnerName"
+                    type="text"
+                    placeholder="Winner's name"
+                    value={uploadForm.winnerName}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, winnerName: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="score">Score (out of 100)</Label>
+                  <Input
+                    id="score"
+                    type="number"
+                    min={0}
+                    max={100}
+                    required
+                    placeholder="Score"
+                    value={uploadForm.score}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, score: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <Button
+                onClick={uploadWinnerPhoto}
+                disabled={uploadingPhoto || !uploadForm.photoFile || !uploadForm.contestMonth}
+                className="w-full"
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Winner Photo
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Existing Winner Photos */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Existing Winner Photos</h3>
+              
+              {winnerPhotos.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No winner photos uploaded yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {winnerPhotos.map((photo) => (
+                    <div key={photo.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="aspect-video bg-gray-100 rounded overflow-hidden">
+                        <img
+                          src={photo.photoUrl}
+                          alt={`${photo.position === 1 ? '1st' : photo.position === 2 ? '2nd' : '3rd'} Place Winner`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">
+                            {photo.position === 1 ? '1st' : photo.position === 2 ? '2nd' : '3rd'} Place
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteWinnerPhoto(photo.id)}
+                            disabled={deletingPhoto === photo.id}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            {deletingPhoto === photo.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600">
+                          Contest: {photo.contestMonth} {photo.contestYear}
+                        </p>
+                        
+                        {photo.winnerName && (
+                          <p className="text-sm font-medium">{photo.winnerName}</p>
+                        )}
+                        
+                        {/* poemTitle is removed */}
+                        
+                        <p className="text-xs text-gray-400">
+                          Uploaded: {new Date(photo.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

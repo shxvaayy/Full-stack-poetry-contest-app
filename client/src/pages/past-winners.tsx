@@ -2,77 +2,90 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Clock, Users, Trophy, Medal, Award, Image } from "lucide-react";
 import { useState, useEffect } from "react";
 
-// Dynamic imports for winner photos with error handling
-const getWinnerPhoto = async (position: number) => {
-  try {
-    const module = await import(`@assets/winner${position}.png`);
-    return module.default;
-  } catch (error) {
-    return null;
-  }
-};
+interface WinnerPhoto {
+  id: number;
+  position: number;
+  contestMonth: string;
+  contestYear: number;
+  photoUrl: string;
+  winnerName?: string;
+  poemTitle?: string;
+  uploadedBy: string;
+  createdAt: string;
+  score?: number; // Added score property
+}
 
 export default function PastWinnersPage() {
-  const [winnerPhotos, setWinnerPhotos] = useState<{[key: number]: string | null}>({
-    1: null,
-    2: null,
-    3: null
-  });
+  const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  // Set the contest month directly to '2025-07' (remove admin endpoint call)
+  const [latestMonth] = useState<string>('2025-07');
 
-  // Winner data - you can change these names and scores
-  const winners = {
-    1: { name: "Winner's name", score: 0 },
-    2: { name: "Winner's name", score: 0 },
-    3: { name: "Winner's name", score: 0 }
+  // Step 2: Fetch winner photos for the latest contestMonth using the public endpoint
+  useEffect(() => {
+    if (!latestMonth) return;
+    const loadWinnerPhotos = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/winner-photos/${latestMonth}`);
+        if (response.ok) {
+          const data = await response.json();
+          setWinnerPhotos(data.winnerPhotos || []);
+        } else {
+          setWinnerPhotos([]);
+        }
+      } catch (error) {
+        setWinnerPhotos([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadWinnerPhotos();
+  }, [latestMonth]);
+
+  // Helper function to get winner photo by position
+  const getWinnerPhotoByPosition = (position: number) => {
+    return winnerPhotos.find(photo => photo.position === position);
   };
 
-  useEffect(() => {
-    // Load winner photos on component mount
-    const loadWinnerPhotos = async () => {
-      const photos: {[key: number]: string | null} = {};
-      
-      for (let i = 1; i <= 3; i++) {
-        photos[i] = await getWinnerPhoto(i);
-      }
-      
-      setWinnerPhotos(photos);
-    };
-
-    loadWinnerPhotos();
-  }, []);
-
   const WinnerCard = ({ position, icon: Icon, color, title }: { position: number, icon: any, color: string, title: string }) => {
-    const photo = winnerPhotos[position];
-    const winner = winners[position as keyof typeof winners];
-    
+    const photo = getWinnerPhotoByPosition(position);
     return (
       <div className="text-center">
         <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
           <Icon className="text-2xl text-white" size={24} />
         </div>
         <h4 className="font-semibold text-gray-900 mb-2">{title}</h4>
-        
-        {photo ? (
+        {photo && photo.photoUrl ? (
           <div className="mt-4">
-            <img 
-              src={photo} 
-              alt={`Winner ${position}`}
+            <img
+              src={photo.photoUrl}
+              alt={`${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
               className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 shadow-lg"
             />
             <div className="mt-3">
-              <p className="font-semibold text-gray-900">{winner.name}</p>
-              <p className="text-sm text-gray-600">Score: {winner.score}/100</p>
+              <p className="font-semibold text-gray-900">
+                {photo.winnerName || `${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
+              </p>
+              <p className="text-sm text-gray-600">Score: {photo.score ?? 'N/A'}/100</p>
+              <p className="text-xs text-gray-500">
+                Contest: {photo.contestMonth} {photo.contestYear}
+              </p>
             </div>
           </div>
         ) : (
           <div className="mt-4">
             <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex flex-col items-center justify-center">
               <Image className="text-gray-400 mb-2" size={24} />
-              <p className="text-xs text-gray-500 text-center px-2">Winner photo</p>
+              <p className="text-xs text-gray-500 text-center px-2">
+                {loading ? 'Loading...' : 'Winner photo'}
+              </p>
             </div>
             <div className="mt-3">
-              <p className="font-semibold text-gray-900">{winner.name}</p>
-              <p className="text-sm text-gray-600">Score: {winner.score}/100</p>
+              <p className="font-semibold text-gray-900">
+                {position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner
+              </p>
+              <p className="text-sm text-gray-600">To be announced</p>
             </div>
           </div>
         )}
@@ -109,24 +122,15 @@ export default function PastWinnersPage() {
               <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
               
               <div className="grid md:grid-cols-3 gap-8">
-                <WinnerCard 
-                  position={1} 
-                  icon={Trophy} 
-                  color="bg-yellow-500" 
-                  title="1st Place Winner" 
-                />
-                <WinnerCard 
-                  position={2} 
-                  icon={Medal} 
-                  color="bg-gray-400" 
-                  title="2nd Place Winner" 
-                />
-                <WinnerCard 
-                  position={3} 
-                  icon={Award} 
-                  color="bg-yellow-600" 
-                  title="3rd Place Winner" 
-                />
+                {[1, 2, 3].map(pos => (
+                  <WinnerCard 
+                    key={pos}
+                    position={pos}
+                    icon={pos === 1 ? Trophy : pos === 2 ? Medal : Award}
+                    color={pos === 1 ? "bg-yellow-500" : pos === 2 ? "bg-gray-400" : "bg-yellow-600"}
+                    title={pos === 1 ? "1st Place Winner" : pos === 2 ? "2nd Place Winner" : "3rd Place Winner"}
+                  />
+                ))}
               </div>
             </div>
           </CardContent>

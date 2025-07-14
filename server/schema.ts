@@ -185,6 +185,21 @@ export const adminUsers = pgTable('admin_users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
+// ✅ Winner photos - Store winner photos for results and past winners pages
+export const winnerPhotos = pgTable('winner_photos', {
+  id: serial('id').primaryKey(),
+  position: integer('position').notNull(), // 1, 2, 3 for 1st, 2nd, 3rd place
+  contestMonth: varchar('contest_month', { length: 7 }).notNull(), // YYYY-MM format
+  contestYear: integer('contest_year').notNull(),
+  photoUrl: varchar('photo_url', { length: 500 }).notNull(), // Cloudinary URL
+  winnerName: varchar('winner_name', { length: 255 }), // Optional: winner's name
+  score: integer('score'), // Score out of 100
+  isActive: boolean('is_active').default(true).notNull(), // For soft deletion
+  uploadedBy: varchar('uploaded_by', { length: 255 }).notNull(), // Admin email
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
 // ✅ Define relationships
 export const usersRelations = relations(users, ({ many }) => ({
   submissions: many(submissions),
@@ -237,6 +252,8 @@ export type AdminSettings = typeof adminSettings.$inferSelect;
 export type NewAdminSettings = typeof adminSettings.$inferInsert;
 export type AdminUsers = typeof adminUsers.$inferSelect;
 export type NewAdminUsers = typeof adminUsers.$inferInsert;
+export type WinnerPhoto = typeof winnerPhotos.$inferSelect;
+export type NewWinnerPhoto = typeof winnerPhotos.$inferInsert;
 
 // ✅ Export database schema
 export const schema = {
@@ -249,6 +266,7 @@ export const schema = {
   adminLogs,
   adminSettings,
   adminUsers,
+  winnerPhotos,
   usersRelations,
   submissionsRelations,
   couponsRelations,

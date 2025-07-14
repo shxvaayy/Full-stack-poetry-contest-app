@@ -121,7 +121,7 @@ router.post('/api/create-paypal-order', async (req, res) => {
 
     // Determine the correct base URL for callbacks
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'www.writoryofficial.com'
+      ? 'https://www.writoryofficial.com'
       : `${req.protocol}://${req.get('host')}`;
 
     console.log('🌐 Using base URL for callbacks:', baseUrl);
@@ -373,6 +373,20 @@ router.post('/api/capture-paypal-payment', async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : 'Payment system error'
     });
   }
+});
+
+// Test PayPal configuration endpoint
+router.get('/api/test-paypal', (req, res) => {
+  console.log('🔧 Testing PayPal configuration...');
+  res.json({
+    success: true,
+    configured: !!(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET && PAYPAL_CLIENT_ID !== 'demo_client_id'),
+    environment: process.env.NODE_ENV || 'development',
+    baseUrl: PAYPAL_BASE_URL,
+    hasClientId: !!PAYPAL_CLIENT_ID,
+    hasClientSecret: !!PAYPAL_CLIENT_SECRET,
+    isDemoCredentials: PAYPAL_CLIENT_ID === 'demo_client_id'
+  });
 });
 
 // Health check endpoint

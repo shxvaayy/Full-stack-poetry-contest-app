@@ -3,60 +3,83 @@ import { Clock, Trophy, Medal, Award, Image } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
 import { useState, useEffect } from "react";
 
-// Dynamic imports for winner photos with error handling
-const getWinnerPhoto = async (position: number) => {
-  try {
-    const module = await import(`@assets/winner${position}.png`);
-    return module.default;
-  } catch (error) {
-    return null;
-  }
-};
+interface WinnerPhoto {
+  id: number;
+  position: number;
+  contestMonth: string;
+  contestYear: number;
+  photoUrl: string;
+  winnerName?: string;
+  poemTitle?: string;
+  uploadedBy: string;
+  createdAt: string;
+  score?: number; // Added score to the interface
+}
 
 export default function WinningPoemsPage() {
-  const [winnerPhotos, setWinnerPhotos] = useState<{[key: number]: string | null}>({
-    1: null,
-    2: null,
-    3: null
-  });
+  const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Winner data - you can change these names and scores
-  const winners = {
-    1: { name: "Winner's name", score: 0 },
-    2: { name: "Winner's name", score: 0 },
-    3: { name: "Winner's name", score: 0 }
+  // Get current contest month (you can adjust this logic)
+  const getCurrentContestMonth = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
   };
 
+  // Load winner photos from database
   useEffect(() => {
-    // Load winner photos on component mount
     const loadWinnerPhotos = async () => {
-      const photos: {[key: number]: string | null} = {};
-      
-      for (let i = 1; i <= 3; i++) {
-        photos[i] = await getWinnerPhoto(i);
+      try {
+        setLoading(true);
+        const contestMonth = getCurrentContestMonth();
+        
+        const response = await fetch(`/api/winner-photos/${contestMonth}`);
+        if (response.ok) {
+          const data = await response.json();
+          setWinnerPhotos(data.winnerPhotos || []);
+        } else {
+          console.log('No winner photos found for current contest month');
+        }
+      } catch (error) {
+        console.error('Error loading winner photos:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setWinnerPhotos(photos);
     };
 
     loadWinnerPhotos();
   }, []);
 
+  // Helper function to get winner photo by position
+  const getWinnerPhotoByPosition = (position: number) => {
+    return winnerPhotos.find(photo => photo.position === position);
+  };
+
   const WinnerPhotoSection = ({ position }: { position: number }) => {
-    const photo = winnerPhotos[position];
-    const winner = winners[position as keyof typeof winners];
+    const photo = getWinnerPhotoByPosition(position);
     
-    if (photo) {
+    if (photo && photo.photoUrl) {
       return (
         <div className="mt-4">
           <img 
-            src={photo} 
-            alt={`Winner ${position}`}
+            src={photo.photoUrl} 
+            alt={`${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
             className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 shadow-lg"
           />
           <div className="mt-3">
-            <p className="font-semibold text-gray-900">{winner.name}</p>
-            <p className="text-sm text-gray-600">Score: {winner.score}/100</p>
+            <p className="font-semibold text-gray-900">
+              {photo.winnerName || `${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
+            </p>
+            {/* Show score if available */}
+            <p className="text-sm text-gray-600">Score: {photo.score ?? 'N/A'}/100</p>
+            {photo.poemTitle && (
+              <p className="text-sm text-gray-600 italic">"{photo.poemTitle}"</p>
+            )}
+            <p className="text-xs text-gray-500">
+              Contest: {photo.contestMonth} {photo.contestYear}
+            </p>
           </div>
         </div>
       );
@@ -66,11 +89,15 @@ export default function WinningPoemsPage() {
       <div className="mt-4">
         <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex flex-col items-center justify-center">
           <Image className="text-gray-400 mb-2" size={24} />
-          <p className="text-xs text-gray-500 text-center px-2">Winner photo</p>
+          <p className="text-xs text-gray-500 text-center px-2">
+            {loading ? 'Loading...' : 'Winner photo'}
+          </p>
         </div>
         <div className="mt-3">
-          <p className="font-semibold text-gray-900">{winner.name}</p>
-          <p className="text-sm text-gray-600">Score: {winner.score}/100</p>
+          <p className="font-semibold text-gray-900">
+            {position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner
+          </p>
+          <p className="text-sm text-gray-600">To be announced</p>
         </div>
       </div>
     );
