@@ -123,6 +123,7 @@ export default function SubmitPage() {
     age: "",
     poemTitle: "",
     termsAccepted: false,
+    instagramHandle: "", // Add Instagram handle to form state
   });
   const [freeTierEnabled, setFreeTierEnabled] = useState(true);
 
@@ -768,6 +769,7 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
           age: "",
           poemTitle: "",
           termsAccepted: false,
+          instagramHandle: "", // Clear Instagram handle on successful submission
         });
         setFiles({
           poem: null,
@@ -1319,33 +1321,20 @@ const handleChallengeSelected = (challenge: SelectedChallenge) => {
                         id="phone"
                         value={formData.phone}
                         onChange={(e) => handleFormData('phone', e.target.value)}
-                        placeholder="Enter 10-digit phone number"
-                        type="tel"
-                        maxLength={10}
-                        inputMode="numeric"
-                        className={formData.phone && formData.phone.length > 0 && formData.phone.length !== 10 ? 'border-red-500' : ''}
+                        placeholder="Enter your phone number"
+                        className="mt-1"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Numbers only, exactly 10 digits</p>
-                      {formData.phone && formData.phone.length > 0 && formData.phone.length !== 10 && (
-                        <p className="text-xs text-red-500 mt-1">Phone number must be exactly 10 digits</p>
-                      )}
                     </div>
                     <div>
-                      <Label htmlFor="age">Age</Label>
+                      <Label htmlFor="instagramHandle">Instagram Handle</Label>
                       <Input
-                        id="age"
-                        value={formData.age}
-                        onChange={(e) => handleFormData('age', e.target.value)}
-                        placeholder="Enter your age"
-                        type="text"
-                        maxLength={2}
-                        inputMode="numeric"
-                        className={formData.age && formData.age.length > 0 && !/^\d+$/.test(formData.age) ? 'border-red-500' : ''}
+                        id="instagramHandle"
+                        value={formData.instagramHandle}
+                        onChange={(e) => handleFormData('instagramHandle', e.target.value)}
+                        placeholder="e.g. @yourusername"
+                        className="mt-1"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Numbers only, maximum 2 digits</p>
-                      {formData.age && formData.age.length > 0 && !/^\d+$/.test(formData.age) && (
-                        <p className="text-xs text-red-500 mt-1">Age must be numbers only</p>
-                      )}
+                      <p className="text-xs text-gray-500 mt-1">Optional. Add your Instagram handle to be featured in Poet's Voice.</p>
                     </div>
                   </div>
                 </div>

@@ -280,7 +280,8 @@ export async function getAllSubmissions() {
       evaluatedAt: submissions.evaluatedAt,
       createdAt: submissions.createdAt,
       updatedAt: submissions.updatedAt,
-      userId: submissions.userId
+      userId: submissions.userId,
+      instagramHandle: submissions.instagramHandle,
     }).from(submissions).orderBy(desc(submissions.submittedAt));
 
     console.log(`✅ Found ${result.length} total submissions`);

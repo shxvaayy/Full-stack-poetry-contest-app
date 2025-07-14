@@ -206,7 +206,8 @@ export async function addPoemSubmissionToSheet(data: any): Promise<void> {
       safeString(contestType),                // M - Contest Type
       safeString(challengeTitle),             // N - Challenge Title
       safeString(challengeDescription),       // O - Challenge Description
-      safeString(poemText)                    // P - Poem Text
+      safeString(poemText),                   // P - Poem Text
+      safeString(data.instagramHandle),       // Q - Instagram Handle
     ];
 
     console.log('📊 Full row data being sent to Google Sheets:', rowData);
@@ -360,7 +361,7 @@ export async function initializeSheetHeaders(): Promise<void> {
           valueInputOption: 'USER_ENTERED',
           auth: authClient,
           requestBody: {
-            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text']]
+            values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text', 'Instagram Handle']]
           }
         };
         await sheets.spreadsheets.values.update(poemsRequest);
@@ -368,7 +369,7 @@ export async function initializeSheetHeaders(): Promise<void> {
       } else {
         // Check if headers need to be updated to correct format
         const currentHeaders = existingPoetry.data.values[0];
-        const expectedHeaders = ['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text'];
+        const expectedHeaders = ['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text', 'Instagram Handle'];
 
         // If headers don't match, update them
         if (JSON.stringify(currentHeaders) !== JSON.stringify(expectedHeaders)) {
@@ -404,7 +405,7 @@ export async function initializeSheetHeaders(): Promise<void> {
         valueInputOption: 'USER_ENTERED',
         auth: authClient,
         requestBody: {
-          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text']]
+          values: [['Timestamp', 'Name', 'Email', 'Phone', 'Age', 'Poem Title', 'Tier', 'Amount', 'Photo', 'Poem File', 'Submission UUID', 'Poem Index', 'Contest Type', 'Challenge Title', 'Challenge Description', 'Poem Text', 'Instagram Handle']]
         }
       };
 

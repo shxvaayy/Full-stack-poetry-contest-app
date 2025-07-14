@@ -40,7 +40,29 @@ async function updateSchema() {
         type VARCHAR(50),
         score_breakdown JSON,
         is_winner BOOLEAN DEFAULT FALSE,
-        winner_position INTEGER
+        winner_position INTEGER,
+        instagram_handle VARCHAR(255)
+      );
+    `);
+
+    await db.execute(`
+      CREATE TABLE poem_likes (
+        id SERIAL PRIMARY KEY,
+        poem_id INTEGER NOT NULL,
+        user_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        ip VARCHAR(64)
+      );
+    `);
+    await db.execute(`
+      CREATE TABLE poem_comments (
+        id SERIAL PRIMARY KEY,
+        poem_id INTEGER NOT NULL,
+        user_id INTEGER,
+        name VARCHAR(255),
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        ip VARCHAR(64)
       );
     `);
 

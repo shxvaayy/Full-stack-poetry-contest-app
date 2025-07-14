@@ -1633,12 +1633,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       phone,
       age,
       poemTitle,
-      tier,
-      price,
+      tier = 'free',
       paymentId,
-      paymentMethod,
-      uid,
-      userUid // Also accept userUid as fallback
+      paymentMethod = 'free',
+      instagramHandle
     } = req.body;
 
     // Check if free tier is enabled and user hasn't used it before
@@ -1967,7 +1965,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
       status: 'Pending',
-      type: 'Human'
+      type: 'Human',
+      instagramHandle: instagramHandle || null, // Store Instagram handle
     };
 
     console.log('🔗 Linking submission to user ID:', user?.id);
@@ -2022,6 +2021,7 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
           challengeTitle: challengeTitle,
           challengeDescription: challengeDescription,
           poemText: poemText,
+          instagramHandle: instagramHandle || null, // Pass Instagram handle to Sheets
           // Additional mapping for backward compatibility
           contest_type: contestType,
           challenge_title: challengeTitle,
@@ -3676,3 +3676,80 @@ export async function initializeDatabase() {
     throw dbError; // Re-throw to prevent server from starting if DB fails
   }
 }
+
+// ===== POET'S VOICE ENDPOINT =====
+router.get('/api/poets-voice', asyncHandler(async (req, res) => {
+  try {
+    // Get all submissions with an Instagram handle
+    const allPoems = await storage.getAllSubmissions();
+    const poemsWithInsta = allPoems.filter(p => p.instagramHandle && p.instagramHandle.trim() !== '');
+    // Shuffle and pick 5-7 random poems
+    const shuffled = poemsWithInsta.sort(() => 0.5 - Math.random());
+    const count = Math.floor(Math.random() * 3) + 5; // 5-7 poems
+    const selected = shuffled.slice(0, count);
+    // Map to frontend format
+    const poems = selected.map(p => ({
+      id: p.id,
+      poemTitle: p.poemTitle,
+      poemFileUrl: p.poemFileUrl,
+      poemText: p.poemText,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      instagramHandle: p.instagramHandle,
+    }));
+    res.json({ poems });
+  } catch (error) {
+    console.error('Error in /api/poets-voice:', error);
+    res.status(500).json({ poems: [] });
+  }
+}));
+
+// ===== POET'S VOICE SOCIAL ENDPOINTS =====
+const getClientIp = (req) => req.headers['x-forwarded-for']?.split(',')[0] || req.connection?.remoteAddress || req.ip || '';
+
+// Like a poem
+router.post('/api/poems/:id/like', asyncHandler(async (req, res) => {
+  const poemId = parseInt(req.params.id);
+  const userId = req.user?.id || null;
+  const ip = getClientIp(req);
+  // Prevent duplicate likes by same user or IP
+  const existing = await client.query('SELECT id FROM poem_likes WHERE poem_id = $1 AND (user_id = $2 OR ip = $3)', [poemId, userId, ip]);
+  if (existing.rows.length > 0) return res.json({ success: true, liked: true });
+  await client.query('INSERT INTO poem_likes (poem_id, user_id, ip) VALUES ($1, $2, $3)', [poemId, userId, ip]);
+  res.json({ success: true, liked: true });
+}));
+
+// Unlike a poem
+router.post('/api/poems/:id/unlike', asyncHandler(async (req, res) => {
+  const poemId = parseInt(req.params.id);
+  const userId = req.user?.id || null;
+  const ip = getClientIp(req);
+  await client.query('DELETE FROM poem_likes WHERE poem_id = $1 AND (user_id = $2 OR ip = $3)', [poemId, userId, ip]);
+  res.json({ success: true, liked: false });
+}));
+
+// Get like count
+router.get('/api/poems/:id/likes', asyncHandler(async (req, res) => {
+  const poemId = parseInt(req.params.id);
+  const result = await client.query('SELECT COUNT(*) FROM poem_likes WHERE poem_id = $1', [poemId]);
+  res.json({ count: parseInt(result.rows[0].count) });
+}));
+
+// Post a comment
+router.post('/api/poems/:id/comments', asyncHandler(async (req, res) => {
+  const poemId = parseInt(req.params.id);
+  const userId = req.user?.id || null;
+  const name = req.body.name || '';
+  const comment = req.body.comment;
+  const ip = getClientIp(req);
+  if (!comment || comment.trim().length < 2) return res.status(400).json({ success: false, error: 'Comment too short' });
+  await client.query('INSERT INTO poem_comments (poem_id, user_id, name, comment, ip) VALUES ($1, $2, $3, $4, $5)', [poemId, userId, name, comment, ip]);
+  res.json({ success: true });
+}));
+
+// Get comments for a poem
+router.get('/api/poems/:id/comments', asyncHandler(async (req, res) => {
+  const poemId = parseInt(req.params.id);
+  const result = await client.query('SELECT id, name, comment, created_at FROM poem_comments WHERE poem_id = $1 ORDER BY created_at DESC LIMIT 50', [poemId]);
+  res.json({ comments: result.rows });
+}));

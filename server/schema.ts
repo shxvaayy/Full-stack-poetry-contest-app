@@ -101,7 +101,8 @@ export const submissions = pgTable('submissions', {
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   evaluatedAt: timestamp('evaluated_at'), // When evaluation was completed
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  instagramHandle: varchar('instagram_handle', { length: 255 }) // Poet's Instagram handle
 });
 
 // ✅ Contacts table - For contact form submissions
@@ -260,3 +261,21 @@ export const schema = {
 };
 
 export default schema;
+
+export const poemLikes = pgTable('poem_likes', {
+  id: serial('id').primaryKey(),
+  poemId: integer('poem_id').notNull(),
+  userId: integer('user_id'), // nullable for anonymous likes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  ip: varchar('ip', { length: 64 }),
+});
+
+export const poemComments = pgTable('poem_comments', {
+  id: serial('id').primaryKey(),
+  poemId: integer('poem_id').notNull(),
+  userId: integer('user_id'), // nullable for anonymous comments
+  name: varchar('name', { length: 255 }), // for anonymous
+  comment: text('comment').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  ip: varchar('ip', { length: 64 }),
+});

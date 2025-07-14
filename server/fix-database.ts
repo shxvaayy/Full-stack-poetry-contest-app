@@ -57,7 +57,8 @@ async function quickFix() {
         is_winner BOOLEAN DEFAULT FALSE,
         winner_position INTEGERTAMP DEFAULT NOW(),
         is_winner BOOLEAN DEFAULT FALSE,
-        winner_position INTEGER
+        winner_position INTEGER,
+        instagram_handle TEXT
       );
     `);
     

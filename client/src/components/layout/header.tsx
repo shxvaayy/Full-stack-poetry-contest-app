@@ -117,6 +117,7 @@ export default function Header() {
     { name: "SUBMIT POEM", href: "/submit" },
     { name: "RESULTS", href: "/winning-poems" },
     { name: "PAST WINNERS", href: "/past-winners" },
+    { name: "POET'S VOICE", href: "/poets-voice" },
     { name: "ABOUT US", href: "/about" },
     { name: "CONTACT US", href: "/contact" },
     { name: "EVENT", href: "/event"},

@@ -72,7 +72,8 @@ async function createTables() {
         submitted_at TIMESTAMP DEFAULT NOW() NOT NULL,
         evaluated_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        instagram_handle VARCHAR(255)
       );
     `);
 
@@ -227,6 +228,28 @@ async function createTables() {
         EXECUTE FUNCTION update_updated_at_column();
       `);
     }
+
+    console.log('🔨 Creating poem_likes table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS poem_likes (
+        id SERIAL PRIMARY KEY,
+        poem_id INTEGER NOT NULL,
+        user_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        ip VARCHAR(64)
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS poem_comments (
+        id SERIAL PRIMARY KEY,
+        poem_id INTEGER NOT NULL,
+        user_id INTEGER,
+        name VARCHAR(255),
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        ip VARCHAR(64)
+      );
+    `);
 
     console.log('✅ Database migration completed successfully!');
     console.log('🎉 All tables created with proper schema matching Drizzle definitions');
