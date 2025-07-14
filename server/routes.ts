@@ -3411,29 +3411,16 @@ router.get('/api/submission-count', asyncHandler(async (req, res) => {
   }
 }));
 
-function getClientIp(req) {
-  let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '';
-  if (typeof ip === 'string' && ip.includes(',')) {
-    ip = ip.split(',')[0].trim();
-  }
-  // Remove IPv6 prefix if present
-  if (ip.startsWith('::ffff:')) ip = ip.replace('::ffff:', '');
-  // Check for private/local IPs
-  const privatePatterns = [/^10\./, /^192\.168\./, /^172\.(1[6-9]|2[0-9]|3[01])\./, /^127\./, /^0\./, /^169\.254\./, /^::1$/];
-  if (privatePatterns.some((pat) => pat.test(ip))) return null;
-  return ip;
-}
-
 // ... in /api/notify-login-page-visit and /api/notify-login-success ...
-const ip = getClientIp(req);
-let location = 'Unknown';
-if (ip) {
-  try {
-    const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
-    const geo = await geoRes.json();
-    if (geo && geo.status === 'success') {
-      location = `${geo.city || ''}, ${geo.country || ''}`.trim();
-    }
-  } catch (e) { /* ignore */ }
-}
+// const ip = getClientIp(req);
+// let location = 'Unknown';
+// if (ip) {
+//   try {
+//     const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
+//     const geo = await geoRes.json();
+//     if (geo && geo.status === 'success') {
+//       location = `${geo.city || ''}, ${geo.country || ''}`.trim();
+//     }
+//   } catch (e) { /* ignore */ }
+// }
 // ... existing code ...
