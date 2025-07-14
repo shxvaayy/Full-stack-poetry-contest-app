@@ -221,7 +221,7 @@ export default function ChatbotWidget() {
                 />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">Writora</h3>
+                <h3 className="font-semibold text-sm">Wribot</h3>
                 <p className="text-xs text-cyan-100">Online</p>
               </div>
             </div>
