@@ -451,6 +451,35 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleDeleteAllWinners = async () => {
+    if (!window.confirm('Are you sure you want to delete all winner entries for this contest? This cannot be undone.')) return;
+    try {
+      setUploadingPhoto(true);
+      if (!user?.email) throw new Error('User email not available for authentication');
+      // Load all winner photos for this contest
+      const contestMonth = winnerForms[0].contestMonth;
+      const contestYear = winnerForms[0].contestYear;
+      const response = await fetch(`/api/admin/winner-photos?contestMonth=${contestMonth}&contestYear=${contestYear}`, {
+        headers: { 'x-user-email': user.email },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to load winners');
+      const ids = (data.winnerPhotos || []).map((w: any) => w.id);
+      for (const id of ids) {
+        await fetch(`/api/admin/winner-photos/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-user-email': user.email },
+        });
+      }
+      toast({ title: 'Success', description: 'All winners deleted for this contest.' });
+      loadWinnerPhotos();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -662,6 +691,9 @@ export default function AdminSettingsPage() {
             </div>
             <Button className="mt-6" onClick={handleWinnersUpload} disabled={uploadingPhoto}>
               {uploadingPhoto ? 'Uploading...' : 'Upload All Winners'}
+            </Button>
+            <Button className="mt-2" variant="destructive" onClick={handleDeleteAllWinners} disabled={uploadingPhoto}>
+              Delete All Winners (Reset)
             </Button>
           </CardContent>
         </Card>
