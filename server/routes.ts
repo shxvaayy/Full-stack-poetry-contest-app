@@ -3129,17 +3129,21 @@ router.put('/api/user/profile', asyncHandler(async (req: any, res: any) => {
 
 // ===== WINNER PHOTO MANAGEMENT ENDPOINTS =====
 
-// Upload winner photo
-router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto'), asyncHandler(async (req: any, res: any) => {
+// Upload winner photo and poem
+router.post('/api/admin/winner-photos', requireAdmin, upload.fields([
+  { name: 'winnerPhoto', maxCount: 1 },
+  { name: 'poemFile', maxCount: 1 }
+]), asyncHandler(async (req: any, res: any) => {
   try {
-    const { position, contestMonth, contestYear, winnerName, score } = req.body;
-    const winnerPhotoFile = req.file;
+    const { position, contestMonth, contestYear, winnerName, score, poemTitle, instagramHandle } = req.body;
     const adminEmail = req.headers['x-user-email'] as string;
+    const winnerPhotoFile = req.files?.winnerPhoto?.[0];
+    const poemFile = req.files?.poemFile?.[0];
 
-    if (!position || !contestMonth || !contestYear || !winnerPhotoFile) {
+    if (!position || !contestMonth || !contestYear || !winnerPhotoFile || !poemFile || !poemTitle || !winnerName || !instagramHandle) {
       return res.status(400).json({
         success: false,
-        error: 'Position, contest month, contest year, and photo file are required'
+        error: 'All fields (position, contestMonth, contestYear, winnerPhoto, poemFile, poemTitle, winnerName, instagramHandle) are required'
       });
     }
 
@@ -3187,17 +3191,28 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
       });
     }
 
+    // Read poem text from .txt file
+    let poemText = '';
+    try {
+      poemText = poemFile.buffer.toString('utf-8');
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to read poem text from file'
+      });
+    }
+
     // Save to database
     const result = await client.query(`
-      INSERT INTO winner_photos (position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      INSERT INTO winner_photos (position, contest_month, contest_year, photo_url, winner_name, score, poem_title, poem_text, instagram_handle, uploaded_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
       RETURNING *
-    `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName || null, scoreNum, adminEmail]);
+    `, [positionNum, contestMonth, parseInt(contestYear), photoUrl, winnerName, scoreNum, poemTitle, poemText, instagramHandle, adminEmail]);
 
     const winnerPhoto = result.rows[0];
     res.json({
       success: true,
-      message: `Winner photo for ${positionNum === 1 ? '1st' : positionNum === 2 ? '2nd' : '3rd'} place uploaded successfully`,
+      message: `Winner for ${positionNum === 1 ? '1st' : positionNum === 2 ? '2nd' : '3rd'} place uploaded successfully`,
       winnerPhoto: {
         id: winnerPhoto.id,
         position: winnerPhoto.position,
@@ -3205,6 +3220,9 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
         contestYear: winnerPhoto.contest_year,
         photoUrl: winnerPhoto.photo_url,
         winnerName: winnerPhoto.winner_name,
+        poemTitle: winnerPhoto.poem_title,
+        poemText: winnerPhoto.poem_text,
+        instagramHandle: winnerPhoto.instagram_handle,
         score: winnerPhoto.score,
         uploadedBy: winnerPhoto.uploaded_by,
         createdAt: winnerPhoto.created_at
@@ -3213,7 +3231,7 @@ router.post('/api/admin/winner-photos', requireAdmin, upload.single('winnerPhoto
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: 'Failed to upload winner photo',
+      error: 'Failed to upload winner',
       message: error.message
     });
   }
@@ -3224,7 +3242,7 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
   try {
     const { contestMonth } = req.params;
     const result = await client.query(`
-      SELECT id, position, contest_month, contest_year, photo_url, winner_name, score, uploaded_by, created_at
+      SELECT id, position, contest_month, contest_year, photo_url, winner_name, poem_title, poem_text, instagram_handle, score, uploaded_by, created_at
       FROM winner_photos 
       WHERE contest_month = $1 AND is_active = true
       ORDER BY position ASC
@@ -3236,6 +3254,9 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
       contestYear: photo.contest_year,
       photoUrl: photo.photo_url,
       winnerName: photo.winner_name,
+      poemTitle: photo.poem_title,
+      poemText: photo.poem_text,
+      instagramHandle: photo.instagram_handle,
       score: photo.score,
       uploadedBy: photo.uploaded_by,
       createdAt: photo.created_at
@@ -3258,16 +3279,10 @@ router.get('/api/winner-photos/:contestMonth', asyncHandler(async (req: any, res
 router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: any, res: any) => {
   try {
     const result = await client.query(`
-      SELECT wp.id, wp.position, wp.contest_month, wp.contest_year, wp.photo_url, wp.winner_name, wp.poem_title, wp.uploaded_by, wp.created_at, wp.updated_at,
-             s.score
-      FROM winner_photos wp
-      LEFT JOIN submissions s
-        ON s.contest_month = wp.contest_month
-        AND s.contest_year = wp.contest_year
-        AND s.winner_position = wp.position
-        AND s.is_winner = true
-      WHERE wp.is_active = true
-      ORDER BY wp.contest_year DESC, wp.contest_month DESC, wp.position ASC
+      SELECT id, position, contest_month, contest_year, photo_url, winner_name, poem_title, poem_text, instagram_handle, score, uploaded_by, created_at, updated_at
+      FROM winner_photos
+      WHERE is_active = true
+      ORDER BY contest_year DESC, contest_month DESC, position ASC
     `);
     const winnerPhotos = result.rows.map(photo => ({
       id: photo.id,
@@ -3276,6 +3291,9 @@ router.get('/api/admin/winner-photos', requireAdmin, asyncHandler(async (req: an
       contestYear: photo.contest_year,
       photoUrl: photo.photo_url,
       winnerName: photo.winner_name,
+      poemTitle: photo.poem_title,
+      poemText: photo.poem_text,
+      instagramHandle: photo.instagram_handle,
       score: photo.score,
       uploadedBy: photo.uploaded_by,
       createdAt: photo.created_at,
