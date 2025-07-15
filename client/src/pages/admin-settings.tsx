@@ -61,6 +61,43 @@ export default function AdminSettingsPage() {
     photoFile: null as File | null
   });
 
+  // Winner poem management state (for 3 winners)
+  const [winnerForms, setWinnerForms] = useState([
+    {
+      position: '1',
+      contestMonth: '',
+      contestYear: new Date().getFullYear().toString(),
+      winnerName: '',
+      poemTitle: '',
+      instagramHandle: '',
+      score: '',
+      photoFile: null as File | null,
+      poemFile: null as File | null,
+    },
+    {
+      position: '2',
+      contestMonth: '',
+      contestYear: new Date().getFullYear().toString(),
+      winnerName: '',
+      poemTitle: '',
+      instagramHandle: '',
+      score: '',
+      photoFile: null as File | null,
+      poemFile: null as File | null,
+    },
+    {
+      position: '3',
+      contestMonth: '',
+      contestYear: new Date().getFullYear().toString(),
+      winnerName: '',
+      poemTitle: '',
+      instagramHandle: '',
+      score: '',
+      photoFile: null as File | null,
+      poemFile: null as File | null,
+    },
+  ]);
+
   // Check if user is admin
   const adminEmails = [
     'shivaaymehra2@gmail.com',
@@ -369,6 +406,44 @@ export default function AdminSettingsPage() {
     }
   };
 
+  // Add handler for uploading all winners
+  const handleWinnersUpload = async () => {
+    try {
+      setUploadingPhoto(true);
+      if (!user?.email) throw new Error('User email not available for authentication');
+      for (const form of winnerForms) {
+        if (!form.photoFile || !form.poemFile || !form.winnerName || !form.poemTitle || !form.instagramHandle || !form.score) {
+          toast({ title: 'Missing Fields', description: 'Please fill all fields and upload files for each winner.', variant: 'destructive' });
+          setUploadingPhoto(false);
+          return;
+        }
+        const formData = new FormData();
+        formData.append('winnerPhoto', form.photoFile);
+        formData.append('poemFile', form.poemFile);
+        formData.append('position', form.position);
+        formData.append('contestMonth', form.contestMonth);
+        formData.append('contestYear', form.contestYear);
+        formData.append('winnerName', form.winnerName);
+        formData.append('poemTitle', form.poemTitle);
+        formData.append('instagramHandle', form.instagramHandle);
+        formData.append('score', form.score);
+        const response = await fetch('/api/admin/winner-photos', {
+          method: 'POST',
+          headers: { 'x-user-email': user.email },
+          body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to upload winner');
+      }
+      toast({ title: 'Success', description: 'All winners uploaded successfully!' });
+      loadWinnerPhotos();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -498,6 +573,73 @@ export default function AdminSettingsPage() {
                 )}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Winner Details Upload Card */}
+        <Card className="shadow-xl mt-8">
+          <CardHeader>
+            <CardTitle>Upload Winner Details (Photo, Poem, etc.)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {winnerForms.map((form, idx) => (
+                <div key={form.position} className="border rounded-lg p-4 bg-gray-50">
+                  <h3 className="font-bold mb-2">{form.position === '1' ? '1st Place' : form.position === '2' ? '2nd Place' : '3rd Place'} Winner</h3>
+                  <div className="mb-2">
+                    <Label>Winner Name</Label>
+                    <Input value={form.winnerName} onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].winnerName = e.target.value;
+                      setWinnerForms(updated);
+                    }} placeholder="Poet Name" />
+                  </div>
+                  <div className="mb-2">
+                    <Label>Poem Title</Label>
+                    <Input value={form.poemTitle} onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].poemTitle = e.target.value;
+                      setWinnerForms(updated);
+                    }} placeholder="Poem Title" />
+                  </div>
+                  <div className="mb-2">
+                    <Label>Instagram Handle</Label>
+                    <Input value={form.instagramHandle} onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].instagramHandle = e.target.value;
+                      setWinnerForms(updated);
+                    }} placeholder="@username" />
+                  </div>
+                  <div className="mb-2">
+                    <Label>Score</Label>
+                    <Input value={form.score} onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].score = e.target.value;
+                      setWinnerForms(updated);
+                    }} placeholder="Score" />
+                  </div>
+                  <div className="mb-2">
+                    <Label>Winner Photo</Label>
+                    <Input type="file" accept="image/*" onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].photoFile = e.target.files?.[0] || null;
+                      setWinnerForms(updated);
+                    }} />
+                  </div>
+                  <div className="mb-2">
+                    <Label>Poem File (.txt)</Label>
+                    <Input type="file" accept=".txt" onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].poemFile = e.target.files?.[0] || null;
+                      setWinnerForms(updated);
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button className="mt-6" onClick={handleWinnersUpload} disabled={uploadingPhoto}>
+              {uploadingPhoto ? 'Uploading...' : 'Upload All Winners'}
+            </Button>
           </CardContent>
         </Card>
 
