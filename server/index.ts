@@ -373,7 +373,11 @@ async function initializeApp() {
     if (error && error.stack) {
       console.error('💡 [FATAL] Stack trace:', error.stack);
     }
-    process.exit(1);
+    // Don't exit immediately, give time for error logging
+    setTimeout(() => {
+      console.error('💥 [FATAL] Exiting due to initialization failure');
+      process.exit(1);
+    }, 2000);
   }
 }
 
