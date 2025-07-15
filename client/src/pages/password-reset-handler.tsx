@@ -21,10 +21,40 @@ export default function PasswordResetHandler() {
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
+    // Extra debug logging
+    console.log('Password Reset Handler: full URL:', window.location.href);
     const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('mode');
-    const code = urlParams.get('oobCode');
+    let mode = urlParams.get('mode');
+    let code = urlParams.get('oobCode');
 
+    // Fallback: try hash params
+    if (!mode || !code) {
+      const hash = window.location.hash;
+      if (hash.startsWith('#')) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        mode = mode || hashParams.get('mode');
+        code = code || hashParams.get('oobCode');
+      }
+    }
+    // Fallback: regex
+    if (!mode || !code) {
+      const modeRegex = /[?&#]mode=([^&\s]+)/i;
+      const codeRegex = /[?&#]oobCode=([^&\s]+)/i;
+      const modeMatch = window.location.href.match(modeRegex);
+      const codeMatch = window.location.href.match(codeRegex);
+      if (modeMatch) mode = mode || decodeURIComponent(modeMatch[1]);
+      if (codeMatch) code = code || decodeURIComponent(codeMatch[1]);
+    }
+    // Fallback: __/auth/action?mode=...&oobCode=...
+    if (!mode || !code) {
+      const actionMatch = window.location.href.match(/__\/auth\/action\?(.+)/);
+      if (actionMatch) {
+        const actionParams = new URLSearchParams(actionMatch[1]);
+        mode = mode || actionParams.get('mode');
+        code = code || actionParams.get('oobCode');
+      }
+    }
+    console.log('Password Reset Handler: mode:', mode, 'oobCode:', code);
     if (mode === 'resetPassword' && code) {
       setOobCode(code);
       verifyCode(code);

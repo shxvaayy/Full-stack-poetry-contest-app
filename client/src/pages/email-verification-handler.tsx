@@ -18,6 +18,8 @@ export default function EmailVerificationHandler() {
   useEffect(() => {
     const handleEmailVerification = async () => {
       try {
+        // Extra debug logging
+        console.log('Email Verification Handler: full URL:', window.location.href);
         // Get the complete URL for debugging
         const fullUrl = window.location.href;
         console.log('Full URL received:', fullUrl);
@@ -74,6 +76,8 @@ export default function EmailVerificationHandler() {
           hash: window.location.hash,
           pathname: window.location.pathname
         });
+
+        console.log('Email Verification Handler: mode:', mode, 'oobCode:', oobCode);
 
         if (mode === 'verifyEmail' && oobCode) {
           // First, verify the action code is valid
