@@ -271,6 +271,7 @@ app.get('/api/db-status', async (req, res) => {
 async function initializeApp() {
   try {
     console.log('🟢 [INIT] initializeApp() started');
+    console.log('🟢 [INIT] Function entry point reached');
     console.log('🚀 Initializing application for 5-10k concurrent users...');
     console.log('📅 Start time:', new Date().toISOString());
 
@@ -382,14 +383,17 @@ async function initializeApp() {
 }
 
 // Run migration before anything else
-await addInstagramHandleColumn().then(() => {
+console.log('🔄 Starting instagram_handle migration...');
+try {
+  await addInstagramHandleColumn();
   console.log('✅ instagram_handle column migration complete (or already exists)');
-}).catch((err) => {
+} catch (err) {
   console.error('❌ instagram_handle migration failed:', err);
+  console.error('💡 Migration error details:', err.message);
   // Do not exit, allow server to start for debugging
-});
+}
 
-// Removed the problematic fixUserSubmissionLinks function that was causing server hangs
+console.log('🔄 Migration phase complete, proceeding to server initialization...');
 
 // Enhanced graceful shutdown handling
 const gracefulShutdown = (signal) => {
@@ -424,8 +428,12 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the application
 console.log('🔄 Starting application initialization...');
+console.log('🔄 About to call initializeApp()...');
 initializeApp().catch((error) => {
   console.error('💥 Failed to start application:', error);
+  console.error('💥 Error type:', typeof error);
+  console.error('💥 Error message:', error?.message);
+  console.error('💥 Error stack:', error?.stack);
   process.exit(1);
 });
 
