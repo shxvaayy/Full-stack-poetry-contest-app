@@ -21,6 +21,7 @@ export default function FirebaseActionHandler() {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [paramsParsed, setParamsParsed] = useState(false);
 
   // Parse all possible Firebase link formats
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function FirebaseActionHandler() {
     }
     setMode(foundMode);
     setOobCode(foundCode);
+    setParamsParsed(true);
   }, []);
 
   // Handle action after parsing
@@ -166,6 +168,44 @@ export default function FirebaseActionHandler() {
       setLoading(false);
     }
   };
+
+  // Show nothing until params are parsed
+  if (!paramsParsed) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error only if paramsParsed and mode/oobCode missing
+  if (paramsParsed && (!mode || !oobCode)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-8 px-6 text-center">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Invalid Link
+            </h1>
+            <p className="text-gray-600 mb-6">
+              Invalid link. Missing required parameters: { !mode ? 'mode ' : '' }{ !oobCode ? 'oobCode' : '' }
+            </p>
+            <Button onClick={() => setLocation('/auth')} className="w-full">
+              Go to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isVerifying) {
     return (
