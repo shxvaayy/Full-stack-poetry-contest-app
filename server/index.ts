@@ -312,8 +312,8 @@ async function initializeApp() {
         console.log('⚠️ [STEP] Winner photos migration skipped (non-critical):', error.message);
       }
       
-      // Instagram handle migration already completed at startup
-      console.log('✅ [STEP] Instagram handle migration already completed');
+      // Skip Instagram migration since column already exists
+      console.log('✅ [STEP] Skipping Instagram migration - column already exists');
       
       console.log('📊 [STEP] Preserving existing user data and submissions');
     }
@@ -403,13 +403,8 @@ async function initializeApp() {
   }
 }
 
-// Run Instagram migration once at startup (non-blocking)
-console.log('🔄 Running Instagram migration at startup...');
-addInstagramHandleColumn().then(() => {
-  console.log('✅ Instagram migration completed successfully');
-}).catch((err) => {
-  console.log('⚠️ Instagram migration failed (non-critical):', err.message);
-});
+// Instagram migration will run inside initializeApp() only
+console.log('🔄 Instagram migration will run inside initializeApp()...');
 
 // Enhanced graceful shutdown handling
 const gracefulShutdown = (signal) => {
