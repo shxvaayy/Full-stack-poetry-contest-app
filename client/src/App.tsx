@@ -20,8 +20,6 @@ import NotFoundPage from "./pages/not-found";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import EmailVerifiedPage from "@/pages/email-verified";
-import EmailVerificationHandler from "@/pages/email-verification-handler";
-import PasswordResetHandler from "@/pages/password-reset-handler";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 function AppContent() {
@@ -31,10 +29,11 @@ function AppContent() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/email-verified" component={EmailVerifiedPage} />
-      <Route path="/email-verification-handler" component={EmailVerificationHandler} />
-      <Route path="/__/auth/action" component={EmailVerificationHandler} />
-      <Route path="/auth/action" component={EmailVerificationHandler} />
-      <Route path="/password-reset-handler" component={PasswordResetHandler} />
+      {/* Removed: <Route path="/email-verification-handler" component={EmailVerificationHandler} /> */}
+      {/* Removed: <Route path="/__/auth/action" component={EmailVerificationHandler} /> */}
+      {/* Removed: <Route path="/auth/action" component={EmailVerificationHandler} /> */}
+      {/* Removed: <Route path="/password-reset-handler" component={PasswordResetHandler} /> */}
+      {/* The unified handler at /__/auth/action is now handled by file-based routing in pages/__/auth/action.tsx */}
 
       {/* Protected routes - require authentication */}
       <Route>
