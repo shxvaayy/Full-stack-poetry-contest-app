@@ -594,6 +594,22 @@ export default function AdminSettingsPage() {
                 <div key={form.position} className="border rounded-lg p-4 bg-gray-50">
                   <h3 className="font-bold mb-2">{form.position === '1' ? '1st Place' : form.position === '2' ? '2nd Place' : '3rd Place'} Winner</h3>
                   <div className="mb-2">
+                    <Label>Contest Month (YYYY-MM)</Label>
+                    <Input value={form.contestMonth} onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].contestMonth = e.target.value;
+                      setWinnerForms(updated);
+                    }} placeholder="2024-12" />
+                  </div>
+                  <div className="mb-2">
+                    <Label>Contest Year</Label>
+                    <Input value={form.contestYear} onChange={e => {
+                      const updated = [...winnerForms];
+                      updated[idx].contestYear = e.target.value;
+                      setWinnerForms(updated);
+                    }} placeholder="2025" />
+                  </div>
+                  <div className="mb-2">
                     <Label>Winner Name</Label>
                     <Input value={form.winnerName} onChange={e => {
                       const updated = [...winnerForms];
