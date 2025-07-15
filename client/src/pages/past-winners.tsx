@@ -102,6 +102,11 @@ export default function PastWinnersPage() {
       </div>
     );
   };
+
+  // Helper for consistent 12-hour format
+  const formatDateTime12h = (dateStr: string | null) => dateStr ? new Date(dateStr).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short', hour12: true }) : '____';
+  const formatDate12h = (dateStr: string | null) => dateStr ? new Date(dateStr).toLocaleDateString(undefined, { dateStyle: 'long' }) : '____';
+
   return (
     <section className="py-16 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4">
@@ -110,7 +115,7 @@ export default function PastWinnersPage() {
           <p className="text-xl text-gray-600">
             WRITORY is in its inaugural cycle for {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'}. This is our first year of celebrating poetry
             and nurturing emerging voices. Winners from our {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} competition will be featured here after results
-            are announced on {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}.
+            are announced on {formatDateTime12h(timeline.result_announcement_date)}.
           </p>
         </div>
 
@@ -122,7 +127,7 @@ export default function PastWinnersPage() {
               journey to celebrate literary excellence and support emerging poets.
             </p>
             <p className="text-gray-600 mb-8">
-              Competition results will be announced on {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}. Winners will receive certificates,
+              Competition results will be announced on {formatDateTime12h(timeline.result_announcement_date)}. Winners will receive certificates,
               recognition, and cash prizes. Their profiles and RESULTS will be featured on this page after the
               announcement.
             </p>
@@ -135,7 +140,7 @@ export default function PastWinnersPage() {
               ) : (
                 <>
                   <h3 className="text-xl font-semibold text-gray-900 mb-6">Coming Soon</h3>
-                  <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}</p>
+                  <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after {formatDateTime12h(timeline.result_announcement_date)}</p>
                 </>
               )}
               <div className="grid md:grid-cols-3 gap-8">
@@ -161,21 +166,21 @@ export default function PastWinnersPage() {
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">{timeline.contest_launch_date ? new Date(timeline.contest_launch_date).toLocaleDateString(undefined, { dateStyle: 'long' }) : '____'}</p>
+                  <p className="font-semibold text-gray-900">{formatDate12h(timeline.contest_launch_date)}</p>
                   <p className="text-gray-600">Contest Launch & Submissions Open</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-yellow-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">{timeline.submission_deadline ? new Date(timeline.submission_deadline).toLocaleDateString(undefined, { dateStyle: 'long' }) : '____'}</p>
+                  <p className="font-semibold text-gray-900">{formatDate12h(timeline.submission_deadline)}</p>
                   <p className="text-gray-600">Submission Deadline</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-blue-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">{timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}</p>
+                  <p className="font-semibold text-gray-900">{formatDateTime12h(timeline.result_announcement_date)}</p>
                   <p className="text-gray-600">Results Announcement</p>
                 </div>
               </div>

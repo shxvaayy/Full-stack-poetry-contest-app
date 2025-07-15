@@ -139,6 +139,9 @@ export default function WinningPoemsPage() {
     );
   };
 
+  // Helper for consistent 12-hour format
+  const formatDateTime12h = (dateStr: string | null) => dateStr ? new Date(dateStr).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short', hour12: true }) : '____';
+
   return (
     <section className="py-16 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 text-center">
@@ -163,7 +166,7 @@ export default function WinningPoemsPage() {
               <CountdownTimer targetDate={timeline.result_announcement_date || ''} />
             </div>
 
-            <p className="text-gray-600">Results announcement: {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}</p>
+            <p className="text-gray-600">Results announcement: {formatDateTime12h(timeline.result_announcement_date)}</p>
           </CardContent>
         </Card>
 
