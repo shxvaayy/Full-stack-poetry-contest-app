@@ -18,8 +18,18 @@ interface WinnerPhoto {
 export default function PastWinnersPage() {
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeline, setTimeline] = useState<{ contest_launch_date: string | null, submission_deadline: string | null, result_announcement_date: string | null }>({ contest_launch_date: null, submission_deadline: null, result_announcement_date: null });
   // Set the contest month directly to '2025-07' (remove admin endpoint call)
   const [latestMonth] = useState<string>('2025-07');
+
+  // Fetch contest timeline
+  useEffect(() => {
+    fetch('/api/contest-timeline')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.timeline) setTimeline(data.timeline);
+      });
+  }, []);
 
   // Step 2: Fetch winner photos for the latest contestMonth using the public endpoint
   useEffect(() => {
@@ -98,21 +108,21 @@ export default function PastWinnersPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Past Winners</h1>
           <p className="text-xl text-gray-600">
-            WRITORY is in its inaugural cycle for 2025. This is our first year of celebrating poetry
-            and nurturing emerging voices. Winners from our 2025 competition will be featured here after results
-            are announced on July 31st, 2025.
+            WRITORY is in its inaugural cycle for {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'}. This is our first year of celebrating poetry
+            and nurturing emerging voices. Winners from our {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} competition will be featured here after results
+            are announced on {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}.
           </p>
         </div>
 
         <Card className="text-center mb-12">
           <CardContent className="p-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">2025 - Our Inaugural Year</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">{timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} - Our Inaugural Year</h2>
             <p className="text-lg text-gray-700 mb-6">
-              We are excited to launch the first-ever POETRY CONTEST in 2025. This marks the beginning of our
+              We are excited to launch the first-ever POETRY CONTEST in {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'}. This marks the beginning of our
               journey to celebrate literary excellence and support emerging poets.
             </p>
             <p className="text-gray-600 mb-8">
-              Competition results will be announced on July 31st, 2025 at 7 PM. Winners will receive certificates,
+              Competition results will be announced on {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}. Winners will receive certificates,
               recognition, and cash prizes. Their profiles and RESULTS will be featured on this page after the
               announcement.
             </p>
@@ -125,7 +135,7 @@ export default function PastWinnersPage() {
               ) : (
                 <>
                   <h3 className="text-xl font-semibold text-gray-900 mb-6">Coming Soon</h3>
-                  <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
+                  <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}</p>
                 </>
               )}
               <div className="grid md:grid-cols-3 gap-8">
@@ -151,22 +161,22 @@ export default function PastWinnersPage() {
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">January 2025</p>
+                  <p className="font-semibold text-gray-900">{timeline.contest_launch_date ? new Date(timeline.contest_launch_date).toLocaleDateString(undefined, { dateStyle: 'long' }) : '____'}</p>
                   <p className="text-gray-600">Contest Launch & Submissions Open</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-yellow-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">July 30, 2025</p>
+                  <p className="font-semibold text-gray-900">{timeline.submission_deadline ? new Date(timeline.submission_deadline).toLocaleDateString(undefined, { dateStyle: 'long' }) : '____'}</p>
                   <p className="text-gray-600">Submission Deadline</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-blue-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">July 31, 2025</p>
-                  <p className="text-gray-600">Results Announcement at 7 PM</p>
+                  <p className="font-semibold text-gray-900">{timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}</p>
+                  <p className="text-gray-600">Results Announcement</p>
                 </div>
               </div>
             </div>

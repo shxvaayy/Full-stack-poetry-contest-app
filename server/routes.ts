@@ -3521,3 +3521,32 @@ router.post('/api/users/create', asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: error.message || 'Failed to create user' });
   }
 }));
+
+// ===== PUBLIC CONTEST TIMELINE ENDPOINT =====
+
+// Public endpoint to get contest timeline dates (no auth required)
+router.get('/api/contest-timeline', cacheMiddleware(), asyncHandler(async (req, res) => {
+  try {
+    // Fetch only the relevant settings
+    const [contest_launch_date, submission_deadline, result_announcement_date] = await Promise.all([
+      getSetting('contest_launch_date'),
+      getSetting('submission_deadline'),
+      getSetting('result_announcement_date'),
+    ]);
+
+    res.json({
+      success: true,
+      timeline: {
+        contest_launch_date: contest_launch_date || null,
+        submission_deadline: submission_deadline || null,
+        result_announcement_date: result_announcement_date || null,
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching contest timeline:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch contest timeline'
+    });
+  }
+}));

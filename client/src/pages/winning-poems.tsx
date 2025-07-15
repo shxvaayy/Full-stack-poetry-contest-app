@@ -21,6 +21,16 @@ interface WinnerPhoto {
 export default function WinningPoemsPage() {
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeline, setTimeline] = useState<{ contest_launch_date: string | null, submission_deadline: string | null, result_announcement_date: string | null }>({ contest_launch_date: null, submission_deadline: null, result_announcement_date: null });
+
+  // Fetch contest timeline
+  useEffect(() => {
+    fetch('/api/contest-timeline')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.timeline) setTimeline(data.timeline);
+      });
+  }, []);
 
   // Get current contest month (you can adjust this logic)
   const getCurrentContestMonth = () => {
@@ -143,17 +153,17 @@ export default function WinningPoemsPage() {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Winners Yet to Be Announced</h2>
               <p className="text-lg text-gray-600 mb-6">
-                Our 2025 inaugural competition is currently in progress. Results will be announced after the submission deadline.
+                Our {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} inaugural competition is currently in progress. Results will be announced after the submission deadline.
               </p>
             </div>
 
             {/* Countdown Timer */}
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Results will be announced in:</h3>
-              <CountdownTimer targetDate="2025-07-31T19:00:00" />
+              <CountdownTimer targetDate={timeline.result_announcement_date || ''} />
             </div>
 
-            <p className="text-gray-600">Results announcement: July 31st, 2025 at 7 PM</p>
+            <p className="text-gray-600">Results announcement: {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }) : '____'}</p>
           </CardContent>
         </Card>
 
@@ -163,7 +173,7 @@ export default function WinningPoemsPage() {
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Recognizing the top 3 poets and their celebrated work</h3>
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div>
-                {/* 🚀 FIXED: Changed bg-gold to bg-yellow-500 */}
+                {/* 🏆 FIXED: Changed bg-gold to bg-yellow-500 */}
                 <div className={`w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110 hover:shadow-[0_0_24px_4px_rgba(255,215,0,0.4)] hover:animate-bounce-slow group`}>
                   <Trophy className="text-2xl text-white group-hover:drop-shadow-[0_0_8px_gold]" size={24} />
                 </div>
