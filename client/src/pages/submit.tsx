@@ -112,33 +112,36 @@ export default function SubmitPage() {
     photo: null as File | null,
   });
 
-  const [multiplePoems, setMultiplePoems] = useState({
-    titles: ["", "", "", "", ""],
-    files: [null, null, null, null, null] as (File | null)[],
-  });
+  // 1. Type the poems state
+  const [poems, setPoems] = useState<{ challenge: any, pdf: File | null }[]>([]);
+  const [currentPoemIndex, setCurrentPoemIndex] = useState(0);
+  const [step, setStep] = useState<'spin' | 'pdf' | 'form' | 'payment' | 'done'>('spin');
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
 
-  // Get poem count based on tier
+  // Add a helper to get poem count from selected tier
   const getPoemCount = (tierId: string): number => {
-    const poemCounts = {
-      'free': 1,
-      'single': 1, 
-      'double': 2,
-      'bulk': 5
-    };
+    const poemCounts = { free: 1, single: 1, double: 2, bulk: 5 };
     return poemCounts[tierId as keyof typeof poemCounts] || 1;
+  };
+
+  // On tier selection, initialize poems array
+  const handleTierSelection = (tier: typeof TIERS[0]) => {
+    setSelectedTier(tier);
+    setPoems(Array(getPoemCount(tier.id)).fill(null).map(() => ({ challenge: null, pdf: null })));
+    setCurrentPoemIndex(0);
+    setStep('spin');
   };
 
   // Handle multiple poem data
   const handleMultiplePoemData = (index: number, field: 'title' | 'file', value: string | File | null) => {
-    setMultiplePoems(prev => {
-      const updated = { ...prev };
+    setPoems(prev => {
+      const updated = [...prev];
       if (field === 'title') {
-        updated.titles[index] = value as string;
+        updated[index] = { ...updated[index], challenge: { ...updated[index].challenge, title: value as string } };
       } else if (field === 'file') {
-        updated.files[index] = value as File | null;
+        updated[index] = { ...updated[index], pdf: value as File | null };
       }
       return updated;
     });
@@ -334,16 +337,6 @@ export default function SubmitPage() {
       refetchSubmissionStatus();
     }
   }, [freeTierStatus, user?.uid, refetchSubmissionStatus]);
-
-  const handleTierSelection = (tier: typeof TIERS[0]) => {
-    setSelectedTier(tier);
-    setDiscountedAmount(tier.price);
-    setCouponApplied(false);
-    setCouponDiscount(0);
-    setCouponCode("");
-    setCouponError("");
-    setCurrentStep("form");
-  };
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -549,8 +542,8 @@ export default function SubmitPage() {
 
       // Validate multiple poems if required
       for (let i = 0; i < poemCount; i++) {
-        const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-        const file = i === 0 ? files.poem : multiplePoems.files[i];
+        const title = i === 0 ? formData.poemTitle : poems[i].challenge?.title;
+        const file = i === 0 ? files.poem : poems[i].pdf;
 
         if (!title) {
           throw new Error(`Please enter title for poem ${i + 1}`);
@@ -601,7 +594,7 @@ export default function SubmitPage() {
       // Add multiple poem titles
       const allTitles = [formData.poemTitle];
       for (let i = 1; i < poemCount; i++) {
-        allTitles.push(multiplePoems.titles[i] || '');
+        allTitles.push(poems[i].challenge?.title || '');
       }
       formDataToSend.append('poemTitles', JSON.stringify(allTitles));
 
@@ -610,8 +603,8 @@ export default function SubmitPage() {
         formDataToSend.append('poems', files.poem);
       }
       for (let i = 1; i < poemCount; i++) {
-        if (multiplePoems.files[i]) {
-          formDataToSend.append('poems', multiplePoems.files[i] as File);
+        if (poems[i].pdf) {
+          formDataToSend.append('poems', poems[i].pdf as File);
         }
       }
 
@@ -675,10 +668,7 @@ export default function SubmitPage() {
           poem: null,
           photo: null,
         });
-        setMultiplePoems({
-          titles: ["", "", "", "", ""],
-          files: [null, null, null, null, null],
-        });
+        setPoems(Array(getPoemCount(selectedTier?.id || 'free')).fill(null).map(() => ({ challenge: null, pdf: null })));
 
         // Show immediate success toast
         toast({
@@ -740,7 +730,7 @@ export default function SubmitPage() {
             <Label htmlFor={`poem-title-${i}`}>Poem Title *</Label>
             <Input
               id={`poem-title-${i}`}
-              value={i === 0 ? formData.poemTitle : multiplePoems.titles[i]}
+              value={i === 0 ? formData.poemTitle : poems[i].challenge?.title}
               onChange={(e) => {
                 if (i === 0) {
                   handleFormData('poemTitle', e.target.value);
@@ -774,8 +764,8 @@ export default function SubmitPage() {
             {i === 0 && files.poem && (
               <p className="text-sm text-green-600 mt-1">✓ {files.poem.name}</p>
             )}
-            {i > 0 && multiplePoems.files[i] && (
-              <p className="text-sm text-green-600 mt-1">✓ {multiplePoems.files[i]?.name}</p>
+            {i > 0 && poems[i].pdf && (
+              <p className="text-sm text-green-600 mt-1">✓ {poems[i].pdf?.name}</p>
             )}
           </div>
         </div>
@@ -812,8 +802,8 @@ export default function SubmitPage() {
 
     // Check all poem titles and files
     for (let i = 0; i < poemCount; i++) {
-      const title = i === 0 ? formData.poemTitle : multiplePoems.titles[i];
-      const file = i === 0 ? files.poem : multiplePoems.files[i];
+      const title = i === 0 ? formData.poemTitle : poems[i].challenge?.title;
+      const file = i === 0 ? files.poem : poems[i].pdf;
 
       if (!title || !file) {
         return false;
@@ -1461,3 +1451,27 @@ export default function SubmitPage() {
 
   return null;
 };
+
+// Minimal PDFUpload component for this flow
+function PDFUpload({ challenge, onUpload }) {
+  const [file, setFile] = useState(null);
+  return (
+    <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+      <h2>Upload Poem PDF for Challenge:</h2>
+      <div style={{ fontWeight: 'bold', marginBottom: 8 }}>{challenge?.title}</div>
+      <div style={{ marginBottom: 16 }}>{challenge?.description}</div>
+      <input
+        type="file"
+        accept="application/pdf"
+        onChange={e => setFile(e.target.files?.[0] || null)}
+      />
+      <Button
+        disabled={!file}
+        style={{ marginTop: 16 }}
+        onClick={() => file && onUpload(file)}
+      >
+        Upload & Continue
+      </Button>
+    </div>
+  );
+}
