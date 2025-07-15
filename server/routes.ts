@@ -36,13 +36,14 @@ const upload = multer({
 
     const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
     
-    // Allow only PDF, DOC, DOCX and image files
+    // Allow only PDF, DOC, DOCX, TXT and image files
     if (
       file.mimetype === 'application/pdf' ||
       file.mimetype === 'application/msword' ||
       file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.mimetype === 'text/plain' ||
       file.mimetype.startsWith('image/') ||
-      ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
+      ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')
     ) {
       console.log('✅ File accepted:', file.originalname);
       cb(null, true);
