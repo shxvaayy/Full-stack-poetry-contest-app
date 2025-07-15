@@ -159,7 +159,7 @@ export default function WinningPoemsPage() {
         {/* What to Expect */}
         <Card>
           <CardContent className="p-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">What to Expect</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Recognizing the top 3 poets and their celebrated work</h3>
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div>
                 {/* 🚀 FIXED: Changed bg-gold to bg-yellow-500 */}
