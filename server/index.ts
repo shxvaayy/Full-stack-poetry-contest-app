@@ -372,12 +372,21 @@ async function initializeApp() {
     // Step 5: Start server with optimized settings for 5-10k users
     console.log('🟢 [STEP] About to start server on port', PORT);
     console.log('🟢 [STEP] Creating server instance...');
-    const server = app.listen(PORT, () => {
+    
+    // Add a simple health check endpoint
+    app.get('/health', (req, res) => {
+      res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+    });
+    
+    const server = app.listen(Number(PORT), '0.0.0.0', () => {
       console.log('🎉 [SERVER] Server started successfully!');
       console.log(`🌐 [SERVER] Server running on port ${PORT}`);
+      console.log(`🌐 [SERVER] Server bound to 0.0.0.0:${PORT}`);
       console.log(`📊 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🚀 [SERVER] Ready for 5-10k concurrent users!`);
+      console.log(`🔗 [SERVER] Health check available at http://0.0.0.0:${PORT}/health`);
     });
+    
     console.log('🟢 [STEP] Server instance created, setting up options...');
     server.maxConnections = 10000;
     server.keepAliveTimeout = 65000;
@@ -439,6 +448,12 @@ console.log('🔄 Starting application initialization...');
 console.log('🔄 About to call initializeApp()...');
 console.log('🔄 Process ID:', process.pid);
 console.log('🔄 Node version:', process.version);
+console.log('🔄 PORT:', PORT);
+
+// Add a simple timeout to see if the process hangs
+setTimeout(() => {
+  console.log('⏰ 30 seconds passed, process still running...');
+}, 30000);
 
 initializeApp().catch((error) => {
   console.error('💥 Failed to start application:', error);
