@@ -69,10 +69,10 @@ export const uploadPoemFileToCloudinary = async (
       throw new Error('File buffer is empty');
     }
 
-    // Validate file type (PDF, DOC, DOCX allowed for poems)
+    // Validate file type (PDF, DOC, DOCX, TXT allowed for poems)
     const fileExtension = originalName.split('.').pop()?.toLowerCase();
-    if (!['pdf', 'doc', 'docx'].includes(fileExtension || '')) {
-      throw new Error('Upload failed: Only PDF, DOC, DOCX for poems');
+    if (!['pdf', 'doc', 'docx', 'txt'].includes(fileExtension || '')) {
+      throw new Error('Upload failed: Only PDF, DOC, DOCX, TXT for poems');
     }
 
     // Generate a unique filename in format: email_poemtitle_timestamp
