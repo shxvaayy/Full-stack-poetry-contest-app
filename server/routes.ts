@@ -1427,7 +1427,10 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       paymentId,
       paymentMethod,
       uid,
-      userUid // Also accept userUid as fallback
+      userUid, // Also accept userUid as fallback
+      couponCode,
+      couponDiscount,
+      instagramHandle // <-- new field
     } = req.body;
 
     // Check if free tier is enabled and user hasn't used it before
@@ -1473,8 +1476,6 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
     //const userId = uid || userUid;
 
     // Extract coupon data
-    const couponCode = req.body.couponCode;
-    const couponDiscount = req.body.couponDiscount ? parseFloat(req.body.couponDiscount) : 0;
     const finalAmount = req.body.finalAmount ? parseFloat(req.body.finalAmount) : parseFloat(price || '0');
 
     // Validate required fields
@@ -1756,7 +1757,8 @@ router.post('/api/submit-poem', safeUploadAny, asyncHandler(async (req: any, res
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
       status: 'Pending',
-      type: 'Human'
+      type: 'Human',
+      instagramHandle: instagramHandle || null // <-- new field
     };
 
     console.log('🔗 Linking submission to user ID:', user?.id);
@@ -1897,7 +1899,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
       paymentMethod,
       uid,
       userUid, // Also accept userUid as fallback
-      poemTitles // This should be a JSON string array
+      poemTitles, // This should be a JSON string array
+      instagramHandle // <-- new field
     } = req.body;
 
     // Use uid or userUid (frontend might send either)
@@ -2099,7 +2102,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
         totalPoemsInSubmission: titles.length,
         submittedAt: new Date(),
         status: 'Pending',
-        type: 'Human'
+        type: 'Human',
+        instagramHandle: instagramHandle || null // <-- new field
       };
 
       console.log(`💾 Saving submission ${i + 1}/${titles.length}: ${titles[i]}`);
@@ -2148,7 +2152,8 @@ router.post('/api/submit-multiple-poems', safeUploadAny, asyncHandler(async (req
           submissionUuid: submissionUuid,
           submissionIds: submissions.map(s => s.id),
           poemFileUrls: poemFileUrls, // This should now contain the actual URLs
-          photoFileUrl: photoFileUrl  // This should now contain the actual URL
+          photoFileUrl: photoFileUrl,  // This should now contain the actual URL
+          instagramHandle: instagramHandle || null // <-- new field
         });
         console.log('✅ Google Sheets updated for multiple submissions:', submissionUuid);
       } catch (sheetError) {
@@ -2250,7 +2255,8 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
     poemTitle,
     tier = 'free', // Default to free for legacy submissions
     paymentId,
-    paymentMethod = 'free'
+    paymentMethod = 'free',
+    instagramHandle // <-- new field
   } = req.body;
 
   try {
@@ -2322,7 +2328,8 @@ router.post('/api/submit', safeUploadAny, asyncHandler(async (req: any, res: any
       totalPoemsInSubmission: 1,
       submittedAt: new Date(),
       status: 'Pending',
-      type: 'Human'
+      type: 'Human',
+      instagramHandle: instagramHandle || null // <-- new field
     };
 
     const submission = await storage.createSubmission(submissionData);

@@ -94,6 +94,7 @@ export default function SubmitPage() {
     age: "",
     poemTitle: "",
     termsAccepted: false,
+    instagramHandle: "",
   });
   
   // Store submission details for success page
@@ -308,7 +309,6 @@ export default function SubmitPage() {
     queryFn: () => apiRequest(`/api/users/${user?.uid}/submission-status`),
     enabled: !!user?.uid,
     staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache the result
     refetchOnWindowFocus: true,
     refetchInterval: 10000, // Refetch every 10 seconds
   });
@@ -317,13 +317,12 @@ export default function SubmitPage() {
     queryKey: ['/api/free-tier-status'],
     queryFn: () => apiRequest('/api/free-tier-status'),
     staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache the result
     refetchOnWindowFocus: true, // Refetch when window gains focus
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
   // Check if user has already used free tier
-  const hasUsedFreeTier = userSubmissionStatus?.freeSubmissionUsed || false;
+  const hasUsedFreeTier = !!(userSubmissionStatus && typeof userSubmissionStatus === 'object' && 'freeSubmissionUsed' in userSubmissionStatus && (userSubmissionStatus as any).freeSubmissionUsed);
 
   // Refetch when component mounts to ensure fresh data
   useEffect(() => {
@@ -672,6 +671,7 @@ export default function SubmitPage() {
           age: "",
           poemTitle: "",
           termsAccepted: false,
+          instagramHandle: "",
         });
         setFiles({
           poem: null,
@@ -830,7 +830,7 @@ export default function SubmitPage() {
   };
 
   // Check submission status
-  if (userSubmissionStatus?.hasSubmitted) {
+  if (userSubmissionStatus && typeof userSubmissionStatus === 'object' && 'hasSubmitted' in userSubmissionStatus && (userSubmissionStatus as any).hasSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
@@ -872,7 +872,7 @@ export default function SubmitPage() {
               const Icon = tier.icon;
               
               // Check if free tier should be disabled
-              const isFreeTierAdminDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
+              const isFreeTierAdminDisabled = tier.id === 'free' && freeTierStatus && typeof freeTierStatus === 'object' && 'enabled' in freeTierStatus && !(freeTierStatus as any).enabled;
               const isFreeTierConfigDisabled = tier.id === 'free' && (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER);
               const isFreeTierAlreadyUsed = tier.id === 'free' && hasUsedFreeTier;
               
@@ -942,7 +942,7 @@ export default function SubmitPage() {
 
           {(() => {
             // Check if free tier should be hidden and show appropriate message
-            const adminDisabled = freeTierStatus?.enabled === false;
+            const adminDisabled = freeTierStatus && typeof freeTierStatus === 'object' && 'enabled' in freeTierStatus && !(freeTierStatus as any).enabled;
             const configDisabled = !FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER;
             
             if (adminDisabled || (freeTierStatus === undefined && configDisabled)) {
@@ -1052,13 +1052,23 @@ export default function SubmitPage() {
                         type="text"
                         maxLength={2}
                         inputMode="numeric"
-                        className={formData.age && formData.age.length > 0 && !/^\d+$/.test(formData.age) ? 'border-red-500' : ''}
+                        className={formData.age && formData.age.length > 0 && !/^[0-9]+$/.test(formData.age) ? 'border-red-500' : ''}
                       />
                       <p className="text-xs text-gray-500 mt-1">Numbers only, maximum 2 digits</p>
-                      {formData.age && formData.age.length > 0 && !/^\d+$/.test(formData.age) && (
+                      {formData.age && formData.age.length > 0 && !/^[0-9]+$/.test(formData.age) && (
                         <p className="text-xs text-red-500 mt-1">Age must be numbers only</p>
                       )}
                     </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="instagramHandle">Instagram Handle <span className="text-gray-400">(optional)</span></Label>
+                    <Input
+                      id="instagramHandle"
+                      value={formData.instagramHandle}
+                      onChange={(e) => handleFormData('instagramHandle', e.target.value)}
+                      placeholder="e.g. @yourusername"
+                    />
                   </div>
                 </div>
 

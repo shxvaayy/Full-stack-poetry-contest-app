@@ -47,6 +47,7 @@ export const submissions = pgTable('submissions', {
   email: varchar('email', { length: 255 }).notNull(),
   phone: varchar('phone', { length: 20 }),
   age: integer('age'),
+  instagramHandle: varchar('instagram_handle', { length: 255 }),
 
   // Poem details
   poemTitle: varchar('poem_title', { length: 255 }).notNull(),
