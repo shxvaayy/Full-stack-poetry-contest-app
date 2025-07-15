@@ -161,8 +161,13 @@ export async function createUser(userData: {
   profilePictureUrl?: string | null;
 }) {
   try {
+    // Check if user already exists by email
+    const existing = await db.select().from(users).where(eq(users.email, userData.email));
+    if (existing.length > 0) {
+      console.log('⚠️ User already exists with email:', userData.email);
+      return existing[0];
+    }
     console.log('🔄 Creating new user:', userData.email);
-
     const result = await db.insert(users).values({
       uid: userData.uid,
       email: userData.email,
@@ -172,7 +177,6 @@ export async function createUser(userData: {
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning();
-
     console.log('✅ User created:', result[0].email);
     return result[0];
   } catch (error) {

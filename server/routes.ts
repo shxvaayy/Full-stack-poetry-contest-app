@@ -3496,7 +3496,7 @@ router.post('/api/users/create', asyncHandler(async (req, res) => {
   }
   try {
     const user = await createUser({ uid, email, name: name || null, phone: phone || null });
-    res.status(201).json({ success: true, user });
+    res.status(200).json({ success: true, user });
   } catch (error) {
     console.error('❌ Error creating user:', error);
     res.status(500).json({ success: false, error: error.message || 'Failed to create user' });
