@@ -11,11 +11,13 @@ import HomePage from "@/pages/home";
 import SubmitPage from "@/pages/submit";
 import WinningPoemsPage from "@/pages/winning-poems";
 import PastWinnersPage from "@/pages/past-winners";
+import WritoryWallPage from "@/pages/writory-wall";
 import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
 import UserProfilePage from "@/pages/user-profile";
 import AdminUploadPage from "@/pages/admin-upload";
 import AdminSettingsPage from "@/pages/admin-settings";
+import AdminWallModerationPage from "@/pages/admin-wall-moderation";
 import NotFoundPage from "./pages/not-found";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
@@ -51,6 +53,7 @@ function AppContent() {
               <Switch>
                 <Route path="/" component={HomePage} />
                 <Route path="/submit" component={SubmitPage} />
+                <Route path="/writory-wall" component={WritoryWallPage} />
                 <Route path="/winning-poems" component={WinningPoemsPage} />
                 <Route path="/past-winners" component={PastWinnersPage} />
                 <Route path="/about" component={AboutPage} />
@@ -58,6 +61,7 @@ function AppContent() {
                 <Route path="/profile" component={UserProfilePage} />
                 <Route path="/admin-upload" component={AdminUploadPage} />
                 <Route path="/admin-settings" component={AdminSettingsPage} />
+                <Route path="/admin-wall-moderation" component={AdminWallModerationPage} />
                 <Route path="/not-found" component={NotFoundPage} />
                 <Route path="*">
                   <NotFoundPage />

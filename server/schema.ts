@@ -201,6 +201,39 @@ export const winnerPhotos = pgTable('winner_photos', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
+// ✅ Writory Wall posts - For the public wall feature
+export const wallPosts = pgTable('wall_posts', {
+  id: serial('id').primaryKey(),
+  
+  // User relationship
+  userId: integer('user_id').references(() => users.id).notNull(),
+  userUid: varchar('user_uid', { length: 255 }).notNull(), // Firebase UID for quick lookups
+  
+  // Post content
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  category: varchar('category', { length: 100 }), // Optional category/channel
+  
+  // User info (cached for performance)
+  authorName: varchar('author_name', { length: 255 }).notNull(),
+  authorInstagram: varchar('author_instagram', { length: 255 }),
+  authorProfilePicture: varchar('author_profile_picture', { length: 500 }),
+  
+  // Moderation
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // pending, approved, rejected
+  moderatedBy: varchar('moderated_by', { length: 255 }), // Admin email who moderated
+  moderatedAt: timestamp('moderated_at'),
+  moderationNotes: text('moderation_notes'),
+  
+  // Engagement
+  likes: integer('likes').default(0).notNull(),
+  likedBy: text('liked_by'), // JSON array of user UIDs who liked
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
 // ✅ Define relationships
 export const usersRelations = relations(users, ({ many }) => ({
   submissions: many(submissions),
@@ -255,6 +288,8 @@ export type AdminUsers = typeof adminUsers.$inferSelect;
 export type NewAdminUsers = typeof adminUsers.$inferInsert;
 export type WinnerPhoto = typeof winnerPhotos.$inferSelect;
 export type NewWinnerPhoto = typeof winnerPhotos.$inferInsert;
+export type WallPost = typeof wallPosts.$inferSelect;
+export type NewWallPost = typeof wallPosts.$inferInsert;
 
 // ✅ Export database schema
 export const schema = {
@@ -268,6 +303,7 @@ export const schema = {
   adminSettings,
   adminUsers,
   winnerPhotos,
+  wallPosts,
   usersRelations,
   submissionsRelations,
   couponsRelations,

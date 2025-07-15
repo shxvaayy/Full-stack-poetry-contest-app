@@ -116,11 +116,15 @@ export default function Header() {
   const navigation = [
     { name: "HOME", href: "/" },
     { name: "SUBMIT POEM", href: "/submit" },
+    { name: "WRITORY WALL", href: "/writory-wall" },
     { name: "RESULTS", href: "/winning-poems" },
     { name: "PAST WINNERS", href: "/past-winners" },
     { name: "ABOUT US", href: "/about" },
     { name: "CONTACT US", href: "/contact" },
-    ...(isAdmin ? [{ name: "ADMIN UPLOAD", href: "/admin-upload" }] : []),
+    ...(isAdmin ? [
+      { name: "ADMIN UPLOAD", href: "/admin-upload" },
+      { name: "WALL MODERATION", href: "/admin-wall-moderation" }
+    ] : []),
   ];
 
   const handleLogout = async () => {

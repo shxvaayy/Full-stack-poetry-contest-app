@@ -312,6 +312,15 @@ async function initializeApp() {
         console.log('⚠️ [STEP] Winner photos migration skipped (non-critical):', error.message);
       }
       
+      // Create wall posts table
+      try {
+        const { createWallPostsTable } = await import('./migrate-wall-posts.js');
+        await createWallPostsTable();
+        console.log('✅ [STEP] Wall posts table migration completed');
+      } catch (error) {
+        console.log('⚠️ [STEP] Wall posts migration skipped (non-critical):', error.message);
+      }
+      
       // Skip Instagram migration since column already exists
       console.log('✅ [STEP] Skipping Instagram migration - column already exists');
       

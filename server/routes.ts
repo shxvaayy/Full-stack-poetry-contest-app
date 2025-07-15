@@ -3557,3 +3557,225 @@ router.get('/api/contest-timeline', cacheMiddleware(), asyncHandler(async (req, 
     });
   }
 }));
+
+// ✅ Writory Wall Routes
+router.post('/api/wall-posts', async (req, res) => {
+  try {
+    const { title, content, category, instagramHandle } = req.body;
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+    
+    // Get user info
+    const userResult = await client.query('SELECT id, name, profile_picture_url FROM users WHERE uid = $1', [userUid]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Check if user has already submitted 5 posts
+    const existingPosts = await client.query(
+      'SELECT COUNT(*) FROM wall_posts WHERE user_uid = $1 AND status = $2',
+      [userUid, 'approved']
+    );
+    
+    if (parseInt(existingPosts.rows[0].count) >= 5) {
+      return res.status(400).json({ error: 'Maximum 5 posts allowed per user' });
+    }
+    
+    // Create wall post
+    const result = await client.query(`
+      INSERT INTO wall_posts (
+        user_id, user_uid, title, content, category, 
+        author_name, author_instagram, author_profile_picture, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [
+      user.id, userUid, title, content, category || null,
+      user.name || 'Anonymous', instagramHandle || null, user.profile_picture_url || null, 'pending'
+    ]);
+    
+    res.status(201).json({
+      success: true,
+      post: result.rows[0],
+      message: 'Post submitted successfully and awaiting moderation'
+    });
+  } catch (error) {
+    console.error('Error creating wall post:', error);
+    res.status(500).json({ error: 'Failed to create wall post' });
+  }
+});
+
+// Get all approved wall posts
+router.get('/api/wall-posts', async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    
+    const result = await client.query(`
+      SELECT * FROM wall_posts 
+      WHERE status = 'approved' 
+      ORDER BY created_at DESC 
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    
+    const countResult = await client.query('SELECT COUNT(*) FROM wall_posts WHERE status = $1', ['approved']);
+    const totalPosts = parseInt(countResult.rows[0].count);
+    
+    res.json({
+      posts: result.rows,
+      pagination: {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total: totalPosts,
+        pages: Math.ceil(totalPosts / parseInt(limit as string))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching wall posts:', error);
+    res.status(500).json({ error: 'Failed to fetch wall posts' });
+  }
+});
+
+// Get user's own posts
+router.get('/api/wall-posts/my-posts', async (req, res) => {
+  try {
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const result = await client.query(`
+      SELECT * FROM wall_posts 
+      WHERE user_uid = $1 
+      ORDER BY created_at DESC
+    `, [userUid]);
+    
+    res.json({ posts: result.rows });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    res.status(500).json({ error: 'Failed to fetch user posts' });
+  }
+});
+
+// Like/unlike a post
+router.post('/api/wall-posts/:id/like', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    // Get current post
+    const postResult = await client.query('SELECT * FROM wall_posts WHERE id = $1 AND status = $2', [id, 'approved']);
+    if (postResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    const post = postResult.rows[0];
+    const likedBy = post.liked_by ? JSON.parse(post.liked_by) : [];
+    const isLiked = likedBy.includes(userUid);
+    
+    if (isLiked) {
+      // Unlike
+      const newLikedBy = likedBy.filter((uid: string) => uid !== userUid);
+      await client.query(
+        'UPDATE wall_posts SET likes = $1, liked_by = $2 WHERE id = $3',
+        [post.likes - 1, JSON.stringify(newLikedBy), id]
+      );
+    } else {
+      // Like
+      likedBy.push(userUid);
+      await client.query(
+        'UPDATE wall_posts SET likes = $1, liked_by = $2 WHERE id = $3',
+        [post.likes + 1, JSON.stringify(likedBy), id]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
+      liked: !isLiked,
+      likes: isLiked ? post.likes - 1 : post.likes + 1
+    });
+  } catch (error) {
+    console.error('Error liking/unliking post:', error);
+    res.status(500).json({ error: 'Failed to like/unlike post' });
+  }
+});
+
+// Admin routes for moderation
+router.get('/api/admin/wall-posts', async (req, res) => {
+  try {
+    const adminEmail = req.headers['admin-email'] as string;
+    
+    if (!adminEmail || !['shivaaymehra2@gmail.com', 'bhavyaseth2005@gmail.com'].includes(adminEmail)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { status = 'pending', page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    
+    const result = await client.query(`
+      SELECT wp.*, u.name as user_name, u.email as user_email 
+      FROM wall_posts wp 
+      LEFT JOIN users u ON wp.user_id = u.id 
+      WHERE wp.status = $1 
+      ORDER BY wp.created_at DESC 
+      LIMIT $2 OFFSET $3
+    `, [status, limit, offset]);
+    
+    const countResult = await client.query('SELECT COUNT(*) FROM wall_posts WHERE status = $1', [status]);
+    const totalPosts = parseInt(countResult.rows[0].count);
+    
+    res.json({
+      posts: result.rows,
+      pagination: {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total: totalPosts,
+        pages: Math.ceil(totalPosts / parseInt(limit as string))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin wall posts:', error);
+    res.status(500).json({ error: 'Failed to fetch wall posts' });
+  }
+});
+
+// Moderate a post (approve/reject)
+router.post('/api/admin/wall-posts/:id/moderate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    const adminEmail = req.headers['admin-email'] as string;
+    
+    if (!adminEmail || !['shivaaymehra2@gmail.com', 'bhavyaseth2005@gmail.com'].includes(adminEmail)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    await client.query(`
+      UPDATE wall_posts 
+      SET status = $1, moderated_by = $2, moderated_at = NOW(), moderation_notes = $3 
+      WHERE id = $4
+    `, [status, adminEmail, notes || null, id]);
+    
+    res.json({ success: true, message: `Post ${status} successfully` });
+  } catch (error) {
+    console.error('Error moderating post:', error);
+    res.status(500).json({ error: 'Failed to moderate post' });
+  }
+});
