@@ -167,7 +167,7 @@ export default function FirebaseActionHandler() {
     }
   };
 
-  if (loading) {
+  if (isVerifying) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -178,7 +178,7 @@ export default function FirebaseActionHandler() {
     );
   }
 
-  if (error) {
+  if (!isVerifying && error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
         <Card className="max-w-md w-full">
@@ -210,7 +210,7 @@ export default function FirebaseActionHandler() {
   }
 
   // Password reset UI
-  if (mode === 'resetPassword' && isValidCode) {
+  if (mode === 'resetPassword' && isValidCode && !isVerifying && !error) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
