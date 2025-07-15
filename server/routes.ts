@@ -15,6 +15,7 @@ import { initializeAdminSettings, getSetting, updateSetting, getAllSettings, res
 import { initializeAdminUsers, isAdmin } from './admin-auth.js';
 import nodemailer from 'nodemailer';
 import fetch from 'node-fetch';
+import { createUser } from './storage.js';
 
 const router = Router();
 
@@ -3486,3 +3487,18 @@ async function sendNotificationEmail(subject, html) {
     html,
   });
 }
+
+// Create user in DB after Firebase signup
+router.post('/api/users/create', asyncHandler(async (req, res) => {
+  const { uid, email, name, phone } = req.body;
+  if (!uid || !email) {
+    return res.status(400).json({ error: 'uid and email are required' });
+  }
+  try {
+    const user = await createUser({ uid, email, name: name || null, phone: phone || null });
+    res.status(201).json({ success: true, user });
+  } catch (error) {
+    console.error('❌ Error creating user:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to create user' });
+  }
+}));

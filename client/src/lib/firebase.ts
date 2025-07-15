@@ -61,6 +61,23 @@ export const signUpWithEmail = async (email: string, password: string) => {
   localStorage.setItem('signup_email', email);
   localStorage.setItem('signup_password', password);
 
+  // Create user in backend DB
+  try {
+    const { uid, displayName } = userCredential.user;
+    await fetch('/api/users/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uid,
+        email,
+        name: displayName || null
+      })
+    });
+  } catch (err) {
+    console.error('Failed to create user in backend DB:', err);
+    // Optionally, show a toast or handle error
+  }
+
   // Send email verification with Firebase default action URL for better compatibility
   const actionCodeSettings = {
     url: `${window.location.origin}/__/auth/action`,
