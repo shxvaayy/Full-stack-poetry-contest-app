@@ -412,7 +412,14 @@ export default function AdminSettingsPage() {
       setUploadingPhoto(true);
       if (!user?.email) throw new Error('User email not available for authentication');
       for (const form of winnerForms) {
-        if (!form.photoFile || !form.poemFile || !form.winnerName || !form.poemTitle || !form.instagramHandle || !form.score) {
+        if (
+          !form.winnerName.trim() ||
+          !form.poemTitle.trim() ||
+          !form.instagramHandle.trim() ||
+          !form.score.trim() ||
+          !(form.photoFile instanceof File) ||
+          !(form.poemFile instanceof File)
+        ) {
           toast({ title: 'Missing Fields', description: 'Please fill all fields and upload files for each winner.', variant: 'destructive' });
           setUploadingPhoto(false);
           return;
