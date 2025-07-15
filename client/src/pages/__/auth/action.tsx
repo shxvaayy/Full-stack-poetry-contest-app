@@ -2,37 +2,27 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
 import { applyActionCode, checkActionCode, signInWithEmailAndPassword, signOut, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 
-export default function FirebaseActionHandler() {
+export default function FirebaseActionDelegator() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<string | null>(null);
   const [oobCode, setOobCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [verified, setVerified] = useState(false);
-  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
-  const [isValidCode, setIsValidCode] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(true);
-  const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [paramsParsed, setParamsParsed] = useState(false);
 
-  // Parse all possible Firebase link formats
+  // Parse mode and oobCode from URL
   useEffect(() => {
     let foundMode = null;
     let foundCode = null;
     const fullUrl = window.location.href;
-    // 1. Query params
     const urlParams = new URLSearchParams(window.location.search);
     foundMode = urlParams.get('mode');
     foundCode = urlParams.get('oobCode');
-    // 2. Hash params
     if (!foundMode || !foundCode) {
       const hash = window.location.hash;
       if (hash.startsWith('#')) {
@@ -41,7 +31,6 @@ export default function FirebaseActionHandler() {
         foundCode = foundCode || hashParams.get('oobCode');
       }
     }
-    // 3. Regex extraction
     if (!foundMode || !foundCode) {
       const modeRegex = /[?&#]mode=([^&\s]+)/i;
       const codeRegex = /[?&#]oobCode=([^&\s]+)/i;
@@ -50,7 +39,6 @@ export default function FirebaseActionHandler() {
       if (modeMatch) foundMode = foundMode || decodeURIComponent(modeMatch[1]);
       if (codeMatch) foundCode = foundCode || decodeURIComponent(codeMatch[1]);
     }
-    // 4. __/auth/action? fallback
     if (!foundMode || !foundCode) {
       const actionMatch = fullUrl.match(/__\/auth\/action\?(.+)/);
       if (actionMatch) {
@@ -64,112 +52,6 @@ export default function FirebaseActionHandler() {
     setParamsParsed(true);
   }, []);
 
-  // Handle action after parsing
-  useEffect(() => {
-    if (!mode || !oobCode) {
-      setError(`Invalid link. Missing required parameters: ${!mode ? 'mode' : ''} ${!oobCode ? 'oobCode' : ''}`);
-      setLoading(false);
-      return;
-    }
-    if (mode === 'verifyEmail') {
-      // Email verification flow
-      (async () => {
-        try {
-          await checkActionCode(auth, oobCode);
-          await applyActionCode(auth, oobCode);
-          setVerified(true);
-          // Auto-login if possible
-          const storedEmail = localStorage.getItem('signup_email');
-          const storedPassword = localStorage.getItem('signup_password');
-          if (storedEmail && storedPassword) {
-            try {
-              await signOut(auth);
-              await signInWithEmailAndPassword(auth, storedEmail, storedPassword);
-              localStorage.removeItem('signup_email');
-              localStorage.removeItem('signup_password');
-              localStorage.removeItem('pending_verification_uid');
-              setAutoLoginAttempted(true);
-              toast({ title: "Account Activated!", description: "Your account has been verified and you're now signed in. Welcome to Writory!" });
-              setTimeout(() => { window.location.href = "/"; }, 1000);
-            } catch (loginError: any) {
-              localStorage.removeItem('signup_email');
-              localStorage.removeItem('signup_password');
-              localStorage.removeItem('pending_verification_uid');
-              toast({ title: "Account Activated!", description: "Your account has been verified. Please sign in to continue." });
-              setTimeout(() => { window.location.href = "/auth?verified=true"; }, 2000);
-            }
-          } else {
-            toast({ title: "Email Verified!", description: "Your email has been verified. Please sign in to continue." });
-            setAutoLoginAttempted(false);
-            setTimeout(() => { window.location.href = "/auth?verified=true"; }, 2000);
-          }
-        } catch (error: any) {
-          setError(error.message || 'Failed to verify email');
-          localStorage.removeItem('signup_email');
-          localStorage.removeItem('signup_password');
-          localStorage.removeItem('pending_verification_uid');
-          toast({ title: "Verification Failed", description: error.message || 'Invalid or expired verification link', variant: "destructive" });
-        } finally {
-          setLoading(false);
-        }
-      })();
-    } else if (mode === 'resetPassword') {
-      // Password reset flow
-      (async () => {
-        setIsVerifying(true);
-        try {
-          const userEmail = await verifyPasswordResetCode(auth, oobCode);
-          setEmail(userEmail);
-          setIsValidCode(true);
-          toast({ title: "Valid Reset Link", description: "Please enter your new password below." });
-        } catch (error: any) {
-          setIsValidCode(false);
-          setError(error.message || 'Invalid or expired reset link');
-          toast({ title: "Invalid or Expired Link", description: error.message || 'This password reset link is invalid or has expired. Please request a new one.', variant: "destructive" });
-          setTimeout(() => setLocation('/auth'), 3000);
-        } finally {
-          setIsVerifying(false);
-          setLoading(false);
-        }
-      })();
-    } else {
-      setError(`Unknown action mode: ${mode}`);
-      setLoading(false);
-    }
-  }, [mode, oobCode, toast, setLocation]);
-
-  // Password reset form submit
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      toast({ title: "Invalid Password", description: "Password must be at least 6 characters long.", variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Passwords Don't Match", description: "Please make sure both passwords match.", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    try {
-      await confirmPasswordReset(auth, oobCode!, newPassword);
-      toast({ title: "Password Reset Successful!", description: "Your password has been updated. You can now sign in with your new password." });
-      setTimeout(() => { window.location.href = '/'; }, 2000);
-    } catch (error: any) {
-      let errorMessage = "Failed to reset password. Please try again.";
-      if (error.code === 'auth/weak-password') {
-        errorMessage = "Password is too weak. Please choose a stronger password.";
-      } else if (error.code === 'auth/expired-action-code') {
-        errorMessage = "Reset link has expired. Please request a new one.";
-      } else if (error.code === 'auth/invalid-action-code') {
-        errorMessage = "Invalid reset link. Please request a new one.";
-      }
-      toast({ title: "Reset Failed", description: errorMessage, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Show nothing until params are parsed
   if (!paramsParsed) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -181,8 +63,7 @@ export default function FirebaseActionHandler() {
     );
   }
 
-  // Show error only if paramsParsed and mode/oobCode missing
-  if (paramsParsed && (!mode || !oobCode)) {
+  if (!mode || !oobCode) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
         <Card className="max-w-md w-full">
@@ -207,6 +88,122 @@ export default function FirebaseActionHandler() {
     );
   }
 
+  // Delegate to the correct handler
+  if (mode === 'resetPassword') {
+    return <PasswordResetUI oobCode={oobCode} />;
+  }
+  if (mode === 'verifyEmail') {
+    return <EmailVerificationUI oobCode={oobCode} />;
+  }
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+      <Card className="max-w-md w-full">
+        <CardContent className="py-8 px-6 text-center">
+          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Unknown Action
+          </h1>
+          <p className="text-gray-600 mb-6">
+            This link is not recognized. Please request a new one or contact support.
+          </p>
+          <Button onClick={() => setLocation('/auth')} className="w-full">
+            Go to Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Password Reset UI (from old handler)
+function PasswordResetUI({ oobCode }: { oobCode: string }) {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [isValidCode, setIsValidCode] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
+
+  useEffect(() => {
+    const verifyCode = async () => {
+      try {
+        setIsVerifying(true);
+        const userEmail = await verifyPasswordResetCode(auth, oobCode);
+        setEmail(userEmail);
+        setIsValidCode(true);
+        toast({
+          title: "Valid Reset Link",
+          description: "Please enter your new password below.",
+        });
+      } catch (error: any) {
+        setIsValidCode(false);
+        toast({
+          title: "Invalid or Expired Link",
+          description: "This password reset link is invalid or has expired. Please request a new one.",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation('/auth'), 3000);
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+    verifyCode();
+    // eslint-disable-next-line
+  }, [oobCode]);
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords Don't Match",
+        description: "Please make sure both passwords match.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      await confirmPasswordReset(auth, oobCode, newPassword);
+      toast({
+        title: "Password Reset Successful!",
+        description: "Your password has been updated. You can now sign in with your new password.",
+      });
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
+    } catch (error: any) {
+      let errorMessage = "Failed to reset password. Please try again.";
+      if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak. Please choose a stronger password.";
+      } else if (error.code === 'auth/expired-action-code') {
+        errorMessage = "Reset link has expired. Please request a new one.";
+      } else if (error.code === 'auth/invalid-action-code') {
+        errorMessage = "Invalid reset link. Please request a new one.";
+      }
+      toast({
+        title: "Reset Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (isVerifying) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -217,40 +214,7 @@ export default function FirebaseActionHandler() {
       </div>
     );
   }
-
-  if (!isVerifying && error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="py-8 px-6 text-center">
-            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              {mode === 'resetPassword' ? 'Password Reset Failed' : 'Verification Failed'}
-            </h1>
-            <p className="text-gray-600 mb-6">
-              {error}
-            </p>
-            <Button onClick={() => {
-              // Clear any signup-related localStorage
-              localStorage.removeItem('signup_email');
-              localStorage.removeItem('signup_password');
-              localStorage.removeItem('pending_verification_uid');
-              setLocation('/auth');
-            }} className="w-full">
-              Go to Sign In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Password reset UI
-  if (mode === 'resetPassword' && isValidCode && !isVerifying && !error) {
+  if (isValidCode) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -278,7 +242,7 @@ export default function FirebaseActionHandler() {
                   <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
                     New Password
                   </label>
-                  <input
+                  <Input
                     id="newPassword"
                     type="password"
                     value={newPassword}
@@ -286,7 +250,7 @@ export default function FirebaseActionHandler() {
                     placeholder="Enter your new password"
                     required
                     minLength={6}
-                    className="mt-1 border rounded px-3 py-2 w-full"
+                    className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Password must be at least 6 characters long
@@ -296,7 +260,7 @@ export default function FirebaseActionHandler() {
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                     Confirm New Password
                   </label>
-                  <input
+                  <Input
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
@@ -304,7 +268,7 @@ export default function FirebaseActionHandler() {
                     placeholder="Confirm your new password"
                     required
                     minLength={6}
-                    className="mt-1 border rounded px-3 py-2 w-full"
+                    className="mt-1"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -317,9 +281,148 @@ export default function FirebaseActionHandler() {
       </div>
     );
   }
+  return null;
+}
 
-  // Email verification UI
-  if (mode === 'verifyEmail' && verified) {
+// Email Verification UI (from old handler)
+function EmailVerificationUI({ oobCode }: { oobCode: string }) {
+  const [, setLocation] = useLocation();
+  const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const handleEmailVerification = async () => {
+      try {
+        // Extra debug logging
+        console.log('Email Verification Handler: full URL:', window.location.href);
+        // Parse URL using multiple methods to catch all Firebase URL formats
+        let mode = null;
+        let code = oobCode;
+        if (!mode || !code) {
+          const urlParams = new URLSearchParams(window.location.search);
+          mode = urlParams.get('mode');
+          code = code || urlParams.get('oobCode');
+        }
+        if (!mode || !code) {
+          const hash = window.location.hash;
+          if (hash.startsWith('#')) {
+            const hashParams = new URLSearchParams(hash.substring(1));
+            mode = mode || hashParams.get('mode');
+            code = code || hashParams.get('oobCode');
+          }
+        }
+        if (!mode || !code) {
+          const modeRegex = /[?&#]mode=([^&\s]+)/i;
+          const codeRegex = /[?&#]oobCode=([^&\s]+)/i;
+          const modeMatch = window.location.href.match(modeRegex);
+          const codeMatch = window.location.href.match(codeRegex);
+          if (modeMatch) mode = mode || decodeURIComponent(modeMatch[1]);
+          if (codeMatch) code = code || decodeURIComponent(codeMatch[1]);
+        }
+        if (!mode || !code) {
+          const actionMatch = window.location.href.match(/__\/auth\/action\?(.+)/);
+          if (actionMatch) {
+            const actionParams = new URLSearchParams(actionMatch[1]);
+            mode = mode || actionParams.get('mode');
+            code = code || actionParams.get('oobCode');
+          }
+        }
+        if (mode === 'verifyEmail' && code) {
+          await checkActionCode(auth, code);
+          await applyActionCode(auth, code);
+          setVerified(true);
+          const storedEmail = localStorage.getItem('signup_email');
+          const storedPassword = localStorage.getItem('signup_password');
+          if (storedEmail && storedPassword) {
+            try {
+              await signOut(auth);
+              await signInWithEmailAndPassword(auth, storedEmail, storedPassword);
+              localStorage.removeItem('signup_email');
+              localStorage.removeItem('signup_password');
+              localStorage.removeItem('pending_verification_uid');
+              setAutoLoginAttempted(true);
+              toast({
+                title: "Account Activated!",
+                description: "Your account has been verified and you're now signed in. Welcome to Writory!",
+              });
+              setTimeout(() => { window.location.href = "/"; }, 1000);
+            } catch (loginError: any) {
+              localStorage.removeItem('signup_email');
+              localStorage.removeItem('signup_password');
+              localStorage.removeItem('pending_verification_uid');
+              toast({
+                title: "Account Activated!",
+                description: "Your account has been verified. Please sign in to continue.",
+              });
+              setTimeout(() => { window.location.href = "/auth?verified=true"; }, 2000);
+            }
+          } else {
+            toast({
+              title: "Email Verified!",
+              description: "Your email has been verified. Please sign in to continue.",
+            });
+            setAutoLoginAttempted(false);
+            setTimeout(() => { window.location.href = "/auth?verified=true"; }, 2000);
+          }
+        } else {
+          throw new Error(`Invalid verification link. Missing required parameters: ${!mode ? 'mode' : ''} ${!code ? 'oobCode' : ''}`);
+        }
+      } catch (error: any) {
+        setError(error.message || 'Failed to verify email');
+        localStorage.removeItem('signup_email');
+        localStorage.removeItem('signup_password');
+        localStorage.removeItem('pending_verification_uid');
+        toast({
+          title: "Verification Failed",
+          description: error.message || 'Invalid or expired verification link',
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleEmailVerification();
+    // eslint-disable-next-line
+  }, [oobCode]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Processing...</p>
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-8 px-6 text-center">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Verification Failed
+            </h1>
+            <p className="text-gray-600 mb-6">
+              {error}
+            </p>
+            <Button onClick={() => setLocation('/auth')} className="w-full">
+              Go to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  if (verified) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
         <Card className="max-w-md w-full">
@@ -364,6 +467,5 @@ export default function FirebaseActionHandler() {
       </div>
     );
   }
-
   return null;
 } 
