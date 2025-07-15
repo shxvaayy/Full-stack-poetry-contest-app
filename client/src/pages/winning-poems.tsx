@@ -84,17 +84,17 @@ export default function WinningPoemsPage() {
           </div>
           {/* Poem Card */}
           {photo.poemText && (
-            <div className="mt-6 bg-white rounded-xl shadow p-6 border border-gray-200 max-w-xl mx-auto">
-              <h4 className="text-lg font-bold text-primary mb-2">{photo.poemTitle}</h4>
-              <pre className="whitespace-pre-wrap text-gray-900 text-base leading-relaxed mb-4" style={{fontFamily: 'inherit'}}>{photo.poemText}</pre>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <span className="text-gray-700 font-medium">By: {photo.winnerName}</span>
+            <div className="mt-6 bg-gradient-to-br from-yellow-50 via-white to-pink-50 rounded-2xl shadow-xl border border-yellow-200 max-w-xl mx-auto p-8 flex flex-col items-center">
+              <h4 className="text-2xl font-extrabold text-yellow-700 mb-2 tracking-wide drop-shadow">{photo.poemTitle}</h4>
+              <pre className="whitespace-pre-wrap text-gray-900 text-lg leading-relaxed mb-4 font-serif text-center" style={{fontFamily: 'inherit'}}>{photo.poemText}</pre>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 w-full mt-2">
+                <span className="text-gray-800 font-semibold text-base">By: {photo.winnerName}</span>
                 {photo.instagramHandle && (
                   <a
                     href={`https://instagram.com/${photo.instagramHandle.replace(/^@/, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-1 rounded bg-gradient-to-r from-pink-500 to-yellow-500 text-white font-semibold hover:scale-105 transition"
+                    className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-yellow-500 text-white font-bold shadow hover:scale-105 transition"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2.25h9A5.25 5.25 0 0 1 21.75 7.5v9a5.25 5.25 0 0 1-5.25 5.25h-9A5.25 5.25 0 0 1 2.25 16.5v-9A5.25 5.25 0 0 1 7.5 2.25zm0 0V3m9-0.75V3m-9 0A5.25 5.25 0 0 0 2.25 7.5v9A5.25 5.25 0 0 0 7.5 21.75h9A5.25 5.25 0 0 0 21.75 16.5v-9A5.25 5.25 0 0 0 16.5 2.25h-9z" />
@@ -104,6 +104,7 @@ export default function WinningPoemsPage() {
                   </a>
                 )}
               </div>
+              <div className="mt-4 text-sm text-gray-600 italic">Score: {photo.score ?? 'N/A'}/100</div>
             </div>
           )}
         </div>
