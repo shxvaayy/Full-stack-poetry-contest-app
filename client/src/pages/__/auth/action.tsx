@@ -123,7 +123,7 @@ export default function FirebaseActionHandler() {
         } catch (error: any) {
           setIsValidCode(false);
           setError(error.message || 'Invalid or expired reset link');
-          toast({ title: "Invalid or Expired Link", description: error.message || 'This password reset link is invalid or has expired. Please request a new one.", variant: "destructive" });
+          toast({ title: "Invalid or Expired Link", description: error.message || 'This password reset link is invalid or has expired. Please request a new one.', variant: "destructive" });
           setTimeout(() => setLocation('/auth'), 3000);
         } finally {
           setIsVerifying(false);
@@ -189,12 +189,18 @@ export default function FirebaseActionHandler() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Verification Failed
+              {mode === 'resetPassword' ? 'Password Reset Failed' : 'Verification Failed'}
             </h1>
             <p className="text-gray-600 mb-6">
               {error}
             </p>
-            <Button onClick={() => setLocation('/auth')} className="w-full">
+            <Button onClick={() => {
+              // Clear any signup-related localStorage
+              localStorage.removeItem('signup_email');
+              localStorage.removeItem('signup_password');
+              localStorage.removeItem('pending_verification_uid');
+              setLocation('/auth');
+            }} className="w-full">
               Go to Sign In
             </Button>
           </CardContent>
