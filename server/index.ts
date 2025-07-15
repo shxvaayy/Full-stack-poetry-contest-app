@@ -402,6 +402,7 @@ try {
 }
 
 console.log('🔄 Migration phase complete, proceeding to server initialization...');
+console.log('🔄 Migration completed successfully, no early exit detected');
 
 // Enhanced graceful shutdown handling
 const gracefulShutdown = (signal) => {
@@ -437,6 +438,9 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start the application
 console.log('🔄 Starting application initialization...');
 console.log('🔄 About to call initializeApp()...');
+console.log('🔄 Process ID:', process.pid);
+console.log('🔄 Node version:', process.version);
+
 initializeApp().catch((error) => {
   console.error('💥 Failed to start application:', error);
   console.error('💥 Error type:', typeof error);

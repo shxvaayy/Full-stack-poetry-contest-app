@@ -1,10 +1,10 @@
-import { client, connectDatabase } from './db.js';
+import { pool, connectDatabase } from './db.js';
 
 export async function addInstagramHandleColumn() {
   try {
     await connectDatabase();
     console.log('🔧 Adding instagram_handle column to submissions table...');
-    await client.query(`
+    await pool.query(`
       ALTER TABLE submissions
       ADD COLUMN IF NOT EXISTS instagram_handle VARCHAR(255)
     `);
