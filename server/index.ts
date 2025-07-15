@@ -1,4 +1,5 @@
 // index.ts
+import 'dotenv/config';
 console.log('🚀 SERVER STARTING - First line executed');
 
 import express from 'express';
@@ -14,6 +15,7 @@ import { connectDatabase, pool } from './db.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { initializeAdminSettings } from './admin-settings.js';
 import { paypalRouter } from './paypal.js';
+import { addInstagramHandleColumn } from './migrate-instagram-handle.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -374,6 +376,14 @@ async function initializeApp() {
     process.exit(1);
   }
 }
+
+// Run migration before anything else
+await addInstagramHandleColumn().then(() => {
+  console.log('✅ instagram_handle column migration complete (or already exists)');
+}).catch((err) => {
+  console.error('❌ instagram_handle migration failed:', err);
+  // Do not exit, allow server to start for debugging
+});
 
 // Removed the problematic fixUserSubmissionLinks function that was causing server hangs
 
