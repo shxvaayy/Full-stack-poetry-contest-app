@@ -15,7 +15,7 @@ export async function addInstagramHandleColumn() {
   }
 }
 
-// For standalone script usage
-if (require.main === module) {
+// For standalone script usage (ESM compatible)
+if (import.meta.url === `file://${process.argv[1]}`) {
   addInstagramHandleColumn().then(() => process.exit(0));
 } 
