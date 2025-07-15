@@ -158,9 +158,12 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-all whitespace-nowrap font-medium text-xs 2xl:text-sm px-1 2xl:px-2 py-1
+                  className={`
+                    relative whitespace-nowrap font-medium text-xs 2xl:text-sm px-1 2xl:px-2 py-1
+                    transition-all duration-200 ease-in-out
+                    hover:scale-110 hover:-translate-y-1 hover:shadow-lg hover:bg-white/10
+                    focus:scale-110 focus:-translate-y-1 focus:shadow-lg focus:bg-white/10
                     ${location === item.href ? "border-b-2 border-white pb-1" : ""}
-                    hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_2px_12px_rgba(255,255,255,0.15)] focus:scale-110 focus:-translate-y-0.5 focus:shadow-[0_2px_12px_rgba(255,255,255,0.15)]
                   `}
                 >
                   {item.name}
@@ -241,7 +244,7 @@ export default function Header() {
                 key={item.name}
                 href={item.href}
                 className={`block px-3 py-2 text-white hover:bg-green-700 rounded-md transition-all
-                  hover:scale-105 hover:-translate-y-0.5 hover:shadow-[0_2px_12px_rgba(255,255,255,0.10)] focus:scale-105 focus:-translate-y-0.5 focus:shadow-[0_2px_12px_rgba(255,255,255,0.10)]
+                  hover:scale-105 hover:-translate-y-1 hover:shadow-lg focus:scale-105 focus:-translate-y-1 focus:shadow-lg
                   ${location === item.href ? "bg-green-700" : ""}
                 `}
                 onClick={() => setMobileMenuOpen(false)}
