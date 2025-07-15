@@ -193,7 +193,7 @@ export default function AdminUpload() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
           <div className="text-center mb-8">
