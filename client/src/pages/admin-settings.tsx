@@ -22,6 +22,7 @@ import {
 
 interface AdminSettings {
   free_tier_enabled: string;
+  result_announcement_date?: string;
 }
 
 interface WinnerPhoto {
@@ -529,6 +530,25 @@ export default function AdminSettingsPage() {
               />
             </div>
 
+            {/* Result Announcement Date & Time */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="result-announcement-date" className="text-base font-medium">
+                  Result Announcement Date & Time
+                </Label>
+                <p className="text-sm text-gray-600 mt-1">
+                  Set the date and time when contest results will be announced (affects all public pages)
+                </p>
+              </div>
+              <Input
+                id="result-announcement-date"
+                type="datetime-local"
+                value={settings.result_announcement_date ? new Date(settings.result_announcement_date).toISOString().slice(0,16) : ''}
+                onChange={e => setSettings(prev => ({ ...prev, result_announcement_date: e.target.value }))}
+                className="w-56"
+              />
+            </div>
+
             {/* Status Display */}
             <div className="p-4 border rounded-lg">
               <h3 className="text-lg font-semibold mb-2">Current Status</h3>
@@ -539,6 +559,12 @@ export default function AdminSettingsPage() {
                     settings.free_tier_enabled === 'true' ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {settings.free_tier_enabled === 'true' ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Result Announcement Date:</span>
+                  <span className="font-medium">
+                    {settings.result_announcement_date ? new Date(settings.result_announcement_date).toLocaleDateString() : 'Not set'}
                   </span>
                 </div>
               </div>
