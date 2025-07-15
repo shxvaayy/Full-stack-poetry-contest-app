@@ -116,11 +116,18 @@ export default function PastWinnersPage() {
               recognition, and cash prizes. Their profiles and RESULTS will be featured on this page after the
               announcement.
             </p>
-
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Coming Soon</h3>
-              <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
-              
+              {winnerPhotos.length > 0 ? (
+                <>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Voices That Won</h3>
+                  <p className="text-gray-600 mb-8">Explore the poets who’ve earned the spotlight in our previous contests — complete with scores, author profiles, and their winning poems.</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Coming Soon</h3>
+                  <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after July 31st, 2025</p>
+                </>
+              )}
               <div className="grid md:grid-cols-3 gap-8">
                 {[1, 2, 3].map(pos => (
                   <WinnerCard 
