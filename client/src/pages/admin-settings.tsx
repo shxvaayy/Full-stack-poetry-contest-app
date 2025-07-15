@@ -23,6 +23,8 @@ import {
 interface AdminSettings {
   free_tier_enabled: string;
   result_announcement_date?: string;
+  contest_launch_date?: string;
+  submission_deadline?: string;
 }
 
 interface WinnerPhoto {
@@ -530,24 +532,65 @@ export default function AdminSettingsPage() {
               />
             </div>
 
-            {/* Result Announcement Date & Time */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex-1">
-                <Label htmlFor="result-announcement-date" className="text-base font-medium">
-                  Result Announcement Date & Time
-                </Label>
-                <p className="text-sm text-gray-600 mt-1">
-                  Set the date and time when contest results will be announced (affects all public pages)
-                </p>
-              </div>
-              <Input
-                id="result-announcement-date"
-                type="datetime-local"
-                value={settings.result_announcement_date ? new Date(settings.result_announcement_date).toISOString().slice(0,16) : ''}
-                onChange={e => setSettings(prev => ({ ...prev, result_announcement_date: e.target.value }))}
-                className="w-56"
-              />
-            </div>
+            {/* Contest Timeline */}
+            <Card className="shadow-xl mt-6">
+              <CardHeader>
+                <CardTitle>Contest Timeline</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <Label htmlFor="contest-launch-date" className="text-base font-medium">
+                      Contest Launch Date
+                    </Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Set the date when the contest launches and submissions open
+                    </p>
+                  </div>
+                  <Input
+                    id="contest-launch-date"
+                    type="date"
+                    value={settings.contest_launch_date ? new Date(settings.contest_launch_date).toISOString().slice(0,10) : ''}
+                    onChange={e => setSettings(prev => ({ ...prev, contest_launch_date: e.target.value }))}
+                    className="w-56"
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <Label htmlFor="submission-deadline" className="text-base font-medium">
+                      Submission Deadline
+                    </Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Set the last date for poem submissions
+                    </p>
+                  </div>
+                  <Input
+                    id="submission-deadline"
+                    type="date"
+                    value={settings.submission_deadline ? new Date(settings.submission_deadline).toISOString().slice(0,10) : ''}
+                    onChange={e => setSettings(prev => ({ ...prev, submission_deadline: e.target.value }))}
+                    className="w-56"
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <Label htmlFor="result-announcement-date" className="text-base font-medium">
+                      Results Announcement Date & Time
+                    </Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Set the date and time when contest results will be announced (affects all public pages)
+                    </p>
+                  </div>
+                  <Input
+                    id="result-announcement-date"
+                    type="datetime-local"
+                    value={settings.result_announcement_date ? new Date(settings.result_announcement_date).toISOString().slice(0,16) : ''}
+                    onChange={e => setSettings(prev => ({ ...prev, result_announcement_date: e.target.value }))}
+                    className="w-56"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Status Display */}
             <div className="p-4 border rounded-lg">
@@ -559,6 +602,18 @@ export default function AdminSettingsPage() {
                     settings.free_tier_enabled === 'true' ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {settings.free_tier_enabled === 'true' ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Contest Launch Date:</span>
+                  <span className="font-medium">
+                    {settings.contest_launch_date ? new Date(settings.contest_launch_date).toLocaleDateString() : 'Not set'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Submission Deadline:</span>
+                  <span className="font-medium">
+                    {settings.submission_deadline ? new Date(settings.submission_deadline).toLocaleDateString() : 'Not set'}
                   </span>
                 </div>
                 <div className="flex justify-between">
