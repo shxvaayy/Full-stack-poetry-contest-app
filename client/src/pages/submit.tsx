@@ -11,8 +11,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
-import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
+import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes.js";
 import SpinWheel from '@/components/ui/spin-wheel';
+import { CHALLENGE_DATA } from '@/data/challengeData';
 
 const TIERS = [
   { 
@@ -306,25 +307,21 @@ export default function SubmitPage() {
 
   const { data: userSubmissionStatus, refetch: refetchSubmissionStatus } = useQuery({
     queryKey: ['/api/users', user?.uid, 'submission-status'],
-    queryFn: () => apiRequest(`/api/users/${user?.uid}/submission-status`),
+    queryFn: () => apiRequest('GET', `/api/users/${user?.uid}/submission-status`),
     enabled: !!user?.uid,
-    staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache the result
     refetchOnWindowFocus: true,
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const { data: freeTierStatus, refetch: refetchFreeTierStatus } = useQuery({
     queryKey: ['/api/free-tier-status'],
-    queryFn: () => apiRequest('/api/free-tier-status'),
-    staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache the result
+    queryFn: () => apiRequest('GET', '/api/free-tier-status'),
     refetchOnWindowFocus: true, // Refetch when window gains focus
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
   // Check if user has already used free tier
-  const hasUsedFreeTier = userSubmissionStatus?.freeSubmissionUsed || false;
+  const hasUsedFreeTier = (userSubmissionStatus && 'freeSubmissionUsed' in userSubmissionStatus) ? (userSubmissionStatus as any).freeSubmissionUsed : false;
 
   // Refetch when component mounts to ensure fresh data
   useEffect(() => {
@@ -831,7 +828,7 @@ export default function SubmitPage() {
   };
 
   // Check submission status
-  if (userSubmissionStatus?.hasSubmitted) {
+  if (userSubmissionStatus && 'hasSubmitted' in userSubmissionStatus && (userSubmissionStatus as any).hasSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
@@ -873,7 +870,7 @@ export default function SubmitPage() {
               const Icon = tier.icon;
               
               // Check if free tier should be disabled
-              const isFreeTierAdminDisabled = tier.id === 'free' && freeTierStatus?.enabled === false;
+              const isFreeTierAdminDisabled = tier.id === 'free' && freeTierStatus && 'enabled' in freeTierStatus && (freeTierStatus as any).enabled === false;
               const isFreeTierConfigDisabled = tier.id === 'free' && (!FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER);
               const isFreeTierAlreadyUsed = tier.id === 'free' && hasUsedFreeTier;
               
@@ -943,7 +940,7 @@ export default function SubmitPage() {
 
           {(() => {
             // Check if free tier should be hidden and show appropriate message
-            const adminDisabled = freeTierStatus?.enabled === false;
+            const adminDisabled = freeTierStatus && 'enabled' in freeTierStatus && (freeTierStatus as any).enabled === false;
             const configDisabled = !FREE_ENTRY_ENABLED || !ENABLE_FREE_TIER;
             
             if (adminDisabled || (freeTierStatus === undefined && configDisabled)) {
@@ -974,22 +971,29 @@ export default function SubmitPage() {
   }
 
   if (currentStep === "form") {
+    // Flatten all challenges for the wheel
+    const allChallenges = Object.entries(CHALLENGE_DATA).flatMap(([contestType, arr]) =>
+      arr.map((c) => ({
+        contestType,
+        challengeTitle: c.title,
+        description: c.description,
+      }))
+    );
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
         <div className="container mx-auto px-4 max-w-2xl">
+          <div className="mb-8">
+            <SpinWheel
+              challenges={allChallenges}
+              onChallengeSelected={() => {}}
+            />
+          </div>
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Submission Form</h1>
             <p className="text-lg text-gray-600">
               {selectedTier?.name} - {selectedTier?.price === 0 ? 'Free' : `₹${selectedTier?.price}`}
             </p>
           </div>
-
-          {currentStep === "form" && (
-            <div className="mb-8">
-              <SpinWheel />
-            </div>
-          )}
-
           <Card className="shadow-xl">
             <CardContent className="p-8">
               <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
