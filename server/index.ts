@@ -287,9 +287,11 @@ async function initializeApp() {
       WHERE table_schema = 'public' AND table_name IN ('users', 'submissions')
     `);
     console.log('✅ [STEP] Table check complete');
+    console.log('📊 [STEP] Found tables:', tablesExist.rows.map(row => row.table_name));
 
     const isFirstDeploy = tablesExist.rows.length === 0;
     const isDevelopment = process.env.NODE_ENV === 'development';
+    console.log('🔍 [STEP] isFirstDeploy:', isFirstDeploy, 'isDevelopment:', isDevelopment);
 
     if (isFirstDeploy || isDevelopment) {
       console.log('🔧 [STEP] Running database migrations...');
@@ -323,6 +325,7 @@ async function initializeApp() {
     } catch (error) {
       console.log('⚠️ [STEP] Users table verification skipped (non-critical)');
     }
+    console.log('🔄 [STEP] Moving to admin settings initialization...');
 
     // Step 3: Initialize admin settings
     console.log('🔧 [STEP] Initializing admin settings...');
@@ -333,6 +336,7 @@ async function initializeApp() {
     console.log('🔧 [STEP] Registering routes...');
     registerRoutes(app);
     console.log('✅ [STEP] Routes registered successfully');
+    console.log('🔄 [STEP] Moving to static file setup...');
 
     // Step 4.5: Serve static files and SPA fallback (AFTER API routes)
     console.log('🔧 [STEP] Setting up static file serving and SPA fallback...');
@@ -353,18 +357,22 @@ async function initializeApp() {
       }
     });
     console.log('✅ [STEP] Static file serving and SPA fallback configured - FIXED ROUTE ORDER');
+    console.log('🔄 [STEP] Moving to server startup...');
 
     // Step 5: Start server with optimized settings for 5-10k users
     console.log('🟢 [STEP] About to start server on port', PORT);
+    console.log('🟢 [STEP] Creating server instance...');
     const server = app.listen(PORT, () => {
       console.log('🎉 [SERVER] Server started successfully!');
       console.log(`🌐 [SERVER] Server running on port ${PORT}`);
       console.log(`📊 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🚀 [SERVER] Ready for 5-10k concurrent users!`);
     });
+    console.log('🟢 [STEP] Server instance created, setting up options...');
     server.maxConnections = 10000;
     server.keepAliveTimeout = 65000;
     server.headersTimeout = 66000;
+    console.log('🟢 [STEP] Server options configured');
     console.log('🟢 [INIT] initializeApp() completed - server should be running');
   } catch (error) {
     console.error('❌ [FATAL] Failed to initialize application:', error);
