@@ -164,24 +164,24 @@ export default function WinningPoemsPage() {
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div>
                 {/* 🚀 FIXED: Changed bg-gold to bg-yellow-500 */}
-                <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="text-2xl text-white" size={24} />
+                <div className={`w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110 hover:shadow-[0_0_24px_4px_rgba(255,215,0,0.4)] hover:animate-bounce-slow group`}>
+                  <Trophy className="text-2xl text-white group-hover:drop-shadow-[0_0_8px_gold]" size={24} />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">First Place Winner</h4>
                 <p className="text-gray-600 text-sm">Featured poem and author profile</p>
                 <WinnerPhotoSection position={1} />
               </div>
               <div>
-                <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Medal className="text-2xl text-white" size={24} />
+                <div className={`w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110 hover:shadow-[0_0_24px_4px_rgba(255,255,255,0.4)] hover:animate-bounce-slow group`}>
+                  <Medal className="text-2xl text-white group-hover:drop-shadow-[0_0_8px_silver]" size={24} />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">Second Place Winner</h4>
                 <p className="text-gray-600 text-sm">Featured poem and author profile</p>
                 <WinnerPhotoSection position={2} />
               </div>
               <div>
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="text-2xl text-white" size={24} />
+                <div className={`w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform duration-300 hover:scale-110 hover:shadow-[0_0_24px_4px_rgba(255,165,0,0.4)] hover:animate-bounce-slow group`}>
+                  <Award className="text-2xl text-white group-hover:drop-shadow-[0_0_8px_orange]" size={24} />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">Third Place Winner</h4>
                 <p className="text-gray-600 text-sm">Featured poem and author profile</p>
@@ -193,4 +193,18 @@ export default function WinningPoemsPage() {
       </div>
     </section>
   );
+}
+
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .hover\\:animate-bounce-slow:hover {
+      animation: bounce-slow 0.7s;
+    }
+  `;
+  document.head.appendChild(style);
 }
