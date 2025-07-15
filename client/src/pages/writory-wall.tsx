@@ -44,19 +44,13 @@ export default function WritoryWall() {
   });
 
   // Fetch wall posts
-  const fetchPosts = async (pageNum = 1) => {
+  const fetchPosts = async () => {
     try {
-      const response = await fetch(`/api/wall-posts?page=${pageNum}&limit=10`);
+      const response = await fetch(`/api/wall-posts`);
       const data = await response.json();
       
-      if (pageNum === 1) {
-        setPosts(data.posts);
-      } else {
-        setPosts(prev => [...prev, ...data.posts]);
-      }
-      
-      setHasMore(pageNum < data.pagination.pages);
-      setPage(pageNum);
+      setPosts(data.posts);
+      setHasMore(false); // No pagination needed since we only show 5 posts
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast({
@@ -198,9 +192,8 @@ export default function WritoryWall() {
 
   // Load more posts
   const loadMore = () => {
-    if (hasMore && !loading) {
-      fetchPosts(page + 1);
-    }
+    // No pagination needed - only 5 posts total
+    return;
   };
 
   useEffect(() => {
@@ -241,7 +234,7 @@ export default function WritoryWall() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Writory Wall</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover and share beautiful poetry and writings from our community. 
+            Discover the top 5 most recent approved poems from our community. 
             Each piece is a window into someone's soul.
           </p>
         </div>
@@ -370,7 +363,7 @@ export default function WritoryWall() {
 
         {/* Public Wall */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Community Wall</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Community Wall (Top 5 Poems)</h2>
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
@@ -451,18 +444,7 @@ export default function WritoryWall() {
             </div>
           )}
 
-          {/* Load More Button */}
-          {hasMore && (
-            <div className="text-center mt-8">
-              <Button 
-                onClick={loadMore} 
-                variant="outline"
-                disabled={loading}
-              >
-                {loading ? 'Loading...' : 'Load More'}
-              </Button>
-            </div>
-          )}
+          {/* Load More Button - Removed since we only show 5 posts total */}
         </div>
       </div>
     </div>

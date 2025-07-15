@@ -3613,18 +3613,16 @@ router.post('/api/wall-posts', async (req, res) => {
   }
 });
 
-// Get all approved wall posts
+// Get all approved wall posts (limited to 5 most recent)
 router.get('/api/wall-posts', async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
-    
+    // Always limit to 5 most recent approved posts
     const result = await client.query(`
       SELECT * FROM wall_posts 
       WHERE status = 'approved' 
       ORDER BY created_at DESC 
-      LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+      LIMIT 5
+    `);
     
     const countResult = await client.query('SELECT COUNT(*) FROM wall_posts WHERE status = $1', ['approved']);
     const totalPosts = parseInt(countResult.rows[0].count);
@@ -3632,10 +3630,11 @@ router.get('/api/wall-posts', async (req, res) => {
     res.json({
       posts: result.rows,
       pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: 1,
+        limit: 5,
         total: totalPosts,
-        pages: Math.ceil(totalPosts / parseInt(limit as string))
+        pages: 1,
+        hasMore: totalPosts > 5
       }
     });
   } catch (error) {
