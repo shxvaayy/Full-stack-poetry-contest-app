@@ -191,21 +191,19 @@ export default function ChatbotWidget() {
       {/* Chat Button */}
       <Button
         onClick={toggleChat}
-        className="relative w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 bg-black hover:bg-gray-900 p-0 overflow-hidden border-none"
+        className="relative w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 animate-glow hover:animate-bounce-subtle bg-black hover:bg-gray-900 p-0 overflow-hidden border-2 border-cyan-400"
       >
-        {/* Animated Border */}
-        <span className="absolute inset-0.5 rounded-full pointer-events-none z-10 border-2 border-transparent animate-border-rotate" style={{padding: 2, boxSizing: 'border-box', background: 'conic-gradient(from var(--angle,0deg), #06b6d4 0 60%, transparent 60% 100%)', WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'exclude'}}></span>
         {/* Logo Image */}
         <img 
           src={logoImage} 
           alt="Writory Logo" 
-          className="w-10 h-10 object-contain rounded-full relative z-20"
+          className="w-10 h-10 object-contain rounded-full"
         />
         {/* Pulse Animation Ring */}
-        <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping z-0"></div>
+        <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping"></div>
         {/* Notification Badge */}
         {showBadge && (
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center z-30">
+          <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
             <span className="text-xs text-white font-bold">!</span>
           </div>
         )}

@@ -151,20 +151,30 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
               <Link href="/submit" className="w-full md:w-auto">
-                <Button size="lg" className="relative w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-purple-500/60 overflow-hidden border-none">
-                  {/* Animated Dark Purple Border using Tailwind utility */}
-                  <span className="absolute inset-0 rounded-xl pointer-events-none z-10 border-2 border-transparent animate-border-rotate"
-                    style={{boxSizing: 'border-box', background: 'conic-gradient(from var(--angle,0deg), #7c3aed 0deg 350deg, transparent 350deg 360deg)'}}></span>
-                  <span className="relative z-20">🚀 ENTER THE CONTEST</span>
-                </Button>
+                <div className="relative w-full md:max-w-xs">
+                  <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-pink-400/60 relative z-10">
+                    🚀 ENTER THE CONTEST
+                  </Button>
+                  {/* SVG Animated Border */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <rect x="2" y="2" width="96" height="36" rx="12" fill="none" stroke="#7c3aed" strokeWidth="3" strokeDasharray="260" strokeDashoffset="0">
+                      <animate attributeName="stroke-dashoffset" values="260;0" dur="1s" repeatCount="indefinite" />
+                    </rect>
+                  </svg>
+                </div>
               </Link>
               <Link href="/writory-wall" className="w-full md:w-auto">
-                <Button size="lg" className="relative w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-purple-500/60 overflow-hidden border-none">
-                  {/* Animated Dark Purple Border using Tailwind utility */}
-                  <span className="absolute inset-0 rounded-xl pointer-events-none z-10 border-2 border-transparent animate-border-rotate"
-                    style={{boxSizing: 'border-box', background: 'conic-gradient(from var(--angle,0deg), #7c3aed 0deg 350deg, transparent 350deg 360deg)'}}></span>
-                  <span className="relative z-20">🏆 WRITORY WALL</span>
-                </Button>
+                <div className="relative w-full md:max-w-xs">
+                  <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-pink-400/60 relative z-10">
+                    🏆 WRITORY WALL
+                  </Button>
+                  {/* SVG Animated Border */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <rect x="2" y="2" width="96" height="36" rx="12" fill="none" stroke="#7c3aed" strokeWidth="3" strokeDasharray="260" strokeDashoffset="0">
+                      <animate attributeName="stroke-dashoffset" values="260;0" dur="1s" repeatCount="indefinite" />
+                    </rect>
+                  </svg>
+                </div>
               </Link>
             </div>
 
