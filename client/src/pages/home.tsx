@@ -8,6 +8,7 @@ import logoImage from "@/assets/WRITORY_LOGO_edited-removebg-preview_17505976833
 import ChatbotWidget from "@/components/ChatbotWidget";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import homeBg from '@/assets/home-bg.jpg';
 
 // Simple Hero Carousel Component
 function HeroCarousel({ children }: { children: React.ReactNode }) {
@@ -122,273 +123,286 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero Section with Rotating Carousel */}
-      <HeroCarousel>
-        <div className="text-center text-white px-4 max-w-6xl mx-auto">
-          {/* Hero Section */}
-          <div className="text-center mb-16 relative">
-            {/* Logo positioned above WRITORY heading */}
-            <div className="flex justify-center">
-              <img 
-                src={logoImage} 
-                alt="Writory Logo" 
-                className="w-32 h-32 md:w-40 md:h-40 object-contain"
-              />
-            </div>
+      {/* Header will remain as is, outside the bg */}
+      <div
+        style={{
+          backgroundImage: `url(${homeBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          minHeight: '100vh',
+          width: '100%',
+        }}
+      >
+        {/* Hero Section with Rotating Carousel */}
+        <HeroCarousel>
+          <div className="text-center text-white px-4 max-w-6xl mx-auto">
+            {/* Hero Section */}
+            <div className="text-center mb-16 relative">
+              {/* Logo positioned above WRITORY heading */}
+              <div className="flex justify-center">
+                <img 
+                  src={logoImage} 
+                  alt="Writory Logo" 
+                  className="w-32 h-32 md:w-40 md:h-40 object-contain"
+                />
+              </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8">
-              WRITORY
-            </h1>
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8">
+                WRITORY
+              </h1>
 
-            <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
+              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
 
-            {/* Moving Tagline */}
-            <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
-              <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
-                <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
+              {/* Moving Tagline */}
+              <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
+                <div className="whitespace-nowrap text-lg font-medium animate-scroll text-yellow-200">
+                  <span>Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • Join Poetry Revolution • Write Your Own Victory • Participate Now • Celebrate Literature • </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
+                <Link href="/submit" className="w-full md:w-auto">
+                  <div className="relative w-full md:max-w-xs flex items-center justify-center">
+                    {/* Outer animated border */}
+                    <span className="absolute -inset-1.5 z-0 pointer-events-none">
+                      <svg className="w-full h-full" viewBox="0 0 104 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                        <defs>
+                          <filter id="glow-cyan-outer" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
+                            <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
+                          </filter>
+                        </defs>
+                        {/* Faint static border track */}
+                        <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
+                        {/* Moving glowing segment */}
+                        <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan-outer)">
+                          <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
+                        </rect>
+                      </svg>
+                    </span>
+                    <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-cyan-400/60 relative z-10">
+                      🚀 ENTER THE CONTEST
+                    </Button>
+                  </div>
+                </Link>
+                <Link href="/writory-wall" className="w-full md:w-auto">
+                  <div className="relative w-full md:max-w-xs flex items-center justify-center">
+                    {/* Outer animated border */}
+                    <span className="absolute -inset-1.5 z-0 pointer-events-none">
+                      <svg className="w-full h-full" viewBox="0 0 104 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                        <defs>
+                          <filter id="glow-cyan-outer" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
+                            <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
+                          </filter>
+                        </defs>
+                        {/* Faint static border track */}
+                        <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
+                        {/* Moving glowing segment */}
+                        <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan-outer)">
+                          <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
+                        </rect>
+                      </svg>
+                    </span>
+                    <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-cyan-400/60 relative z-10">
+                      🏆 WRITORY WALL
+                    </Button>
+                  </div>
+                </Link>
+              </div>
+
+              <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
+                <div className="text-center">
+                  <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
+                  <div className="text-sm drop-shadow-lg">Poets Joined</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
+                  <div className="text-sm drop-shadow-lg">Entry Available</div>
+                </div>
               </div>
             </div>
+          </div>
+        </HeroCarousel>
 
-            <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
-              <Link href="/submit" className="w-full md:w-auto">
-                <div className="relative w-full md:max-w-xs flex items-center justify-center">
-                  {/* Outer animated border */}
-                  <span className="absolute -inset-1.5 z-0 pointer-events-none">
-                    <svg className="w-full h-full" viewBox="0 0 104 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                      <defs>
-                        <filter id="glow-cyan-outer" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
-                          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
-                        </filter>
-                      </defs>
-                      {/* Faint static border track */}
-                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
-                      {/* Moving glowing segment */}
-                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan-outer)">
-                        <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
-                      </rect>
-                    </svg>
-                  </span>
-                  <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-cyan-400/60 relative z-10">
-                    🚀 ENTER THE CONTEST
-                  </Button>
-                </div>
+        {/* No Barriers Section */}
+        <section className="py-16 bg-gradient-to-br from-white to-blue-50">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              No Barriers or Boundaries
+            </h2>
+            <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
+              <CardContent className="p-8">
+                <div className="text-6xl mb-6">📝</div>
+                <p className="text-lg text-gray-700 leading-relaxed">
+                  Whether you're a beginner or a seasoned poet, 13 or 63, from a small town or a big city — your words matter. We believe that creativity knows no limits, and every voice deserves to be heard. No fancy degrees, no prior publications — just pure passion and honest expression. So come as you are, write what you feel, and let the world hear your story. Because here, your pen holds the power, and your story knows no borders.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* What Our Winners Receive */}
+        <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
+          <div className="max-w-7xl mx-auto px-4">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              What Our Winners Receive
+            </h2>
+            <p className="text-center text-gray-600 mb-12 text-lg">Celebrating literary excellence with meaningful rewards</p>
+            <div className="grid md:grid-cols-5 gap-6">
+              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <IdCard className="text-2xl text-white" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Digital Certificates</h3>
+                  <p className="text-gray-600 text-sm">Official recognition certificates for your achievement</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Users className="text-2xl text-white" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Social Recognition</h3>
+                  <p className="text-gray-600 text-sm">Featured across our social media platforms</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Globe className="text-2xl text-white" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Global Exposure</h3>
+                  <p className="text-gray-600 text-sm">Showcase your work to a worldwide audience</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-red-50 to-rose-50">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Star className="text-2xl text-white" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Literary Recognition</h3>
+                  <p className="text-gray-600 text-sm">Build your reputation in the literary community</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-violet-50">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Trophy className="text-2xl text-white" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Achievement Badge</h3>
+                  <p className="text-gray-600 text-sm">Special recognition for your creative excellence</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Benefits Section */}
+        <section className="py-16 bg-gradient-to-br from-gray-50 to-slate-100">
+          <div className="max-w-7xl mx-auto px-4">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent">
+              Why Choose Writory?
+            </h2>
+            <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
+
+            <div className="grid md:grid-cols-4 gap-8">
+              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
+                <CardContent className="p-8 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                    <CheckCircle className="text-white" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Easy Submission</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Simple, user-friendly submission process. Upload your poem in minutes and join our community of passionate poets from around the world.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <CardContent className="p-8 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                    <Users className="text-white" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Expert Judging</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Professional literary experts and published poets evaluate submissions with care, providing fair and insightful assessment of your work.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+                <CardContent className="p-8 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                    <Globe className="text-white" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Global Recognition</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Winners gain international exposure through our platform and social media, connecting with poetry enthusiasts worldwide.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-orange-50 to-red-50">
+                <CardContent className="p-8 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                    <Star className="text-white" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">New challenges every month</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Fresh prompts, unique themes, and creative formats are released every month to keep your imagination active and your writing evolving. There's always something new to look forward to!
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Poetry Inspiration Carousel */}
+        <section className="py-16 bg-gradient-to-br from-white to-gray-50">
+          <div className="max-w-7xl mx-auto px-4 mb-12">
+            <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Poetry Inspiration
+            </h2>
+          </div>
+          <div className="w-full">
+            <SimpleCarousel slides={carouselSlides} />
+          </div>
+        </section>
+
+        {/* Call to Action Section */}
+        <section className="py-32 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden min-h-[60vh]">
+          <div className="max-w-4xl mx-auto text-center px-4 flex flex-col justify-center h-full">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Ready to Share Your Poetry?
+            </h2>
+            <p className="text-xl text-white/90 mb-8 leading-relaxed">
+              Join thousands of poets who have already shared their voices. Your story matters, your words have power, and your poetry deserves to be heard.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/submit">
+                <Button size="lg" className="bg-white text-purple-600 hover:bg-gray-100 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                  Submit Your Poem
+                </Button>
               </Link>
-              <Link href="/writory-wall" className="w-full md:w-auto">
-                <div className="relative w-full md:max-w-xs flex items-center justify-center">
-                  {/* Outer animated border */}
-                  <span className="absolute -inset-1.5 z-0 pointer-events-none">
-                    <svg className="w-full h-full" viewBox="0 0 104 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                      <defs>
-                        <filter id="glow-cyan-outer" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
-                          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
-                        </filter>
-                      </defs>
-                      {/* Faint static border track */}
-                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
-                      {/* Moving glowing segment */}
-                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan-outer)">
-                        <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
-                      </rect>
-                    </svg>
-                  </span>
-                  <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-cyan-400/60 relative z-10">
-                    🏆 WRITORY WALL
-                  </Button>
-                </div>
+              <Link href="/about">
+                <Button size="lg" className="bg-white text-purple-600 hover:bg-white hover:text-purple-600 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
+                  Learn More
+                </Button>
               </Link>
             </div>
-
-            <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
-              <div className="text-center">
-                <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
-                <div className="text-sm drop-shadow-lg">Poets Joined</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
-                <div className="text-sm drop-shadow-lg">Entry Available</div>
-              </div>
-            </div>
           </div>
-        </div>
-      </HeroCarousel>
+        </section>
 
-      {/* No Barriers Section */}
-      <section className="py-16 bg-gradient-to-br from-white to-blue-50">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            No Barriers or Boundaries
-          </h2>
-          <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
-            <CardContent className="p-8">
-              <div className="text-6xl mb-6">📝</div>
-              <p className="text-lg text-gray-700 leading-relaxed">
-                Whether you're a beginner or a seasoned poet, 13 or 63, from a small town or a big city — your words matter. We believe that creativity knows no limits, and every voice deserves to be heard. No fancy degrees, no prior publications — just pure passion and honest expression. So come as you are, write what you feel, and let the world hear your story. Because here, your pen holds the power, and your story knows no borders.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* What Our Winners Receive */}
-      <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            What Our Winners Receive
-          </h2>
-          <p className="text-center text-gray-600 mb-12 text-lg">Celebrating literary excellence with meaningful rewards</p>
-          <div className="grid md:grid-cols-5 gap-6">
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <IdCard className="text-2xl text-white" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Digital Certificates</h3>
-                <p className="text-gray-600 text-sm">Official recognition certificates for your achievement</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Users className="text-2xl text-white" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Social Recognition</h3>
-                <p className="text-gray-600 text-sm">Featured across our social media platforms</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Globe className="text-2xl text-white" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Global Exposure</h3>
-                <p className="text-gray-600 text-sm">Showcase your work to a worldwide audience</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-red-50 to-rose-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Star className="text-2xl text-white" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Literary Recognition</h3>
-                <p className="text-gray-600 text-sm">Build your reputation in the literary community</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-violet-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Trophy className="text-2xl text-white" size={24} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Achievement Badge</h3>
-                <p className="text-gray-600 text-sm">Special recognition for your creative excellence</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-slate-100">
-        <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent">
-            Why Choose Writory?
-          </h2>
-          <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
-
-          <div className="grid md:grid-cols-4 gap-8">
-            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
-              <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
-                  <CheckCircle className="text-white" size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Easy Submission</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Simple, user-friendly submission process. Upload your poem in minutes and join our community of passionate poets from around the world.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
-                  <Users className="text-white" size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Expert Judging</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Professional literary experts and published poets evaluate submissions with care, providing fair and insightful assessment of your work.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-purple-50 to-pink-50">
-              <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
-                  <Globe className="text-white" size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Global Recognition</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Winners gain international exposure through our platform and social media, connecting with poetry enthusiasts worldwide.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-orange-50 to-red-50">
-              <CardContent className="p-8 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
-                  <Star className="text-white" size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">New challenges every month</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Fresh prompts, unique themes, and creative formats are released every month to keep your imagination active and your writing evolving. There's always something new to look forward to!
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Poetry Inspiration Carousel */}
-      <section className="py-16 bg-gradient-to-br from-white to-gray-50">
-        <div className="max-w-7xl mx-auto px-4 mb-12">
-          <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Poetry Inspiration
-          </h2>
-        </div>
-        <div className="w-full">
-          <SimpleCarousel slides={carouselSlides} />
-        </div>
-      </section>
-
-      {/* Call to Action Section */}
-      <section className="py-32 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden min-h-[60vh]">
-        <div className="max-w-4xl mx-auto text-center px-4 flex flex-col justify-center h-full">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Share Your Poetry?
-          </h2>
-          <p className="text-xl text-white/90 mb-8 leading-relaxed">
-            Join thousands of poets who have already shared their voices. Your story matters, your words have power, and your poetry deserves to be heard.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/submit">
-              <Button size="lg" className="bg-white text-purple-600 hover:bg-gray-100 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
-                Submit Your Poem
-              </Button>
-            </Link>
-            <Link href="/about">
-              <Button size="lg" className="bg-white text-purple-600 hover:bg-white hover:text-purple-600 font-semibold py-4 px-8 text-lg shadow-xl transform hover:scale-105 transition-all duration-200">
-                Learn More
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <ChatbotWidget />
+        <ChatbotWidget />
+      </div>
+      {/* Footer will remain as is, outside the bg */}
     </div>
   );
 }
