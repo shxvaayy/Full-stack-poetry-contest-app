@@ -164,8 +164,8 @@
 }
 
 @keyframes pulseGlowPurple {
-  0%, 100% { box-shadow: 0 0 40px 12px #a78bfa, 0 0 64px 24px #7c3aed66; }
-  50% { box-shadow: 0 0 64px 24px #a78bfa, 0 0 96px 32px #7c3aed99; }
+  0%, 100% { box-shadow: 0 0 24px 6px #a78bfa, 0 0 40px 12px #7c3aed33; }
+  50% { box-shadow: 0 0 36px 12px #a78bfa, 0 0 56px 20px #7c3aed66; }
 }
 
 .animate-glow {
