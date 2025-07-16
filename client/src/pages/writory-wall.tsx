@@ -87,7 +87,7 @@ export default function WritoryWall() {
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
-        const data = await response.json();
+      const data = await response.json();
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
         setDisplayPosts(pickFiveRandom(approved));
       } finally {
@@ -205,7 +205,7 @@ export default function WritoryWall() {
               </p>
             </div>
           )}
-        </div>
+          </div>
         {allPosts.length > 5 && (
           <div className="flex justify-center mb-6">
             <Button onClick={handleRefresh} className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-400 to-purple-400 text-white font-semibold rounded-full shadow-lg hover:from-cyan-500 hover:to-purple-500 transition backdrop-blur-md">
@@ -215,10 +215,7 @@ export default function WritoryWall() {
           </div>
         )}
         <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6">
-          {displayPosts.length === 0 ? (
-            <div className="text-center text-gray-400">No ink spilled yet. Be the first to write.</div>
-          ) : (
-            displayPosts.map((post, idx) => (
+          {displayPosts.length > 0 && displayPosts.map((post, idx) => (
               <div
                 key={post.id}
                 className={clsx(
@@ -242,18 +239,18 @@ export default function WritoryWall() {
                   }}
                 >
                   {post.title}
-                </div>
+                    </div>
                 <div className="text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition">
                   {getFirstLines(post.content, 3)}
-                </div>
+                        </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
-                  {post.author_instagram && (
+                        {post.author_instagram && (
                     <a href={`https://www.instagram.com/${post.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
                       <Instagram className="inline w-4 h-4" />
-                    </a>
-                  )}
-                </div>
+                          </a>
+                        )}
+                      </div>
                 <div className="flex items-center gap-3 mt-2">
                   <Button
                     variant="ghost"
@@ -265,11 +262,11 @@ export default function WritoryWall() {
                     <span className="font-semibold">Feel this</span>
                     <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
                   </Button>
-                </div>
+                      </div>
                 <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer" onClick={() => handleCardRefresh(idx)}>
                   <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
-                </div>
-              </div>
+                    </div>
+            </div>
             ))
           )}
         </div>
