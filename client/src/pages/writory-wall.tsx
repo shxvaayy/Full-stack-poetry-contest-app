@@ -1,379 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Heart, Instagram, User, Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Heart, Instagram, RefreshCw } from 'lucide-react';
 
 interface WallPost {
   id: number;
-  title: string;
   content: string;
-  category?: string;
   author_name: string;
   author_instagram?: string;
-  author_profile_picture?: string;
   likes: number;
-  liked_by?: string;
   status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
+}
+
+function getFirstLines(text: string, lines = 3) {
+  return text.split(/\r?\n/).slice(0, lines).join('\n');
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  return array
+    .map((value) => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
 }
 
 export default function WritoryWall() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [posts, setPosts] = useState<WallPost[]>([]);
-  const [myPosts, setMyPosts] = useState<WallPost[]>([]);
+  const [allPosts, setAllPosts] = useState<WallPost[]>([]);
+  const [displayPosts, setDisplayPosts] = useState<WallPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: '',
-    instagramHandle: ''
-  });
-
-  // Fetch wall posts
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch(`/api/wall-posts`);
-      const data = await response.json();
-      
-      setPosts(data.posts);
-      setHasMore(false); // No pagination needed since we only show 5 posts
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load posts",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch user's own posts
-  const fetchMyPosts = async () => {
-    if (!user?.uid) return;
-    
-    try {
-      const response = await fetch('/api/wall-posts/my-posts', {
-        headers: {
-          'user-uid': user.uid
-        }
-      });
-      const data = await response.json();
-      setMyPosts(data.posts);
-    } catch (error) {
-      console.error('Error fetching my posts:', error);
-    }
-  };
-
-  // Submit new post
-  const handleSubmit = async () => {
-    if (!user?.uid) {
-      toast({
-        title: "Error",
-        description: "Please log in to submit a post",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.title.trim() || !formData.content.trim()) {
-      toast({
-        title: "Error",
-        description: "Title and content are required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await fetch('/api/wall-posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'user-uid': user.uid
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          content: formData.content,
-          category: formData.category || null,
-          instagramHandle: formData.instagramHandle || null
-        })
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: data.message
-        });
-        setShowSubmitDialog(false);
-        setFormData({ title: '', content: '', category: '', instagramHandle: '' });
-        fetchMyPosts(); // Refresh user's posts
-      } else {
-        toast({
-          title: "Error",
-          description: data.error,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error submitting post:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit post",
-        variant: "destructive"
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Like/unlike post
-  const handleLike = async (postId: number) => {
-    if (!user?.uid) {
-      toast({
-        title: "Error",
-        description: "Please log in to like posts",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/wall-posts/${postId}/like`, {
-        method: 'POST',
-        headers: {
-          'user-uid': user.uid
-        }
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Update posts state
-        setPosts(prev => prev.map(post => 
-          post.id === postId 
-            ? { ...post, likes: data.likes, liked_by: data.liked ? JSON.stringify([...(JSON.parse(post.liked_by || '[]')), user.uid]) : JSON.stringify(JSON.parse(post.liked_by || '[]').filter((uid: string) => uid !== user.uid)) }
-            : post
-        ));
-      }
-    } catch (error) {
-      console.error('Error liking post:', error);
-    }
-  };
-
-  // Check if user liked a post
-  const isLiked = (post: WallPost) => {
-    if (!user?.uid || !post.liked_by) return false;
-    try {
-      const likedBy = JSON.parse(post.liked_by);
-      return likedBy.includes(user.uid);
-    } catch {
-      return false;
-    }
-  };
-
-  // Load more posts
-  const loadMore = () => {
-    // No pagination needed - only 5 posts total
-    return;
-  };
-
+  // Fetch all approved posts
   useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/wall-posts');
+        const data = await response.json();
+        const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
+        setAllPosts(approved);
+        setDisplayPosts(shuffleArray(approved).slice(0, 5));
+      } catch (e) {
+        setAllPosts([]);
+        setDisplayPosts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchPosts();
-    fetchMyPosts();
-  }, [user?.uid]);
+  }, []);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'approved':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  // Refresh handler
+  const handleRefresh = () => {
+    setDisplayPosts(shuffleArray(allPosts).slice(0, 5));
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Writory Wall</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover the top 5 most recent approved poems from our community. 
-            Each piece is a window into someone's soul.
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cursive">Writory Wall</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto font-serif">
+            Poems penned by hearts like yours.
           </p>
         </div>
-
-        {/* Submit Button */}
-        {/* Removed the Submit for Writory Wall button and dialog as per new requirements */}
-
-        {/* My Pieces Section (for logged-in users) */}
-        {user && myPosts.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">My Pieces</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {myPosts.map((post) => (
-                <Card key={post.id} className="border-l-4 border-purple-500">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{post.title}</CardTitle>
-                      <Badge className={getStatusColor(post.status)}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(post.status)}
-                          {post.status}
-                        </div>
-                      </Badge>
-                    </div>
-                    {post.category && (
-                      <Badge variant="secondary" className="w-fit">
-                        {post.category}
-                      </Badge>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-700 mb-4 line-clamp-3">{post.content}</p>
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                      <div className="flex items-center gap-2">
-                        <Heart className="w-4 h-4" />
-                        <span>{post.likes}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+        {allPosts.length > 5 && (
+          <div className="flex justify-center mb-6">
+            <Button onClick={handleRefresh} className="flex items-center gap-2 px-6 py-2 bg-cyan-500 text-white font-semibold rounded-full shadow-lg hover:bg-cyan-600 transition">
+              <RefreshCw className="w-5 h-5 animate-spin-slow" />
+              More voices await…
+            </Button>
           </div>
         )}
-
-        {/* No submissions message */}
-        {user && myPosts.length === 0 && (
-          <div className="mb-8 text-center py-8 bg-white rounded-lg border-2 border-dashed border-gray-300">
-            <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No submissions yet</h3>
-            <p className="text-gray-600 mb-4">Submit your writings below to see them here.</p>
-          </div>
-        )}
-
-        {/* Public Wall */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Community Wall (Top 5 Poems)</h2>
+        <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6">
           {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Loading posts...</p>
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-8 bg-white rounded-lg">
-              <p className="text-gray-600">No posts available yet. Be the first to share!</p>
-            </div>
+            <div className="text-center text-gray-400">Loading…</div>
+          ) : displayPosts.length === 0 ? (
+            <div className="text-center text-gray-400">No ink spilled yet. Be the first to write.</div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => (
-                <Card key={post.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{post.title}</CardTitle>
-                      {post.category && (
-                        <Badge variant="secondary" className="ml-2">
-                          {post.category}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-700 mb-4 whitespace-pre-wrap">{post.content}</p>
-                    
-                    {/* Author Info */}
-                    <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                      {post.author_profile_picture ? (
-                        <img 
-                          src={post.author_profile_picture} 
-                          alt={post.author_name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-purple-600" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{post.author_name}</p>
-                        {post.author_instagram && (
-                          <a 
-                            href={`https://instagram.com/${post.author_instagram.replace('@', '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700"
-                          >
-                            <Instagram className="w-4 h-4" />
-                            Follow
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Engagement */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => handleLike(post.id)}
-                          className={`flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${
-                            isLiked(post) 
-                              ? 'bg-red-100 text-red-600' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-red-50'
-                          }`}
-                        >
-                          <Heart className={`w-4 h-4 ${isLiked(post) ? 'fill-current' : ''}`} />
-                          <span>{post.likes}</span>
-                        </button>
-                      </div>
-                      <span className="text-sm text-gray-500">
-                        {new Date(post.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            displayPosts.map((post) => (
+              <div key={post.id} className="break-inside-avoid rounded-2xl bg-white/80 shadow-xl border border-cyan-100 p-6 mb-6 hover:shadow-cyan-200 transition group relative overflow-hidden">
+                <div className="text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition">
+                  {getFirstLines(post.content, 3)}
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
+                  {post.author_instagram && (
+                    <a href={`https://instagram.com/${post.author_instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
+                      <Instagram className="inline w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <Button variant="ghost" size="sm" className="flex items-center gap-1 text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded-full">
+                    <Heart className="w-4 h-4" />
+                    <span className="font-semibold">Feel this</span>
+                    <span className="ml-1 text-xs text-gray-500">{post.likes}</span>
+                  </Button>
+                </div>
+                <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition">
+                  <RefreshCw className="w-5 h-5 text-cyan-300" />
+                </div>
+              </div>
+            ))
           )}
-
-          {/* Load More Button - Removed since we only show 5 posts total */}
         </div>
       </div>
     </div>
