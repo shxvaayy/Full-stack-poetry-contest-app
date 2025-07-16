@@ -151,12 +151,12 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
               <Link href="/submit" className="w-full md:w-auto">
-                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
+                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform hover:scale-105 transition-all duration-200">
                   🚀 Enter the Contest
                 </Button>
               </Link>
               <Link href="/writory-wall" className="w-full md:w-auto">
-                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-400/50">
+                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform hover:scale-105 transition-all duration-200">
                   🏆 Writory Wall
                 </Button>
               </Link>

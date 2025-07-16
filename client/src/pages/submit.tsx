@@ -1016,7 +1016,7 @@ export default function SubmitPage() {
                   className="mt-6 bg-black text-yellow-400 hover:bg-gray-900 font-semibold py-4 px-8 text-lg shadow-xl flex items-center gap-2 mx-auto"
                   onClick={() => setShowWallDialog(true)}
                 >
-                  <span style={{ color: '#FFD700', fontWeight: 700 }}>Submit for Wall</span>
+                  <span style={{ color: '#FFD700', fontWeight: 700 }}>SUBMIT FOR WRITORY WALL</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
