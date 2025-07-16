@@ -155,6 +155,14 @@ const AdminWallModerationPage = () => {
   };
 
   const handleBulkApprove = async () => {
+    if (!user?.email) {
+      toast({
+        title: "Error",
+        description: "Admin email not loaded. Please wait and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (selectedPosts.size === 0) {
       toast({
         title: "No Selection",
@@ -169,7 +177,7 @@ const AdminWallModerationPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'admin-email': user?.email || '',
+          'admin-email': user.email,
         },
         body: JSON.stringify({
           postIds: Array.from(selectedPosts)
@@ -272,7 +280,7 @@ const AdminWallModerationPage = () => {
           <div className="flex gap-2">
             <Button
               onClick={handleBulkApprove}
-              disabled={bulkLoading}
+              disabled={bulkLoading || !user?.email}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
             >
               {bulkLoading ? (
