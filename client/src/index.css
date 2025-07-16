@@ -205,3 +205,31 @@
   background: hsl(188, 14%, 81%);
   border-radius: 4px;
 }
+
+.button-animated-red {
+  position: relative;
+  z-index: 1;
+}
+.button-animated-red::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 1rem;
+  border: 3px solid transparent;
+  pointer-events: none;
+  z-index: 2;
+  background: conic-gradient(from var(--angle,0deg), #ff1744 0 80%, transparent 80% 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: border-rotate 2s linear infinite;
+}
+@keyframes border-rotate {
+  to { --angle: 360deg; }
+}
+
+@keyframes pulseGlowRed {
+  0%, 100% { box-shadow: 0 0 16px 4px #ff1744, 0 0 24px 8px #ff174422; }
+  50% { box-shadow: 0 0 24px 8px #ff1744, 0 0 36px 12px #ff174444; }
+}
+
+.animate-\[pulseGlowRed_2s_infinite\] { animation: pulseGlowRed 2s infinite; }
