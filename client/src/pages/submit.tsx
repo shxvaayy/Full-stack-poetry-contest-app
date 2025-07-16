@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
 import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const TIERS = [
   { 
@@ -118,6 +119,10 @@ export default function SubmitPage() {
 
   const poemFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+
+  const [showWallDialog, setShowWallDialog] = useState(false);
+  const [wallForm, setWallForm] = useState({ title: '', content: '', instagramHandle: '' });
+  const [wallSubmitting, setWallSubmitting] = useState(false);
 
   // Get poem count based on tier
   const getPoemCount = (tierId: string): number => {
@@ -726,6 +731,45 @@ export default function SubmitPage() {
     }
   };
 
+  const handleWallFormChange = (field: string, value: string) => {
+    setWallForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleWallSubmit = async () => {
+    if (!user?.uid) {
+      toast({ title: 'Error', description: 'Please log in to submit for the wall', variant: 'destructive' });
+      return;
+    }
+    if (!wallForm.title.trim() || !wallForm.content.trim()) {
+      toast({ title: 'Error', description: 'Title and content are required', variant: 'destructive' });
+      return;
+    }
+    setWallSubmitting(true);
+    try {
+      const response = await fetch('/api/wall-posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'user-uid': user.uid },
+        body: JSON.stringify({
+          title: wallForm.title,
+          content: wallForm.content,
+          instagramHandle: wallForm.instagramHandle || null
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({ title: 'Success', description: data.message || 'Submitted for wall!' });
+        setShowWallDialog(false);
+        setWallForm({ title: '', content: '', instagramHandle: '' });
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to submit', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to submit', variant: 'destructive' });
+    } finally {
+      setWallSubmitting(false);
+    }
+  };
+
   // Render dynamic poem fields based on tier
   const renderPoemFields = () => {
     if (!selectedTier) return null;
@@ -966,12 +1010,65 @@ export default function SubmitPage() {
             <p className="text-gray-600">
             No rules, just heart — let your truth unfold, Your words are flames, fierce and bold. At Writory, every voice is gold.
             </p>
-            <Button
-              className="mt-6 bg-black text-yellow-400 hover:bg-gray-900 font-semibold py-4 px-8 text-lg shadow-xl border-2 border-yellow-400 flex items-center gap-2 mx-auto"
-              onClick={() => window.location.href = '/writory-wall'}
-            >
-              <span style={{ color: '#FFD700', fontWeight: 700 }}>Submit for Wall</span>
-            </Button>
+            <Dialog open={showWallDialog} onOpenChange={setShowWallDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  className="mt-6 bg-black text-yellow-400 hover:bg-gray-900 font-semibold py-4 px-8 text-lg shadow-xl border-2 border-yellow-400 flex items-center gap-2 mx-auto"
+                  onClick={() => setShowWallDialog(true)}
+                >
+                  <span style={{ color: '#FFD700', fontWeight: 700 }}>Submit for Wall</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Submit for Writory Wall</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="wall-title">Title *</Label>
+                    <Input
+                      id="wall-title"
+                      value={wallForm.title}
+                      onChange={e => handleWallFormChange('title', e.target.value)}
+                      placeholder="Give your piece a title..."
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="wall-content">Content *</Label>
+                    <Textarea
+                      id="wall-content"
+                      value={wallForm.content}
+                      onChange={e => handleWallFormChange('content', e.target.value)}
+                      placeholder="Share your poetry or writing here..."
+                      rows={8}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="wall-instagram">Instagram Handle <span className="text-gray-400">(optional)</span></Label>
+                    <Input
+                      id="wall-instagram"
+                      value={wallForm.instagramHandle}
+                      onChange={e => handleWallFormChange('instagramHandle', e.target.value)}
+                      placeholder="e.g. @yourusername"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button variant="outline" onClick={() => setShowWallDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleWallSubmit}
+                      disabled={wallSubmitting}
+                      className="bg-black text-yellow-400 hover:bg-gray-900 border-yellow-400"
+                    >
+                      {wallSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
