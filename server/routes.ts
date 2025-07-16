@@ -3713,7 +3713,7 @@ router.post('/api/wall-posts/:id/like', async (req, res) => {
 });
 
 // Admin routes for moderation
-router.get('/api/admin/wall-posts', async (req, res) => {
+router.get('/api/wall-posts/admin', async (req, res) => {
   try {
     const adminEmail = req.headers['admin-email'] as string;
     
@@ -3751,28 +3751,33 @@ router.get('/api/admin/wall-posts', async (req, res) => {
   }
 });
 
-// Moderate a post (approve/reject)
-router.post('/api/admin/wall-posts/:id/moderate', async (req, res) => {
+// Moderate a post (approve/reject/delete)
+router.post('/api/wall-posts/:id/:action', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status, notes } = req.body;
+    const { id, action } = req.params;
     const adminEmail = req.headers['admin-email'] as string;
     
     if (!adminEmail || !['shivaaymehra2@gmail.com', 'bhavyaseth2005@gmail.com'].includes(adminEmail)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+    if (action === 'delete') {
+      // Delete the post
+      await client.query('DELETE FROM wall_posts WHERE id = $1', [id]);
+      res.json({ success: true, message: 'Post deleted successfully' });
+    } else if (['approve', 'reject'].includes(action)) {
+      // Approve or reject the post
+      const status = action === 'approve' ? 'approved' : 'rejected';
+      await client.query(`
+        UPDATE wall_posts 
+        SET status = $1, moderated_by = $2, moderated_at = NOW() 
+        WHERE id = $3
+      `, [status, adminEmail, id]);
+      
+      res.json({ success: true, message: `Post ${action}d successfully` });
+    } else {
+      return res.status(400).json({ error: 'Invalid action' });
     }
-    
-    await client.query(`
-      UPDATE wall_posts 
-      SET status = $1, moderated_by = $2, moderated_at = NOW(), moderation_notes = $3 
-      WHERE id = $4
-    `, [status, adminEmail, notes || null, id]);
-    
-    res.json({ success: true, message: `Post ${status} successfully` });
   } catch (error) {
     console.error('Error moderating post:', error);
     res.status(500).json({ error: 'Failed to moderate post' });

@@ -35,7 +35,7 @@ const AdminWallModerationPage = () => {
     try {
       const response = await fetch("/api/wall-posts/admin", {
         headers: {
-          Authorization: `Bearer ${await user?.getIdToken()}`,
+          'admin-email': user?.email || '',
         },
       });
 
@@ -63,7 +63,7 @@ const AdminWallModerationPage = () => {
       const response = await fetch(`/api/wall-posts/${postId}/${action}`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${await user?.getIdToken()}`,
+          'admin-email': user?.email || '',
         },
       });
 
