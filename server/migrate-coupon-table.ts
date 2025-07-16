@@ -9,6 +9,20 @@ export async function migrateCouponTable() {
       await connectDatabase();
     }
 
+    // Check if coupons table exists
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'coupons'
+      );
+    `);
+
+    if (!tableExists.rows[0].exists) {
+      console.log('⚠️ Coupons table does not exist, skipping migration');
+      return;
+    }
+
     // Check if discount_amount column exists
     const discountAmountResult = await client.query(`
       SELECT column_name 
@@ -85,6 +99,7 @@ export async function migrateCouponTable() {
     console.log('✅ Coupon table migration completed successfully');
   } catch (error) {
     console.error('❌ Coupon table migration failed:', error);
-    throw error;
+    // Don't throw error, just log it and continue
+    console.log('⚠️ Continuing with server startup despite coupon migration error');
   }
 }
