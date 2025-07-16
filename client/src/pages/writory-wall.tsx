@@ -240,78 +240,7 @@ export default function WritoryWall() {
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-center mb-8">
-          <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Submit for Writory Wall
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Submit Your Writing</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Title *</label>
-                  <Input
-                    placeholder="Give your piece a title..."
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Content *</label>
-                  <Textarea
-                    placeholder="Share your poetry or writing here..."
-                    rows={8}
-                    value={formData.content}
-                    onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Category (Optional)</label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="poetry">Poetry</SelectItem>
-                        <SelectItem value="prose">Prose</SelectItem>
-                        <SelectItem value="haiku">Haiku</SelectItem>
-                        <SelectItem value="sonnet">Sonnet</SelectItem>
-                        <SelectItem value="free-verse">Free Verse</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Instagram Handle (Optional)</label>
-                    <Input
-                      placeholder="@username"
-                      value={formData.instagramHandle}
-                      onChange={(e) => setFormData(prev => ({ ...prev, instagramHandle: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={submitting}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    {submitting ? 'Submitting...' : 'Submit'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        {/* Removed the Submit for Writory Wall button and dialog as per new requirements */}
 
         {/* My Pieces Section (for logged-in users) */}
         {user && myPosts.length > 0 && (

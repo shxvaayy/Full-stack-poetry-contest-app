@@ -966,6 +966,12 @@ export default function SubmitPage() {
             <p className="text-gray-600">
             No rules, just heart — let your truth unfold, Your words are flames, fierce and bold. At Writory, every voice is gold.
             </p>
+            <Button
+              className="mt-6 bg-black text-yellow-400 hover:bg-gray-900 font-semibold py-4 px-8 text-lg shadow-xl border-2 border-yellow-400 flex items-center gap-2 mx-auto"
+              onClick={() => window.location.href = '/writory-wall'}
+            >
+              <span style={{ color: '#FFD700', fontWeight: 700 }}>Submit for Wall</span>
+            </Button>
           </div>
         </div>
       </div>
