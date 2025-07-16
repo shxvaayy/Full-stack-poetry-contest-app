@@ -242,7 +242,7 @@ export default function WritoryWall() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
                   {post.author_instagram && (
-                    <a href={`https://instagram.com/${encodeURIComponent(post.author_instagram.replace(/^@/, '').trim())}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
+                    <a href={`https://www.instagram.com/${post.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
                       <Instagram className="inline w-4 h-4" />
                     </a>
                   )}
