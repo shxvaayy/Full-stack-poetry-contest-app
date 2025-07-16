@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/queryClient';
 import brickWallBg from '@/assets/brick-wall-bg.jpg';
 import './writory-wall-font.css';
+import { clsx } from 'clsx';
 
 interface WallPost {
   id: number;
@@ -37,6 +38,7 @@ export default function WritoryWall() {
   const [loading, setLoading] = useState(true);
   const [likeLoading, setLikeLoading] = useState<{ [id: number]: boolean }>({});
   const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
+  const [isFlipping, setIsFlipping] = useState(false);
 
   // Helper to pick 5 unique random poems from a pool
   function pickFiveRandom(posts: WallPost[]): WallPost[] {
@@ -80,15 +82,17 @@ export default function WritoryWall() {
 
   // Main refresh: pick 5 new random poems
   const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/wall-posts');
-      const data = await response.json();
-      const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
-      setDisplayPosts(pickFiveRandom(approved));
-    } finally {
-      setLoading(false);
-    }
+    setIsFlipping(true);
+    setTimeout(async () => {
+      try {
+        const response = await fetch('/api/wall-posts');
+        const data = await response.json();
+        const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
+        setDisplayPosts(pickFiveRandom(approved));
+      } finally {
+        setIsFlipping(false);
+      }
+    }, 400); // duration of flip out
   };
 
   // Like handler: update like and update count from backend response
@@ -201,15 +205,16 @@ export default function WritoryWall() {
           </div>
         )}
         <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6">
-          {loading ? (
-            <div className="text-center text-gray-400">Loading…</div>
-          ) : displayPosts.length === 0 ? (
+          {displayPosts.length === 0 ? (
             <div className="text-center text-gray-400">No ink spilled yet. Be the first to write.</div>
           ) : (
             displayPosts.map((post, idx) => (
               <div
                 key={post.id}
-                className="break-inside-avoid p-8 mb-6 group relative overflow-hidden"
+                className={clsx(
+                  'break-inside-avoid p-8 mb-6 group relative overflow-hidden flip-card',
+                  isFlipping && 'flipping'
+                )}
                 style={{
                   background: cardBgColors[idx % cardBgColors.length],
                   borderRadius: '1.5rem',

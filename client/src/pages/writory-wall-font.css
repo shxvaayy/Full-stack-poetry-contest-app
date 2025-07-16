@@ -13,4 +13,13 @@
   text-transform: none;
   letter-spacing: 0.04em;
   color: #111;
+}
+
+.flip-card {
+  transition: transform 0.4s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.4s;
+  transform-style: preserve-3d;
+}
+.flipping {
+  transform: rotateY(90deg) scale(0.95);
+  opacity: 0.5;
 } 
