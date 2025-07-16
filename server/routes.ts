@@ -129,7 +129,7 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
 // Admin authentication middleware
 const requireAdmin = asyncHandler(async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
-  const userEmail = req.headers['x-user-email'];
+  const userEmail = req.headers['admin-email'] || req.headers['x-user-email'];
 
   console.log('🔐 Admin auth check:', { userEmail, authHeader: !!authHeader });
 
