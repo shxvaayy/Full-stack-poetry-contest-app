@@ -154,6 +154,48 @@ const AdminWallModerationPage = () => {
     }
   };
 
+  const handleBulkApprove = async () => {
+    if (selectedPosts.size === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select posts to approve",
+        variant: "destructive",
+      });
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const response = await fetch('/api/wall-posts/bulk-approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-email': user?.email || '',
+        },
+        body: JSON.stringify({
+          postIds: Array.from(selectedPosts)
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to approve posts');
+      }
+      toast({
+        title: "Success",
+        description: `${selectedPosts.size} posts approved successfully`,
+      });
+      setSelectedPosts(new Set());
+      fetchPosts();
+    } catch (error) {
+      console.error('Error bulk approving posts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve posts",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedPosts(new Set(posts.map(post => post.id)));
@@ -227,19 +269,33 @@ const AdminWallModerationPage = () => {
         </Select>
 
         {selectedPosts.size > 0 && (
-          <Button
-            onClick={handleBulkDelete}
-            disabled={bulkLoading}
-            variant="destructive"
-            className="flex items-center gap-2"
-          >
-            {bulkLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-            Delete {selectedPosts.size} Selected
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleBulkApprove}
+              disabled={bulkLoading}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {bulkLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Approve All
+            </Button>
+            <Button
+              onClick={handleBulkDelete}
+              disabled={bulkLoading}
+              variant="destructive"
+              className="flex items-center gap-2"
+            >
+              {bulkLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete {selectedPosts.size} Selected
+            </Button>
+          </div>
         )}
       </div>
 
