@@ -40,6 +40,7 @@ export default function WritoryWall() {
   const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
   const [isFlipping, setIsFlipping] = useState(false);
   const [cardFlipping, setCardFlipping] = useState<boolean[]>([false, false, false, false, false]);
+  const [expandedPosts, setExpandedPosts] = useState<{ [id: number]: boolean }>({}); // NEW: Track expanded state
 
   // Helper to pick 5 unique random poems from a pool
   function pickFiveRandom(posts: WallPost[]): WallPost[] {
@@ -242,8 +243,18 @@ export default function WritoryWall() {
                   {post.title}
                     </div>
                 <div className="text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition">
-                  {getFirstLines(post.content, 3)}
-                        </div>
+                  {expandedPosts[post.id]
+                    ? post.content
+                    : getFirstLines(post.content, 3)}
+                  {post.content.split(/\r?\n/).length > 3 && (
+                    <button
+                      className="ml-2 text-cyan-600 underline text-sm font-semibold hover:text-cyan-800 focus:outline-none"
+                      onClick={() => setExpandedPosts((prev) => ({ ...prev, [post.id]: !prev[post.id] }))}
+                    >
+                      {expandedPosts[post.id] ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
                         {post.author_instagram && (
