@@ -1013,7 +1013,7 @@ export default function SubmitPage() {
             <Dialog open={showWallDialog} onOpenChange={setShowWallDialog}>
               <DialogTrigger asChild>
                 <Button
-                  className="mt-6 bg-black text-yellow-400 hover:bg-gray-900 font-semibold py-4 px-8 text-lg shadow-xl border-2 border-yellow-400 flex items-center gap-2 mx-auto"
+                  className="mt-6 bg-black text-yellow-400 hover:bg-gray-900 font-semibold py-4 px-8 text-lg shadow-xl flex items-center gap-2 mx-auto"
                   onClick={() => setShowWallDialog(true)}
                 >
                   <span style={{ color: '#FFD700', fontWeight: 700 }}>Submit for Wall</span>
@@ -1061,7 +1061,7 @@ export default function SubmitPage() {
                     <Button
                       onClick={handleWallSubmit}
                       disabled={wallSubmitting}
-                      className="bg-black text-yellow-400 hover:bg-gray-900 border-yellow-400"
+                      className="bg-black text-yellow-400 hover:bg-gray-900 font-semibold px-6 py-3 text-lg shadow-xl"
                     >
                       {wallSubmitting ? 'Submitting...' : 'Submit'}
                     </Button>
