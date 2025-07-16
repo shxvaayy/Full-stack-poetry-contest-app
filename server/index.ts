@@ -343,13 +343,23 @@ async function initializeApp() {
 
     // Step 3: Initialize admin settings
     console.log('🔧 [STEP] Initializing admin settings...');
-    await initializeAdminSettings();
-    console.log('✅ [STEP] Admin settings initialized');
+    try {
+      await initializeAdminSettings();
+      console.log('✅ [STEP] Admin settings initialized');
+    } catch (error) {
+      console.error('❌ [STEP] Admin settings initialization failed:', error);
+      console.log('⚠️ [STEP] Continuing without admin settings...');
+    }
 
     // Step 4: Register routes
     console.log('🔧 [STEP] Registering routes...');
-    registerRoutes(app);
-    console.log('✅ [STEP] Routes registered successfully');
+    try {
+      registerRoutes(app);
+      console.log('✅ [STEP] Routes registered successfully');
+    } catch (error) {
+      console.error('❌ [STEP] Routes registration failed:', error);
+      throw error; // This is critical, can't continue without routes
+    }
     console.log('🔄 [STEP] Moving to static file setup...');
 
     // Step 4.5: Serve static files and SPA fallback (AFTER API routes)
@@ -382,6 +392,7 @@ async function initializeApp() {
       res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
     });
     
+    console.log('🟢 [STEP] About to call app.listen()...');
     const server = app.listen(Number(PORT), '0.0.0.0', () => {
       console.log('🎉 [SERVER] Server started successfully!');
       console.log(`🌐 [SERVER] Server running on port ${PORT}`);
