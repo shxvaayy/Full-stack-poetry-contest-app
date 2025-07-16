@@ -224,6 +224,10 @@
   mask-composite: exclude;
   animation: border-rotate 0.3s linear infinite;
 }
+.animate-border-rotate {
+  animation: border-rotate 1.5s linear infinite;
+}
+
 @keyframes border-rotate {
   to { --angle: 360deg; }
 }
