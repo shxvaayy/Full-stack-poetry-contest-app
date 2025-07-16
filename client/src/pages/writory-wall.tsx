@@ -223,12 +223,14 @@ export default function WritoryWall() {
                 className={clsx(
                   'break-inside-avoid p-8 mb-6 group relative overflow-hidden flip-card',
                   isFlipping && 'flipping',
-                  cardFlipping[idx] && 'flipping'
+                  cardFlipping[idx] && 'flipping',
+                  expandedPosts[post.id] && 'mx-auto max-w-2xl w-full' // NEW: Center and constrain expanded card
                 )}
                 style={{
                   background: cardBgColors[idx % cardBgColors.length],
                   borderRadius: '1.5rem',
                   boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.10)',
+                  transition: 'max-width 0.3s, margin 0.3s',
                 }}
               >
                 <div
