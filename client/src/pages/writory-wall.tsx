@@ -47,9 +47,9 @@ export default function WritoryWall() {
       // Set liked state for current user
       const liked: { [id: number]: boolean } = {};
       approved.forEach((post: any) => {
-        if (post.liked_by && userUid) {
+        if (post.likedBy && userUid) {
           try {
-            const arr = typeof post.liked_by === 'string' ? JSON.parse(post.liked_by) : post.liked_by;
+            const arr = typeof post.likedBy === 'string' ? JSON.parse(post.likedBy) : post.likedBy;
             liked[post.id] = arr.includes(userUid);
           } catch {}
         }
@@ -68,9 +68,41 @@ export default function WritoryWall() {
     fetchWallPosts();
   }, [userUid]);
 
-  // Refresh handler: fetch new poems from backend
-  const handleRefresh = () => {
-    fetchWallPosts();
+  // Refresh handler: swap one poem with a new, not-currently-visible, random approved poem
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/wall-posts');
+      const data = await response.json();
+      const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
+      // Find poems not currently displayed
+      const currentIds = new Set(displayPosts.map((p) => p.id));
+      const notShown = approved.filter((p) => !currentIds.has(p.id));
+      if (notShown.length === 0) {
+        setLoading(false);
+        return; // No new poems to swap in
+      }
+      // Pick a random new poem
+      const newPoem = notShown[Math.floor(Math.random() * notShown.length)];
+      // Pick a random index to replace in the current display
+      const replaceIdx = Math.floor(Math.random() * displayPosts.length);
+      const newDisplay = [...displayPosts];
+      newDisplay[replaceIdx] = newPoem;
+      setDisplayPosts(newDisplay);
+      // Update liked state for new poem
+      const liked: { [id: number]: boolean } = { ...likedPosts };
+      if (newPoem.likedBy && userUid) {
+        try {
+          const arr = typeof newPoem.likedBy === 'string' ? JSON.parse(newPoem.likedBy) : newPoem.likedBy;
+          liked[newPoem.id] = arr.includes(userUid);
+        } catch {}
+      }
+      setLikedPosts(liked);
+    } catch (e) {
+      // fallback: do nothing
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Like handler: update like and refetch poems
