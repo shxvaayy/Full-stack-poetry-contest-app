@@ -3613,25 +3613,22 @@ router.post('/api/wall-posts', async (req, res) => {
   }
 });
 
-// Get all approved wall posts (limited to 5 most recent)
+// Get all approved wall posts (return all for frontend to handle 5-at-a-time logic)
 router.get('/api/wall-posts', async (req, res) => {
   try {
-    // Always limit to 5 most recent approved posts
+    // Return all approved posts
     const result = await client.query(`
       SELECT * FROM wall_posts 
       WHERE status = 'approved' 
-      ORDER BY created_at DESC 
-      LIMIT 5
+      ORDER BY created_at DESC
     `);
-    
     const countResult = await client.query('SELECT COUNT(*) FROM wall_posts WHERE status = $1', ['approved']);
     const totalPosts = parseInt(countResult.rows[0].count);
-    
     res.json({
       posts: result.rows,
       pagination: {
         page: 1,
-        limit: 5,
+        limit: result.rows.length,
         total: totalPosts,
         pages: 1,
         hasMore: totalPosts > 5

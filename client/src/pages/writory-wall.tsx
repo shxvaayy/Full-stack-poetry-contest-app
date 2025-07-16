@@ -131,6 +131,41 @@ export default function WritoryWall() {
     }
   };
 
+  // Per-card refresh handler: replace only the selected poem
+  const handleCardRefresh = async (replaceIdx: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/wall-posts');
+      const data = await response.json();
+      const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
+      // Find poems not currently displayed
+      const currentIds = new Set(displayPosts.map((p) => p.id));
+      const notShown = approved.filter((p) => !currentIds.has(p.id));
+      if (notShown.length === 0) {
+        setLoading(false);
+        return; // No new poems to swap in
+      }
+      // Pick a random new poem
+      const newPoem = notShown[Math.floor(Math.random() * notShown.length)];
+      const newDisplay = [...displayPosts];
+      newDisplay[replaceIdx] = newPoem;
+      setDisplayPosts(newDisplay);
+      // Update liked state for new poem
+      const liked: { [id: number]: boolean } = { ...likedPosts };
+      if (newPoem.likedBy && userUid) {
+        try {
+          const arr = typeof newPoem.likedBy === 'string' ? JSON.parse(newPoem.likedBy) : newPoem.likedBy;
+          liked[newPoem.id] = arr.includes(userUid);
+        } catch {}
+      }
+      setLikedPosts(liked);
+    } catch (e) {
+      // fallback: do nothing
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8e1ff] via-[#e0f7fa] to-[#ffe6e6] bg-fixed bg-[url('https://www.transparenttextures.com/patterns/diamond-upholstery.png')] py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -154,7 +189,7 @@ export default function WritoryWall() {
           ) : displayPosts.length === 0 ? (
             <div className="text-center text-gray-400">No ink spilled yet. Be the first to write.</div>
           ) : (
-            displayPosts.map((post) => (
+            displayPosts.map((post, idx) => (
               <div
                 key={post.id}
                 className="break-inside-avoid rounded-3xl bg-white/30 backdrop-blur-xl border-2 border-cyan-300/70 shadow-2xl p-8 mb-6 hover:shadow-cyan-400/40 hover:-translate-y-1 hover:scale-[1.03] transition-all duration-300 group relative overflow-hidden"
@@ -186,8 +221,8 @@ export default function WritoryWall() {
                     <span className="ml-1 text-xs text-cyan-700 font-bold">{post.likes}</span>
                   </Button>
                 </div>
-                <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition">
-                  <RefreshCw className="w-5 h-5 text-cyan-300" />
+                <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer" onClick={() => handleCardRefresh(idx)}>
+                  <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
                 </div>
               </div>
             ))
