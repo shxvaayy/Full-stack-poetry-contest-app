@@ -15,7 +15,6 @@ import { connectDatabase, pool } from './db.js';
 import { migrateCouponTable } from './migrate-coupon-table.js';
 import { initializeAdminSettings } from './admin-settings.js';
 import { paypalRouter } from './paypal.js';
-import { addInstagramHandleColumn } from './migrate-instagram-handle.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
