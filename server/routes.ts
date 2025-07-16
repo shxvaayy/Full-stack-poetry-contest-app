@@ -3783,3 +3783,32 @@ router.post('/api/wall-posts/:id/:action', async (req, res) => {
     res.status(500).json({ error: 'Failed to moderate post' });
   }
 });
+
+// Bulk delete wall posts
+router.post('/api/wall-posts/bulk-delete', async (req, res) => {
+  try {
+    const { postIds } = req.body;
+    const adminEmail = req.headers['admin-email'] as string;
+    
+    if (!adminEmail || !['shivaaymehra2@gmail.com', 'bhavyaseth2005@gmail.com'].includes(adminEmail)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    if (!postIds || !Array.isArray(postIds) || postIds.length === 0) {
+      return res.status(400).json({ error: 'Post IDs array is required' });
+    }
+    
+    // Delete multiple posts
+    const placeholders = postIds.map((_, index) => `$${index + 1}`).join(',');
+    await client.query(`DELETE FROM wall_posts WHERE id IN (${placeholders})`, postIds);
+    
+    res.json({ 
+      success: true, 
+      message: `${postIds.length} posts deleted successfully`,
+      deletedCount: postIds.length
+    });
+  } catch (error) {
+    console.error('Error bulk deleting posts:', error);
+    res.status(500).json({ error: 'Failed to delete posts' });
+  }
+});

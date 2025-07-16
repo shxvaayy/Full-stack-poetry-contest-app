@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Check, X, Trash2, Eye, Filter } from "lucide-react";
+import { Loader2, Check, X, Trash2, Eye, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface WallPost {
   id: string;
@@ -21,6 +22,13 @@ interface WallPost {
   likes: number;
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
 const AdminWallModerationPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -28,14 +36,17 @@ const AdminWallModerationPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, pages: 1 });
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     fetchPosts();
-  }, [statusFilter]);
+  }, [statusFilter, pagination.page]);
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`/api/wall-posts/admin?status=${statusFilter}`, {
+      const response = await fetch(`/api/wall-posts/admin?status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}`, {
         headers: {
           'admin-email': user?.email || '',
         },
@@ -47,6 +58,7 @@ const AdminWallModerationPage = () => {
 
       const data = await response.json();
       setPosts(data.posts);
+      setPagination(data.pagination);
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast({
@@ -90,6 +102,74 @@ const AdminWallModerationPage = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPosts.size === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select posts to delete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedPosts.size} posts? This cannot be undone.`)) {
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const response = await fetch('/api/wall-posts/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-email': user?.email || '',
+        },
+        body: JSON.stringify({
+          postIds: Array.from(selectedPosts)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete posts');
+      }
+
+      toast({
+        title: "Success",
+        description: `${selectedPosts.size} posts deleted successfully`,
+      });
+
+      setSelectedPosts(new Set());
+      fetchPosts();
+    } catch (error) {
+      console.error('Error bulk deleting posts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete posts",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedPosts(new Set(posts.map(post => post.id)));
+    } else {
+      setSelectedPosts(new Set());
+    }
+  };
+
+  const handleSelectPost = (postId: string, checked: boolean) => {
+    const newSelected = new Set(selectedPosts);
+    if (checked) {
+      newSelected.add(postId);
+    } else {
+      newSelected.delete(postId);
+    }
+    setSelectedPosts(newSelected);
   };
 
   const getStatusBadge = (status: string) => {
@@ -145,6 +225,22 @@ const AdminWallModerationPage = () => {
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
+
+        {selectedPosts.size > 0 && (
+          <Button
+            onClick={handleBulkDelete}
+            disabled={bulkLoading}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            {bulkLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            Delete {selectedPosts.size} Selected
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6">
@@ -155,88 +251,139 @@ const AdminWallModerationPage = () => {
             </CardContent>
           </Card>
         ) : (
-          posts.map((post) => (
-            <Card key={post.id} className="overflow-hidden">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-xl">{post.title}</CardTitle>
-                      {getStatusBadge(post.status)}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>By: {post.user_name}</span>
-                      <span>•</span>
-                      <span>{post.user_email}</span>
-                      {post.instagram_handle && (
-                        <>
+          <>
+            {/* Bulk Selection Header */}
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+              <Checkbox
+                checked={selectedPosts.size === posts.length && posts.length > 0}
+                onCheckedChange={handleSelectAll}
+              />
+              <span className="text-sm font-medium">
+                {selectedPosts.size > 0 ? `${selectedPosts.size} selected` : 'Select all'}
+              </span>
+            </div>
+
+            {posts.map((post) => (
+              <Card key={post.id} className="overflow-hidden">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      <Checkbox
+                        checked={selectedPosts.has(post.id)}
+                        onCheckedChange={(checked) => handleSelectPost(post.id, checked as boolean)}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-xl">{post.title}</CardTitle>
+                          {getStatusBadge(post.status)}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span>By: {post.user_name}</span>
                           <span>•</span>
-                          <span>@{post.instagram_handle}</span>
-                        </>
-                      )}
-                      <span>•</span>
-                      <span>{formatDate(post.created_at)}</span>
-                      <span>•</span>
-                      <span>{post.likes} likes</span>
+                          <span>{post.user_email}</span>
+                          {post.instagram_handle && (
+                            <>
+                              <span>•</span>
+                              <span>@{post.instagram_handle}</span>
+                            </>
+                          )}
+                          <span>•</span>
+                          <span>{formatDate(post.created_at)}</span>
+                          <span>•</span>
+                          <span>{post.likes} likes</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="prose max-w-none mb-6">
-                  <p className="whitespace-pre-wrap text-gray-700">{post.content}</p>
-                </div>
+                </CardHeader>
                 
-                <Separator className="my-4" />
-                
-                <div className="flex items-center gap-3">
-                  {post.status === "pending" && (
-                    <>
-                      <Button
-                        onClick={() => handleAction(post.id, "approve")}
-                        disabled={actionLoading === post.id}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {actionLoading === post.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Check className="h-4 w-4 mr-2" />
-                        )}
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => handleAction(post.id, "reject")}
-                        disabled={actionLoading === post.id}
-                        variant="destructive"
-                      >
-                        {actionLoading === post.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <X className="h-4 w-4 mr-2" />
-                        )}
-                        Reject
-                      </Button>
-                    </>
-                  )}
+                <CardContent>
+                  <div className="prose max-w-none mb-6">
+                    <p className="whitespace-pre-wrap text-gray-700">{post.content}</p>
+                  </div>
                   
-                  <Button
-                    onClick={() => handleAction(post.id, "delete")}
-                    disabled={actionLoading === post.id}
-                    variant="outline"
-                    className="text-red-600 border-red-600 hover:bg-red-50"
-                  >
-                    {actionLoading === post.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
+                  <Separator className="my-4" />
+                  
+                  <div className="flex items-center gap-3">
+                    {post.status === "pending" && (
+                      <>
+                        <Button
+                          onClick={() => handleAction(post.id, "approve")}
+                          disabled={actionLoading === post.id}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {actionLoading === post.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-2" />
+                          )}
+                          Approve
+                        </Button>
+                        <Button
+                          onClick={() => handleAction(post.id, "reject")}
+                          disabled={actionLoading === post.id}
+                          variant="destructive"
+                        >
+                          {actionLoading === post.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <X className="h-4 w-4 mr-2" />
+                          )}
+                          Reject
+                        </Button>
+                      </>
                     )}
-                    Delete
+                    
+                    <Button
+                      onClick={() => handleAction(post.id, "delete")}
+                      disabled={actionLoading === post.id}
+                      variant="outline"
+                      className="text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      {actionLoading === post.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <div className="text-sm text-gray-600">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} posts
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                    disabled={pagination.page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm">
+                    Page {pagination.page} of {pagination.pages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={pagination.page === pagination.pages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
