@@ -123,7 +123,7 @@ export default function Header() {
     { name: "CONTACT US", href: "/contact" },
     ...(isAdmin ? [
       { name: "ADMIN UPLOAD", href: "/admin-upload" },
-      { name: "WALL MODERATION", href: "/admin-wall-moderation" }
+      { name: "STATUS", href: "/admin-wall-moderation" }
     ] : []),
   ];
 
@@ -152,12 +152,12 @@ export default function Header() {
 
           {/* Desktop Navigation - Perfectly Centered */}
           <nav className="hidden lg:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm px-2 py-1 ${
+                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm px-1 py-1 ${
                     location === item.href ? "border-b-2 border-white pb-1" : ""
                   }`}
                 >
