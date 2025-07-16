@@ -221,10 +221,9 @@ export default function WritoryWall() {
               <div
                 key={post.id}
                 className={clsx(
-                  'break-inside-avoid p-8 mb-6 group relative overflow-hidden flip-card',
+                  'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card mx-auto max-w-2xl w-full', // Always center and constrain
                   isFlipping && 'flipping',
-                  cardFlipping[idx] && 'flipping',
-                  expandedPosts[post.id] && 'mx-auto max-w-2xl w-full' // NEW: Center and constrain expanded card
+                  cardFlipping[idx] && 'flipping'
                 )}
                 style={{
                   background: cardBgColors[idx % cardBgColors.length],
