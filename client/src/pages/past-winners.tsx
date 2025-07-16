@@ -166,14 +166,14 @@ export default function PastWinnersPage() {
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">{formatDate12h(timeline.contest_launch_date)}</p>
+                  <p className="font-semibold text-gray-900">{formatDateTime12h(timeline.contest_launch_date)}</p>
                   <p className="text-gray-600">Contest Launch & Submissions Open</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-yellow-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900">{formatDate12h(timeline.submission_deadline)}</p>
+                  <p className="font-semibold text-gray-900">{formatDateTime12h(timeline.submission_deadline)}</p>
                   <p className="text-gray-600">Submission Deadline</p>
                 </div>
               </div>
