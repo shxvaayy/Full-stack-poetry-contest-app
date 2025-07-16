@@ -1,6 +1,7 @@
 import { db } from './db.js';
 import { users, submissions } from './schema.js';
 import { eq, and, desc, inArray } from 'drizzle-orm';
+import { client } from './db.js';
 
 export async function getUserByUid(uid: string) {
   try {
@@ -398,10 +399,9 @@ export async function bulkApproveWallPosts(postIds: number[] | string[]) {
     if (!postIds || postIds.length === 0) return 0;
     // Convert all IDs to numbers for type safety
     const numericIds = postIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
-    // Use raw SQL for wall_posts table since it's not in drizzle schema
     const placeholders = numericIds.map((_, i) => `$${i + 1}`).join(',');
     const query = `UPDATE wall_posts SET status = 'approved', moderated_at = NOW() WHERE id IN (${placeholders}) RETURNING *`;
-    const result = await db.execute(query, { args: numericIds });
+    const result = await client.query(query, numericIds);
     const rows = result.rows || [];
     console.log(`✅ Bulk approved ${rows.length} wall posts`);
     return rows.length;
