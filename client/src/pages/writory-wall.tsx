@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Heart, Instagram, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/queryClient';
+import brickWallBg from '@/assets/brick-wall-bg.jpg';
+import './writory-wall-font.css';
 
 interface WallPost {
   id: number;
@@ -152,11 +154,39 @@ export default function WritoryWall() {
     }
   };
 
+  const cardBgColors = [
+    '#ffe4ec', // Light Pink
+    '#e0f0ff', // Light Blue
+    '#e6ffed', // Light Green
+    '#f2f2f2', // Light Grey
+    '#ffe5e5', // Light Red
+  ];
+  const cardHeadingColors = [
+    '#d63384', // Dark Pink
+    '#0056b3', // Dark Blue
+    '#218739', // Dark Green
+    '#444444', // Dark Grey
+    '#c0392b', // Dark Red
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8e1ff] via-[#e0f7fa] to-[#ffe6e6] bg-fixed bg-[url('https://www.transparenttextures.com/patterns/diamond-upholstery.png')] py-8">
+    <div
+      className="min-h-screen py-8"
+      style={{
+        backgroundImage: `url(${brickWallBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-extrabold text-cyan-700 mb-2 font-cursive drop-shadow-lg tracking-wide uppercase">Writory Wall</h1>
+          <h1
+            className="text-5xl font-extrabold mb-2 drop-shadow-lg tracking-wide uppercase writory-wall-heading"
+            style={{ fontFamily: 'Pacifico, cursive', letterSpacing: '0.04em', textShadow: '0 2px 12px rgba(0,0,0,0.10)' }}
+          >
+            Writory Wall
+          </h1>
           <p className="text-lg font-bold text-cyan-900 max-w-2xl mx-auto font-serif tracking-widest uppercase">
             POEMS PENNED BY HEARTS LIKE YOURS.
           </p>
@@ -178,21 +208,28 @@ export default function WritoryWall() {
             displayPosts.map((post, idx) => (
               <div
                 key={post.id}
-                className="break-inside-avoid rounded-3xl bg-white/30 backdrop-blur-xl border-2 border-cyan-300/70 shadow-2xl p-8 mb-6 hover:shadow-cyan-400/40 hover:-translate-y-1 hover:scale-[1.03] transition-all duration-300 group relative overflow-hidden"
-                style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)' }}
+                className="break-inside-avoid p-8 mb-6 group relative overflow-hidden"
+                style={{
+                  background: cardBgColors[idx % cardBgColors.length],
+                  borderRadius: '1.5rem',
+                  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.10)',
+                }}
               >
-                <div className="mb-2">
-                  <span className="block text-2xl font-extrabold text-cyan-700 font-cursive drop-shadow-sm truncate" title={post.title}>{post.title}</span>
+                <div
+                  className="mb-2"
+                  style={{
+                    color: cardHeadingColors[idx % cardHeadingColors.length],
+                    fontWeight: 'bold',
+                    fontSize: '1.25rem',
+                    textShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  }}
+                >
+                  {post.title}
                 </div>
                 <div className="text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition">
                   {getFirstLines(post.content, 3)}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  {post.authorProfilePicture && post.authorProfilePicture.includes('cloudinary') ? (
-                    <img src={post.authorProfilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-200 shadow-sm" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png'; }} />
-                  ) : (
-                    <img src="/default-avatar.png" alt="Default Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-100 shadow-sm" />
-                  )}
                   <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
                   {post.author_instagram && (
                     <a href={`https://instagram.com/${post.author_instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">

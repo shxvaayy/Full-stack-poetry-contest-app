@@ -3672,39 +3672,48 @@ router.post('/api/wall-posts/:id/like', async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
-    // Get current post
+    // Get current post (make sure to use liked_by, not likedBy)
     const postResult = await client.query('SELECT * FROM wall_posts WHERE id = $1 AND status = $2', [id, 'approved']);
     if (postResult.rows.length === 0) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
     const post = postResult.rows[0];
+    // Always use liked_by (snake_case) for DB access
     const likedBy = post.liked_by ? JSON.parse(post.liked_by) : [];
     const isLiked = likedBy.includes(userUid);
-    
+    console.log('[LIKE DEBUG] Post ID:', id, 'User UID:', userUid, 'Current likes:', post.likes, 'Current liked_by:', likedBy);
+    let updateResult;
     if (isLiked) {
       // Unlike
-      const newLikedBy = likedBy.filter((uid: string) => uid !== userUid);
-      await client.query(
+      const newLikedBy = likedBy.filter((uid) => uid !== userUid);
+      updateResult = await client.query(
         'UPDATE wall_posts SET likes = $1, liked_by = $2 WHERE id = $3',
         [post.likes - 1, JSON.stringify(newLikedBy), id]
       );
+      console.log('[LIKE DEBUG] Unlike query result:', updateResult);
     } else {
       // Like
       likedBy.push(userUid);
-      await client.query(
+      updateResult = await client.query(
         'UPDATE wall_posts SET likes = $1, liked_by = $2 WHERE id = $3',
         [post.likes + 1, JSON.stringify(likedBy), id]
       );
+      console.log('[LIKE DEBUG] Like query result:', updateResult);
     }
+    
+    // Fetch updated post to confirm (use liked_by)
+    const updatedPostResult = await client.query('SELECT * FROM wall_posts WHERE id = $1', [id]);
+    const updatedPost = updatedPostResult.rows[0];
+    console.log('[LIKE DEBUG] Updated post:', updatedPost);
     
     res.json({ 
       success: true, 
       liked: !isLiked,
-      likes: isLiked ? post.likes - 1 : post.likes + 1
+      likes: updatedPost.likes
     });
   } catch (error) {
-    console.error('Error liking/unliking post:', error);
+    console.error('[LIKE DEBUG] Error liking/unliking post:', error);
     res.status(500).json({ error: 'Failed to like/unlike post' });
   }
 });
