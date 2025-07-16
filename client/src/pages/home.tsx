@@ -151,47 +151,51 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
               <Link href="/submit" className="w-full md:w-auto">
-                <div className="relative w-full md:max-w-xs">
+                <div className="relative w-full md:max-w-xs flex items-center justify-center">
+                  {/* Outer animated border */}
+                  <span className="absolute -inset-1.5 z-0 pointer-events-none">
+                    <svg className="w-full h-full" viewBox="0 0 104 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                      <defs>
+                        <filter id="glow-cyan-outer" x="-20%" y="-20%" width="140%" height="140%">
+                          <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
+                          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
+                        </filter>
+                      </defs>
+                      {/* Faint static border track */}
+                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
+                      {/* Moving glowing segment */}
+                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan-outer)">
+                        <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
+                      </rect>
+                    </svg>
+                  </span>
                   <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-cyan-400/60 relative z-10">
                     🚀 ENTER THE CONTEST
                   </Button>
-                  {/* SVG Neon Circuit Cyan Border */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox="0 0 100 40" preserveAspectRatio="none">
-                    <defs>
-                      <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
-                        <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
-                      </filter>
-                    </defs>
-                    {/* Faint static border track */}
-                    <rect x="2" y="2" width="96" height="36" rx="12" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
-                    {/* Moving glowing segment */}
-                    <rect x="2" y="2" width="96" height="36" rx="12" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan)">
-                      <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
-                    </rect>
-                  </svg>
                 </div>
               </Link>
               <Link href="/writory-wall" className="w-full md:w-auto">
-                <div className="relative w-full md:max-w-xs">
+                <div className="relative w-full md:max-w-xs flex items-center justify-center">
+                  {/* Outer animated border */}
+                  <span className="absolute -inset-1.5 z-0 pointer-events-none">
+                    <svg className="w-full h-full" viewBox="0 0 104 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                      <defs>
+                        <filter id="glow-cyan-outer" x="-20%" y="-20%" width="140%" height="140%">
+                          <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
+                          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
+                        </filter>
+                      </defs>
+                      {/* Faint static border track */}
+                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
+                      {/* Moving glowing segment */}
+                      <rect x="4" y="4" width="96" height="36" rx="14" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan-outer)">
+                        <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
+                      </rect>
+                    </svg>
+                  </span>
                   <Button size="lg" className="w-full bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-cyan-400/60 relative z-10">
                     🏆 WRITORY WALL
                   </Button>
-                  {/* SVG Neon Circuit Cyan Border */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" viewBox="0 0 100 40" preserveAspectRatio="none">
-                    <defs>
-                      <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#06b6d4" flood-opacity="0.8" />
-                        <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.6" />
-                      </filter>
-                    </defs>
-                    {/* Faint static border track */}
-                    <rect x="2" y="2" width="96" height="36" rx="12" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.15" />
-                    {/* Moving glowing segment */}
-                    <rect x="2" y="2" width="96" height="36" rx="12" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="40 224" strokeDashoffset="0" filter="url(#glow-cyan)">
-                      <animate attributeName="stroke-dashoffset" from="0" to="-264" dur="1.2s" repeatCount="indefinite" />
-                    </rect>
-                  </svg>
                 </div>
               </Link>
             </div>
