@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart, Instagram, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { apiRequest } from '@/lib/queryClient';
 
 interface WallPost {
   id: number;
+  title: string;
   content: string;
   author_name: string;
   author_instagram?: string;
   likes: number;
   status: 'pending' | 'approved' | 'rejected';
+  likedBy?: string[]; // for local state
 }
 
 function getFirstLines(text: string, lines = 3) {
@@ -23,9 +27,13 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export default function WritoryWall() {
+  const { user } = useAuth();
+  const userUid = user?.uid;
   const [allPosts, setAllPosts] = useState<WallPost[]>([]);
   const [displayPosts, setDisplayPosts] = useState<WallPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [likeLoading, setLikeLoading] = useState<{ [id: number]: boolean }>({});
+  const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
 
   // Fetch all approved posts
   useEffect(() => {
@@ -37,6 +45,17 @@ export default function WritoryWall() {
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
         setAllPosts(approved);
         setDisplayPosts(shuffleArray(approved).slice(0, 5));
+        // Set liked state for current user
+        const liked: { [id: number]: boolean } = {};
+        approved.forEach((post: any) => {
+          if (post.liked_by && userUid) {
+            try {
+              const arr = typeof post.liked_by === 'string' ? JSON.parse(post.liked_by) : post.liked_by;
+              liked[post.id] = arr.includes(userUid);
+            } catch {}
+          }
+        });
+        setLikedPosts(liked);
       } catch (e) {
         setAllPosts([]);
         setDisplayPosts([]);
@@ -45,25 +64,56 @@ export default function WritoryWall() {
       }
     };
     fetchPosts();
-  }, []);
+  }, [userUid]);
 
   // Refresh handler
   const handleRefresh = () => {
     setDisplayPosts(shuffleArray(allPosts).slice(0, 5));
   };
 
+  // Like handler
+  const handleLike = async (post: WallPost) => {
+    if (!userUid) {
+      alert('Please sign in to like poems!');
+      return;
+    }
+    if (likeLoading[post.id]) return;
+    setLikeLoading((prev) => ({ ...prev, [post.id]: true }));
+    try {
+      const res = await fetch(`/api/wall-posts/${post.id}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'user-uid': userUid,
+        },
+      });
+      const data = await res.json();
+      // Update local state for likes and liked
+      setDisplayPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id ? { ...p, likes: data.likes } : p
+        )
+      );
+      setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
+    } catch (e) {
+      alert('Failed to like/unlike. Please try again.');
+    } finally {
+      setLikeLoading((prev) => ({ ...prev, [post.id]: false }));
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#f8e1ff] via-[#e0f7fa] to-[#ffe6e6] bg-fixed bg-[url('https://www.transparenttextures.com/patterns/diamond-upholstery.png')] py-8">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cursive">Writory Wall</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto font-serif">
-            Poems penned by hearts like yours.
+          <h1 className="text-5xl font-extrabold text-cyan-700 mb-2 font-cursive drop-shadow-lg tracking-wide uppercase">Writory Wall</h1>
+          <p className="text-lg font-bold text-cyan-900 max-w-2xl mx-auto font-serif tracking-widest uppercase">
+            POEMS PENNED BY HEARTS LIKE YOURS.
           </p>
         </div>
         {allPosts.length > 5 && (
           <div className="flex justify-center mb-6">
-            <Button onClick={handleRefresh} className="flex items-center gap-2 px-6 py-2 bg-cyan-500 text-white font-semibold rounded-full shadow-lg hover:bg-cyan-600 transition">
+            <Button onClick={handleRefresh} className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-400 to-purple-400 text-white font-semibold rounded-full shadow-lg hover:from-cyan-500 hover:to-purple-500 transition backdrop-blur-md">
               <RefreshCw className="w-5 h-5 animate-spin-slow" />
               More voices await…
             </Button>
@@ -76,7 +126,14 @@ export default function WritoryWall() {
             <div className="text-center text-gray-400">No ink spilled yet. Be the first to write.</div>
           ) : (
             displayPosts.map((post) => (
-              <div key={post.id} className="break-inside-avoid rounded-2xl bg-white/80 shadow-xl border border-cyan-100 p-6 mb-6 hover:shadow-cyan-200 transition group relative overflow-hidden">
+              <div
+                key={post.id}
+                className="break-inside-avoid rounded-3xl bg-white/30 backdrop-blur-xl border-2 border-cyan-300/70 shadow-2xl p-8 mb-6 hover:shadow-cyan-400/40 hover:-translate-y-1 hover:scale-[1.03] transition-all duration-300 group relative overflow-hidden"
+                style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)' }}
+              >
+                <div className="mb-2">
+                  <span className="block text-2xl font-extrabold text-cyan-700 font-cursive drop-shadow-sm truncate" title={post.title}>{post.title}</span>
+                </div>
                 <div className="text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition">
                   {getFirstLines(post.content, 3)}
                 </div>
@@ -89,10 +146,15 @@ export default function WritoryWall() {
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-2">
-                  <Button variant="ghost" size="sm" className="flex items-center gap-1 text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded-full">
-                    <Heart className="w-4 h-4" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`flex items-center gap-1 text-cyan-700 hover:bg-cyan-100 px-3 py-1 rounded-full font-bold text-base shadow-md border border-cyan-300/60 ${likeLoading[post.id] ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={() => handleLike(post)}
+                  >
+                    {likedPosts[post.id] ? <Heart className="w-5 h-5 fill-cyan-500 text-cyan-500 drop-shadow" /> : <Heart className="w-5 h-5" />}
                     <span className="font-semibold">Feel this</span>
-                    <span className="ml-1 text-xs text-gray-500">{post.likes}</span>
+                    <span className="ml-1 text-xs text-cyan-700 font-bold">{post.likes}</span>
                   </Button>
                 </div>
                 <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition">
