@@ -222,7 +222,7 @@
   background: conic-gradient(from var(--angle,0deg), #ff1744 0 60%, transparent 60% 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  animation: border-rotate 0.7s linear infinite;
+  animation: border-rotate 0.3s linear infinite;
 }
 @keyframes border-rotate {
   to { --angle: 360deg; }
