@@ -198,6 +198,13 @@ export default function WritoryWall() {
           <p className="writory-wall-subtitle max-w-2xl mx-auto font-serif">
             Poems penned by hearts like yours.
           </p>
+          {displayPosts.length === 0 && (
+            <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">
+              <p className="text-black font-semibold">
+                No ink spilled yet. Be the first to write.
+              </p>
+            </div>
+          )}
         </div>
         {allPosts.length > 5 && (
           <div className="flex justify-center mb-6">
