@@ -123,7 +123,7 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Header will remain as is, outside the bg */}
+      {/* Header remains outside bg */}
       <div
         style={{
           backgroundImage: `url(${homeBg})`,
@@ -134,6 +134,7 @@ export default function HomePage() {
           width: '100%',
         }}
       >
+        {/* All main content here, including HeroCarousel and sections */}
         {/* Hero Section with Rotating Carousel */}
         <HeroCarousel>
           <div className="text-center text-white px-4 max-w-6xl mx-auto">
@@ -402,7 +403,7 @@ export default function HomePage() {
 
         <ChatbotWidget />
       </div>
-      {/* Footer will remain as is, outside the bg */}
+      {/* Footer remains outside bg */}
     </div>
   );
 }
