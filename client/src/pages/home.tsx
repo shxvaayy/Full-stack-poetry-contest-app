@@ -151,12 +151,12 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
               <Link href="/submit" className="w-full md:w-auto">
-                <Button size="lg" className="w-full md:max-w-xs ring-2 ring-cyan-400/30 bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-purple-500/60 hover:ring-4 hover:ring-cyan-400/70 focus:ring-4 focus:ring-cyan-400/70 animate-[pulseGlowPurple_2s_infinite]">
+                <Button size="lg" className="w-full md:max-w-xs ring-4 ring-cyan-400 border-2 border-cyan-400 bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-purple-500/60 hover:ring-4 hover:ring-cyan-400/70 focus:ring-4 focus:ring-cyan-400/70 animate-[pulseGlowPurple_2s_infinite]">
                   🚀 ENTER THE CONTEST
                 </Button>
               </Link>
               <Link href="/writory-wall" className="w-full md:w-auto">
-                <Button size="lg" className="w-full md:max-w-xs ring-2 ring-cyan-400/30 bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-purple-500/60 hover:ring-4 hover:ring-cyan-400/70 focus:ring-4 focus:ring-cyan-400/70 animate-[pulseGlowPurple_2s_infinite]">
+                <Button size="lg" className="w-full md:max-w-xs ring-4 ring-cyan-400 border-2 border-cyan-400 bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-purple-500/60 hover:ring-4 hover:ring-cyan-400/70 focus:ring-4 focus:ring-cyan-400/70 animate-[pulseGlowPurple_2s_infinite]">
                   🏆 WRITORY WALL
                 </Button>
               </Link>
