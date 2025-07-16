@@ -182,13 +182,14 @@ export default function WritoryWall() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1
-            className="text-5xl font-extrabold mb-2 drop-shadow-lg tracking-wide uppercase writory-wall-heading"
-            style={{ fontFamily: 'Pacifico, cursive', letterSpacing: '0.04em', textShadow: '0 2px 12px rgba(0,0,0,0.10)' }}
+            className="text-5xl font-extrabold mb-2 drop-shadow-lg tracking-wide writory-wall-heading"
+            // Removed uppercase for graffiti style
+            style={{ letterSpacing: '0.04em', textShadow: '0 2px 12px rgba(0,0,0,0.10)' }}
           >
             Writory Wall
           </h1>
-          <p className="text-lg font-bold text-cyan-900 max-w-2xl mx-auto font-serif tracking-widest uppercase">
-            POEMS PENNED BY HEARTS LIKE YOURS.
+          <p className="writory-wall-subtitle text-cyan-900 max-w-2xl mx-auto font-serif">
+            Poems penned by hearts like yours.
           </p>
         </div>
         {allPosts.length > 5 && (

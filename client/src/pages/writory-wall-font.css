@@ -1,5 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
 
 .writory-wall-heading {
-  font-family: 'Pacifico', cursive;
+  font-family: 'Permanent Marker', cursive;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.10);
+}
+
+.writory-wall-subtitle {
+  font-family: 'serif';
+  font-size: 1.1rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: #111;
 } 
