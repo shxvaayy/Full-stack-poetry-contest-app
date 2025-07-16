@@ -225,7 +225,7 @@
   animation: border-rotate 0.3s linear infinite;
 }
 .animate-border-rotate {
-  animation: border-rotate 1.5s linear infinite;
+  animation: border-rotate 0.4s linear infinite;
 }
 
 @keyframes border-rotate {
@@ -238,3 +238,15 @@
 }
 
 .animate-\[pulseGlowRed_2s_infinite\] { animation: pulseGlowRed 2s infinite; }
+
+.border-animated-darkpurple {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  pointer-events: none;
+  z-index: 10;
+  border: 2px solid transparent;
+  background: conic-gradient(from var(--angle,0deg), #7c3aed 0deg 360deg);
+  animation: border-rotate 0.4s linear infinite;
+  box-sizing: border-box;
+}
