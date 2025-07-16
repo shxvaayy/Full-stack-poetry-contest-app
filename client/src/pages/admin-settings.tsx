@@ -483,6 +483,14 @@ export default function AdminSettingsPage() {
     }
   };
 
+  // Helper to format date string for datetime-local input (local time, not UTC)
+  function toDatetimeLocal(dateStr?: string) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
@@ -550,7 +558,7 @@ export default function AdminSettingsPage() {
                   <Input
                     id="contest-launch-date"
                     type="datetime-local"
-                    value={settings.contest_launch_date ? new Date(settings.contest_launch_date).toISOString().slice(0,16) : ''}
+                    value={toDatetimeLocal(settings.contest_launch_date)}
                     onChange={e => setSettings(prev => ({ ...prev, contest_launch_date: e.target.value }))}
                     className="w-56"
                   />
@@ -567,7 +575,7 @@ export default function AdminSettingsPage() {
                   <Input
                     id="submission-deadline"
                     type="datetime-local"
-                    value={settings.submission_deadline ? new Date(settings.submission_deadline).toISOString().slice(0,16) : ''}
+                    value={toDatetimeLocal(settings.submission_deadline)}
                     onChange={e => setSettings(prev => ({ ...prev, submission_deadline: e.target.value }))}
                     className="w-56"
                   />
@@ -584,7 +592,7 @@ export default function AdminSettingsPage() {
                   <Input
                     id="result-announcement-date"
                     type="datetime-local"
-                    value={settings.result_announcement_date ? new Date(settings.result_announcement_date).toISOString().slice(0,16) : ''}
+                    value={toDatetimeLocal(settings.result_announcement_date)}
                     onChange={e => setSettings(prev => ({ ...prev, result_announcement_date: e.target.value }))}
                     className="w-56"
                   />
