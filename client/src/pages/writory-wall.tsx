@@ -107,9 +107,9 @@ export default function WritoryWall() {
       const res = await fetch(`/api/wall-posts/${post.id}/like`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'user-uid': userUid,
         },
+        // No body, no Content-Type
       });
       const data = await res.json();
       console.log('Like API response:', data); // Debug
