@@ -22,11 +22,11 @@ interface FAQData {
 const faqData: FAQData = {
   "1": {
     question: "What is Writory?",
-    answer: "Writory is a platform that hosts poetry and writing contests for aspiring writers. Participants can win cash prizes, recognition, shoutouts, and verified certificates."
+    answer: "Writory is a platform that hosts poetry and writing contests for aspiring writers. Participants can win cash prizes, recognition, shoutouts, and certificates."
   },
   "2": {
     question: "Who can participate?",
-    answer: "Anyone with a passion for writing can participate. There are no age, country, or language restrictions – we welcome global talent!"
+    answer: "Anyone with a passion for writing can participate! You must be 13 or older, and entries are welcome from any country. Right now, we accept submissions in English only, but we’re planning to expand to more languages soon!"
   },
   "3": {
     question: "What kinds of contests do you conduct?",
@@ -50,7 +50,7 @@ const faqData: FAQData = {
   },
   "8": {
     question: "What are the prizes?",
-    answer: "Cash prizes, verified digital certificates, Instagram shoutouts & recognition, and chance to be featured as a star writer."
+    answer: "Cash prizes, digital certificates, Instagram shoutouts & recognition, and chance to be featured as a star writer."
   },
   "9": {
     question: "What languages are accepted?",
@@ -70,11 +70,11 @@ const faqData: FAQData = {
   },
   "13": {
     question: "Where can I follow you?",
-    answer: "Follow us on Instagram: @writory_official and visit our website for updates!"
+    answer: "Follow us on Instagram: @writoryofficial and visit our website for updates!"
   },
   "14": {
     question: "How can I contact Writory for support?",
-    answer: "Email us or DM us on Instagram @writory_official."
+    answer: "Email us or DM us on Instagram @writoryofficial."
   },
   "15": {
     question: "What is Writory Wall?",
