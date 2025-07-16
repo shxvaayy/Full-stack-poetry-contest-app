@@ -35,43 +35,45 @@ export default function WritoryWall() {
   const [likeLoading, setLikeLoading] = useState<{ [id: number]: boolean }>({});
   const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
 
-  // Fetch all approved posts
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/wall-posts');
-        const data = await response.json();
-        const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
-        setAllPosts(approved);
-        setDisplayPosts(shuffleArray(approved).slice(0, 5));
-        // Set liked state for current user
-        const liked: { [id: number]: boolean } = {};
-        approved.forEach((post: any) => {
-          if (post.liked_by && userUid) {
-            try {
-              const arr = typeof post.liked_by === 'string' ? JSON.parse(post.liked_by) : post.liked_by;
-              liked[post.id] = arr.includes(userUid);
-            } catch {}
-          }
-        });
-        setLikedPosts(liked);
-      } catch (e) {
-        setAllPosts([]);
-        setDisplayPosts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPosts();
-  }, [userUid]);
-
-  // Refresh handler
-  const handleRefresh = () => {
-    setDisplayPosts(shuffleArray(allPosts).slice(0, 5));
+  // Fetch posts helper
+  const fetchWallPosts = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/wall-posts');
+      const data = await response.json();
+      const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
+      setAllPosts(approved);
+      setDisplayPosts(approved);
+      // Set liked state for current user
+      const liked: { [id: number]: boolean } = {};
+      approved.forEach((post: any) => {
+        if (post.liked_by && userUid) {
+          try {
+            const arr = typeof post.liked_by === 'string' ? JSON.parse(post.liked_by) : post.liked_by;
+            liked[post.id] = arr.includes(userUid);
+          } catch {}
+        }
+      });
+      setLikedPosts(liked);
+    } catch (e) {
+      setAllPosts([]);
+      setDisplayPosts([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Like handler
+  // Fetch all approved posts on mount and when userUid changes
+  useEffect(() => {
+    fetchWallPosts();
+  }, [userUid]);
+
+  // Refresh handler: fetch new poems from backend
+  const handleRefresh = () => {
+    fetchWallPosts();
+  };
+
+  // Like handler: update like and refetch poems
   const handleLike = async (post: WallPost) => {
     if (!userUid) {
       alert('Please sign in to like poems!');
@@ -87,14 +89,9 @@ export default function WritoryWall() {
           'user-uid': userUid,
         },
       });
-      const data = await res.json();
-      // Update local state for likes and liked
-      setDisplayPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id ? { ...p, likes: data.likes } : p
-        )
-      );
-      setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
+      await res.json();
+      // Refetch poems to update like count and state
+      fetchWallPosts();
     } catch (e) {
       alert('Failed to like/unlike. Please try again.');
     } finally {
