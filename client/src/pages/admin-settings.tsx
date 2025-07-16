@@ -549,8 +549,8 @@ export default function AdminSettingsPage() {
                   </div>
                   <Input
                     id="contest-launch-date"
-                    type="date"
-                    value={settings.contest_launch_date ? new Date(settings.contest_launch_date).toISOString().slice(0,10) : ''}
+                    type="datetime-local"
+                    value={settings.contest_launch_date ? new Date(settings.contest_launch_date).toISOString().slice(0,16) : ''}
                     onChange={e => setSettings(prev => ({ ...prev, contest_launch_date: e.target.value }))}
                     className="w-56"
                   />
@@ -566,8 +566,8 @@ export default function AdminSettingsPage() {
                   </div>
                   <Input
                     id="submission-deadline"
-                    type="date"
-                    value={settings.submission_deadline ? new Date(settings.submission_deadline).toISOString().slice(0,10) : ''}
+                    type="datetime-local"
+                    value={settings.submission_deadline ? new Date(settings.submission_deadline).toISOString().slice(0,16) : ''}
                     onChange={e => setSettings(prev => ({ ...prev, submission_deadline: e.target.value }))}
                     className="w-56"
                   />
