@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Check, X, Trash2, Eye } from "lucide-react";
+import { Loader2, Check, X, Trash2, Eye, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface WallPost {
   id: string;
@@ -26,14 +27,15 @@ const AdminWallModerationPage = () => {
   const [posts, setPosts] = useState<WallPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("pending");
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [statusFilter]);
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch("/api/wall-posts/admin", {
+      const response = await fetch(`/api/wall-posts/admin?status=${statusFilter}`, {
         headers: {
           'admin-email': user?.email || '',
         },
@@ -130,6 +132,19 @@ const AdminWallModerationPage = () => {
         <p className="text-gray-600">
           Review and moderate user submissions for the Writory Wall
         </p>
+      </div>
+
+      <div className="flex justify-between items-center mb-6">
+        <Select onValueChange={(value) => setStatusFilter(value)} value={statusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-6">
