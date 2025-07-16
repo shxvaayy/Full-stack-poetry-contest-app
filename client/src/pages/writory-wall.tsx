@@ -195,7 +195,7 @@ export default function WritoryWall() {
           >
             Writory Wall
           </h1>
-          <p className="writory-wall-subtitle text-cyan-900 max-w-2xl mx-auto font-serif">
+          <p className="writory-wall-subtitle max-w-2xl mx-auto font-serif">
             Poems penned by hearts like yours.
           </p>
         </div>
