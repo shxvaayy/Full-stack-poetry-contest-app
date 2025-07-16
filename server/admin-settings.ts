@@ -11,9 +11,12 @@ export interface AdminSettings {
 // Initialize admin settings table
 export async function initializeAdminSettings() {
   try {
+    console.log('🔧 [ADMIN] Starting admin settings initialization...');
     await connectDatabase();
+    console.log('🔧 [ADMIN] Database connected for admin settings');
 
     // Create admin_settings table if it doesn't exist
+    console.log('🔧 [ADMIN] Creating admin_settings table...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS admin_settings (
         id SERIAL PRIMARY KEY,
@@ -22,8 +25,10 @@ export async function initializeAdminSettings() {
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
+    console.log('✅ [ADMIN] Admin settings table created/verified');
 
     // Insert default settings if they don't exist
+    console.log('🔧 [ADMIN] Inserting default settings...');
     await client.query(`
       INSERT INTO admin_settings (setting_key, setting_value)
       VALUES 
@@ -31,11 +36,15 @@ export async function initializeAdminSettings() {
         ('free_tier_reset_timestamp', $1)
       ON CONFLICT (setting_key) DO NOTHING
     `, [new Date().toISOString()]);
+    console.log('✅ [ADMIN] Default settings inserted');
 
-    console.log('✅ Admin settings initialized');
-  } catch (error) {
-    console.error('❌ Error initializing admin settings:', error);
-    throw error;
+    console.log('✅ [ADMIN] Admin settings initialized successfully');
+  } catch (error: any) {
+    console.error('❌ [ADMIN] Error initializing admin settings:', error);
+    console.error('❌ [ADMIN] Error details:', error.message);
+    console.error('❌ [ADMIN] Error stack:', error.stack);
+    // Don't throw error, just log it and continue
+    console.log('⚠️ [ADMIN] Continuing without admin settings...');
   }
 }
 
