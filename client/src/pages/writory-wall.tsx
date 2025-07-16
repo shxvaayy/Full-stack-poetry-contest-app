@@ -13,6 +13,7 @@ interface WallPost {
   likes: number;
   status: 'pending' | 'approved' | 'rejected';
   likedBy?: string[]; // for local state
+  authorProfilePicture?: string; // Added for profile picture
 }
 
 function getFirstLines(text: string, lines = 3) {
@@ -88,7 +89,7 @@ export default function WritoryWall() {
     }
   };
 
-  // Like handler: update like and refetch poems
+  // Like handler: update like and update count from backend response
   const handleLike = async (post: WallPost) => {
     if (!userUid) {
       alert('Please sign in to like poems!');
@@ -105,7 +106,7 @@ export default function WritoryWall() {
         },
       });
       const data = await res.json();
-      // Update like count for this poem in displayPosts
+      // Update like count and liked state for this poem in displayPosts
       setDisplayPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, likes: data.likes } : p));
       setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
     } catch (e) {
@@ -186,6 +187,11 @@ export default function WritoryWall() {
                   {getFirstLines(post.content, 3)}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
+                  {post.authorProfilePicture ? (
+                    <img src={post.authorProfilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-200 shadow-sm" />
+                  ) : (
+                    <img src="/default-avatar.png" alt="Default Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-100 shadow-sm" />
+                  )}
                   <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
                   {post.author_instagram && (
                     <a href={`https://instagram.com/${post.author_instagram.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
