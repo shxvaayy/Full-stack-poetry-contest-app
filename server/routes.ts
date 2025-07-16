@@ -3616,6 +3616,7 @@ router.post('/api/wall-posts', async (req, res) => {
 // Get all approved wall posts (return all for frontend to handle 5-at-a-time logic)
 router.get('/api/wall-posts', async (req, res) => {
   try {
+    const userUid = req.headers['user-uid'] as string | undefined;
     // Return all approved posts
     const result = await client.query(`
       SELECT * FROM wall_posts 
@@ -3624,11 +3625,25 @@ router.get('/api/wall-posts', async (req, res) => {
     `);
     const countResult = await client.query('SELECT COUNT(*) FROM wall_posts WHERE status = $1', ['approved']);
     const totalPosts = parseInt(countResult.rows[0].count);
+    // Map posts to include likedBy array and liked boolean for current user
+    const posts = result.rows.map(post => {
+      let likedBy: string[] = [];
+      try {
+        likedBy = post.liked_by ? JSON.parse(post.liked_by) : [];
+      } catch {
+        likedBy = [];
+      }
+      return {
+        ...post,
+        likedBy,
+        liked: userUid ? likedBy.includes(userUid) : false
+      };
+    });
     res.json({
-      posts: result.rows,
+      posts,
       pagination: {
         page: 1,
-        limit: result.rows.length,
+        limit: posts.length,
         total: totalPosts,
         pages: 1,
         hasMore: totalPosts > 5
