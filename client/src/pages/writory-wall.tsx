@@ -35,6 +35,13 @@ export default function WritoryWall() {
   const [likeLoading, setLikeLoading] = useState<{ [id: number]: boolean }>({});
   const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
 
+  // Helper to pick 5 unique random poems from a pool
+  function pickFiveRandom(posts: WallPost[]): WallPost[] {
+    if (posts.length <= 5) return posts;
+    const shuffled = [...posts].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 5);
+  }
+
   // Fetch posts helper
   const fetchWallPosts = async () => {
     setLoading(true);
@@ -43,7 +50,7 @@ export default function WritoryWall() {
       const data = await response.json();
       const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
       setAllPosts(approved);
-      setDisplayPosts(approved);
+      setDisplayPosts(pickFiveRandom(approved));
       // Set liked state for current user
       const liked: { [id: number]: boolean } = {};
       approved.forEach((post: any) => {
@@ -63,43 +70,19 @@ export default function WritoryWall() {
     }
   };
 
-  // Fetch all approved posts on mount and when userUid changes
+  // On mount and userUid change, fetch and show 5 random poems
   useEffect(() => {
     fetchWallPosts();
   }, [userUid]);
 
-  // Refresh handler: swap one poem with a new, not-currently-visible, random approved poem
+  // Main refresh: pick 5 new random poems
   const handleRefresh = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/wall-posts');
       const data = await response.json();
       const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
-      // Find poems not currently displayed
-      const currentIds = new Set(displayPosts.map((p) => p.id));
-      const notShown = approved.filter((p) => !currentIds.has(p.id));
-      if (notShown.length === 0) {
-        setLoading(false);
-        return; // No new poems to swap in
-      }
-      // Pick a random new poem
-      const newPoem = notShown[Math.floor(Math.random() * notShown.length)];
-      // Pick a random index to replace in the current display
-      const replaceIdx = Math.floor(Math.random() * displayPosts.length);
-      const newDisplay = [...displayPosts];
-      newDisplay[replaceIdx] = newPoem;
-      setDisplayPosts(newDisplay);
-      // Update liked state for new poem
-      const liked: { [id: number]: boolean } = { ...likedPosts };
-      if (newPoem.likedBy && userUid) {
-        try {
-          const arr = typeof newPoem.likedBy === 'string' ? JSON.parse(newPoem.likedBy) : newPoem.likedBy;
-          liked[newPoem.id] = arr.includes(userUid);
-        } catch {}
-      }
-      setLikedPosts(liked);
-    } catch (e) {
-      // fallback: do nothing
+      setDisplayPosts(pickFiveRandom(approved));
     } finally {
       setLoading(false);
     }
@@ -121,9 +104,10 @@ export default function WritoryWall() {
           'user-uid': userUid,
         },
       });
-      await res.json();
-      // Refetch poems to update like count and state
-      fetchWallPosts();
+      const data = await res.json();
+      // Update like count for this poem in displayPosts
+      setDisplayPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, likes: data.likes } : p));
+      setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
     } catch (e) {
       alert('Failed to like/unlike. Please try again.');
     } finally {
