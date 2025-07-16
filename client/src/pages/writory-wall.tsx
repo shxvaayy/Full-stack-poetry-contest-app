@@ -106,6 +106,7 @@ export default function WritoryWall() {
         },
       });
       const data = await res.json();
+      console.log('Like API response:', data); // Debug
       // Update like count and liked state for this poem in displayPosts
       setDisplayPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, likes: data.likes } : p));
       setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
@@ -187,8 +188,8 @@ export default function WritoryWall() {
                   {getFirstLines(post.content, 3)}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  {post.authorProfilePicture ? (
-                    <img src={post.authorProfilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-200 shadow-sm" />
+                  {post.authorProfilePicture && post.authorProfilePicture.includes('cloudinary') ? (
+                    <img src={post.authorProfilePicture} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-200 shadow-sm" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/default-avatar.png'; }} />
                   ) : (
                     <img src="/default-avatar.png" alt="Default Profile" className="w-8 h-8 rounded-full object-cover border border-cyan-100 shadow-sm" />
                   )}
@@ -208,7 +209,7 @@ export default function WritoryWall() {
                   >
                     {likedPosts[post.id] ? <Heart className="w-5 h-5 fill-cyan-500 text-cyan-500 drop-shadow" /> : <Heart className="w-5 h-5" />}
                     <span className="font-semibold">Feel this</span>
-                    <span className="ml-1 text-xs text-cyan-700 font-bold">{post.likes}</span>
+                    <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
                   </Button>
                 </div>
                 <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer" onClick={() => handleCardRefresh(idx)}>
