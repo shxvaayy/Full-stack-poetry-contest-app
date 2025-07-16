@@ -3581,14 +3581,14 @@ router.post('/api/wall-posts', async (req, res) => {
     const user = userResult.rows[0];
     
     // Check if user has already submitted 5 posts
-    const existingPosts = await client.query(
-      'SELECT COUNT(*) FROM wall_posts WHERE user_uid = $1 AND status = $2',
-      [userUid, 'approved']
-    );
-    
-    if (parseInt(existingPosts.rows[0].count) >= 5) {
-      return res.status(400).json({ error: 'Maximum 5 posts allowed per user' });
-    }
+    // const existingPosts = await client.query(
+    //   'SELECT COUNT(*) FROM wall_posts WHERE user_uid = $1 AND status = $2',
+    //   [userUid, 'approved']
+    // );
+    //
+    // if (parseInt(existingPosts.rows[0].count) >= 5) {
+    //   return res.status(400).json({ error: 'Maximum 5 posts allowed per user' });
+    // }
     
     // Create wall post
     const result = await client.query(`
