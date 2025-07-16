@@ -1,6 +1,6 @@
 import { db } from './db.js';
 import { users, submissions } from './schema.js';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 
 export async function getUserByUid(uid: string) {
   try {
@@ -393,6 +393,23 @@ export async function getUserByEmail(email: string) {
   }
 }
 
+export async function bulkApproveWallPosts(postIds: number[] | string[]) {
+  try {
+    if (!postIds || postIds.length === 0) return 0;
+    // Convert all IDs to numbers for type safety
+    const numericIds = postIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
+    const result = await db.update(submissions)
+      .set({ status: 'approved', updatedAt: new Date() })
+      .where(inArray(submissions.id, numericIds))
+      .returning();
+    console.log(`✅ Bulk approved ${result.length} wall posts`);
+    return result.length;
+  } catch (error) {
+    console.error('❌ Error bulk approving wall posts:', error);
+    throw error;
+  }
+}
+
 // Export all storage functions
 export const storage = {
   getUserByUid,
@@ -409,4 +426,5 @@ export const storage = {
   addContact,
   getSubmissionsByEmail,
   getUserByEmail,
+  bulkApproveWallPosts,
 };

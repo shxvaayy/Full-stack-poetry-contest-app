@@ -3818,3 +3818,17 @@ router.post('/api/wall-posts/bulk-delete', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete posts' });
   }
 });
+
+// Bulk approve wall posts (admin only)
+router.post('/api/wall-posts/bulk-approve', requireAdmin, asyncHandler(async (req, res) => {
+  const { postIds } = req.body;
+  if (!Array.isArray(postIds) || postIds.length === 0) {
+    return res.status(400).json({ success: false, error: 'No postIds provided' });
+  }
+  try {
+    const count = await storage.bulkApproveWallPosts(postIds);
+    res.json({ success: true, approved: count });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}));
