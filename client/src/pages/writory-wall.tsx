@@ -243,7 +243,12 @@ export default function WritoryWall() {
                 >
                   {post.title}
                     </div>
-                <div className="text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition">
+                <div
+                  className={clsx(
+                    'text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition',
+                    expandedPosts[post.id] && 'max-h-96 overflow-y-auto pr-2' // Add scroll only when expanded
+                  )}
+                >
                   {expandedPosts[post.id]
                     ? post.content
                     : getFirstLines(post.content, 3)}
