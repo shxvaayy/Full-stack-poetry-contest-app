@@ -151,12 +151,12 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
               <Link href="/submit" className="w-full md:w-auto">
-                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform hover:scale-105 transition-all duration-200">
+                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-pink-400/60 hover:ring-4 hover:ring-pink-300/40 focus:ring-4 focus:ring-pink-300/60 animate-[pulseGlow_2s_infinite]">
                   🚀 ENTER THE CONTEST
                 </Button>
               </Link>
               <Link href="/writory-wall" className="w-full md:w-auto">
-                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform hover:scale-105 transition-all duration-200">
+                <Button size="lg" className="w-full md:max-w-xs bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-3 px-4 md:py-4 md:px-8 text-base md:text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 hover:shadow-pink-400/60 hover:ring-4 hover:ring-pink-300/40 focus:ring-4 focus:ring-pink-300/60 animate-[pulseGlow_2s_infinite]">
                   🏆 WRITORY WALL
                 </Button>
               </Link>

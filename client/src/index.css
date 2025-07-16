@@ -158,14 +158,9 @@
   }
 }
 
-/* Chatbot Custom Animations */
-@keyframes glow {
-  0% { 
-    box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
-  }
-  100% { 
-    box-shadow: 0 0 30px rgba(6, 182, 212, 0.8), 0 0 40px rgba(34, 211, 238, 0.6);
-  }
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 32px 0 #f472b6, 0 4px 24px 0 #a21caf33; }
+  50% { box-shadow: 0 0 48px 8px #f472b6, 0 8px 32px 0 #a21caf66; }
 }
 
 .animate-glow {
@@ -187,6 +182,8 @@
 .animate-scroll {
   animation: scroll 20s linear infinite;
 }
+
+.animate-[pulseGlow_2s_infinite] { animation: pulseGlow 2s infinite; }
 
 /* Custom scrollbar for chat messages */
 .chat-scrollbar::-webkit-scrollbar {
