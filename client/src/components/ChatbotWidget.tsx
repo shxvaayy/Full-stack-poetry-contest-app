@@ -34,7 +34,7 @@ const faqData: FAQData = {
   },
   "4": {
     question: "Is there any participation fee?",
-    answer: "First poem entry is absolutely FREE. For additional entries: ₹50 for 1 extra poem, ₹100 for 2, ₹250 for 3, ₹480 for 5."
+    answer: "First poem entry is absolutely FREE. For additional entries: ₹50 for 1 extra poem, ₹90 for 2,  ₹230 for 5."
   },
   "5": {
     question: "What is the maximum or minimum poem length allowed?",
@@ -75,7 +75,11 @@ const faqData: FAQData = {
   "14": {
     question: "How can I contact Writory for support?",
     answer: "Email us or DM us on Instagram @writory_official."
-  }
+  },
+  "15": {
+    question: "What is Writory Wall?",
+    answer: "Writory Wall is a public space where all submitted writings get featured — poems, stories, and more! Anyone can explore, like, and follow the writers on Instagram. To get featured on the Writory Wall, just submit your piece through the *“Submit for Writory Wall”* option under the *Submit Poems* section."
+  },
 };
 
 export default function ChatbotWidget() {
