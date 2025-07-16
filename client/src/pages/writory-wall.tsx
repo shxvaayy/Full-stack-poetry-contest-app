@@ -39,6 +39,7 @@ export default function WritoryWall() {
   const [likeLoading, setLikeLoading] = useState<{ [id: number]: boolean }>({});
   const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
   const [isFlipping, setIsFlipping] = useState(false);
+  const [cardFlipping, setCardFlipping] = useState<boolean[]>([false, false, false, false, false]);
 
   // Helper to pick 5 unique random poems from a pool
   function pickFiveRandom(posts: WallPost[]): WallPost[] {
@@ -125,37 +126,39 @@ export default function WritoryWall() {
 
   // Per-card refresh handler: replace only the selected poem
   const handleCardRefresh = async (replaceIdx: number) => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/wall-posts');
-      const data = await response.json();
-      const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
-      // Find poems not currently displayed
-      const currentIds = new Set(displayPosts.map((p) => p.id));
-      const notShown = approved.filter((p) => !currentIds.has(p.id));
-      if (notShown.length === 0) {
-        setLoading(false);
-        return; // No new poems to swap in
+    setCardFlipping((prev) => prev.map((v, i) => (i === replaceIdx ? true : v)));
+    setTimeout(async () => {
+      try {
+        const response = await fetch('/api/wall-posts');
+        const data = await response.json();
+        const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
+        // Find poems not currently displayed
+        const currentIds = new Set(displayPosts.map((p) => p.id));
+        const notShown = approved.filter((p) => !currentIds.has(p.id));
+        if (notShown.length === 0) {
+          setCardFlipping((prev) => prev.map((v, i) => (i === replaceIdx ? false : v)));
+          return; // No new poems to swap in
+        }
+        // Pick a random new poem
+        const newPoem = notShown[Math.floor(Math.random() * notShown.length)];
+        const newDisplay = [...displayPosts];
+        newDisplay[replaceIdx] = newPoem;
+        setDisplayPosts(newDisplay);
+        // Update liked state for new poem
+        const liked: { [id: number]: boolean } = { ...likedPosts };
+        if (newPoem.likedBy && userUid) {
+          try {
+            const arr = typeof newPoem.likedBy === 'string' ? JSON.parse(newPoem.likedBy) : newPoem.likedBy;
+            liked[newPoem.id] = arr.includes(userUid);
+          } catch {}
+        }
+        setLikedPosts(liked);
+      } catch (e) {
+        // fallback: do nothing
+      } finally {
+        setCardFlipping((prev) => prev.map((v, i) => (i === replaceIdx ? false : v)));
       }
-      // Pick a random new poem
-      const newPoem = notShown[Math.floor(Math.random() * notShown.length)];
-      const newDisplay = [...displayPosts];
-      newDisplay[replaceIdx] = newPoem;
-      setDisplayPosts(newDisplay);
-      // Update liked state for new poem
-      const liked: { [id: number]: boolean } = { ...likedPosts };
-      if (newPoem.likedBy && userUid) {
-        try {
-          const arr = typeof newPoem.likedBy === 'string' ? JSON.parse(newPoem.likedBy) : newPoem.likedBy;
-          liked[newPoem.id] = arr.includes(userUid);
-        } catch {}
-      }
-      setLikedPosts(liked);
-    } catch (e) {
-      // fallback: do nothing
-    } finally {
-      setLoading(false);
-    }
+    }, 400); // duration of flip out
   };
 
   const cardBgColors = [
@@ -213,7 +216,8 @@ export default function WritoryWall() {
                 key={post.id}
                 className={clsx(
                   'break-inside-avoid p-8 mb-6 group relative overflow-hidden flip-card',
-                  isFlipping && 'flipping'
+                  isFlipping && 'flipping',
+                  cardFlipping[idx] && 'flipping'
                 )}
                 style={{
                   background: cardBgColors[idx % cardBgColors.length],
