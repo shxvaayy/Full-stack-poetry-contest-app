@@ -209,6 +209,7 @@
 .button-animated-red {
   position: relative;
   z-index: 1;
+  box-shadow: 0 0 32px 8px #ff1744, 0 0 64px 16px #ff174488;
 }
 .button-animated-red::before {
   content: '';
@@ -218,10 +219,10 @@
   border: 3px solid transparent;
   pointer-events: none;
   z-index: 2;
-  background: conic-gradient(from var(--angle,0deg), #ff1744 0 80%, transparent 80% 100%);
+  background: conic-gradient(from var(--angle,0deg), #ff1744 0 60%, transparent 60% 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  animation: border-rotate 2s linear infinite;
+  animation: border-rotate 0.7s linear infinite;
 }
 @keyframes border-rotate {
   to { --angle: 360deg; }
