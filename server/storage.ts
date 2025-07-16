@@ -398,12 +398,13 @@ export async function bulkApproveWallPosts(postIds: number[] | string[]) {
     if (!postIds || postIds.length === 0) return 0;
     // Convert all IDs to numbers for type safety
     const numericIds = postIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
-    const result = await db.update(submissions)
-      .set({ status: 'approved', updatedAt: new Date() })
-      .where(inArray(submissions.id, numericIds))
-      .returning();
-    console.log(`✅ Bulk approved ${result.length} wall posts`);
-    return result.length;
+    // Use raw SQL for wall_posts table since it's not in drizzle schema
+    const placeholders = numericIds.map((_, i) => `$${i + 1}`).join(',');
+    const query = `UPDATE wall_posts SET status = 'approved', moderated_at = NOW() WHERE id IN (${placeholders}) RETURNING *`;
+    const result = await db.execute(query, { args: numericIds });
+    const rows = result.rows || [];
+    console.log(`✅ Bulk approved ${rows.length} wall posts`);
+    return rows.length;
   } catch (error) {
     console.error('❌ Error bulk approving wall posts:', error);
     throw error;
