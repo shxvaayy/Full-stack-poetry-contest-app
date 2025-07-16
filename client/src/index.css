@@ -163,6 +163,11 @@
   50% { box-shadow: 0 0 48px 8px #f472b6, 0 8px 32px 0 #a21caf66; }
 }
 
+@keyframes pulseGlowPurple {
+  0%, 100% { box-shadow: 0 0 32px 0 #a78bfa, 0 4px 24px 0 #7c3aed33; }
+  50% { box-shadow: 0 0 48px 8px #a78bfa, 0 8px 32px 0 #7c3aed66; }
+}
+
 .animate-glow {
   animation: glow 2s ease-in-out infinite alternate;
 }
@@ -184,6 +189,8 @@
 }
 
 .animate-[pulseGlow_2s_infinite] { animation: pulseGlow 2s infinite; }
+
+.animate-\[pulseGlowPurple_2s_infinite\] { animation: pulseGlowPurple 2s infinite; }
 
 /* Custom scrollbar for chat messages */
 .chat-scrollbar::-webkit-scrollbar {
