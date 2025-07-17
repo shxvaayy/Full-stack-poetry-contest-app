@@ -143,7 +143,16 @@ export default function WinningPoemsPage() {
   const formatDateTime12h = (dateStr: string | null) => dateStr ? new Date(dateStr).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short', hour12: true }) : '____';
 
   return (
-    <section className="py-16 bg-gray-50 min-h-screen">
+    <div
+      style={{
+        backgroundImage: `url(/src/assets/results.png)`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        minHeight: '100vh',
+        width: '100%',
+      }}
+    >
       <div className="max-w-4xl mx-auto px-4 text-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">RESULTS</h1>
 
@@ -204,7 +213,7 @@ export default function WinningPoemsPage() {
           </CardContent>
         </Card>
       </div>
-    </section>
+    </div>
   );
 }
 

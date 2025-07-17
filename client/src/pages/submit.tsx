@@ -897,7 +897,16 @@ export default function SubmitPage() {
 
   if (currentStep === "selection") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+      <div
+        style={{
+          backgroundImage: `url(/src/assets/submit.png)`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          minHeight: '100vh',
+          width: '100%',
+        }}
+      >
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">Submit Your Poetry</h1>
