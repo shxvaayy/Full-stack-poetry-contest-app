@@ -16,7 +16,7 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "", // Added phone field
+    phone: "",
     message: "",
   });
 
@@ -41,7 +41,7 @@ export default function ContactPage() {
       setFormData({
         name: "",
         email: "",
-        phone: "", // Reset phone field
+        phone: "",
         message: "",
       });
     },
@@ -57,6 +57,10 @@ export default function ContactPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     contactMutation.mutate(formData);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -95,7 +99,8 @@ export default function ContactPage() {
                   <Phone className="mr-3 text-primary mt-1" size={20} />
                   <div>
                     <h3 className="font-semibold text-gray-900">Phone</h3>
-                    <p className="text-gray-600">+91 98765 43210</p>
+                    <p className="text-gray-600">+91 96671 02405</p>
+                    <p className="text-gray-600">+91 98186 91695</p>
                   </div>
                 </div>
 
@@ -123,61 +128,80 @@ export default function ContactPage() {
             <CardContent className="p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
               
-              <form className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Name
-                  </label>
-                  <input
+                  <Label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Name *
+                  </Label>
+                  <Input
                     type="text"
                     id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="Your name"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
+                  <Label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email *
+                  </Label>
+                  <Input
                     type="email"
                     id="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="your.email@example.com"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-                    Subject
-                  </label>
-                  <input
-                    type="text"
-                    id="subject"
+                  <Label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </Label>
+                  <Input
+                    type="tel"
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="What's this about?"
+                    placeholder="Your phone number (optional)"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
-                    Message
-                  </label>
-                  <textarea
+                  <Label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                    Message *
+                  </Label>
+                  <Textarea
                     id="message"
                     rows={4}
+                    value={formData.message}
+                    onChange={(e) => handleInputChange('message', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="Your message..."
-                  ></textarea>
+                    required
+                  />
                 </div>
 
-                <button
+                <Button
                   type="submit"
+                  disabled={contactMutation.isPending}
                   className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
                 >
-                  Send Message
-                </button>
+                  {contactMutation.isPending ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Sending...
+                    </div>
+                  ) : (
+                    'Send Message'
+                  )}
+                </Button>
               </form>
             </CardContent>
           </Card>
