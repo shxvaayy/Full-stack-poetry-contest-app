@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { User, Calendar, Trophy, FileText, Award, BarChart3, Loader2, Clock, CheckCircle, XCircle, Edit2, Camera, Upload } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
+import profileBg from '../assets/profile.png';
 
 interface BackendUser {
   id: number;
@@ -495,7 +496,16 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-8">
+    <div 
+      className="min-h-screen py-8"
+      style={{
+        backgroundImage: `url(${profileBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        width: '100%',
+      }}
+    >
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Profile Sidebar */}
