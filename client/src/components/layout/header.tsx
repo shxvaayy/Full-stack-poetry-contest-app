@@ -128,10 +128,6 @@ export default function Header() {
     { name: "PAST WINNERS", href: "/past-winners" },
     { name: "ABOUT US", href: "/about" },
     { name: "CONTACT US", href: "/contact" },
-    ...(isAdmin ? [
-      { name: "ADMIN UPLOAD", href: "/admin-upload" },
-      { name: "STATUS", href: "/admin-wall-moderation" }
-    ] : []),
   ];
 
   const handleLogout = async () => {
@@ -171,6 +167,29 @@ export default function Header() {
                   {item.name}
                 </Link>
               ))}
+              {isAdmin ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="text-white font-medium text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors focus:outline-none flex items-center gap-2">
+                      ADMIN
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[180px]">
+                    <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                      <Link href="/admin-settings" className="w-full h-full block">Admin Settings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-2 bg-gray-700" />
+                    <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                      <Link href="/admin-upload" className="w-full h-full block">Admin Upload</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-2 bg-gray-700" />
+                    <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                      <Link href="/admin-wall-moderation" className="w-full h-full block">Wall Post Moderation</Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           </nav>
 
