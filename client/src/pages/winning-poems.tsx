@@ -155,7 +155,7 @@ export default function WinningPoemsPage() {
       }}
     >
       <div className="max-w-4xl mx-auto px-4 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">RESULTS</h1>
+        <h1 className="text-4xl font-bold text-black mb-8" style={{ fontWeight: 900, letterSpacing: 2, textShadow: '2px 2px 4px rgba(0,0,0,0.3)', fontFamily: 'inherit' }}>RESULTS</h1>
 
         {/* Contest Status */}
         <Card className="mb-8">
