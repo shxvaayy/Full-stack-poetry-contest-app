@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 // Removed Firebase import - now using Cloudinary URLs from database
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -171,39 +178,37 @@ export default function Header() {
           <div className="flex items-center space-x-4 flex-shrink-0">
             {user ? (
               <div className="hidden lg:flex items-center space-x-3">
-                {/* User Profile Section */}
-                <Link href="/profile">
-                  <button className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors">
-                    {profilePictureUrl ? (
-                      <img 
-                        src={profilePictureUrl}
-                        alt="Profile" 
-                        className="w-6 h-6 rounded-full object-cover"
-                        onError={(e) => {
-                          console.log('Header: Profile picture failed to load:', profilePictureUrl);
-                          setProfilePictureUrl(null); // Reset to show fallback
-                        }}
-                        key={`header-profile-${profilePictureUrl}`} // Force re-render on URL change
-                      />
-                    ) : (
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="text-black" size={14} />
-                      </div>
-                    )}
-                    <span className="text-white text-sm font-medium">
-                      {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
-                    </span>
-                  </button>
-                </Link>
-                {/* Logout Button */}
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white px-3 py-2 bg-transparent hover:bg-white hover:text-black focus:bg-white focus:text-black text-sm font-medium"
-                >
-                  Logout
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors focus:outline-none">
+                      {profilePictureUrl ? (
+                        <img
+                          src={profilePictureUrl}
+                          alt="Profile"
+                          className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            setProfilePictureUrl(null);
+                          }}
+                          key={`header-profile-${profilePictureUrl}`}
+                        />
+                      ) : (
+                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="text-black" size={14} />
+                        </div>
+                      )}
+                      <span className="text-white text-sm font-medium">
+                        {displayName || dbUser?.name || user.displayName || user.email?.split('@')[0] || 'User'}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <div className="hidden lg:flex items-center">
