@@ -18,6 +18,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AuthPage() {
   const [isSignIn, setIsSignIn] = useState(false);
@@ -25,6 +26,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Check for verified parameter in URL
   useEffect(() => {
@@ -451,6 +453,12 @@ export default function AuthPage() {
   useEffect(() => {
     fetch("/api/notify-login-page-visit", { method: "POST" });
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
