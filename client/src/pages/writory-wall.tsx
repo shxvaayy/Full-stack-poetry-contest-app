@@ -100,7 +100,7 @@ export default function WritoryWall() {
   // Like handler: update like and update count from backend response
   const handleLike = async (post: WallPost) => {
     if (!userUid) {
-      alert('Please sign in to like poems!');
+      window.location.href = '/auth';
       return;
     }
     if (likeLoading[post.id]) return;
