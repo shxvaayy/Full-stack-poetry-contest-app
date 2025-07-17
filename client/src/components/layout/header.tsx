@@ -207,11 +207,9 @@ export default function Header() {
               </div>
             ) : (
               <div className="hidden lg:flex items-center">
-                <Link href="/login">
+                <Link href="/auth">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-white hover:bg-white hover:text-black px-3 py-2 text-sm font-medium"
+                    className="bg-black text-yellow-400 border-none px-4 py-2 text-sm font-bold rounded shadow hover:bg-gray-900 hover:text-yellow-300 focus:bg-gray-900 focus:text-yellow-300 transition-colors"
                   >
                     Login
                   </Button>
