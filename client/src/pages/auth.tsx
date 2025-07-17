@@ -699,7 +699,7 @@ export default function AuthPage() {
                         style={{ minWidth: 90 }}
                       >
                         {countryCodes.map(c => (
-                          <option key={c.code} value={c.code}>{c.flag} {c.name} {c.code}</option>
+                          <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
                         ))}
                       </select>
                       <Input
