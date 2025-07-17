@@ -29,50 +29,41 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 
 function AppContent() {
   return (
-    <Switch>
-      {/* Public routes - accessible without authentication */}
-      <Route path="/terms" component={TermsPage} />
-      <Route path="/privacy" component={PrivacyPage} />
-      <Route path="/email-verified" component={EmailVerifiedPage} />
-      <Route path="/email-verification-handler" component={EmailVerificationHandler} />
-      <Route path="/password-reset-handler" component={PasswordResetHandler} />
-      <Route path="/__/auth/action" component={FirebaseActionHandler} />
-      {/* The unified handler at /__/auth/action is now explicitly routed */}
-      {/* Removed: <Route path="/email-verification-handler" component={EmailVerificationHandler} /> */}
-      {/* Removed: <Route path="/__/auth/action" component={EmailVerificationHandler} /> */}
-      {/* Removed: <Route path="/auth/action" component={EmailVerificationHandler} /> */}
-      {/* Removed: <Route path="/password-reset-handler" component={PasswordResetHandler} /> */}
-      {/* The unified handler at /__/auth/action is now handled by file-based routing in pages/__/auth/action.tsx */}
-
-      {/* Protected routes - require authentication */}
-      <Route>
-        <AuthGuard>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-grow">
-              <Switch>
-                <Route path="/" component={HomePage} />
-                <Route path="/submit" component={SubmitPage} />
-                <Route path="/writory-wall" component={WritoryWallPage} />
-                <Route path="/winning-poems" component={WinningPoemsPage} />
-                <Route path="/past-winners" component={PastWinnersPage} />
-                <Route path="/about" component={AboutPage} />
-                <Route path="/contact" component={ContactPage} />
-                <Route path="/profile" component={UserProfilePage} />
-                <Route path="/admin-upload" component={AdminUploadPage} />
-                <Route path="/admin-settings" component={AdminSettingsPage} />
-                <Route path="/admin-wall-moderation" component={AdminWallModerationPage} />
-                <Route path="/not-found" component={NotFoundPage} />
-                <Route path="*">
-                  <NotFoundPage />
-                </Route>
-              </Switch>
-            </main>
-            <Footer />
-          </div>
-        </AuthGuard>
-      </Route>
-    </Switch>
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow">
+        <Switch>
+          {/* Public routes - accessible without authentication */}
+          <Route path="/" component={HomePage} />
+          <Route path="/terms" component={TermsPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/email-verified" component={EmailVerifiedPage} />
+          <Route path="/email-verification-handler" component={EmailVerificationHandler} />
+          <Route path="/password-reset-handler" component={PasswordResetHandler} />
+          <Route path="/__/auth/action" component={FirebaseActionHandler} />
+          <Route path="/writory-wall" component={WritoryWallPage} />
+          <Route path="/winning-poems" component={WinningPoemsPage} />
+          <Route path="/past-winners" component={PastWinnersPage} />
+          <Route path="/about" component={AboutPage} />
+          <Route path="/contact" component={ContactPage} />
+          <Route path="/profile" component={UserProfilePage} />
+          <Route path="/admin-upload" component={AdminUploadPage} />
+          <Route path="/admin-settings" component={AdminSettingsPage} />
+          <Route path="/admin-wall-moderation" component={AdminWallModerationPage} />
+          {/* Protected route - only /submit requires authentication */}
+          <Route path="/submit">
+            <AuthGuard>
+              <SubmitPage />
+            </AuthGuard>
+          </Route>
+          <Route path="/not-found" component={NotFoundPage} />
+          <Route path="*">
+            <NotFoundPage />
+          </Route>
+        </Switch>
+      </main>
+      <Footer />
+    </div>
   );
 }
 
