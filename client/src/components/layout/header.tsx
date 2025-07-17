@@ -290,11 +290,9 @@ export default function Header() {
               </div>
             ) : (
               <div className="px-4 py-3 border-t border-gray-600 mt-4 pt-6">
-                <Link href="/login">
+                <Link href="/auth">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-white border-white hover:bg-white hover:text-black font-medium"
+                    className="w-full bg-black text-yellow-400 border-none px-4 py-2 text-sm font-bold rounded shadow hover:bg-gray-900 hover:text-yellow-300 focus:bg-gray-900 focus:text-yellow-300 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Login
