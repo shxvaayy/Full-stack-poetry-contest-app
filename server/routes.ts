@@ -333,6 +333,13 @@ router.post('/api/admin/settings', requireAdmin, asyncHandler(async (req: any, r
       results.push({ key, value, success });
     }
 
+    // Clear cache for contest timeline to ensure immediate updates
+    const timelineCacheKey = '/api/contest-timeline';
+    if (cache.has(timelineCacheKey)) {
+      cache.delete(timelineCacheKey);
+      console.log('🗑️ Cleared contest timeline cache');
+    }
+
     res.json({
       success: true,
       message: 'Settings updated successfully',
@@ -3532,7 +3539,7 @@ router.post('/api/users/create', asyncHandler(async (req, res) => {
 // ===== PUBLIC CONTEST TIMELINE ENDPOINT =====
 
 // Public endpoint to get contest timeline dates (no auth required)
-router.get('/api/contest-timeline', cacheMiddleware(), asyncHandler(async (req, res) => {
+router.get('/api/contest-timeline', asyncHandler(async (req, res) => {
   try {
     // Fetch only the relevant settings
     const [contest_launch_date, submission_deadline, result_announcement_date] = await Promise.all([
