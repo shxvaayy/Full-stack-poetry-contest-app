@@ -14,6 +14,7 @@ import PaymentForm from "@/components/PaymentForm";
 import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import submitBg from "@/assets/submit.png";
+import './writory-wall-font.css';
 
 const TIERS = [
   { 
@@ -910,7 +911,7 @@ export default function SubmitPage() {
       >
         <div className="container mx-auto px-4">
           <div className="text-center mb-8 pt-16">
-            <h1 className="text-4xl font-bold text-black mb-2" style={{ fontWeight: 700, letterSpacing: 1 }}>SUBMIT YOUR POETRY</h1>
+            <h1 className="text-4xl font-bold text-black mb-2 writory-wall-heading">SUBMIT YOUR POETRY</h1>
             <p className="text-lg text-gray-600">Choose your submission tier</p>
             {IS_FIRST_MONTH && (
               <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">

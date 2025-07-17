@@ -3,6 +3,7 @@ import { Clock, Trophy, Medal, Award, Image } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
 import { useState, useEffect } from "react";
 import resultsBg from "@/assets/results.png";
+import './writory-wall-font.css';
 
 interface WinnerPhoto {
   id: number;
@@ -155,7 +156,7 @@ export default function WinningPoemsPage() {
       }}
     >
       <div className="max-w-4xl mx-auto px-4 text-center">
-        <h1 className="text-4xl font-bold text-black mb-8" style={{ fontWeight: 700, letterSpacing: 1 }}>RESULTS</h1>
+        <h1 className="text-4xl font-bold text-black mb-8 writory-wall-heading">RESULTS</h1>
 
         {/* Contest Status */}
         <Card className="mb-8">
