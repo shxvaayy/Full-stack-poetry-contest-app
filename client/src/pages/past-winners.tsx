@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Calendar, Award } from "lucide-react";
+import { Trophy, Calendar, Award, Star, Sparkles } from "lucide-react";
 import pastwinnerBg from "@/assets/pastwinner.png";
 
 export default function PastWinnersPage() {
@@ -20,71 +20,103 @@ export default function PastWinnersPage() {
           <p className="text-xl text-gray-600">Celebrating the champions of previous contests</p>
         </div>
 
-        {/* Winners Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Winner Card 1 */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="text-white" size={24} />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">1st Place Winner</h3>
-                <p className="text-gray-600 mb-2">John Doe</p>
-                <p className="text-sm text-gray-500 mb-3">"The Silent Echo"</p>
-                <div className="flex items-center justify-center text-sm text-gray-500">
-                  <Calendar className="mr-1" size={14} />
-                  December 2024
-                </div>
+        {/* Inaugural Year Message */}
+        <Card className="mb-8">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Sparkles className="text-white" size={32} />
               </div>
-            </CardContent>
-          </Card>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">🎉 Inaugural Year 2025</h2>
+              <p className="text-lg text-gray-700 leading-relaxed mb-6">
+                Welcome to the very first year of WRITORY Poetry Contest! This is where literary history begins. 
+                We're excited to launch our inaugural competition and discover the extraordinary voices that will 
+                shape the future of poetry.
+              </p>
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">🏆 What's Coming</h3>
+                <p className="text-gray-700">
+                  Our first winners will be announced soon! They'll receive certificates, recognition, 
+                  cash prizes, and the honor of being part of WRITORY's founding legacy.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Winner Card 2 */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="text-white" size={24} />
+        {/* Future Plans */}
+        <Card className="mb-8">
+          <CardContent className="p-8">
+            <div className="flex items-center mb-6">
+              <Star className="mr-3 text-primary" size={24} />
+              <h2 className="text-2xl font-bold text-gray-900">Our Vision for the Future</h2>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Monthly Contests</h3>
+                  <p className="text-gray-700">
+                    Regular poetry competitions with different themes and challenges to keep creativity flowing.
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">2nd Place Winner</h3>
-                <p className="text-gray-600 mb-2">Jane Smith</p>
-                <p className="text-sm text-gray-500 mb-3">"Whispers of Dawn"</p>
-                <div className="flex items-center justify-center text-sm text-gray-500">
-                  <Calendar className="mr-1" size={14} />
-                  December 2024
+                
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Expanded Categories</h3>
+                  <p className="text-gray-700">
+                    Soon introducing short stories, micro tales, and other creative writing forms.
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              
+              <div className="space-y-4">
+                <div className="border-l-4 border-purple-500 pl-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Global Reach</h3>
+                  <p className="text-gray-700">
+                    Expanding to multiple languages and reaching poets from around the world.
+                  </p>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Community Building</h3>
+                  <p className="text-gray-700">
+                    Creating a vibrant community where poets can connect, share, and grow together.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Winner Card 3 */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="text-white" size={24} />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">3rd Place Winner</h3>
-                <p className="text-gray-600 mb-2">Mike Johnson</p>
-                <p className="text-sm text-gray-500 mb-3">"Ocean's Heart"</p>
-                <div className="flex items-center justify-center text-sm text-gray-500">
-                  <Calendar className="mr-1" size={14} />
-                  December 2024
-                </div>
+        {/* Legacy Section */}
+        <Card className="mb-8">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Building a Literary Legacy</h2>
+              <p className="text-gray-700 leading-relaxed mb-6">
+                Every winner who joins us in this inaugural year becomes part of WRITORY's founding story. 
+                Your names will be etched in our history as the first poets who believed in this platform 
+                and helped us build something extraordinary.
+              </p>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">🌟 Be Part of History</h3>
+                <p className="text-gray-700">
+                  Submit your poem today and become one of the first poets to win in WRITORY's inaugural competition. 
+                  Your story could be the beginning of something beautiful.
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Additional Info */}
-        <Card className="mt-8">
+        <Card>
           <CardContent className="p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">About Our Winners</h2>
             <p className="text-gray-700 leading-relaxed">
-              Our past winners represent the diverse and talented community of poets who have participated in WRITORY contests. 
-              Each winner has demonstrated exceptional creativity, technical skill, and emotional depth in their poetry. 
-              We celebrate their achievements and continue to inspire new generations of poets to share their voices with the world.
+              Our past winners will represent the diverse and talented community of poets who have participated in WRITORY contests. 
+              Each winner will demonstrate exceptional creativity, technical skill, and emotional depth in their poetry. 
+              We will celebrate their achievements and continue to inspire new generations of poets to share their voices with the world.
             </p>
           </CardContent>
         </Card>
