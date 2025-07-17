@@ -309,6 +309,34 @@ export default function Header() {
               </Link>
             ))}
 
+            {/* Mobile Explore Section */}
+            <div className="px-4 py-3 border-t border-gray-600 mt-4 pt-6">
+              <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wide">EXPLORE</h3>
+              <div className="space-y-2">
+                <Link
+                  href="/about"
+                  className="block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  About Us
+                </Link>
+                <Link
+                  href="/contact"
+                  className="block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Contact Us
+                </Link>
+                <Link
+                  href="/past-winners"
+                  className="block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Past Winners
+                </Link>
+              </div>
+            </div>
+
             {/* Mobile User Section */}
             {user ? (
               <div className="px-4 py-3 space-y-4 border-t border-gray-600 mt-4 pt-6">
@@ -335,6 +363,35 @@ export default function Header() {
                     </span>
                   </button>
                 </Link>
+
+                {/* Mobile Admin Section */}
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wide">ADMIN</h3>
+                    <Link
+                      href="/admin-settings"
+                      className="block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin Settings
+                    </Link>
+                    <Link
+                      href="/admin-upload"
+                      className="block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin Upload
+                    </Link>
+                    <Link
+                      href="/admin-wall-moderation"
+                      className="block px-4 py-3 text-white hover:bg-gray-800 rounded-md transition-colors font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Wall Post Moderation
+                    </Link>
+                  </div>
+                )}
+
                 <Button
                   onClick={() => {
                     handleLogout();
