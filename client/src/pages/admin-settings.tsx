@@ -701,34 +701,6 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Admin Navigation Card */}
-        <Card className="shadow-xl mt-8">
-          <CardHeader>
-            <CardTitle>Admin Functions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button
-                onClick={() => window.location.href = '/admin-upload'}
-                variant="outline"
-                className="h-16 flex flex-col items-center justify-center space-y-2"
-              >
-                <Upload className="w-6 h-6" />
-                <span>Upload Winners</span>
-              </Button>
-              
-              <Button
-                onClick={() => window.location.href = '/admin-wall-moderation'}
-                variant="outline"
-                className="h-16 flex flex-col items-center justify-center space-y-2"
-              >
-                <Trophy className="w-6 h-6" />
-                <span>Wall Moderation</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Winner Details Upload Card */}
         <Card className="shadow-xl mt-8">
           <CardHeader>
