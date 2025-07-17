@@ -26,6 +26,7 @@ import EmailVerificationHandler from "@/pages/email-verification-handler";
 import PasswordResetHandler from "@/pages/password-reset-handler";
 import FirebaseActionHandler from "@/pages/__/auth/action";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import AuthPage from "@/pages/auth";
 
 function AppContent() {
   return (
@@ -41,6 +42,7 @@ function AppContent() {
           <Route path="/email-verification-handler" component={EmailVerificationHandler} />
           <Route path="/password-reset-handler" component={PasswordResetHandler} />
           <Route path="/__/auth/action" component={FirebaseActionHandler} />
+          <Route path="/auth" component={AuthPage} />
           <Route path="/writory-wall" component={WritoryWallPage} />
           <Route path="/winning-poems" component={WinningPoemsPage} />
           <Route path="/past-winners" component={PastWinnersPage} />
