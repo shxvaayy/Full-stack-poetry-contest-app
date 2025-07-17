@@ -17,7 +17,7 @@ export default function AboutPage() {
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">About Us</h1>
-          <p className="text-xl text-gray-600">Celebrating literary excellence and nurturing emerging voices</p>
+          <p className="text-xl font-bold text-black">Celebrating literary excellence and nurturing emerging voices</p>
         </div>
 
         {/* Mission Section */}
