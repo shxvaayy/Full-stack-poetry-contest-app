@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone } from "lucide-react";
+import { Phone, Eye, EyeOff } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { 
   signInWithGoogle, 
@@ -19,6 +19,7 @@ import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/WRITORY_LOGO_edited-removebg-preview_1750599565240.png";
 import { useAuth } from "@/hooks/use-auth";
+import countryCodes from "@/data/countryCodes";
 
 export default function AuthPage() {
   const [isSignIn, setIsSignIn] = useState(false);
@@ -70,6 +71,8 @@ export default function AuthPage() {
   const [verificationEmail, setVerificationEmail] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(countryCodes.find(c => c.code === "+91") || countryCodes[0]);
 
   // Clean up recaptcha on unmount
   useEffect(() => {
@@ -589,17 +592,25 @@ export default function AuthPage() {
                   />
                 </div>
 
-                <div>
+                <div className="relative">
                   <Input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
-                    className="border-2 border-accent focus:border-accent"
+                    className="border-2 border-accent focus:border-accent pr-10"
                     placeholder={isSignIn ? "Enter your password" : "Create a password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
 
                 <div>
@@ -680,14 +691,31 @@ export default function AuthPage() {
                       </Button>
                     </div>
 
-                    <Input
-                      placeholder="+91XXXXXXXXXX"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      type="tel"
-                      disabled={loading}
-                      className="h-12"
-                    />
+                    <div className="flex gap-2 items-center">
+                      <select
+                        className="border rounded-md h-12 px-2 bg-white text-base"
+                        value={selectedCountry.code}
+                        onChange={e => setSelectedCountry(countryCodes.find(c => c.code === e.target.value) || countryCodes[0])}
+                        style={{ minWidth: 90 }}
+                      >
+                        {countryCodes.map(c => (
+                          <option key={c.code} value={c.code}>{c.flag} {c.name} {c.code}</option>
+                        ))}
+                      </select>
+                      <Input
+                        placeholder="Enter phone number"
+                        value={phone}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setPhone(val);
+                        }}
+                        type="tel"
+                        disabled={loading}
+                        className="h-12"
+                        maxLength={10}
+                        inputMode="numeric"
+                      />
+                    </div>
 
                     <div className="flex space-x-2 items-center">
                       <Button
