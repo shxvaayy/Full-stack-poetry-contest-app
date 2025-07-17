@@ -65,7 +65,7 @@ export default function WinningPoemsPage() {
     >
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">RESULTS</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4" style={{ fontWeight: 700, letterSpacing: 1 }}>RESULTS</h1>
           <p className="text-xl text-gray-600">Discover the winning poems from our contests</p>
         </div>
 
