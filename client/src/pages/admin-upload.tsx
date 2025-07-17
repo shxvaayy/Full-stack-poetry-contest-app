@@ -204,15 +204,6 @@ export default function AdminUpload() {
             <p className="text-lg text-gray-600">
               Upload AI evaluation results to update poem scores and status.
             </p>
-            <div className="mt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.href = '/admin-settings'}
-                className="mr-3"
-              >
-                Admin Settings
-              </Button>
-            </div>
           </div>
         </div>
 
