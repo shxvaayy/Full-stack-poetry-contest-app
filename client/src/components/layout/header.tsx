@@ -24,6 +24,11 @@ export default function Header() {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>('');
 
+  // For EXPLORE Dropdown
+  const [exploreOpen, setExploreOpen] = useState(false);
+  // For Profile/Admin Dropdown
+  const [profileOpen, setProfileOpen] = useState(false);
+
   const loadProfilePicture = async () => {
     if (user?.uid) {
       try {
@@ -170,14 +175,22 @@ export default function Header() {
                 </Link>
               ))}
               {/* Explore Dropdown */}
-              <DropdownMenu>
+              <DropdownMenu open={exploreOpen} onOpenChange={setExploreOpen}>
                 <DropdownMenuTrigger asChild>
-                  <button className="text-white font-medium text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors focus:outline-none flex items-center gap-2">
+                  <button
+                    className="text-white font-medium text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors focus:outline-none flex items-center gap-2"
+                    onMouseEnter={() => setExploreOpen(true)}
+                    onMouseLeave={() => setExploreOpen(false)}
+                  >
                     EXPLORE
                     <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[180px]">
+                <DropdownMenuContent
+                  className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[180px]"
+                  onMouseEnter={() => setExploreOpen(true)}
+                  onMouseLeave={() => setExploreOpen(false)}
+                >
                   <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
                     <Link href="/about" className="w-full h-full block">About Us</Link>
                   </DropdownMenuItem>
@@ -196,9 +209,13 @@ export default function Header() {
           <div className="flex items-center space-x-4 flex-shrink-0">
             {user ? (
               <div className="hidden lg:flex items-center space-x-3">
-                <DropdownMenu>
+                <DropdownMenu open={profileOpen} onOpenChange={setProfileOpen}>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors focus:outline-none">
+                    <button
+                      className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors focus:outline-none"
+                      onMouseEnter={() => setProfileOpen(true)}
+                      onMouseLeave={() => setProfileOpen(false)}
+                    >
                       {profilePictureUrl ? (
                         <img
                           src={profilePictureUrl}
@@ -219,7 +236,11 @@ export default function Header() {
                       </span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[180px]">
+                  <DropdownMenuContent
+                    className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[180px]"
+                    onMouseEnter={() => setProfileOpen(true)}
+                    onMouseLeave={() => setProfileOpen(false)}
+                  >
                     <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
                       <Link href="/profile" className="w-full h-full block">Profile</Link>
                     </DropdownMenuItem>
