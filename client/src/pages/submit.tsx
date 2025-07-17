@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import PaymentForm from "@/components/PaymentForm";
 import { IS_FIRST_MONTH, FREE_ENTRY_ENABLED, ENABLE_FREE_TIER } from "./coupon-codes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import submitBg from "@/assets/submit.png";
 
 const TIERS = [
   { 
@@ -899,7 +900,7 @@ export default function SubmitPage() {
     return (
       <div
         style={{
-          backgroundImage: `url(/src/assets/submit.png)`,
+          backgroundImage: `url(${submitBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',

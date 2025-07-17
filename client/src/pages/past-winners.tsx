@@ -1,193 +1,94 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, Users, Trophy, Medal, Award, Image } from "lucide-react";
-import { useState, useEffect } from "react";
-
-interface WinnerPhoto {
-  id: number;
-  position: number;
-  contestMonth: string;
-  contestYear: number;
-  photoUrl: string;
-  winnerName?: string;
-  poemTitle?: string;
-  uploadedBy: string;
-  createdAt: string;
-  score?: number; // Added score property
-}
+import { Trophy, Calendar, Award } from "lucide-react";
+import pastwinnerBg from "@/assets/pastwinner.png";
 
 export default function PastWinnersPage() {
-  const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [timeline, setTimeline] = useState<{ contest_launch_date: string | null, submission_deadline: string | null, result_announcement_date: string | null }>({ contest_launch_date: null, submission_deadline: null, result_announcement_date: null });
-  // Set the contest month directly to '2025-07' (remove admin endpoint call)
-  const [latestMonth] = useState<string>('2025-07');
-
-  // Fetch contest timeline
-  useEffect(() => {
-    fetch('/api/contest-timeline')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.timeline) setTimeline(data.timeline);
-      });
-  }, []);
-
-  // Step 2: Fetch winner photos for the latest contestMonth using the public endpoint
-  useEffect(() => {
-    if (!latestMonth) return;
-    const loadWinnerPhotos = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/winner-photos/${latestMonth}`);
-        if (response.ok) {
-          const data = await response.json();
-          setWinnerPhotos(data.winnerPhotos || []);
-        } else {
-          setWinnerPhotos([]);
-        }
-      } catch (error) {
-        setWinnerPhotos([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadWinnerPhotos();
-  }, [latestMonth]);
-
-  // Helper function to get winner photo by position
-  const getWinnerPhotoByPosition = (position: number) => {
-    return winnerPhotos.find(photo => photo.position === position);
-  };
-
-  const WinnerCard = ({ position, icon: Icon, color, title }: { position: number, icon: any, color: string, title: string }) => {
-    const photo = getWinnerPhotoByPosition(position);
-    return (
-      <div className="text-center">
-        <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
-          <Icon className="text-2xl text-white" size={24} />
-        </div>
-        <h4 className="font-semibold text-gray-900 mb-2">{title}</h4>
-        {photo && photo.photoUrl ? (
-          <div className="mt-4">
-            <img
-              src={photo.photoUrl}
-              alt={`${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
-              className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-gray-200 shadow-lg"
-            />
-            <div className="mt-3">
-              <p className="font-semibold text-gray-900">
-                {photo.winnerName || `${position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner`}
-              </p>
-              <p className="text-sm text-gray-600">Score: {photo.score ?? 'N/A'}/100</p>
-              <p className="text-xs text-gray-500">
-                Contest: {photo.contestMonth} {photo.contestYear}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-full mx-auto flex flex-col items-center justify-center">
-              <Image className="text-gray-400 mb-2" size={24} />
-              <p className="text-xs text-gray-500 text-center px-2">
-                {loading ? 'Loading...' : 'Winner photo'}
-              </p>
-            </div>
-            <div className="mt-3">
-              <p className="font-semibold text-gray-900">
-                {position === 1 ? '1st' : position === 2 ? '2nd' : '3rd'} Place Winner
-              </p>
-              <p className="text-sm text-gray-600">To be announced</p>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Helper for consistent 12-hour format
-  const formatDateTime12h = (dateStr: string | null) => dateStr ? new Date(dateStr).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short', hour12: true }) : '____';
-  const formatDate12h = (dateStr: string | null) => dateStr ? new Date(dateStr).toLocaleDateString(undefined, { dateStyle: 'long' }) : '____';
-
   return (
-    <section className="py-16 bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4">
+    <div
+      style={{
+        backgroundImage: `url(${pastwinnerBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        minHeight: '100vh',
+        width: '100%',
+      }}
+    >
+      <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Past Winners</h1>
-          <p className="text-xl text-gray-600">
-            WRITORY is in its inaugural cycle for {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'}. This is our first year of celebrating poetry
-            and nurturing emerging voices. Winners from our {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} competition will be featured here after results
-            are announced on {formatDateTime12h(timeline.result_announcement_date)}.
-          </p>
+          <p className="text-xl text-gray-600">Celebrating the champions of previous contests</p>
         </div>
 
-        <Card className="text-center mb-12">
-          <CardContent className="p-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">{timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} - Our Inaugural Year</h2>
-            <p className="text-lg text-gray-700 mb-6">
-              We are excited to launch the first-ever POETRY CONTEST in {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'}. This marks the beginning of our
-              journey to celebrate literary excellence and support emerging poets.
-            </p>
-            <p className="text-gray-600 mb-8">
-              Competition results will be announced on {formatDateTime12h(timeline.result_announcement_date)}. Winners will receive certificates,
-              recognition, and cash prizes. Their profiles and RESULTS will be featured on this page after the
-              announcement.
-            </p>
-            <div className="bg-gray-50 rounded-lg p-6">
-              {winnerPhotos.length > 0 ? (
-                <>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Voices That Won</h3>
-                  <p className="text-gray-600 mb-8">Explore the poets who’ve earned the spotlight in our previous contests — complete with scores, author profiles, and their winning poems.</p>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Coming Soon</h3>
-                  <p className="text-gray-600 mb-8">Winner profiles and achievements will be displayed here after {formatDateTime12h(timeline.result_announcement_date)}</p>
-                </>
-              )}
-              <div className="grid md:grid-cols-3 gap-8">
-                {[1, 2, 3].map(pos => (
-                  <WinnerCard 
-                    key={pos}
-                    position={pos}
-                    icon={pos === 1 ? Trophy : pos === 2 ? Medal : Award}
-                    color={pos === 1 ? "bg-yellow-500" : pos === 2 ? "bg-gray-400" : "bg-yellow-600"}
-                    title={pos === 1 ? "1st Place Winner" : pos === 2 ? "2nd Place Winner" : "3rd Place Winner"}
-                  />
-                ))}
+        {/* Winners Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Winner Card 1 */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="text-white" size={24} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">1st Place Winner</h3>
+                <p className="text-gray-600 mb-2">John Doe</p>
+                <p className="text-sm text-gray-500 mb-3">"The Silent Echo"</p>
+                <div className="flex items-center justify-center text-sm text-gray-500">
+                  <Calendar className="mr-1" size={14} />
+                  December 2024
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Contest Timeline */}
-        <Card>
-          <CardContent className="p-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Contest Timeline</h3>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-green-500 rounded-full mr-4"></div>
-                <div>
-                  <p className="font-semibold text-gray-900">{formatDateTime12h(timeline.contest_launch_date)}</p>
-                  <p className="text-gray-600">Contest Launch & Submissions Open</p>
+          {/* Winner Card 2 */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Award className="text-white" size={24} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">2nd Place Winner</h3>
+                <p className="text-gray-600 mb-2">Jane Smith</p>
+                <p className="text-sm text-gray-500 mb-3">"Whispers of Dawn"</p>
+                <div className="flex items-center justify-center text-sm text-gray-500">
+                  <Calendar className="mr-1" size={14} />
+                  December 2024
                 </div>
               </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-yellow-500 rounded-full mr-4"></div>
-                <div>
-                  <p className="font-semibold text-gray-900">{formatDateTime12h(timeline.submission_deadline)}</p>
-                  <p className="text-gray-600">Submission Deadline</p>
+            </CardContent>
+          </Card>
+
+          {/* Winner Card 3 */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Award className="text-white" size={24} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">3rd Place Winner</h3>
+                <p className="text-gray-600 mb-2">Mike Johnson</p>
+                <p className="text-sm text-gray-500 mb-3">"Ocean's Heart"</p>
+                <div className="flex items-center justify-center text-sm text-gray-500">
+                  <Calendar className="mr-1" size={14} />
+                  December 2024
                 </div>
               </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-blue-500 rounded-full mr-4"></div>
-                <div>
-                  <p className="font-semibold text-gray-900">{formatDateTime12h(timeline.result_announcement_date)}</p>
-                  <p className="text-gray-600">Results Announcement</p>
-                </div>
-              </div>
-            </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Info */}
+        <Card className="mt-8">
+          <CardContent className="p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">About Our Winners</h2>
+            <p className="text-gray-700 leading-relaxed">
+              Our past winners represent the diverse and talented community of poets who have participated in WRITORY contests. 
+              Each winner has demonstrated exceptional creativity, technical skill, and emotional depth in their poetry. 
+              We celebrate their achievements and continue to inspire new generations of poets to share their voices with the world.
+            </p>
           </CardContent>
         </Card>
       </div>
-    </section>
+    </div>
   );
 }
