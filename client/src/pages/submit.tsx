@@ -910,7 +910,7 @@ export default function SubmitPage() {
       >
         <div className="container mx-auto px-4">
           <div className="text-center mb-8 pt-16">
-            <h1 className="text-4xl font-bold text-black mb-2" style={{ fontWeight: 900, letterSpacing: 2, textShadow: '2px 2px 4px rgba(0,0,0,0.3)', fontFamily: 'inherit', fontStyle: 'italic', transform: 'skew(-5deg)', background: 'linear-gradient(45deg, #000, #333)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(3px 3px 6px rgba(0,0,0,0.5))' }}>SUBMIT YOUR POETRY</h1>
+            <h1 className="text-4xl font-bold text-black mb-2" style={{ fontWeight: 700, letterSpacing: 1 }}>SUBMIT YOUR POETRY</h1>
             <p className="text-lg text-gray-600">Choose your submission tier</p>
             {IS_FIRST_MONTH && (
               <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">
