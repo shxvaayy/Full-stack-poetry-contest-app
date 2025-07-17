@@ -164,7 +164,7 @@ export default function HomePage() {
 
               <div className="flex flex-col gap-3 md:flex-row md:gap-4 justify-center mt-8">
                 <Link href="/submit" className="w-full md:w-auto">
-                  <Button size="sm" className="w-full md:w-[180px] h-10 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 text-white font-semibold py-2 px-3 md:py-2 md:px-4 text-sm md:text-base rounded-lg transition-transform duration-200 hover:scale-105">
+                  <Button size="md" className="w-full md:w-[220px] h-12 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 text-white font-semibold py-2.5 px-4 md:py-3 md:px-6 text-base md:text-lg rounded-xl transition-transform duration-200 hover:scale-105">
                     🚀 ENTER THE CONTEST
                   </Button>
                 </Link>
