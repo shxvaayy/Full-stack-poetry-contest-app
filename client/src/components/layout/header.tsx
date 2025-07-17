@@ -167,7 +167,7 @@ export default function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`hover:text-gray-200 transition-colors whitespace-nowrap font-medium text-sm px-1 py-1 ${
+                  className={`hover:bg-gray-800 hover:text-white rounded-xl transition-colors whitespace-nowrap font-medium text-sm px-4 py-2 ${
                     location === item.href ? "border-b-2 border-white pb-1" : ""
                   }`}
                 >
