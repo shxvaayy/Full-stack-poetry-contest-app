@@ -119,7 +119,7 @@ export default function WritoryWall() {
       setDisplayPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, likes: data.likes } : p));
       setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
     } catch (e) {
-      alert('Failed to like/unlike. Please try again.');
+      // Optionally, show a toast here if you have a toast system, or do nothing
     } finally {
       setLikeLoading((prev) => ({ ...prev, [post.id]: false }));
     }
