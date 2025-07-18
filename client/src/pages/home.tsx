@@ -188,6 +188,23 @@ export default function HomePage() {
     }
   ];
 
+  const tiltHandler = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const tiltX = ((y - centerY) / centerY) * -10;
+    const tiltY = ((x - centerX) / centerX) * 10;
+    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+  };
+  const resetTiltHandler = (e) => {
+    e.currentTarget.style.setProperty('--tilt-x', '0deg');
+    e.currentTarget.style.setProperty('--tilt-y', '0deg');
+  };
+  const tiltTouchHandler = (e) => tiltHandler(e);
+
   return (
     <div>
       {/* Header remains outside bg */}
@@ -283,39 +300,10 @@ export default function HomePage() {
             <div className="grid md:grid-cols-5 gap-6">
               <Card 
                 className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50 tilt-card"
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const centerX = rect.width / 2;
-                  const centerY = rect.height / 2;
-                  const tiltX = ((y - centerY) / centerY) * -10;
-                  const tiltY = ((x - centerX) / centerX) * 10;
-                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
-                }}
-                onTouchMove={(e) => {
-                  if (e.touches && e.touches.length === 1) {
-                    const touch = e.touches[0];
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const tiltX = ((y - centerY) / centerY) * -10;
-                    const tiltY = ((x - centerX) / centerX) * 10;
-                    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
-                }}
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
               >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -326,7 +314,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+              <Card 
+                className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-green-50 to-emerald-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Users className="text-2xl text-white" size={24} />
@@ -336,7 +330,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
+              <Card 
+                className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-blue-50 to-cyan-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Globe className="text-2xl text-white" size={24} />
@@ -346,7 +346,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-red-50 to-rose-50">
+              <Card 
+                className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-red-50 to-rose-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Star className="text-2xl text-white" size={24} />
@@ -356,7 +362,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-violet-50">
+              <Card 
+                className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-purple-50 to-violet-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Trophy className="text-2xl text-white" size={24} />
@@ -380,39 +392,10 @@ export default function HomePage() {
             <div className="grid md:grid-cols-4 gap-8">
               <Card 
                 className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50 tilt-card"
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const centerX = rect.width / 2;
-                  const centerY = rect.height / 2;
-                  const tiltX = ((y - centerY) / centerY) * -10;
-                  const tiltY = ((x - centerX) / centerX) * 10;
-                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
-                }}
-                onTouchMove={(e) => {
-                  if (e.touches && e.touches.length === 1) {
-                    const touch = e.touches[0];
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const tiltX = ((y - centerY) / centerY) * -10;
-                    const tiltY = ((x - centerX) / centerX) * 10;
-                    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
-                }}
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
               >
                 <CardContent className="p-8 text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
@@ -425,7 +408,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+              <Card 
+                className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-blue-50 to-indigo-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-8 text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Users className="text-white" size={32} />
@@ -437,7 +426,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+              <Card 
+                className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-purple-50 to-pink-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-8 text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Globe className="text-white" size={32} />
@@ -449,7 +444,13 @@ export default function HomePage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-orange-50 to-red-50">
+              <Card 
+                className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-orange-50 to-red-50 tilt-card"
+                onMouseMove={tiltHandler}
+                onMouseLeave={resetTiltHandler}
+                onTouchMove={tiltTouchHandler}
+                onTouchEnd={resetTiltHandler}
+              >
                 <CardContent className="p-8 text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Star className="text-white" size={32} />
