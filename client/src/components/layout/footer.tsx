@@ -28,27 +28,27 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4 scroll-animate wave-animate">Quick Links</h4>
             <ul className="space-y-2 text-sm">
-              <li>
+              <li className="scroll-animate wave-animate">
                 <Link href="/submit" className="text-gray-300 hover:text-white transition-colors">
                   Submit Your Poem
                 </Link>
               </li>
-              <li>
+              <li className="scroll-animate wave-animate">
                 <Link href="/submit#writory-wall-section" className="text-gray-300 hover:text-white transition-colors">
                   Submit for Writory Wall
                 </Link>
               </li>
-              <li>
+              <li className="scroll-animate wave-animate">
                 <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
                   About Us
                 </Link>
               </li>
-              <li>
+              <li className="scroll-animate wave-animate">
                 <Link href="/past-winners" className="text-gray-300 hover:text-white transition-colors">
                   Past Winners
                 </Link>
               </li>
-              <li>
+              <li className="scroll-animate wave-animate">
                 <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
                   Contact Us
                 </Link>
@@ -60,12 +60,12 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4 scroll-animate wave-animate">Additional Competitions</h4>
             <ul className="space-y-2 text-sm">
-              <li>
+              <li className="scroll-animate wave-animate">
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Regional Languages Competition
                 </button>
               </li>
-              <li>
+              <li className="scroll-animate wave-animate">
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Junior Competition
                 </button>
