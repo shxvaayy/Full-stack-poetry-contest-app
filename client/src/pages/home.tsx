@@ -104,7 +104,7 @@ export default function HomePage() {
         }
         
         .wave-animate {
-          animation: wave-up 0.8s ease-out forwards;
+          animation: wave-up 1.5s cubic-bezier(0.4,0.2,0.2,1) forwards;
         }
         
         .wave-animate:nth-child(1) { animation-delay: 0.1s; }

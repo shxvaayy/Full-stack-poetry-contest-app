@@ -332,7 +332,7 @@ if (typeof window !== 'undefined') {
       transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
     }
     .flip-card {
-      transition: transform 0.4s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.4s;
+      transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.6s;
       transform-style: preserve-3d;
     }
     .flipping {
