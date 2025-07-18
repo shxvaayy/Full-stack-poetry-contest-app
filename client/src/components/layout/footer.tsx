@@ -1,9 +1,20 @@
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Twitter, Facebook, Instagram, Linkedin } from "lucide-react";
+import { useEffect } from "react";
 
 export default function Footer() {
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.__writory_wave_observer) {
+      setTimeout(() => {
+        document.querySelectorAll('.scroll-animate').forEach(el => {
+          window.__writory_wave_observer.observe(el);
+        });
+      }, 200);
+    }
+  }, []);
 
   const handleNotAvailable = () => {
     toast({
