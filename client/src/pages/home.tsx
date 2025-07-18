@@ -97,9 +97,18 @@ export default function HomePage() {
     }
     attachWaveObserver();
     window.addEventListener('popstate', attachWaveObserver);
+    // MutationObserver to re-attach on DOM changes
+    let mo;
+    if (typeof window !== 'undefined' && window.MutationObserver) {
+      mo = new window.MutationObserver(() => {
+        attachWaveObserver();
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    }
     return () => {
       window.removeEventListener('popstate', attachWaveObserver);
       if (window.__writory_wave_observer) window.__writory_wave_observer.disconnect();
+      if (mo) mo.disconnect();
     };
   }, []);
   const { toast } = useToast();
