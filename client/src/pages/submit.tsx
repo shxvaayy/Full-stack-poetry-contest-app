@@ -1079,16 +1079,23 @@ export default function SubmitPage() {
             <p className="text-black font-bold text-lg">
             No rules, just heart — let your truth unfold, Your words are flames, fierce and bold. At Writory, every voice is gold.
             </p>
-            <Dialog open={showWallDialog} onOpenChange={setShowWallDialog}>
-              <DialogTrigger asChild>
+                          <Dialog open={showWallDialog} onOpenChange={setShowWallDialog}>
                 <Button
                   className="animate-[pulseGlowPurple_2s_infinite] mt-12 mb-8 z-10 bg-gradient-to-br from-pink-500 via-purple-500 to-pink-400 text-white font-semibold py-4 px-8 text-lg shadow-2xl transform transition-all duration-200 hover:scale-110 flex items-center gap-2 mx-auto"
-                  onClick={() => setShowWallDialog(true)}
+                  onClick={() => {
+                    // Check if user is logged in
+                    if (!user) {
+                      // Redirect to login page with return URL
+                      window.location.href = `/auth?returnTo=${encodeURIComponent('/submit')}`;
+                      return;
+                    }
+                    // If logged in, open the dialog
+                    setShowWallDialog(true);
+                  }}
                 >
                   <span style={{ fontWeight: 700, letterSpacing: 1 }}>SUBMIT FOR WRITORY WALL</span>
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Submit for Writory Wall</DialogTitle>
                 </DialogHeader>
