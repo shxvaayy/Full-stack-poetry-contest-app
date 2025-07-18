@@ -1018,7 +1018,7 @@ export default function SubmitPage() {
           })()}
 
           <div className="text-center mt-8">
-            <p className="text-gray-600">
+            <p className="text-black font-bold text-lg">
             No rules, just heart — let your truth unfold, Your words are flames, fierce and bold. At Writory, every voice is gold.
             </p>
             <Dialog open={showWallDialog} onOpenChange={setShowWallDialog}>
