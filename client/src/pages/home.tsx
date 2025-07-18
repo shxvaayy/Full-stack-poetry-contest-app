@@ -104,23 +104,21 @@ export default function HomePage() {
           document.head.appendChild(style);
           window.__writory_wave_css_injected = true;
         }
-        if (!window.__writory_wave_observer) {
-          window.__writory_wave_observer = new window.IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('animate');
-              }
-            });
-          }, { threshold: 0.1 });
+        if (window.__writory_wave_observer) {
+          window.__writory_wave_observer.disconnect();
         }
+        window.__writory_wave_observer = new window.IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('animate');
+            } else {
+              entry.target.classList.remove('animate');
+            }
+          });
+        }, { threshold: 0.1 });
         setTimeout(() => {
           document.querySelectorAll('.scroll-animate').forEach(el => {
             window.__writory_wave_observer.observe(el);
-            // If already in viewport, add .animate immediately
-            const rect = el.getBoundingClientRect();
-            if (rect.top < window.innerHeight && rect.bottom > 0) {
-              el.classList.add('animate');
-            }
           });
         }, 100);
       }
@@ -129,6 +127,7 @@ export default function HomePage() {
     window.addEventListener('popstate', attachWaveObserver);
     return () => {
       window.removeEventListener('popstate', attachWaveObserver);
+      if (window.__writory_wave_observer) window.__writory_wave_observer.disconnect();
     };
   }, []);
   const { toast } = useToast();
