@@ -84,15 +84,15 @@ export default function WritoryWall() {
 
   // Main refresh: pick 5 new random poems
   const handleRefresh = async () => {
-    setIsFlipping(true);
+    setCardFlipping([true, true, true, true, true]);
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
-      const data = await response.json();
+        const data = await response.json();
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
         setDisplayPosts(pickFiveRandom(approved));
       } finally {
-        setIsFlipping(false);
+        setCardFlipping([false, false, false, false, false]);
       }
     }, 400); // duration of flip out
   };
@@ -209,7 +209,11 @@ export default function WritoryWall() {
           </div>
         {allPosts.length > 5 && (
           <div className="flex justify-center mb-6">
-            <Button onClick={handleRefresh} className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-400 to-purple-400 text-white font-semibold rounded-full shadow-lg hover:from-cyan-500 hover:to-purple-500 transition backdrop-blur-md">
+            <Button
+              onClick={handleRefresh}
+              onTouchStart={handleRefresh}
+              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-400 to-purple-400 text-white font-semibold rounded-full shadow-lg hover:from-cyan-500 hover:to-purple-500 transition backdrop-blur-md"
+            >
               <RefreshCw className="w-5 h-5 animate-spin-slow" />
               More voices await…
             </Button>
@@ -222,7 +226,6 @@ export default function WritoryWall() {
                 key={post.id}
                 className={clsx(
                   'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full', // Always center and constrain
-                  isFlipping && 'flipping',
                   cardFlipping[idx] && 'flipping'
                 )}
                 style={{
@@ -296,9 +299,12 @@ export default function WritoryWall() {
                     <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
                   </Button>
                       </div>
-                <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer" onClick={() => handleCardRefresh(idx)}>
+                <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer"
+                  onClick={() => handleCardRefresh(idx)}
+                  onTouchStart={() => handleCardRefresh(idx)}
+                >
                   <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
-                    </div>
+                </div>
             </div>
             ))
           )}
@@ -318,14 +324,20 @@ if (typeof window !== 'undefined') {
     .hover\\:animate-bounce-slow:hover {
       animation: bounce-slow 0.7s;
     }
-    
     .tilt-card {
       transform-style: preserve-3d;
-      transition: transform 0.3s ease-out;
+      transition: transform 0.3s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.3s;
     }
-    
     .tilt-card:hover {
       transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+    }
+    .flip-card {
+      transition: transform 0.4s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.4s;
+      transform-style: preserve-3d;
+    }
+    .flipping {
+      transform: rotateY(90deg) scale(0.95);
+      opacity: 0.5;
     }
   `;
   document.head.appendChild(style);
