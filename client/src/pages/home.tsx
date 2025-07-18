@@ -201,11 +201,11 @@ export default function HomePage() {
                 />
               </div>
 
-              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8 wave-animate">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8 scroll-animate wave-animate">
                 WRITORY
               </h1>
 
-              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg wave-animate">Write Your Own Victory</p>
+              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg scroll-animate wave-animate">Write Your Own Victory</p>
 
               {/* Moving Tagline */}
               <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
