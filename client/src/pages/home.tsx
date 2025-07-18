@@ -298,6 +298,24 @@ export default function HomePage() {
                   e.currentTarget.style.setProperty('--tilt-x', '0deg');
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}
+                onTouchMove={(e) => {
+                  if (e.touches && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const tiltX = ((y - centerY) / centerY) * -10;
+                    const tiltY = ((x - centerX) / centerX) * 10;
+                    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                }}
               >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -360,7 +378,42 @@ export default function HomePage() {
             <p className="text-center text-gray-600 mb-12 text-lg scroll-animate wave-animate">Your platform for poetic expression and recognition</p>
 
             <div className="grid md:grid-cols-4 gap-8">
-              <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
+              <Card 
+                className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50 tilt-card"
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const centerX = rect.width / 2;
+                  const centerY = rect.height / 2;
+                  const tiltX = ((y - centerY) / centerY) * -10;
+                  const tiltY = ((x - centerX) / centerX) * 10;
+                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                }}
+                onTouchMove={(e) => {
+                  if (e.touches && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const tiltX = ((y - centerY) / centerY) * -10;
+                    const tiltY = ((x - centerX) / centerX) * 10;
+                    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                }}
+              >
                 <CardContent className="p-8 text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <CheckCircle className="text-white" size={32} />
