@@ -18,7 +18,15 @@
 .flip-card {
   perspective: 1200px;
   will-change: transform;
+  transform-style: preserve-3d;
   transition: box-shadow 0.3s, transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
+}
+.flip-content {
+  transition: transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
+  transform-style: preserve-3d;
+}
+.flipping .flip-content {
+  transform: rotateY(90deg);
 }
 .flipping {
   transform: rotateY(90deg);
