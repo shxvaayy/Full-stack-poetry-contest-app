@@ -77,8 +77,8 @@ export default function PastWinnersPage() {
     const photo = getWinnerPhotoByPosition(position);
     return (
       <div className="text-center">
-        <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:scale-110 hover:shadow-[0_0_32px_8px_rgba(255,215,0,0.6)] hover:animate-bounce-slow group animate-pulse`}>
-          <Icon className="text-2xl text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" size={24} />
+        <div className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 group`}>
+          <Icon className="text-2xl text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]" size={24} />
         </div>
         <h4 className="font-semibold text-gray-900 mb-2">{title}</h4>
         {photo && photo.photoUrl ? (
