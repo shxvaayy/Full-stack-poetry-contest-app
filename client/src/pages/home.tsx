@@ -75,35 +75,7 @@ export default function HomePage() {
         document.querySelectorAll('.scroll-animate').forEach(el => {
           el.classList.remove('animate');
         });
-        if (!window.__writory_wave_css_injected) {
-          const style = document.createElement('style');
-          style.innerHTML = `
-            .scroll-animate {
-              opacity: 0;
-              transform: translateY(50px);
-              transition: all 1.5s cubic-bezier(0.4,0.2,0.2,1);
-            }
-            .scroll-animate.animate {
-              opacity: 1;
-              transform: translateY(0);
-            }
-            @keyframes wave-up {
-              0% {
-                opacity: 0;
-                transform: translateY(30px);
-              }
-              100% {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-            .wave-animate {
-              animation: wave-up 1.5s cubic-bezier(0.4,0.2,0.2,1) forwards;
-            }
-          `;
-          document.head.appendChild(style);
-          window.__writory_wave_css_injected = true;
-        }
+        // Disconnect any previous observer
         if (window.__writory_wave_observer) {
           window.__writory_wave_observer.disconnect();
         }

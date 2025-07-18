@@ -7,12 +7,31 @@ export default function Footer() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.__writory_wave_observer) {
-      setTimeout(() => {
-        document.querySelectorAll('.scroll-animate').forEach(el => {
-          window.__writory_wave_observer.observe(el);
+    if (typeof window !== 'undefined') {
+      // Remove .animate from all .scroll-animate elements in the footer
+      document.querySelectorAll('footer .scroll-animate').forEach(el => {
+        el.classList.remove('animate');
+      });
+      // Disconnect any previous observer
+      if (window.__writory_footer_wave_observer) {
+        window.__writory_footer_wave_observer.disconnect();
+      }
+      // Create a new observer for the footer
+      window.__writory_footer_wave_observer = new window.IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate');
+          } else {
+            entry.target.classList.remove('animate');
+          }
         });
-      }, 200);
+      }, { threshold: 0.1 });
+      // Observe all .scroll-animate elements in the footer
+      setTimeout(() => {
+        document.querySelectorAll('footer .scroll-animate').forEach(el => {
+          window.__writory_footer_wave_observer.observe(el);
+        });
+      }, 100);
     }
   }, []);
 
