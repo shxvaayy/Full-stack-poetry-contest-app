@@ -41,6 +41,7 @@ export default function WritoryWall() {
   const [isFlipping, setIsFlipping] = useState(false);
   const [cardFlipping, setCardFlipping] = useState<boolean[]>([false, false, false, false, false]);
   const [expandedPosts, setExpandedPosts] = useState<{ [id: number]: boolean }>({}); // NEW: Track expanded state
+  const [flipKey, setFlipKey] = useState(0); // NEW
 
   // Helper to pick 5 unique random poems from a pool
   function pickFiveRandom(posts: WallPost[]): WallPost[] {
@@ -85,6 +86,7 @@ export default function WritoryWall() {
   // Main refresh: pick 5 new random poems
   const handleRefresh = async () => {
     setCardFlipping([true, true, true, true, true]);
+    setFlipKey((k) => k + 1); // NEW: force re-render
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
@@ -223,7 +225,7 @@ export default function WritoryWall() {
           {displayPosts.length > 0 && (
             displayPosts.map((post, idx) => (
               <div
-                key={post.id}
+                key={`${post.id}-${flipKey}`}
                 className={clsx(
                   'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full',
                   cardFlipping[idx] && 'flipping'
@@ -315,37 +317,3 @@ export default function WritoryWall() {
     </div>
   );
 }
-
-if (typeof window !== 'undefined') {
-  const style = document.createElement('style');
-  style.innerHTML = `
-    @keyframes bounce-slow {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-8px); }
-    }
-    .hover\\:animate-bounce-slow:hover {
-      animation: bounce-slow 0.7s;
-    }
-    .tilt-card {
-      transform-style: preserve-3d;
-      transition: transform 0.3s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.3s;
-    }
-    .tilt-card:hover {
-      transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
-    }
-    .flip-card {
-      perspective: 1200px;
-      transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.6s;
-      transform-style: preserve-3d;
-    }
-    .flip-inner {
-      transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1);
-      transform-style: preserve-3d;
-    }
-    .flipping .flip-inner {
-      transform: rotateY(90deg) scale(0.95);
-      opacity: 0.5;
-    }
-  `;
-  document.head.appendChild(style);
-} 
