@@ -546,7 +546,7 @@ export default function AdminSettingsPage() {
                 <CardTitle>Contest Timeline</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 bg-gray-50 rounded-lg gap-4">
                   <div className="flex-1">
                     <Label htmlFor="contest-launch-date" className="text-base font-medium">
                       Contest Launch Date
@@ -560,10 +560,10 @@ export default function AdminSettingsPage() {
                     type="datetime-local"
                     value={toDatetimeLocal(settings.contest_launch_date)}
                     onChange={e => setSettings(prev => ({ ...prev, contest_launch_date: e.target.value }))}
-                    className="w-56"
+                    className="w-full lg:w-56"
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 bg-gray-50 rounded-lg gap-4">
                   <div className="flex-1">
                     <Label htmlFor="submission-deadline" className="text-base font-medium">
                       Submission Deadline
@@ -577,10 +577,10 @@ export default function AdminSettingsPage() {
                     type="datetime-local"
                     value={toDatetimeLocal(settings.submission_deadline)}
                     onChange={e => setSettings(prev => ({ ...prev, submission_deadline: e.target.value }))}
-                    className="w-56"
+                    className="w-full lg:w-56"
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 bg-gray-50 rounded-lg gap-4">
                   <div className="flex-1">
                     <Label htmlFor="result-announcement-date" className="text-base font-medium">
                       Results Announcement Date & Time
@@ -594,7 +594,7 @@ export default function AdminSettingsPage() {
                     type="datetime-local"
                     value={toDatetimeLocal(settings.result_announcement_date)}
                     onChange={e => setSettings(prev => ({ ...prev, result_announcement_date: e.target.value }))}
-                    className="w-56"
+                    className="w-full lg:w-56"
                   />
                 </div>
               </CardContent>
@@ -636,14 +636,14 @@ export default function AdminSettingsPage() {
             
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center pt-4 gap-4">
               {/* Reset Free Tier Button */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     disabled={resetting}
-                    className="border-red-200 text-red-700 hover:bg-red-50"
+                    className="border-red-200 text-red-700 hover:bg-red-50 w-full sm:w-auto"
                   >
                     {resetting ? (
                       <>
@@ -683,7 +683,7 @@ export default function AdminSettingsPage() {
               <Button
                 onClick={saveSettings}
                 disabled={saving}
-                className="min-w-32"
+                className="min-w-32 w-full sm:w-auto"
               >
                 {saving ? (
                   <>
@@ -707,7 +707,7 @@ export default function AdminSettingsPage() {
             <CardTitle>Upload Winner Details (Photo, Poem, etc.)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
               {winnerForms.map((form, idx) => (
                 <div key={form.position} className="border rounded-lg p-4 bg-gray-50">
                   <h3 className="font-bold mb-2">{form.position === '1' ? '1st Place' : form.position === '2' ? '2nd Place' : '3rd Place'} Winner</h3>
@@ -778,12 +778,43 @@ export default function AdminSettingsPage() {
                 </div>
               ))}
             </div>
-            <Button className="mt-6" onClick={handleWinnersUpload} disabled={uploadingPhoto}>
-              {uploadingPhoto ? 'Uploading...' : 'Upload All Winners'}
-            </Button>
-            <Button className="mt-2" variant="destructive" onClick={handleDeleteAllWinners} disabled={uploadingPhoto}>
-              Delete All Winners (Reset)
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 mt-6">
+              <Button 
+                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white" 
+                onClick={handleWinnersUpload} 
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload All Winners
+                  </>
+                )}
+              </Button>
+              <Button 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white" 
+                variant="destructive" 
+                onClick={handleDeleteAllWinners} 
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All Winners (Reset)
+                  </>
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
