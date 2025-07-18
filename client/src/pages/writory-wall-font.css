@@ -18,10 +18,10 @@
 .flip-card {
   perspective: 1200px;
   will-change: transform;
-  transition: box-shadow 0.3s;
+  transition: box-shadow 0.3s, transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
 }
-.flipping .flip-inner {
-  transform: rotateY(180deg);
+.flipping {
+  transform: rotateY(360deg);
 }
 .flip-inner {
   transition: transform 0.4s cubic-bezier(0.4,0.2,0.2,1);
