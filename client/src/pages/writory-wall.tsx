@@ -86,7 +86,6 @@ export default function WritoryWall() {
   // Main refresh: pick 5 new random poems
   const handleRefresh = async () => {
     setCardFlipping([true, true, true, true, true]);
-    setFlipKey((k: number) => k + 1); // NEW: force re-render
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
@@ -94,9 +93,9 @@ export default function WritoryWall() {
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
         setDisplayPosts(pickFiveRandom(approved));
       } finally {
-        setCardFlipping([false, false, false, false, false]);
+        setTimeout(() => setCardFlipping([false, false, false, false, false]), 200);
       }
-    }, 400); // duration of flip out
+    }, 200); // flip out, swap, then flip in
   };
 
   // Like handler: update like and update count from backend response
@@ -139,7 +138,7 @@ export default function WritoryWall() {
         const currentIds = new Set(displayPosts.map((p: WallPost) => p.id));
         const notShown = approved.filter((p: WallPost) => !currentIds.has(p.id));
         if (notShown.length === 0) {
-          setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v)));
+          setTimeout(() => setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v))), 200);
           return; // No new poems to swap in
         }
         // Pick a random new poem
@@ -159,9 +158,9 @@ export default function WritoryWall() {
       } catch (e) {
         // fallback: do nothing
       } finally {
-        setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v)));
+        setTimeout(() => setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v))), 200);
       }
-    }, 400); // duration of flip out
+    }, 200); // flip out, swap, then flip in
   };
 
   const cardBgColors = [
@@ -225,7 +224,7 @@ export default function WritoryWall() {
           {displayPosts.length > 0 && (
             displayPosts.map((post, idx) => (
               <div
-                key={`${post.id}-${flipKey}`}
+                key={post.id}
                 className={clsx(
                   'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full',
                   cardFlipping[idx] && 'flipping'

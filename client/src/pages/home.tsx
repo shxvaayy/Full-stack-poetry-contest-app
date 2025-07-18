@@ -71,6 +71,10 @@ export default function HomePage() {
   useEffect(() => {
     function attachWaveObserver() {
       if (typeof window !== 'undefined') {
+        // Remove .animate from all .scroll-animate elements so animation can re-trigger
+        document.querySelectorAll('.scroll-animate').forEach(el => {
+          el.classList.remove('animate');
+        });
         if (!window.__writory_wave_css_injected) {
           const style = document.createElement('style');
           style.innerHTML = `
