@@ -18,15 +18,15 @@ export default function Footer() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Brand Section */}
           <div>
-            <h3 className="text-xl font-bold mb-4">WRITORY</h3>
-            <p className="text-gray-300 text-sm leading-relaxed">
+            <h3 className="text-xl font-bold mb-4 scroll-animate wave-animate">WRITORY</h3>
+            <p className="text-gray-300 text-sm leading-relaxed scroll-animate wave-animate">
               Celebrating literary excellence and nurturing emerging voices. Join our community of poets and share your unique stories with the world.
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+            <h4 className="text-lg font-semibold mb-4 scroll-animate wave-animate">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/submit" className="text-gray-300 hover:text-white transition-colors">
@@ -58,7 +58,7 @@ export default function Footer() {
 
           {/* Additional Competitions */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Additional Competitions</h4>
+            <h4 className="text-lg font-semibold mb-4 scroll-animate wave-animate">Additional Competitions</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
@@ -90,7 +90,7 @@ export default function Footer() {
               <Linkedin size={20} />
             </a>
           </div>
-          <p className="text-gray-300 text-sm">© 2025 WRITORY All rights reserved.</p>
+          <p className="text-gray-300 text-sm scroll-animate wave-animate">© 2025 WRITORY All rights reserved.</p>
         </div>
       </div>
     </footer>
