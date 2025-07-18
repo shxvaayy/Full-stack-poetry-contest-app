@@ -52,12 +52,8 @@ function AppContent() {
           <Route path="/admin-upload" component={AdminUploadPage} />
           <Route path="/admin-settings" component={AdminSettingsPage} />
           <Route path="/admin-wall-moderation" component={AdminWallModerationPage} />
-          {/* Protected route - only /submit requires authentication */}
-          <Route path="/submit">
-            <AuthGuard>
-              <SubmitPage />
-            </AuthGuard>
-          </Route>
+          {/* Submit route - accessible to all, but requires login for actual submission */}
+          <Route path="/submit" component={SubmitPage} />
           <Route path="/not-found" component={NotFoundPage} />
           <Route path="*">
             <NotFoundPage />

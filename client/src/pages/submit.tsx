@@ -365,6 +365,13 @@ export default function SubmitPage() {
   }, [freeTierStatus, user?.uid, refetchSubmissionStatus]);
 
   const handleTierSelection = (tier: typeof TIERS[0]) => {
+    // Check if user is logged in
+    if (!user) {
+      // Redirect to login page with return URL
+      window.location.href = `/auth?returnTo=${encodeURIComponent('/submit')}`;
+      return;
+    }
+    
     setSelectedTier(tier);
     setDiscountedAmount(tier.price);
     setCouponApplied(false);
@@ -550,6 +557,13 @@ export default function SubmitPage() {
   };
 
   const handleFormSubmitInternal = async (actualPaymentData: any) => {
+    // Check if user is logged in
+    if (!user) {
+      // Redirect to login page with return URL
+      window.location.href = `/auth?returnTo=${encodeURIComponent('/submit')}`;
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setSubmissionStatus("Validating your submission...");
@@ -895,6 +909,13 @@ export default function SubmitPage() {
 
     return true;
   };
+
+  // Check if user is logged in for form/payment steps
+  if ((currentStep === "form" || currentStep === "payment") && !user) {
+    // Redirect to login page with return URL
+    window.location.href = `/auth?returnTo=${encodeURIComponent('/submit')}`;
+    return null;
+  }
 
   // Check submission status
   if (userSubmissionStatus && typeof userSubmissionStatus === 'object' && 'hasSubmitted' in userSubmissionStatus && (userSubmissionStatus as any).hasSubmitted) {
