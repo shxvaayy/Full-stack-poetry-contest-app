@@ -225,7 +225,7 @@ export default function WritoryWall() {
               <div
                 key={post.id}
                 className={clsx(
-                  'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full', // Always center and constrain
+                  'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full',
                   cardFlipping[idx] && 'flipping'
                 )}
                 style={{
@@ -261,11 +261,11 @@ export default function WritoryWall() {
                     }}
                   >
                     {post.title}
-                      </div>
+                  </div>
                   <div
                     className={clsx(
                       'text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition',
-                      expandedPosts[post.id] && 'max-h-96 overflow-y-auto pr-2' // Add scroll only when expanded
+                      expandedPosts[post.id] && 'max-h-96 overflow-y-auto pr-2'
                     )}
                   >
                     {expandedPosts[post.id]
@@ -282,12 +282,12 @@ export default function WritoryWall() {
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
-                          {post.author_instagram && (
-                    <a href={`https://www.instagram.com/${post.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
-                      <Instagram className="inline w-4 h-4" />
-                          </a>
-                        )}
-                      </div>
+                    {post.author_instagram && (
+                      <a href={`https://www.instagram.com/${post.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
+                        <Instagram className="inline w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 mt-2">
                     <Button
                       variant="ghost"
@@ -299,13 +299,14 @@ export default function WritoryWall() {
                       <span className="font-semibold">Feel this</span>
                       <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
                     </Button>
-                        </div>
+                  </div>
                   <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer"
                     onClick={() => handleCardRefresh(idx)}
                     onTouchStart={() => handleCardRefresh(idx)}
                   >
                     <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
                   </div>
+                </div>
               </div>
             ))
           )}
