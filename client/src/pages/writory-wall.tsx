@@ -267,7 +267,6 @@ export default function WritoryWall() {
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}
               >
-                <div className="flip-inner">
                   <div
                     className="mb-2"
                     style={{
@@ -323,7 +322,6 @@ export default function WritoryWall() {
                   >
                     <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
                   </div>
-                </div>
               </div>
             ))
           )}
