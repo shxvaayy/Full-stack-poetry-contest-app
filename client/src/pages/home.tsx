@@ -70,68 +70,50 @@ export default function HomePage() {
   // Add scroll animations and 3D tilt effects
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const style = document.createElement('style');
-      style.innerHTML = `
-        .scroll-animate {
-          opacity: 0;
-          transform: translateY(50px);
-          transition: all 0.8s ease-out;
-        }
-        
-        .scroll-animate.animate {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        
-        .tilt-card {
-          transform-style: preserve-3d;
-          transition: transform 0.3s ease-out;
-        }
-        
-        .tilt-card:hover {
-          transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
-        }
-        
-        @keyframes wave-up {
-          0% {
+      if (!window.__writory_wave_css_injected) {
+        const style = document.createElement('style');
+        style.innerHTML = `
+          .scroll-animate {
             opacity: 0;
-            transform: translateY(30px);
+            transform: translateY(50px);
+            transition: all 1.5s cubic-bezier(0.4,0.2,0.2,1);
           }
-          100% {
+          .scroll-animate.animate {
             opacity: 1;
             transform: translateY(0);
           }
-        }
-        
-        .wave-animate {
-          animation: wave-up 1.5s cubic-bezier(0.4,0.2,0.2,1) forwards;
-        }
-        
-        .wave-animate:nth-child(1) { animation-delay: 0.1s; }
-        .wave-animate:nth-child(2) { animation-delay: 0.2s; }
-        .wave-animate:nth-child(3) { animation-delay: 0.3s; }
-        .wave-animate:nth-child(4) { animation-delay: 0.4s; }
-        .wave-animate:nth-child(5) { animation-delay: 0.5s; }
-      `;
-      document.head.appendChild(style);
-
-      // Intersection Observer for scroll animations
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate');
+          @keyframes wave-up {
+            0% {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
-        });
-      }, { threshold: 0.1 });
-
-      // Observe all scroll-animate elements
-      document.querySelectorAll('.scroll-animate').forEach(el => {
-        observer.observe(el);
-      });
-
-      return () => {
-        document.head.removeChild(style);
-      };
+          .wave-animate {
+            animation: wave-up 1.5s cubic-bezier(0.4,0.2,0.2,1) forwards;
+          }
+        `;
+        document.head.appendChild(style);
+        window.__writory_wave_css_injected = true;
+      }
+      if (!window.__writory_wave_observer) {
+        const observer = new window.IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('animate');
+            }
+          });
+        }, { threshold: 0.1 });
+        setTimeout(() => {
+          document.querySelectorAll('.scroll-animate').forEach(el => {
+            observer.observe(el);
+          });
+        }, 100);
+        window.__writory_wave_observer = observer;
+      }
     }
   }, []);
   const { toast } = useToast();

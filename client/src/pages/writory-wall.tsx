@@ -250,62 +250,63 @@ export default function WritoryWall() {
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}
               >
-                <div
-                  className="mb-2"
-                  style={{
-                    color: cardHeadingColors[idx % cardHeadingColors.length],
-                    fontWeight: 'bold',
-                    fontSize: '1.25rem',
-                    textShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {post.title}
-                    </div>
-                <div
-                  className={clsx(
-                    'text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition',
-                    expandedPosts[post.id] && 'max-h-96 overflow-y-auto pr-2' // Add scroll only when expanded
-                  )}
-                >
-                  {expandedPosts[post.id]
-                    ? post.content
-                    : getFirstLines(post.content, 3)}
-                  {post.content.split(/\r?\n/).length > 3 && (
-                    <button
-                      className="ml-2 text-cyan-600 underline text-sm font-semibold hover:text-cyan-800 focus:outline-none"
-                      onClick={() => setExpandedPosts((prev) => ({ ...prev, [post.id]: !prev[post.id] }))}
-                    >
-                      {expandedPosts[post.id] ? 'Show less' : 'Read more'}
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
-                        {post.author_instagram && (
+                <div className="flip-inner">
+                  <div
+                    className="mb-2"
+                    style={{
+                      color: cardHeadingColors[idx % cardHeadingColors.length],
+                      fontWeight: 'bold',
+                      fontSize: '1.25rem',
+                      textShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    {post.title}
+                      </div>
+                  <div
+                    className={clsx(
+                      'text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition',
+                      expandedPosts[post.id] && 'max-h-96 overflow-y-auto pr-2' // Add scroll only when expanded
+                    )}
+                  >
+                    {expandedPosts[post.id]
+                      ? post.content
+                      : getFirstLines(post.content, 3)}
+                    {post.content.split(/\r?\n/).length > 3 && (
+                      <button
+                        className="ml-2 text-cyan-600 underline text-sm font-semibold hover:text-cyan-800 focus:outline-none"
+                        onClick={() => setExpandedPosts((prev) => ({ ...prev, [post.id]: !prev[post.id] }))}
+                      >
+                        {expandedPosts[post.id] ? 'Show less' : 'Read more'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
+                          {post.author_instagram && (
                     <a href={`https://www.instagram.com/${post.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
                       <Instagram className="inline w-4 h-4" />
                           </a>
                         )}
                       </div>
-                <div className="flex items-center gap-3 mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`flex items-center gap-1 text-cyan-700 hover:bg-cyan-100 px-3 py-1 rounded-full font-bold text-base shadow-md border border-cyan-300/60 ${likeLoading[post.id] ? 'opacity-50 pointer-events-none' : ''}`}
-                    onClick={() => handleLike(post)}
+                  <div className="flex items-center gap-3 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`flex items-center gap-1 text-cyan-700 hover:bg-cyan-100 px-3 py-1 rounded-full font-bold text-base shadow-md border border-cyan-300/60 ${likeLoading[post.id] ? 'opacity-50 pointer-events-none' : ''}`}
+                      onClick={() => handleLike(post)}
+                    >
+                      {likedPosts[post.id] ? <Heart className="w-5 h-5 fill-cyan-500 text-cyan-500 drop-shadow" /> : <Heart className="w-5 h-5" />}
+                      <span className="font-semibold">Feel this</span>
+                      <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
+                    </Button>
+                        </div>
+                  <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer"
+                    onClick={() => handleCardRefresh(idx)}
+                    onTouchStart={() => handleCardRefresh(idx)}
                   >
-                    {likedPosts[post.id] ? <Heart className="w-5 h-5 fill-cyan-500 text-cyan-500 drop-shadow" /> : <Heart className="w-5 h-5" />}
-                    <span className="font-semibold">Feel this</span>
-                    <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
-                  </Button>
-                      </div>
-                <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer"
-                  onClick={() => handleCardRefresh(idx)}
-                  onTouchStart={() => handleCardRefresh(idx)}
-                >
-                  <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
-                </div>
-            </div>
+                    <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
+                  </div>
+              </div>
             ))
           )}
         </div>
@@ -332,10 +333,15 @@ if (typeof window !== 'undefined') {
       transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
     }
     .flip-card {
+      perspective: 1200px;
       transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.6s;
       transform-style: preserve-3d;
     }
-    .flipping {
+    .flip-inner {
+      transition: transform 0.6s cubic-bezier(0.4,0.2,0.2,1);
+      transform-style: preserve-3d;
+    }
+    .flipping .flip-inner {
       transform: rotateY(90deg) scale(0.95);
       opacity: 0.5;
     }
