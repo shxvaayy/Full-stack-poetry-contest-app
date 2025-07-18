@@ -221,7 +221,7 @@ export default function WritoryWall() {
               <div
                 key={post.id}
                 className={clsx(
-                  'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card mx-auto max-w-2xl w-full', // Always center and constrain
+                  'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full', // Always center and constrain
                   isFlipping && 'flipping',
                   cardFlipping[idx] && 'flipping'
                 )}
@@ -230,6 +230,21 @@ export default function WritoryWall() {
                   borderRadius: '1.5rem',
                   boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.10)',
                   transition: 'max-width 0.3s, margin 0.3s',
+                }}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const centerX = rect.width / 2;
+                  const centerY = rect.height / 2;
+                  const tiltX = ((y - centerY) / centerY) * -10;
+                  const tiltY = ((x - centerX) / centerX) * 10;
+                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}
               >
                 <div
@@ -291,4 +306,27 @@ export default function WritoryWall() {
       </div>
     </div>
   );
+}
+
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .hover\\:animate-bounce-slow:hover {
+      animation: bounce-slow 0.7s;
+    }
+    
+    .tilt-card {
+      transform-style: preserve-3d;
+      transition: transform 0.3s ease-out;
+    }
+    
+    .tilt-card:hover {
+      transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+    }
+  `;
+  document.head.appendChild(style);
 } 
