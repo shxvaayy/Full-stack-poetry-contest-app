@@ -67,6 +67,73 @@ function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: s
 }
 
 export default function HomePage() {
+  // Add scroll animations and 3D tilt effects
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .scroll-animate {
+          opacity: 0;
+          transform: translateY(50px);
+          transition: all 0.8s ease-out;
+        }
+        
+        .scroll-animate.animate {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        
+        .tilt-card {
+          transform-style: preserve-3d;
+          transition: transform 0.3s ease-out;
+        }
+        
+        .tilt-card:hover {
+          transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+        }
+        
+        @keyframes wave-up {
+          0% {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .wave-animate {
+          animation: wave-up 0.8s ease-out forwards;
+        }
+        
+        .wave-animate:nth-child(1) { animation-delay: 0.1s; }
+        .wave-animate:nth-child(2) { animation-delay: 0.2s; }
+        .wave-animate:nth-child(3) { animation-delay: 0.3s; }
+        .wave-animate:nth-child(4) { animation-delay: 0.4s; }
+        .wave-animate:nth-child(5) { animation-delay: 0.5s; }
+      `;
+      document.head.appendChild(style);
+
+      // Intersection Observer for scroll animations
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate');
+          }
+        });
+      }, { threshold: 0.1 });
+
+      // Observe all scroll-animate elements
+      document.querySelectorAll('.scroll-animate').forEach(el => {
+        observer.observe(el);
+      });
+
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, []);
   const { toast } = useToast();
 
   // Check for verification success message
@@ -149,11 +216,11 @@ export default function HomePage() {
                 />
               </div>
 
-              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8 wave-animate">
                 WRITORY
               </h1>
 
-              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
+              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg wave-animate">Write Your Own Victory</p>
 
               {/* Moving Tagline */}
               <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
@@ -192,7 +259,7 @@ export default function HomePage() {
         {/* No Barriers Section */}
         <section className="py-16 bg-gradient-to-br from-white to-blue-50">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent scroll-animate">
               No Barriers or Boundaries
             </h2>
             <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
@@ -209,12 +276,29 @@ export default function HomePage() {
         {/* What Our Winners Receive */}
         <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
           <div className="max-w-7xl mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate">
               What Our Winners Receive
             </h2>
-            <p className="text-center text-gray-600 mb-12 text-lg">Celebrating literary excellence with meaningful rewards</p>
+            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate">Celebrating literary excellence with meaningful rewards</p>
             <div className="grid md:grid-cols-5 gap-6">
-              <Card className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50">
+              <Card 
+                className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50 tilt-card"
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const centerX = rect.width / 2;
+                  const centerY = rect.height / 2;
+                  const tiltX = ((y - centerY) / centerY) * -10;
+                  const tiltY = ((x - centerX) / centerX) * 10;
+                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                }}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <IdCard className="text-2xl text-white" size={24} />
