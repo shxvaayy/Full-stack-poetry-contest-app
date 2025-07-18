@@ -110,6 +110,11 @@ export default function HomePage() {
         setTimeout(() => {
           document.querySelectorAll('.scroll-animate').forEach(el => {
             observer.observe(el);
+            // If already in viewport, add .animate immediately
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+              el.classList.add('animate');
+            }
           });
         }, 100);
         window.__writory_wave_observer = observer;
