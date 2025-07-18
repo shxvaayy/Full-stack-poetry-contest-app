@@ -39,9 +39,14 @@ export default function WritoryWall() {
   const [likeLoading, setLikeLoading] = useState<{ [id: number]: boolean }>({});
   const [likedPosts, setLikedPosts] = useState<{ [id: number]: boolean }>({});
   const [isFlipping, setIsFlipping] = useState(false);
-  const [cardFlipping, setCardFlipping] = useState<boolean[]>([false, false, false, false, false]);
+  const [cardFlipStates, setCardFlipStates] = useState<{ flipping: boolean, content: WallPost }[]>([]);
   const [expandedPosts, setExpandedPosts] = useState<{ [id: number]: boolean }>({}); // NEW: Track expanded state
   const [flipKey, setFlipKey] = useState(0); // NEW
+
+  // Helper to initialize cardFlipStates
+  function initCardFlipStates(posts: WallPost[]): { flipping: boolean, content: WallPost }[] {
+    return posts.slice(0, 5).map((p) => ({ flipping: false, content: p }));
+  }
 
   // Helper to pick 5 unique random poems from a pool
   function pickFiveRandom(posts: WallPost[]): WallPost[] {
@@ -58,7 +63,7 @@ export default function WritoryWall() {
       const data = await response.json();
       const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
       setAllPosts(approved);
-      setDisplayPosts(pickFiveRandom(approved));
+      setCardFlipStates(initCardFlipStates(approved));
       // Set liked state for current user
       const liked: { [id: number]: boolean } = {};
       approved.forEach((post: any) => {
@@ -72,7 +77,7 @@ export default function WritoryWall() {
       setLikedPosts(liked);
     } catch (e) {
       setAllPosts([]);
-      setDisplayPosts([]);
+      setCardFlipStates([]);
     } finally {
       setLoading(false);
     }
@@ -83,19 +88,20 @@ export default function WritoryWall() {
     fetchWallPosts();
   }, [userUid]);
 
-  // Main refresh: pick 5 new random poems
+  // Main refresh: flip all cards
   const handleRefresh = async () => {
-    setCardFlipping([true, true, true, true, true]);
+    setCardFlipStates((prev) => prev.map((c) => ({ ...c, flipping: true })));
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
         const data = await response.json();
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
-        setDisplayPosts(pickFiveRandom(approved));
+        const newStates = prev => prev.map((c, i) => ({ ...c, content: approved[i % approved.length] }));
+        setCardFlipStates(newStates);
       } finally {
-        setCardFlipping([false, false, false, false, false]);
+        setTimeout(() => setCardFlipStates((prev) => prev.map((c) => ({ ...c, flipping: false }))), 350);
       }
-    }, 350); // flip out, swap, then flip in
+    }, 350);
   };
 
   // Like handler: update like and update count from backend response
@@ -126,41 +132,26 @@ export default function WritoryWall() {
     }
   };
 
-  // Per-card refresh handler: replace only the selected poem
+  // Per-card refresh handler
   const handleCardRefresh = async (replaceIdx: number) => {
-    setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? true : v)));
+    setCardFlipStates((prev) => prev.map((c, i) => i === replaceIdx ? { ...c, flipping: true } : c));
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
         const data = await response.json();
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
-        // Find poems not currently displayed
-        const currentIds = new Set(displayPosts.map((p: WallPost) => p.id));
-        const notShown = approved.filter((p: WallPost) => !currentIds.has(p.id));
+        const currentIds = new Set(cardFlipStates.map((c) => c.content.id));
+        const notShown = approved.filter((p) => !currentIds.has(p.id));
         if (notShown.length === 0) {
-          setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v)));
-          return; // No new poems to swap in
+          setCardFlipStates((prev) => prev.map((c, i) => i === replaceIdx ? { ...c, flipping: false } : c));
+          return;
         }
-        // Pick a random new poem
         const newPoem = notShown[Math.floor(Math.random() * notShown.length)];
-        const newDisplay = [...displayPosts];
-        newDisplay[replaceIdx] = newPoem;
-        setDisplayPosts(newDisplay);
-        // Update liked state for new poem
-        const liked: { [id: number]: boolean } = { ...likedPosts };
-        if (newPoem.likedBy && userUid) {
-          try {
-            const arr = typeof newPoem.likedBy === 'string' ? JSON.parse(newPoem.likedBy) : newPoem.likedBy;
-            liked[newPoem.id] = arr.includes(userUid);
-          } catch {}
-        }
-        setLikedPosts(liked);
-      } catch (e) {
-        // fallback: do nothing
+        setCardFlipStates((prev) => prev.map((c, i) => i === replaceIdx ? { ...c, content: newPoem } : c));
       } finally {
-        setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v)));
+        setTimeout(() => setCardFlipStates((prev) => prev.map((c, i) => i === replaceIdx ? { ...c, flipping: false } : c)), 350);
       }
-    }, 350); // flip out, swap, then flip in
+    }, 350);
   };
 
   const cardBgColors = [
@@ -221,13 +212,13 @@ export default function WritoryWall() {
           </div>
         )}
         <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6">
-          {displayPosts.length > 0 && (
-            displayPosts.map((post, idx) => (
+          {cardFlipStates.length > 0 && (
+            cardFlipStates.map((card, idx) => (
               <div
-                key={post.id}
+                key={card.content.id}
                 className={clsx(
                   'break-inside-avoid p-8 mb-8 group relative overflow-hidden flip-card tilt-card mx-auto max-w-2xl w-full',
-                  cardFlipping[idx] && 'flipping'
+                  card.flipping && 'flipping'
                 )}
                 style={{
                   background: cardBgColors[idx % cardBgColors.length],
@@ -277,30 +268,30 @@ export default function WritoryWall() {
                       textShadow: '0 2px 8px rgba(0,0,0,0.04)',
                     }}
                   >
-                    {post.title}
+                    {card.content.title}
                   </div>
                   <div
                     className={clsx(
                       'text-lg font-medium text-gray-900 font-serif whitespace-pre-line mb-4 group-hover:text-cyan-700 transition',
-                      expandedPosts[post.id] && 'max-h-96 overflow-y-auto pr-2'
+                      expandedPosts[card.content.id] && 'max-h-96 overflow-y-auto pr-2'
                     )}
                   >
-                    {expandedPosts[post.id]
-                      ? post.content
-                      : getFirstLines(post.content, 3)}
-                    {post.content.split(/\r?\n/).length > 3 && (
+                    {expandedPosts[card.content.id]
+                      ? card.content.content
+                      : getFirstLines(card.content.content, 3)}
+                    {card.content.content.split(/\r?\n/).length > 3 && (
                       <button
                         className="ml-2 text-cyan-600 underline text-sm font-semibold hover:text-cyan-800 focus:outline-none"
-                        onClick={() => setExpandedPosts((prev) => ({ ...prev, [post.id]: !prev[post.id] }))}
+                        onClick={() => setExpandedPosts((prev) => ({ ...prev, [card.content.id]: !prev[card.content.id] }))}
                       >
-                        {expandedPosts[post.id] ? 'Show less' : 'Read more'}
+                        {expandedPosts[card.content.id] ? 'Show less' : 'Read more'}
                       </button>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-semibold text-gray-700">{post.author_name}</span>
-                    {post.author_instagram && (
-                      <a href={`https://www.instagram.com/${post.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
+                    <span className="text-sm font-semibold text-gray-700">{card.content.author_name}</span>
+                    {card.content.author_instagram && (
+                      <a href={`https://www.instagram.com/${card.content.author_instagram.replace(/^@/, '').trim().replace(/[^a-zA-Z0-9._]/g, '').replace(/\/+$/, '')}/`} target="_blank" rel="noopener noreferrer" className="ml-1 text-cyan-500 hover:text-cyan-700">
                         <Instagram className="inline w-4 h-4" />
                       </a>
                     )}
@@ -309,12 +300,12 @@ export default function WritoryWall() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`flex items-center gap-1 text-cyan-700 hover:bg-cyan-100 px-3 py-1 rounded-full font-bold text-base shadow-md border border-cyan-300/60 ${likeLoading[post.id] ? 'opacity-50 pointer-events-none' : ''}`}
-                      onClick={() => handleLike(post)}
+                      className={`flex items-center gap-1 text-cyan-700 hover:bg-cyan-100 px-3 py-1 rounded-full font-bold text-base shadow-md border border-cyan-300/60 ${likeLoading[card.content.id] ? 'opacity-50 pointer-events-none' : ''}`}
+                      onClick={() => handleLike(card.content)}
                     >
-                      {likedPosts[post.id] ? <Heart className="w-5 h-5 fill-cyan-500 text-cyan-500 drop-shadow" /> : <Heart className="w-5 h-5" />}
+                      {likedPosts[card.content.id] ? <Heart className="w-5 h-5 fill-cyan-500 text-cyan-500 drop-shadow" /> : <Heart className="w-5 h-5" />}
                       <span className="font-semibold">Feel this</span>
-                      <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof post.likes === 'number' ? post.likes : 0}</span>
+                      <span className="ml-1 text-xs text-cyan-700 font-bold">{typeof card.content.likes === 'number' ? card.content.likes : 0}</span>
                     </Button>
                   </div>
                   <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer"
