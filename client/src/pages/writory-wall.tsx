@@ -86,7 +86,7 @@ export default function WritoryWall() {
   // Main refresh: pick 5 new random poems
   const handleRefresh = async () => {
     setCardFlipping([true, true, true, true, true]);
-    setFlipKey((k) => k + 1); // NEW: force re-render
+    setFlipKey((k: number) => k + 1); // NEW: force re-render
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
@@ -106,7 +106,7 @@ export default function WritoryWall() {
       return;
     }
     if (likeLoading[post.id]) return;
-    setLikeLoading((prev) => ({ ...prev, [post.id]: true }));
+    setLikeLoading((prev: { [id: number]: boolean }) => ({ ...prev, [post.id]: true }));
     try {
       const res = await fetch(`/api/wall-posts/${post.id}/like`, {
         method: 'POST',
@@ -118,28 +118,28 @@ export default function WritoryWall() {
       const data = await res.json();
       console.log('Like API response:', data); // Debug
       // Update like count and liked state for this poem in displayPosts
-      setDisplayPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, likes: data.likes } : p));
-      setLikedPosts((prev) => ({ ...prev, [post.id]: data.liked }));
+      setDisplayPosts((prev: WallPost[]) => prev.map((p: WallPost) => p.id === post.id ? { ...p, likes: data.likes } : p));
+      setLikedPosts((prev: { [id: number]: boolean }) => ({ ...prev, [post.id]: data.liked }));
     } catch (e) {
       // Optionally, show a toast here if you have a toast system, or do nothing
     } finally {
-      setLikeLoading((prev) => ({ ...prev, [post.id]: false }));
+      setLikeLoading((prev: { [id: number]: boolean }) => ({ ...prev, [post.id]: false }));
     }
   };
 
   // Per-card refresh handler: replace only the selected poem
   const handleCardRefresh = async (replaceIdx: number) => {
-    setCardFlipping((prev) => prev.map((v, i) => (i === replaceIdx ? true : v)));
+    setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? true : v)));
     setTimeout(async () => {
       try {
         const response = await fetch('/api/wall-posts');
         const data = await response.json();
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
         // Find poems not currently displayed
-        const currentIds = new Set(displayPosts.map((p) => p.id));
-        const notShown = approved.filter((p) => !currentIds.has(p.id));
+        const currentIds = new Set(displayPosts.map((p: WallPost) => p.id));
+        const notShown = approved.filter((p: WallPost) => !currentIds.has(p.id));
         if (notShown.length === 0) {
-          setCardFlipping((prev) => prev.map((v, i) => (i === replaceIdx ? false : v)));
+          setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v)));
           return; // No new poems to swap in
         }
         // Pick a random new poem
@@ -159,7 +159,7 @@ export default function WritoryWall() {
       } catch (e) {
         // fallback: do nothing
       } finally {
-        setCardFlipping((prev) => prev.map((v, i) => (i === replaceIdx ? false : v)));
+        setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v)));
       }
     }, 400); // duration of flip out
   };
@@ -248,6 +248,22 @@ export default function WritoryWall() {
                   e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
                 }}
                 onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                }}
+                onTouchMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const touch = e.touches[0];
+                  const x = touch.clientX - rect.left;
+                  const y = touch.clientY - rect.top;
+                  const centerX = rect.width / 2;
+                  const centerY = rect.height / 2;
+                  const tiltX = ((y - centerY) / centerY) * -10;
+                  const tiltY = ((x - centerX) / centerX) * 10;
+                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                }}
+                onTouchEnd={(e) => {
                   e.currentTarget.style.setProperty('--tilt-x', '0deg');
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}

@@ -69,47 +69,49 @@ function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: s
 export default function HomePage() {
   // Add scroll animations and 3D tilt effects
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (!window.__writory_wave_css_injected) {
-        const style = document.createElement('style');
-        style.innerHTML = `
-          .scroll-animate {
-            opacity: 0;
-            transform: translateY(50px);
-            transition: all 1.5s cubic-bezier(0.4,0.2,0.2,1);
-          }
-          .scroll-animate.animate {
-            opacity: 1;
-            transform: translateY(0);
-          }
-          @keyframes wave-up {
-            0% {
+    function attachWaveObserver() {
+      if (typeof window !== 'undefined') {
+        if (!window.__writory_wave_css_injected) {
+          const style = document.createElement('style');
+          style.innerHTML = `
+            .scroll-animate {
               opacity: 0;
-              transform: translateY(30px);
+              transform: translateY(50px);
+              transition: all 1.5s cubic-bezier(0.4,0.2,0.2,1);
             }
-            100% {
+            .scroll-animate.animate {
               opacity: 1;
               transform: translateY(0);
             }
-          }
-          .wave-animate {
-            animation: wave-up 1.5s cubic-bezier(0.4,0.2,0.2,1) forwards;
-          }
-        `;
-        document.head.appendChild(style);
-        window.__writory_wave_css_injected = true;
-      }
-      if (!window.__writory_wave_observer) {
-        const observer = new window.IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('animate');
+            @keyframes wave-up {
+              0% {
+                opacity: 0;
+                transform: translateY(30px);
+              }
+              100% {
+                opacity: 1;
+                transform: translateY(0);
+              }
             }
-          });
-        }, { threshold: 0.1 });
+            .wave-animate {
+              animation: wave-up 1.5s cubic-bezier(0.4,0.2,0.2,1) forwards;
+            }
+          `;
+          document.head.appendChild(style);
+          window.__writory_wave_css_injected = true;
+        }
+        if (!window.__writory_wave_observer) {
+          window.__writory_wave_observer = new window.IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('animate');
+              }
+            });
+          }, { threshold: 0.1 });
+        }
         setTimeout(() => {
           document.querySelectorAll('.scroll-animate').forEach(el => {
-            observer.observe(el);
+            window.__writory_wave_observer.observe(el);
             // If already in viewport, add .animate immediately
             const rect = el.getBoundingClientRect();
             if (rect.top < window.innerHeight && rect.bottom > 0) {
@@ -117,9 +119,13 @@ export default function HomePage() {
             }
           });
         }, 100);
-        window.__writory_wave_observer = observer;
       }
     }
+    attachWaveObserver();
+    window.addEventListener('popstate', attachWaveObserver);
+    return () => {
+      window.removeEventListener('popstate', attachWaveObserver);
+    };
   }, []);
   const { toast } = useToast();
 
