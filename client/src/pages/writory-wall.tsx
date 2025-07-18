@@ -93,9 +93,9 @@ export default function WritoryWall() {
         const approved = (data.posts || []).filter((p: WallPost) => p.status === 'approved') as WallPost[];
         setDisplayPosts(pickFiveRandom(approved));
       } finally {
-        setTimeout(() => setCardFlipping([false, false, false, false, false]), 200);
+        setTimeout(() => setCardFlipping([false, false, false, false, false]), 350);
       }
-    }, 200); // flip out, swap, then flip in
+    }, 350); // flip out, swap, then flip in
   };
 
   // Like handler: update like and update count from backend response
@@ -138,7 +138,7 @@ export default function WritoryWall() {
         const currentIds = new Set(displayPosts.map((p: WallPost) => p.id));
         const notShown = approved.filter((p: WallPost) => !currentIds.has(p.id));
         if (notShown.length === 0) {
-          setTimeout(() => setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v))), 200);
+          setTimeout(() => setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v))), 350);
           return; // No new poems to swap in
         }
         // Pick a random new poem
@@ -158,9 +158,9 @@ export default function WritoryWall() {
       } catch (e) {
         // fallback: do nothing
       } finally {
-        setTimeout(() => setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v))), 200);
+        setTimeout(() => setCardFlipping((prev: boolean[]) => prev.map((v: boolean, i: number) => (i === replaceIdx ? false : v))), 350);
       }
-    }, 200); // flip out, swap, then flip in
+    }, 350); // flip out, swap, then flip in
   };
 
   const cardBgColors = [
