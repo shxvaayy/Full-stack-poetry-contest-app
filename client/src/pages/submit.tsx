@@ -70,6 +70,27 @@ const TIERS = [
 type SubmissionStep = "selection" | "form" | "payment" | "completed";
 
 export default function SubmitPage() {
+  // Add 3D tilt effects for tier cards
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .tilt-card {
+          transform-style: preserve-3d;
+          transition: transform 0.3s ease-out;
+        }
+        
+        .tilt-card:hover {
+          transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+        }
+      `;
+      document.head.appendChild(style);
+
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, []);
   const { user, dbUser } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<SubmissionStep>("selection");
@@ -942,9 +963,25 @@ export default function SubmitPage() {
               return (
                 <div key={tier.id} className="relative">
                   <Card 
-                    className={`transition-all duration-300 ${tier.borderClass} border-2 overflow-hidden ${
-                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-xl'
+                    className={`transition-all duration-300 ${tier.borderClass} border-2 overflow-hidden tilt-card ${
+                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'
                     }`}
+                    onMouseMove={(e) => {
+                      if (isDisabled) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      const centerX = rect.width / 2;
+                      const centerY = rect.height / 2;
+                      const tiltX = ((y - centerY) / centerY) * -10;
+                      const tiltY = ((x - centerX) / centerX) * 10;
+                      e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                      e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                      e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                    }}
                   >
                     <CardContent className="p-0">
                       <div className="p-6 text-center bg-white">
