@@ -21,7 +21,7 @@
   transition: box-shadow 0.3s, transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
 }
 .flipping {
-  transform: rotateY(360deg);
+  transform: rotateX(180deg);
 }
 .flip-inner {
   transition: transform 0.4s cubic-bezier(0.4,0.2,0.2,1);
