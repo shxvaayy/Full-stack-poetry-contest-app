@@ -259,7 +259,7 @@ export default function HomePage() {
         {/* No Barriers Section */}
         <section className="py-16 bg-gradient-to-br from-white to-blue-50">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent scroll-animate">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent scroll-animate wave-animate">
               No Barriers or Boundaries
             </h2>
             <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
@@ -276,10 +276,10 @@ export default function HomePage() {
         {/* What Our Winners Receive */}
         <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
           <div className="max-w-7xl mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate wave-animate">
               What Our Winners Receive
             </h2>
-            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate">Celebrating literary excellence with meaningful rewards</p>
+            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate wave-animate">Celebrating literary excellence with meaningful rewards</p>
             <div className="grid md:grid-cols-5 gap-6">
               <Card 
                 className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50 tilt-card"
@@ -354,10 +354,10 @@ export default function HomePage() {
         {/* Benefits Section */}
         <section className="py-16 bg-gradient-to-br from-gray-50 to-slate-100">
           <div className="max-w-7xl mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent scroll-animate wave-animate">
               Why Choose Writory?
             </h2>
-            <p className="text-center text-gray-600 mb-12 text-lg">Your platform for poetic expression and recognition</p>
+            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate wave-animate">Your platform for poetic expression and recognition</p>
 
             <div className="grid md:grid-cols-4 gap-8">
               <Card className="hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 border-0 bg-gradient-to-br from-emerald-50 to-teal-50">
@@ -414,7 +414,7 @@ export default function HomePage() {
         {/* Poetry Inspiration Carousel */}
         <section className="py-16 bg-gradient-to-br from-white to-gray-50">
           <div className="max-w-7xl mx-auto px-4 mb-12">
-            <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate wave-animate">
               Poetry Inspiration
             </h2>
           </div>
@@ -426,10 +426,10 @@ export default function HomePage() {
         {/* Call to Action Section */}
         <section className="py-32 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden min-h-[60vh]">
           <div className="max-w-4xl mx-auto text-center px-4 flex flex-col justify-center h-full">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 scroll-animate wave-animate">
               Ready to Share Your Poetry?
             </h2>
-            <p className="text-xl text-white/90 mb-8 leading-relaxed">
+            <p className="text-xl text-white/90 mb-8 leading-relaxed scroll-animate wave-animate">
               Join thousands of poets who have already shared their voices. Your story matters, your words have power, and your poetry deserves to be heard.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
