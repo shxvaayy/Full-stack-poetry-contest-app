@@ -932,7 +932,7 @@ export default function SubmitPage() {
       >
         <div className="container mx-auto px-4">
           <div className="text-center mb-8 pt-16">
-            <h1 className="text-4xl font-bold text-black mb-2 writory-wall-heading">SUBMIT YOUR POETRY</h1>
+            <h1 className="text-4xl font-bold text-black mb-2">SUBMIT YOUR POETRY</h1>
             <p className="text-lg text-gray-600">Choose your submission tier</p>
             {IS_FIRST_MONTH && (
               <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg inline-block">
