@@ -56,8 +56,8 @@ function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: s
         >
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-white px-8 max-w-4xl">
-              <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl">{slide.title}</h3>
-              <p className="text-xl md:text-2xl font-light drop-shadow-lg">{slide.subtitle}</p>
+              <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl scroll-animate wave-animate">{slide.title}</h3>
+              <p className="text-xl md:text-2xl font-light drop-shadow-lg scroll-animate wave-animate">{slide.subtitle}</p>
             </div>
           </div>
         </div>
@@ -229,12 +229,12 @@ export default function HomePage() {
 
               <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
                 <div className="text-center">
-                  <div className="text-2xl font-bold drop-shadow-lg">{poetsCount}+</div>
-                  <div className="text-sm drop-shadow-lg">Poets Joined</div>
+                  <div className="text-2xl font-bold drop-shadow-lg scroll-animate wave-animate">{poetsCount}+</div>
+                  <div className="text-sm drop-shadow-lg scroll-animate wave-animate">Poets Joined</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold drop-shadow-lg">FREE</div>
-                  <div className="text-sm drop-shadow-lg">Entry Available</div>
+                  <div className="text-2xl font-bold drop-shadow-lg scroll-animate wave-animate">FREE</div>
+                  <div className="text-sm drop-shadow-lg scroll-animate wave-animate">Entry Available</div>
                 </div>
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function HomePage() {
             <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
               <CardContent className="p-8">
                 <div className="text-6xl mb-6">📝</div>
-                <p className="text-lg text-gray-700 leading-relaxed">
+                <p className="text-lg text-gray-700 leading-relaxed scroll-animate wave-animate">
                   Whether you're a beginner or a seasoned poet, 13 or 63, from a small town or a big city — your words matter. We believe that creativity knows no limits, and every voice deserves to be heard. No fancy degrees, no prior publications — just pure passion and honest expression. So come as you are, write what you feel, and let the world hear your story. Because here, your pen holds the power, and your story knows no borders.
                 </p>
               </CardContent>
@@ -277,8 +277,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <IdCard className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Digital Certificates</h3>
-                  <p className="text-gray-600 text-sm">Official recognition certificates for your achievement</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Digital Certificates</h3>
+                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Official recognition certificates for your achievement</p>
                 </CardContent>
               </Card>
 
@@ -293,8 +293,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Users className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Social Recognition</h3>
-                  <p className="text-gray-600 text-sm">Featured across our social media platforms</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Social Recognition</h3>
+                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Featured across our social media platforms</p>
                 </CardContent>
               </Card>
 
@@ -309,8 +309,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Globe className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Global Exposure</h3>
-                  <p className="text-gray-600 text-sm">Showcase your work to a worldwide audience</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Global Exposure</h3>
+                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Showcase your work to a worldwide audience</p>
                 </CardContent>
               </Card>
 
@@ -325,8 +325,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Star className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Literary Recognition</h3>
-                  <p className="text-gray-600 text-sm">Build your reputation in the literary community</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Literary Recognition</h3>
+                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Build your reputation in the literary community</p>
                 </CardContent>
               </Card>
 
@@ -341,8 +341,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Trophy className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Achievement Badge</h3>
-                  <p className="text-gray-600 text-sm">Special recognition for your creative excellence</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Achievement Badge</h3>
+                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Special recognition for your creative excellence</p>
                 </CardContent>
               </Card>
             </div>
@@ -369,8 +369,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <CheckCircle className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Easy Submission</h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">Easy Submission</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
                     Simple, user-friendly submission process. Upload your poem in minutes and join our community of passionate poets from around the world.
                   </p>
                 </CardContent>
@@ -387,8 +387,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Users className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Expert Judging</h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">Expert Judging</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
                     Professional literary experts and published poets evaluate submissions with care, providing fair and insightful assessment of your work.
                   </p>
                 </CardContent>
@@ -405,8 +405,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Globe className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Global Recognition</h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">Global Recognition</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
                     Winners gain international exposure through our platform and social media, connecting with poetry enthusiasts worldwide.
                   </p>
                 </CardContent>
@@ -423,8 +423,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Star className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">New challenges every month</h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">New challenges every month</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
                     Fresh prompts, unique themes, and creative formats are released every month to keep your imagination active and your writing evolving. There's always something new to look forward to!
                   </p>
                 </CardContent>
