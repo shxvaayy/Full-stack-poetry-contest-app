@@ -191,9 +191,7 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<boo
             </a>
             <a href="https://www.writoryofficial.com" 
                style="display: inline-block; background: #f8f9fa; color: #667eea; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: 600; margin: 10px; border: 2px solid #667eea;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
-                <path d="M15.6 11.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 7.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
-              </svg>
+              <img src="https://www.writoryofficial.com/favicon.png" alt="Writory" width="16" height="16" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
               Visit Writory
             </a>
           </div>
