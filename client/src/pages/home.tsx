@@ -164,8 +164,8 @@ export default function HomePage() {
     const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-    const tiltX = ((y - centerY) / centerY) * -10;
-    const tiltY = ((x - centerX) / centerX) * 10;
+    const tiltX = ((y - centerY) / centerY) * -15;
+    const tiltY = ((x - centerX) / centerX) * 15;
     e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
     e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
   };

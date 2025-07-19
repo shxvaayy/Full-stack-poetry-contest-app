@@ -25,10 +25,15 @@
 .tilt-card {
   transform-style: preserve-3d;
   transition: transform 0.3s ease-out;
+  will-change: transform;
 }
 
 .tilt-card:hover {
   transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+}
+
+.tilt-card:active {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.01);
 }
 
 .flip-content {
