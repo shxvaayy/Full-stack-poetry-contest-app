@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2 } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2, Bell, Send, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -19,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AdminSettings {
   free_tier_enabled: string;
@@ -50,6 +52,17 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Notification management state
+  const [notificationType, setNotificationType] = useState<'individual' | 'broadcast'>('individual');
+  const [notificationForm, setNotificationForm] = useState({
+    title: '',
+    message: '',
+    userEmail: '',
+    targetUser: ''
+  });
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [users, setUsers] = useState<Array<{id: string, email: string, name: string}>>([]);
   
   // Winner photo management state
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
@@ -153,7 +166,95 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     loadSettings();
     loadWinnerPhotos();
+    loadUsers();
   }, []);
+
+  const loadUsers = async () => {
+    try {
+      if (!user?.email) {
+        throw new Error('User email not available for authentication');
+      }
+
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'x-user-email': user.email,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load users');
+      }
+
+      const data = await response.json();
+      setUsers(data.users || []);
+    } catch (error: any) {
+      console.error('❌ Error loading users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load users: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendNotification = async () => {
+    try {
+      setSendingNotification(true);
+
+      if (!user?.email) {
+        throw new Error('Admin email not available');
+      }
+
+      if (!notificationForm.title.trim() || !notificationForm.message.trim()) {
+        throw new Error('Title and message are required');
+      }
+
+      if (notificationType === 'individual' && !notificationForm.userEmail.trim()) {
+        throw new Error('User email is required for individual notification');
+      }
+
+      const response = await fetch('/api/admin/notifications/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': user.email,
+        },
+        body: JSON.stringify({
+          type: notificationType,
+          title: notificationForm.title,
+          message: notificationForm.message,
+          userEmail: notificationForm.userEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send notification');
+      }
+
+      toast({
+        title: "Success",
+        description: `Notification sent successfully to ${notificationType === 'individual' ? 'user' : 'all users'}`,
+      });
+
+      // Reset form
+      setNotificationForm({
+        title: '',
+        message: '',
+        userEmail: '',
+        targetUser: ''
+      });
+    } catch (error: any) {
+      console.error('❌ Error sending notification:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send notification",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingNotification(false);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -717,6 +818,115 @@ export default function AdminSettingsPage() {
                   <>
                     <Settings className="w-4 h-4 mr-2" />
                     Save Settings
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notification Management Card */}
+        <Card className="shadow-xl mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Notification Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Notification Type Selection */}
+            <div className="flex items-center space-x-4">
+              <Label className="text-base font-medium">Notification Type:</Label>
+              <Select value={notificationType} onValueChange={(value: 'individual' | 'broadcast') => setNotificationType(value)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Individual User
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="broadcast">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      All Users
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Individual User Selection */}
+            {notificationType === 'individual' && (
+              <div className="space-y-2">
+                <Label htmlFor="user-email" className="text-base font-medium">
+                  Select User:
+                </Label>
+                <Select 
+                  value={notificationForm.userEmail} 
+                  onValueChange={(value) => setNotificationForm(prev => ({ ...prev, userEmail: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a user..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.email}>
+                        {user.name} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Notification Form */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="notification-title" className="text-base font-medium">
+                  Notification Title:
+                </Label>
+                <Input
+                  id="notification-title"
+                  value={notificationForm.title}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter notification title..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="notification-message" className="text-base font-medium">
+                  Notification Message:
+                </Label>
+                <Textarea
+                  id="notification-message"
+                  value={notificationForm.message}
+                  onChange={(e) => setNotificationForm(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Enter notification message..."
+                  className="mt-1 min-h-[100px]"
+                />
+              </div>
+            </div>
+
+            {/* Send Notification Button */}
+            <div className="flex justify-end">
+              <Button
+                onClick={sendNotification}
+                disabled={sendingNotification || !notificationForm.title.trim() || !notificationForm.message.trim() || (notificationType === 'individual' && !notificationForm.userEmail.trim())}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+              >
+                {sendingNotification ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Notification
                   </>
                 )}
               </Button>
