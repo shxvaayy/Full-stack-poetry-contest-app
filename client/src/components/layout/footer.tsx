@@ -8,37 +8,42 @@ export default function Footer() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Global flag to ensure animation runs only once per page load
-      if (window.__writory_footer_animations_initialized) {
-        return;
-      }
-      
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
-            entry.target.classList.add('animated');
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
-          }
-        });
-      }, { 
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-      });
-
-      // Observe all elements with scroll-animateclass in footer
+      // Reset animations for navigation
       document.querySelectorAll('footer .scroll-animate').forEach((el) => {
+        el.classList.remove('animated');
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
         el.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
-        observer.observe(el);
       });
+      
+      let observer;
+      
+      // Small delay to ensure DOM is updated
+      const timeoutId = setTimeout(() => {
+        observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
+              entry.target.classList.add('animated');
+              entry.target.style.opacity = '1';
+              entry.target.style.transform = 'translateY(0)';
+            }
+          });
+        }, { 
+          threshold: 0.1,
+          rootMargin: '0px 0px -50px 0px'
+        });
 
-      // Mark as initialized
-      window.__writory_footer_animations_initialized = true;
+        // Observe all elements with scroll-animate class in footer
+        document.querySelectorAll('footer .scroll-animate').forEach((el) => {
+          observer.observe(el);
+        });
+      }, 100); // 100ms delay
 
       return () => {
-        observer.disconnect();
+        clearTimeout(timeoutId);
+        if (observer) {
+          observer.disconnect();
+        }
       };
     }
   }, []);
