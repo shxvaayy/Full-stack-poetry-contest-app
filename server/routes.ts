@@ -8,7 +8,7 @@ import { uploadProfilePhotoToCloudinary, uploadPoemFileToCloudinary, uploadPhoto
 import { addPoemSubmissionToSheet, addMultiplePoemsToSheet, getSubmissionCountFromSheet, addContactToSheet } from './google-sheets.js';
 import { paypalRouter } from './paypal.js';
 import { storage } from './storage.js';
-import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation } from './mailSender.js';
+import { sendSubmissionConfirmation, sendMultiplePoemsConfirmation, sendWelcomeEmail } from './mailSender.js';
 import { validateTierPoemCount, TIER_POEM_COUNTS, TIER_PRICES } from './schema.js';
 import { client, connectDatabase } from './db.js';
 import { initializeAdminSettings, getSetting, updateSetting, getAllSettings, resetFreeTierSubmissions } from './admin-settings.js';
@@ -845,6 +845,15 @@ router.post('/api/users', asyncHandler(async (req: any, res: any) => {
         ]);
         
         console.log('✅ Welcome notification sent to new user:', newUser.email);
+        
+        // Send welcome email to new user
+        try {
+          await sendWelcomeEmail(newUser.email, newUser.name || 'Poet');
+          console.log('✅ Welcome email sent to new user:', newUser.email);
+        } catch (emailError) {
+          console.error('⚠️ Failed to send welcome email:', emailError);
+          // Don't fail user creation if email fails
+        }
       } catch (notificationError) {
         console.error('⚠️ Failed to send welcome notification:', notificationError);
         // Don't fail user creation if notification fails
@@ -3564,16 +3573,39 @@ router.post('/api/users/create', asyncHandler(async (req, res) => {
     
     // Send welcome notification to new user
     try {
-      await client.query(`
-        INSERT INTO notifications (user_uid, title, message, type, created_at, is_read)
-        VALUES ($1, $2, $3, $4, NOW(), false)
+      // First create the notification
+      const notificationResult = await client.query(`
+        INSERT INTO notifications (title, message, type, target_user_email, sent_by, is_active, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+        RETURNING id
       `, [
-        uid,
         'Welcome aboard!',
         'You\'re now part of the Writory Team — let\'s create something great.',
-        'welcome'
+        'individual',
+        user.email,
+        'system@writory.com'
       ]);
+      
+      // Then create the user notification link
+      await client.query(`
+        INSERT INTO user_notifications (notification_id, user_id, user_email, is_read, created_at)
+        VALUES ($1, $2, $3, false, NOW())
+      `, [
+        notificationResult.rows[0].id,
+        user.id,
+        user.email
+      ]);
+      
       console.log('✅ Welcome notification sent to new user:', user.email);
+      
+      // Send welcome email to new user
+      try {
+        await sendWelcomeEmail(user.email, user.name || 'Poet');
+        console.log('✅ Welcome email sent to new user:', user.email);
+      } catch (emailError) {
+        console.error('⚠️ Failed to send welcome email:', emailError);
+        // Don't fail user creation if email fails
+      }
     } catch (notificationError) {
       console.error('⚠️ Failed to send welcome notification:', notificationError);
       // Don't fail user creation if notification fails
