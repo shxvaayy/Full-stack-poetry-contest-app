@@ -9,6 +9,7 @@ import ChatbotWidget from "@/components/ChatbotWidget";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import homeBg from '@/assets/home-bg.jpg';
+import './home-font.css';
 
 // Simple Hero Carousel Component
 function HeroCarousel({ children }: { children: React.ReactNode }) {

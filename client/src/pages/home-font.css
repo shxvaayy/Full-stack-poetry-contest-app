@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
+
+.writory-wall-heading {
+  font-family: 'Permanent Marker', cursive;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.10);
+}
+
+.writory-wall-subtitle {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: #000;
+}
+
+.flip-card {
+  perspective: 1200px;
+  will-change: transform;
+  transform-style: preserve-3d;
+  transition: box-shadow 0.3s, transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
+}
+
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
+.tilt-card:hover {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+}
+
+.tilt-card:active {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.01);
+}
+
+.flip-content {
+  transition: transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
+  transform-style: preserve-3d;
+}
+.flipping .flip-content {
+  transform: rotateY(90deg);
+}
+.flipping {
+  transform: rotateY(90deg);
+}
+.flip-inner {
+  transition: transform 0.4s cubic-bezier(0.4,0.2,0.2,1);
+  transform-style: preserve-3d;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+}
+
+/* Scroll Animation Classes for Home Page and Footer */
+.scroll-animate {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.scroll-animate.animated {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.wave-animate {
+  animation: wave-up 2.2s cubic-bezier(0.4,0.2,0.2,1) both;
+}
+
+@keyframes wave-up {
+  0% {
+    opacity: 0.2;
+    transform: translateY(80px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-12px) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+} 
