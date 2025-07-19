@@ -311,13 +311,23 @@ async function initializeApp() {
     } else {
       console.log('✅ [STEP] Database already initialized, running essential migrations...');
       
-      // Run notification tables migration for existing deployments
+      // Check if notification tables already exist
       try {
-        const { migrateNotifications } = await import('./migrate-notifications.js');
-        await migrateNotifications();
-        console.log('✅ [STEP] Notification tables migration completed');
+        const tableCheck = await pool.query(`
+          SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name IN ('notifications', 'user_notifications')
+        `);
+        
+        if (tableCheck.rows.length < 2) {
+          console.log('🔧 [STEP] Notification tables missing, running migration...');
+          const { migrateNotifications } = await import('./migrate-notifications.js');
+          await migrateNotifications();
+          console.log('✅ [STEP] Notification tables migration completed');
+        } else {
+          console.log('✅ [STEP] Notification tables already exist, skipping migration');
+        }
       } catch (error) {
-        console.log('⚠️ [STEP] Notification tables migration failed:', (error as Error).message);
+        console.log('⚠️ [STEP] Notification tables check failed:', (error as Error).message);
       }
       
       console.log('📊 [STEP] Preserving existing user data and submissions');

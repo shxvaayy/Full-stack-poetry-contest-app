@@ -52,7 +52,7 @@ async function migrateNotifications() {
   }
 }
 
-// Run migration if called directly
+// Only run migration if called directly (not when imported)
 if (import.meta.url === `file://${process.argv[1]}`) {
   migrateNotifications()
     .then(() => {
