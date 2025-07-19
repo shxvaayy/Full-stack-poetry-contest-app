@@ -49,6 +49,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Winner photo management state
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
@@ -108,6 +109,26 @@ export default function AdminSettingsPage() {
   ];
   const isAdmin = user?.email && adminEmails.includes(user.email);
 
+  // Show error if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Card className="shadow-xl">
+            <CardContent className="p-6 text-center">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Error Loading Admin Settings</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   // Redirect if not admin
   if (!loading && !isAdmin) {
     return (
@@ -137,6 +158,7 @@ export default function AdminSettingsPage() {
   const loadSettings = async () => {
     try {
       setLoading(true);
+      setError(null);
 
       if (!user?.email) {
         throw new Error('User email not available for authentication');
@@ -160,6 +182,7 @@ export default function AdminSettingsPage() {
       setSettings(data.settings || {});
     } catch (error: any) {
       console.error('❌ Error loading settings:', error);
+      setError(error.message || 'Failed to load admin settings');
       toast({
         title: "Error",
         description: "Failed to load admin settings: " + error.message,
