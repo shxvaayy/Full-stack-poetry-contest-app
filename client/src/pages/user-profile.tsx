@@ -510,14 +510,15 @@ export default function UserProfile() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Profile Sidebar */}
           <div className="lg:col-span-1">
-            <Card>
-              <CardHeader className="text-center">
+            <Card className="transform hover:scale-105 transition-all duration-500 hover:shadow-2xl border-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-indigo-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <CardHeader className="text-center relative z-10">
                 <div className="relative w-20 h-20 mx-auto mb-4">
                   {backendUser?.profilePictureUrl ? (
                     <img 
                       src={`${backendUser.profilePictureUrl}?t=${Date.now()}`}
                       alt="Profile" 
-                      className="w-20 h-20 rounded-full object-cover border-2 border-green-500"
+                      className="w-20 h-20 rounded-full object-cover border-4 border-blue-500 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110"
                       loading="lazy"
                       onError={(e) => {
                         console.log('Profile image failed to load');
@@ -526,13 +527,13 @@ export default function UserProfile() {
                       }}
                     />
                   ) : (
-                    <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
                       <User className="text-white" size={32} />
                     </div>
                   )}
                 </div>
                 <div className="flex items-center justify-center gap-2">
-                  <CardTitle className="text-xl">
+                  <CardTitle className="text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     {backendUser?.name || user?.displayName || 'User'}
                   </CardTitle>
                   <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -635,10 +636,12 @@ export default function UserProfile() {
                 </div>
                 <p className="text-gray-600 text-sm">{backendUser?.email || user?.email}</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center text-gray-600">
-                  <Calendar className="mr-2" size={16} />
-                  <span className="text-sm">
+              <CardContent className="space-y-4 relative z-10">
+                <div className="flex items-center text-gray-600 p-3 rounded-lg hover:bg-blue-50 transition-all duration-300 transform hover:scale-105">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-3 shadow-lg">
+                    <Calendar className="text-white" size={16} />
+                  </div>
+                  <span className="text-sm hover:text-gray-800 transition-colors duration-300">
                     Joined {backendUser ? formatDate(backendUser.createdAt) : 'Recently'}
                   </span>
                 </div>
@@ -646,7 +649,7 @@ export default function UserProfile() {
                   onClick={refreshData} 
                   variant="outline" 
                   size="sm" 
-                  className="w-full"
+                  className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-blue-300 hover:border-blue-400 transition-all duration-300 transform hover:scale-105"
                 >
                   Refresh Data
                 </Button>
@@ -654,10 +657,13 @@ export default function UserProfile() {
             </Card>
 
             {/* Submission Status */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Trophy className="mr-2" size={20} />
+            <Card className="mt-6 transform hover:scale-105 transition-all duration-500 hover:shadow-2xl border-0 bg-gradient-to-br from-yellow-50 via-white to-orange-50 overflow-hidden relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <CardHeader className="relative z-10">
+                <CardTitle className="flex items-center bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                  <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mr-3 shadow-lg">
+                    <Trophy className="text-white" size={20} />
+                  </div>
                   Submission Status
                 </CardTitle>
               </CardHeader>
@@ -699,10 +705,13 @@ export default function UserProfile() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <BarChart3 className="mr-2" size={20} />
+                <Card className="transform hover:scale-105 transition-all duration-500 hover:shadow-2xl border-0 bg-gradient-to-br from-green-50 via-white to-emerald-50 overflow-hidden relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardHeader className="relative z-10">
+                    <CardTitle className="flex items-center bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mr-3 shadow-lg">
+                        <BarChart3 className="text-white" size={20} />
+                      </div>
                       Quick Stats
                     </CardTitle>
                   </CardHeader>
