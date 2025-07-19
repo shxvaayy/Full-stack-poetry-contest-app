@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -464,7 +465,13 @@ export default function AuthPage() {
   }, [user, setLocation]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <>
+      <Helmet>
+        <title>Sign In - Writory</title>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="description" content="Sign in to your Writory account" />
+      </Helmet>
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex flex-col items-center">
           <div className="w-20 h-20 mb-4">
@@ -831,5 +838,6 @@ export default function AuthPage() {
         <div id="recaptcha-container"></div>
       </div>
     </div>
+    </>
   );
 }
