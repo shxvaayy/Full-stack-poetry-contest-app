@@ -190,21 +190,30 @@ export default function Header() {
                 >
                   <DropdownMenuItem 
                     className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                    onClick={() => setExploreOpen(false)}
+                    onClick={() => {
+                      setExploreOpen(false);
+                      window.location.href = '/about';
+                    }}
                   >
-                    <Link href="/about" className="w-full h-full block">About Us</Link>
+                    About Us
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                    onClick={() => setExploreOpen(false)}
+                    onClick={() => {
+                      setExploreOpen(false);
+                      window.location.href = '/contact';
+                    }}
                   >
-                    <Link href="/contact" className="w-full h-full block">Contact Us</Link>
+                    Contact Us
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                    onClick={() => setExploreOpen(false)}
+                    onClick={() => {
+                      setExploreOpen(false);
+                      window.location.href = '/past-winners';
+                    }}
                   >
-                    <Link href="/past-winners" className="w-full h-full block">Past Winners</Link>
+                    Past Winners
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
