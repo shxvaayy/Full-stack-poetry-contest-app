@@ -39,22 +39,22 @@ export default function CountdownTimer({ targetDate, onComplete }: CountdownTime
   }, [targetDate, onComplete]);
 
   return (
-    <div className="flex justify-center space-x-4 text-center">
-      <div className="bg-primary text-white rounded-lg p-4">
-        <div className="text-2xl font-bold">{timeLeft.days}</div>
-        <div className="text-sm">Days</div>
+    <div className="flex justify-center space-x-1 md:space-x-4 text-center flex-wrap">
+      <div className="bg-primary text-white rounded-lg p-2 md:p-4 m-1 min-w-[60px] md:min-w-[80px]">
+        <div className="text-lg md:text-2xl font-bold">{timeLeft.days}</div>
+        <div className="text-xs md:text-sm">Days</div>
       </div>
-      <div className="bg-primary text-white rounded-lg p-4">
-        <div className="text-2xl font-bold">{timeLeft.hours}</div>
-        <div className="text-sm">Hours</div>
+      <div className="bg-primary text-white rounded-lg p-2 md:p-4 m-1 min-w-[60px] md:min-w-[80px]">
+        <div className="text-lg md:text-2xl font-bold">{timeLeft.hours}</div>
+        <div className="text-xs md:text-sm">Hours</div>
       </div>
-      <div className="bg-primary text-white rounded-lg p-4">
-        <div className="text-2xl font-bold">{timeLeft.minutes}</div>
-        <div className="text-sm">Minutes</div>
+      <div className="bg-primary text-white rounded-lg p-2 md:p-4 m-1 min-w-[60px] md:min-w-[80px]">
+        <div className="text-lg md:text-2xl font-bold">{timeLeft.minutes}</div>
+        <div className="text-xs md:text-sm">Minutes</div>
       </div>
-      <div className="bg-primary text-white rounded-lg p-4">
-        <div className="text-2xl font-bold">{timeLeft.seconds}</div>
-        <div className="text-sm">Seconds</div>
+      <div className="bg-primary text-white rounded-lg p-2 md:p-4 m-1 min-w-[60px] md:min-w-[80px]">
+        <div className="text-lg md:text-2xl font-bold">{timeLeft.seconds}</div>
+        <div className="text-xs md:text-sm">Seconds</div>
       </div>
     </div>
   );

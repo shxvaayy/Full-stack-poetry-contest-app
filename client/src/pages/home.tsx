@@ -207,10 +207,6 @@ export default function HomePage() {
                   alt="Writory Logo" 
                   className="w-32 h-32 md:w-40 md:h-40 object-contain"
                   loading="eager"
-                  onLoad={(e) => {
-                    e.target.style.opacity = '1';
-                  }}
-                  style={{ opacity: 0, transition: 'opacity 0.3s ease-in' }}
                 />
               </div>
 
