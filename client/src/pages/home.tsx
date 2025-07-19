@@ -206,14 +206,19 @@ export default function HomePage() {
                   src={logoImage} 
                   alt="Writory Logo" 
                   className="w-32 h-32 md:w-40 md:h-40 object-contain"
+                  loading="eager"
+                  onLoad={(e) => {
+                    e.target.style.opacity = '1';
+                  }}
+                  style={{ opacity: 0, transition: 'opacity 0.3s ease-in' }}
                 />
               </div>
 
-              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8 scroll-animate">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8">
                 WRITORY
               </h1>
 
-              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg scroll-animate">Write Your Own Victory</p>
+              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg">Write Your Own Victory</p>
 
               {/* Moving Tagline */}
               <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">

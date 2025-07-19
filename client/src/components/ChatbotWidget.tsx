@@ -198,6 +198,11 @@ export default function ChatbotWidget() {
           src={logoImage} 
           alt="Writory Logo" 
           className="w-10 h-10 object-contain rounded-full"
+          loading="eager"
+          onLoad={(e) => {
+            e.target.style.opacity = '1';
+          }}
+          style={{ opacity: 0, transition: 'opacity 0.3s ease-in' }}
         />
         {/* Pulse Animation Ring */}
         <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping"></div>

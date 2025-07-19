@@ -6,47 +6,7 @@ import { useEffect } from "react";
 export default function Footer() {
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Reset animations for navigation
-      document.querySelectorAll('footer .scroll-animate').forEach((el) => {
-        el.classList.remove('animated');
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(30px)';
-        el.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
-      });
-      
-      let observer;
-      
-      // Small delay to ensure DOM is updated
-      const timeoutId = setTimeout(() => {
-        observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
-              entry.target.classList.add('animated');
-              entry.target.style.opacity = '1';
-              entry.target.style.transform = 'translateY(0)';
-            }
-          });
-        }, { 
-          threshold: 0.1,
-          rootMargin: '0px 0px -50px 0px'
-        });
 
-        // Observe all elements with scroll-animate class in footer
-        document.querySelectorAll('footer .scroll-animate').forEach((el) => {
-          observer.observe(el);
-        });
-      }, 100); // 100ms delay
-
-      return () => {
-        clearTimeout(timeoutId);
-        if (observer) {
-          observer.disconnect();
-        }
-      };
-    }
-  }, []);
 
   const handleNotAvailable = () => {
     toast({
@@ -61,37 +21,37 @@ export default function Footer() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Brand Section */}
           <div>
-            <h3 className="text-xl font-bold mb-4 scroll-animate">WRITORY</h3>
-            <p className="text-gray-300 text-sm leading-relaxed scroll-animate">
+            <h3 className="text-xl font-bold mb-4">WRITORY</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
               Celebrating literary excellence and nurturing emerging voices. Join our community of poets and share your unique stories with the world.
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 scroll-animate">Quick Links</h4>
+            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
-              <li className="scroll-animate">
+              <li>
                 <Link href="/submit" className="text-gray-300 hover:text-white transition-colors">
                   Submit Your Poem
                 </Link>
               </li>
-              <li className="scroll-animate">
+              <li>
                 <Link href="/submit#writory-wall-section" className="text-gray-300 hover:text-white transition-colors">
                   Submit for Writory Wall
                 </Link>
               </li>
-              <li className="scroll-animate">
+              <li>
                 <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
                   About Us
                 </Link>
               </li>
-              <li className="scroll-animate">
+              <li>
                 <Link href="/past-winners" className="text-gray-300 hover:text-white transition-colors">
                   Past Winners
                 </Link>
               </li>
-              <li className="scroll-animate">
+              <li>
                 <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
                   Contact Us
                 </Link>
@@ -101,14 +61,14 @@ export default function Footer() {
 
           {/* Additional Competitions */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 scroll-animate">Additional Competitions</h4>
+            <h4 className="text-lg font-semibold mb-4">Additional Competitions</h4>
             <ul className="space-y-2 text-sm">
-              <li className="scroll-animate">
+              <li>
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Regional Languages Competition
                 </button>
               </li>
-              <li className="scroll-animate">
+              <li>
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Junior Competition
                 </button>
@@ -133,7 +93,7 @@ export default function Footer() {
               <Linkedin size={20} />
             </a>
           </div>
-          <p className="text-gray-300 text-sm scroll-animate">© 2025 WRITORY All rights reserved.</p>
+          <p className="text-gray-300 text-sm">© 2025 WRITORY All rights reserved.</p>
         </div>
       </div>
     </footer>
