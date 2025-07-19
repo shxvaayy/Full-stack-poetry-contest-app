@@ -294,37 +294,31 @@ async function initializeApp() {
 
     if (isFirstDeploy || isDevelopment) {
       console.log('🔧 [STEP] Running database migrations...');
-      // Temporarily disable migrations for testing
-      // await migrateCouponTable();
-      // console.log('✅ [STEP] Coupon table migration completed');
-      // const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
-      // await createWinnerPhotosTable();
-      // console.log('✅ [STEP] Winner photos table migration completed');
+      await migrateCouponTable();
+      console.log('✅ [STEP] Coupon table migration completed');
+      
+      // Run notification tables migration
+      try {
+        const { migrateNotifications } = await import('./migrate-notifications.js');
+        await migrateNotifications();
+        console.log('✅ [STEP] Notification tables migration completed');
+      } catch (error) {
+        console.log('⚠️ [STEP] Notification tables migration failed:', (error as Error).message);
+      }
+      
       console.log('🎉 [STEP] Database schema synchronized successfully!');
       console.log('✅ [STEP] All tables created with proper updated_at columns');
     } else {
       console.log('✅ [STEP] Database already initialized, running essential migrations...');
-      try {
-        // Temporarily disable migrations for testing
-        // const { createWinnerPhotosTable } = await import('./migrate-winner-photos.js');
-        // await createWinnerPhotosTable();
-        // console.log('✅ [STEP] Winner photos table migration completed');
-      } catch (error) {
-        console.log('⚠️ [STEP] Winner photos migration skipped (non-critical):', error.message);
-      }
       
-      // Create wall posts table
+      // Run notification tables migration for existing deployments
       try {
-        console.log('🔧 [STEP] Skipping wall posts migration for testing...');
-        // const { createWallPostsTable } = await import('./migrate-wall-posts.js');
-        // await createWallPostsTable();
-        // console.log('✅ [STEP] Wall posts table migration completed');
+        const { migrateNotifications } = await import('./migrate-notifications.js');
+        await migrateNotifications();
+        console.log('✅ [STEP] Notification tables migration completed');
       } catch (error) {
-        console.log('⚠️ [STEP] Wall posts migration skipped (non-critical):', error.message);
+        console.log('⚠️ [STEP] Notification tables migration failed:', (error as Error).message);
       }
-      
-      // Skip Instagram migration since column already exists
-      console.log('✅ [STEP] Skipping Instagram migration - column already exists');
       
       console.log('📊 [STEP] Preserving existing user data and submissions');
     }
