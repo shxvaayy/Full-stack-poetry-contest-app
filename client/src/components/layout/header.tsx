@@ -18,81 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-// Swipeable Notification Component for Mobile
-const SwipeableNotification = ({ notification, onDelete, getTimeAgo }: any) => {
-  const [isSwiping, setIsSwiping] = useState(false);
-  const [swipeDistance, setSwipeDistance] = useState(0);
-  const [startX, setStartX] = useState(0);
-  const [currentX, setCurrentX] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleTouchStart = (e: any) => {
-    setStartX(e.touches[0].clientX);
-    setCurrentX(e.touches[0].clientX);
-    setIsSwiping(true);
-  };
-
-  const handleTouchMove = (e: any) => {
-    if (!isSwiping) return;
-    const newX = e.touches[0].clientX;
-    setCurrentX(newX);
-    const distance = startX - newX;
-    setSwipeDistance(Math.max(0, distance));
-  };
-
-  const handleTouchEnd = () => {
-    if (swipeDistance > 100) {
-      // Swipe threshold reached, delete the notification
-      setIsDeleting(true);
-      setTimeout(() => {
-        onDelete(notification.id);
-      }, 300);
-    } else {
-      // Reset swipe
-      setSwipeDistance(0);
-    }
-    setIsSwiping(false);
-  };
-
-  return (
-    <div className="relative overflow-hidden">
-      {/* Delete background */}
-      <div className="absolute inset-0 bg-red-600 flex items-center justify-end pr-4">
-        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      </div>
-      
-      {/* Notification content */}
-      <div
-        className={`bg-gray-800 rounded-lg p-3 border border-gray-700 transition-all duration-300 ${
-          isDeleting ? 'transform translate-x-full opacity-0' : ''
-        }`}
-        style={{
-          transform: `translateX(-${swipeDistance}px)`,
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex-1 pr-3">
-            <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
-            <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
-            <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
-          </div>
-          {/* Swipe hint */}
-          <div className="flex items-center text-gray-500 text-xs">
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-            </svg>
-            Swipe to delete
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -251,26 +177,7 @@ export default function Header() {
     };
   }, [autoRefreshInterval]);
 
-  // Swipe to delete functionality
-  const handleSwipeDelete = (notificationId: number) => {
-    const deleteNotification = async () => {
-      try {
-        const response = await fetch(`/api/notifications/${notificationId}/delete`, {
-          method: 'DELETE',
-          headers: {
-            'user-uid': user?.uid || '',
-          },
-        });
-        if (response.ok) {
-          setNotifications(prev => prev.filter(n => n.id !== notificationId));
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-      } catch (error) {
-        console.error('Error deleting notification:', error);
-      }
-    };
-    deleteNotification();
-  };
+
 
   const loadNotifications = async (showLoading = true) => {
     try {
@@ -692,21 +599,21 @@ export default function Header() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-white font-semibold text-sm uppercase tracking-wide">NOTIFICATIONS</h3>
                     <button 
-                      className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors"
+                      className="flex items-center space-x-3 bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl px-4 py-3 hover:from-gray-700 hover:to-gray-600 transition-all duration-200 shadow-lg border border-gray-600"
                       onClick={() => {
                         setNotificationsOpen(!notificationsOpen);
                       }}
                     >
                       <div className="relative">
-                        <Bell className="w-4 h-4 text-white" />
+                        <Bell className="w-5 h-5 text-white" />
                         {unreadCount > 0 && (
-                          <Badge className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white">
+                          <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-xs text-white font-bold shadow-lg animate-pulse">
                             {unreadCount > 99 ? '99+' : unreadCount}
-                          </Badge>
+                          </div>
                         )}
                       </div>
-                      <span className="text-white text-xs font-medium">
-                        {unreadCount > 0 ? `${unreadCount} new` : 'View'}
+                      <span className="text-white text-sm font-semibold">
+                        {unreadCount > 0 ? `${unreadCount} new` : 'View All'}
                       </span>
                     </button>
                   </div>
@@ -714,18 +621,18 @@ export default function Header() {
                   {/* Mobile Notifications Panel */}
                   {notificationsOpen && (
                     <div 
-                      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-20"
+                      className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-start justify-center pt-16 px-4"
                       onClick={(e) => {
                         if (e.target === e.currentTarget) {
                           setNotificationsOpen(false);
                         }
                       }}
                     >
-                      <div className="bg-gray-900 rounded-lg w-11/12 max-w-sm max-h-96 overflow-hidden shadow-2xl">
+                      <div className="bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                          <h3 className="text-white font-semibold text-lg">Notifications</h3>
-                                                    <div className="flex items-center space-x-2">
+                          <h3 className="text-white font-bold text-lg">Notifications</h3>
+                          <div className="flex items-center space-x-2">
                             <button
                               onClick={() => loadNotifications(true)}
                               disabled={refreshingNotifications}
@@ -751,7 +658,7 @@ export default function Header() {
                                     console.error('Error clearing notifications:', error);
                                   }
                                 }}
-                                className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors"
+                                className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors px-3 py-1 rounded-lg hover:bg-gray-800"
                               >
                                 Clear All
                               </button>
@@ -766,22 +673,54 @@ export default function Header() {
                         </div>
                         
                         {/* Content */}
-                        <div className="max-h-80 overflow-y-auto">
+                        <div className="max-h-96 overflow-y-auto">
                           {notifications.length === 0 ? (
-                            <div className="text-center py-8">
-                              <Bell className="w-8 h-8 text-gray-500 mx-auto mb-3" />
-                              <p className="text-gray-400 text-sm">No notifications yet</p>
+                            <div className="text-center py-12">
+                              <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Bell className="w-8 h-8 text-gray-500" />
+                              </div>
+                              <p className="text-gray-400 text-sm font-medium">No notifications yet</p>
+                              <p className="text-gray-500 text-xs mt-1">We'll notify you when something new arrives</p>
                             </div>
                           ) : (
-                            <div className="p-3 space-y-2">
-                                                          {notifications.map((notification, index) => (
-                              <SwipeableNotification
-                                key={notification.id}
-                                notification={notification}
-                                onDelete={handleSwipeDelete}
-                                getTimeAgo={getTimeAgo}
-                              />
-                            ))}
+                            <div className="p-3 space-y-3">
+                              {notifications.map((notification) => (
+                                <div
+                                  key={notification.id}
+                                  className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-all duration-200 relative group"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 pr-4">
+                                      <p className="font-semibold text-white text-sm mb-2 leading-tight">{notification.title}</p>
+                                      <p className="text-gray-300 text-xs mb-3 leading-relaxed">{notification.message}</p>
+                                      <p className="text-gray-500 text-xs font-medium">{getTimeAgo(notification.created_at)}</p>
+                                    </div>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const response = await fetch(`/api/notifications/${notification.id}/delete`, {
+                                            method: 'DELETE',
+                                            headers: {
+                                              'user-uid': user?.uid || '',
+                                            },
+                                          });
+                                          if (response.ok) {
+                                            setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                            setUnreadCount(prev => Math.max(0, prev - 1));
+                                          }
+                                        } catch (error) {
+                                          console.error('Error deleting notification:', error);
+                                        }
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-gray-700 rounded-lg text-red-400 hover:text-red-300"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
