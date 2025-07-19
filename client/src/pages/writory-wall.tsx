@@ -203,7 +203,10 @@ export default function WritoryWall() {
           <div className="flex justify-center mb-6">
             <Button
               onClick={handleRefresh}
-              onTouchStart={handleRefresh}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleRefresh();
+              }}
               className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-400 to-purple-400 text-white font-semibold rounded-full shadow-lg hover:from-cyan-500 hover:to-purple-500 transition backdrop-blur-md"
             >
               <RefreshCw className="w-5 h-5 animate-spin-slow" />
@@ -242,20 +245,25 @@ export default function WritoryWall() {
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}
                 onTouchMove={(e) => {
+                  e.preventDefault(); // Prevent scrolling
                   const rect = e.currentTarget.getBoundingClientRect();
                   const touch = e.touches[0];
                   const x = touch.clientX - rect.left;
                   const y = touch.clientY - rect.top;
                   const centerX = rect.width / 2;
                   const centerY = rect.height / 2;
-                  const tiltX = ((y - centerY) / centerY) * -15;
-                  const tiltY = ((x - centerX) / centerX) * 15;
+                  const tiltX = ((y - centerY) / centerY) * -10; // Reduced tilt for mobile
+                  const tiltY = ((x - centerX) / centerX) * 10; // Reduced tilt for mobile
                   e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
                   e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
                 }}
                 onTouchEnd={(e) => {
+                  e.preventDefault(); // Prevent any default touch behavior
                   e.currentTarget.style.setProperty('--tilt-x', '0deg');
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault(); // Prevent any default touch behavior
                 }}
               >
                 <div className="flip-content">
@@ -310,7 +318,11 @@ export default function WritoryWall() {
                   </div>
                   <div className="absolute right-3 top-3 group-hover:opacity-100 opacity-80 transition cursor-pointer"
                     onClick={() => handleCardRefresh(idx)}
-                    onTouchStart={() => handleCardRefresh(idx)}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCardRefresh(idx);
+                    }}
                   >
                     <RefreshCw className="w-5 h-5 text-cyan-300 hover:text-cyan-600" />
                   </div>
