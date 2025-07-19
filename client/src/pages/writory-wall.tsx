@@ -245,25 +245,34 @@ export default function WritoryWall() {
                   e.currentTarget.style.setProperty('--tilt-y', '0deg');
                 }}
                 onTouchMove={(e) => {
-                  e.preventDefault(); // Prevent scrolling
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const touch = e.touches[0];
-                  const x = touch.clientX - rect.left;
-                  const y = touch.clientY - rect.top;
-                  const centerX = rect.width / 2;
-                  const centerY = rect.height / 2;
-                  const tiltX = ((y - centerY) / centerY) * -10; // Reduced tilt for mobile
-                  const tiltY = ((x - centerX) / centerX) * 10; // Reduced tilt for mobile
-                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                  // Disable 3D tilt on mobile - only desktop gets tilt
+                  if (window.innerWidth > 768) { // Only for desktop/tablet
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const tiltX = ((y - centerY) / centerY) * -10;
+                    const tiltY = ((x - centerX) / centerX) * 10;
+                    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
+                    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                  }
                 }}
                 onTouchEnd={(e) => {
-                  e.preventDefault(); // Prevent any default touch behavior
-                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                  // Disable 3D tilt on mobile - only desktop gets tilt
+                  if (window.innerWidth > 768) { // Only for desktop/tablet
+                    e.preventDefault();
+                    e.currentTarget.style.setProperty('--tilt-x', '0deg');
+                    e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                  }
                 }}
                 onTouchStart={(e) => {
-                  e.preventDefault(); // Prevent any default touch behavior
+                  // Disable 3D tilt on mobile - only desktop gets tilt
+                  if (window.innerWidth > 768) { // Only for desktop/tablet
+                    e.preventDefault();
+                  }
                 }}
               >
                 <div className="flip-content">
