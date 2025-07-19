@@ -451,6 +451,52 @@ export default function Header() {
             {/* Mobile User Section */}
             {user ? (
               <div className="px-4 py-3 space-y-4 border-t border-gray-600 mt-4 pt-6">
+                {/* Mobile Notifications */}
+                <div className="space-y-2">
+                  <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wide">NOTIFICATIONS</h3>
+                  <button 
+                    className="flex items-center space-x-3 bg-gray-800 rounded-lg px-4 py-3 w-full hover:bg-gray-700 transition-colors"
+                    onClick={() => {
+                      setNotificationsOpen(!notificationsOpen);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <div className="relative">
+                      <Bell className="w-5 h-5 text-white" />
+                      {unreadCount > 0 && (
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-white text-sm font-medium">
+                      Notifications {unreadCount > 0 && `(${unreadCount})`}
+                    </span>
+                  </button>
+                  
+                  {/* Mobile Notifications Dropdown */}
+                  {notificationsOpen && (
+                    <div className="bg-gray-900 rounded-lg p-3 mt-2 max-h-60 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="text-gray-400 text-sm text-center">No notifications yet</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {notifications.map((notification, index) => (
+                            <div
+                              key={index}
+                              className="text-white rounded-lg px-3 py-2 hover:bg-gray-800 transition-colors"
+                            >
+                              <p className="font-medium text-sm">{notification.title}</p>
+                              <p className="text-xs opacity-80 mt-1">{notification.message}</p>
+                              <p className="text-xs opacity-60 mt-1">{new Date(notification.created_at).toLocaleDateString()}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <Link href="/profile">
                   <button 
                     className="flex items-center space-x-3 bg-gray-800 rounded-lg px-4 py-3 w-full hover:bg-gray-700 transition-colors"
