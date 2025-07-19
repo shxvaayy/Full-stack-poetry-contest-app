@@ -679,7 +679,7 @@ export default function Header() {
                               </button>
                             )}
                             <button
-                              onClick={() => setNotificationsOpen(false)}
+                              onClick={() => setMobileNotificationsOpen(false)}
                               className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
                             >
                               <X className="w-6 h-6" />
