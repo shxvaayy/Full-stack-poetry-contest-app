@@ -1,4 +1,4 @@
-import { client, connectDatabase } from './db.js';
+import { pool, connectDatabase } from './db.js';
 
 async function migrateNotifications() {
   try {
@@ -7,7 +7,7 @@ async function migrateNotifications() {
 
     // Create notifications table
     console.log('📝 Creating notifications table...');
-    await client.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
@@ -23,7 +23,7 @@ async function migrateNotifications() {
 
     // Create user_notifications table
     console.log('📝 Creating user_notifications table...');
-    await client.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS user_notifications (
         id SERIAL PRIMARY KEY,
         notification_id INTEGER NOT NULL REFERENCES notifications(id),
@@ -37,7 +37,7 @@ async function migrateNotifications() {
 
     // Add indexes for better performance
     console.log('📝 Adding indexes...');
-    await client.query(`
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
       CREATE INDEX IF NOT EXISTS idx_notifications_sent_by ON notifications(sent_by);
       CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id);
@@ -49,8 +49,6 @@ async function migrateNotifications() {
   } catch (error) {
     console.error('❌ Migration failed:', error);
     throw error;
-  } finally {
-    await client.end();
   }
 }
 
