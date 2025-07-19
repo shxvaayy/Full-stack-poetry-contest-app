@@ -41,8 +41,11 @@ const AdminWallModerationPage = () => {
   const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
-    fetchPosts();
-  }, [statusFilter, pagination.page]);
+    // Wait for user to be loaded before fetching posts
+    if (user?.email) {
+      fetchPosts();
+    }
+  }, [user?.email, statusFilter, pagination.page]);
 
   const fetchPosts = async () => {
     try {
@@ -259,6 +262,24 @@ const AdminWallModerationPage = () => {
       minute: "2-digit",
     });
   };
+
+  // Show loading while user is not loaded
+  if (!user?.email) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Wall Post Moderation</h1>
+            <p className="text-lg text-gray-600 mb-8">Review and moderate user submissions for the Writory Wall</p>
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin" />
+              <span className="ml-2">Loading admin authentication...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
