@@ -33,6 +33,7 @@ export default function Header() {
   const [profileOpen, setProfileOpen] = useState(false);
   // For Notifications Dropdown
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [refreshingNotifications, setRefreshingNotifications] = useState(false);
@@ -601,7 +602,7 @@ export default function Header() {
                     <button 
                       className="flex items-center space-x-3 bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl px-4 py-3 hover:from-gray-700 hover:to-gray-600 transition-all duration-200 shadow-lg border border-gray-600"
                       onClick={() => {
-                        setNotificationsOpen(!notificationsOpen);
+                        setMobileNotificationsOpen(!mobileNotificationsOpen);
                       }}
                     >
                       <div className="relative">
@@ -618,30 +619,37 @@ export default function Header() {
                     </button>
                   </div>
                   
-                  {/* Mobile Notifications Panel */}
-                  {notificationsOpen && (
+                  {/* Mobile Notifications Panel - SIMPLE VERSION */}
+                  {mobileNotificationsOpen && (
                     <div 
-                      className="fixed inset-0 bg-black bg-opacity-95 z-[99999] flex items-start justify-center pt-16 px-4"
-                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-                      onClick={(e) => {
-                        if (e.target === e.currentTarget) {
-                          setNotificationsOpen(false);
-                        }
+                      className="fixed inset-0 bg-black z-[999999] flex items-center justify-center p-4"
+                      style={{ 
+                        position: 'fixed', 
+                        top: 0, 
+                        left: 0, 
+                        right: 0, 
+                        bottom: 0,
+                        zIndex: 999999,
+                        backgroundColor: 'rgba(0, 0, 0, 0.95)'
                       }}
+                      onClick={() => setMobileNotificationsOpen(false)}
                     >
                       <div 
                         className="bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700"
-                        style={{ position: 'relative', zIndex: 100000 }}
+                        style={{ 
+                          position: 'relative', 
+                          zIndex: 1000000,
+                          maxHeight: '80vh',
+                          overflow: 'hidden'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
                           <h3 className="text-white font-bold text-lg">Notifications</h3>
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                loadNotifications(true);
-                              }}
+                              onClick={() => loadNotifications(true)}
                               disabled={refreshingNotifications}
                               className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
                             >
@@ -649,8 +657,7 @@ export default function Header() {
                             </button>
                             {notifications.length > 0 && (
                               <button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
+                                onClick={async () => {
                                   try {
                                     const response = await fetch('/api/notifications/clear-all', {
                                       method: 'POST',
@@ -672,10 +679,7 @@ export default function Header() {
                               </button>
                             )}
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNotificationsOpen(false);
-                              }}
+                              onClick={() => setNotificationsOpen(false)}
                               className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
                             >
                               <X className="w-6 h-6" />
@@ -707,8 +711,7 @@ export default function Header() {
                                       <p className="text-gray-500 text-xs font-medium">{getTimeAgo(notification.created_at)}</p>
                                     </div>
                                     <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
+                                      onClick={async () => {
                                         try {
                                           const response = await fetch(`/api/notifications/${notification.id}/delete`, {
                                             method: 'DELETE',
