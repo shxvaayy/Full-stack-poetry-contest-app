@@ -18,7 +18,86 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
+// Swipeable Notification Card Component for Mobile
+const SwipeableNotificationCard = ({ notification, onDelete, getTimeAgo }: any) => {
+  const [translateX, setTranslateX] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
 
+  const handleTouchStart = (e: any) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: any) => {
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    const deltaX = touchX - touchStartX.current;
+    const deltaY = Math.abs(touchY - touchStartY.current);
+
+    // Only allow horizontal swipe if vertical movement is minimal
+    if (deltaY < 50) {
+      const newTranslateX = Math.min(0, Math.max(-120, deltaX));
+      setTranslateX(newTranslateX);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (translateX < -60) {
+      // Swipe threshold reached, delete the notification
+      setIsDeleting(true);
+      setTimeout(() => {
+        onDelete();
+        setIsDeleting(false);
+        setTranslateX(0);
+      }, 300);
+    } else {
+      // Reset swipe
+      setTranslateX(0);
+    }
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Delete background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-end pr-4">
+        <div className="text-white text-center">
+          <svg className="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span className="text-xs font-medium">Delete</span>
+        </div>
+      </div>
+      
+      {/* Notification content */}
+      <div
+        className={`bg-gray-800 rounded-xl p-4 border border-gray-700 transition-all duration-300 ease-out ${
+          isDeleting ? 'opacity-0 scale-95' : ''
+        }`}
+        style={{ transform: `translateX(${translateX}px)` }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1 pr-4">
+            <p className="font-semibold text-white text-sm mb-2 leading-tight">{notification.title}</p>
+            <p className="text-gray-300 text-xs mb-3 leading-relaxed">{notification.message}</p>
+            <p className="text-gray-500 text-xs font-medium">{getTimeAgo(notification.created_at)}</p>
+          </div>
+          {/* Swipe hint */}
+          <div className="flex items-center text-gray-500 text-xs">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+            </svg>
+            Swipe
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -685,41 +764,27 @@ export default function Header() {
                           ) : (
                             <div className="p-3 space-y-3">
                               {notifications.map((notification) => (
-                                <div
+                                <SwipeableNotificationCard
                                   key={notification.id}
-                                  className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-all duration-200 relative group"
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 pr-4">
-                                      <p className="font-semibold text-white text-sm mb-2 leading-tight">{notification.title}</p>
-                                      <p className="text-gray-300 text-xs mb-3 leading-relaxed">{notification.message}</p>
-                                      <p className="text-gray-500 text-xs font-medium">{getTimeAgo(notification.created_at)}</p>
-                                    </div>
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          const response = await fetch(`/api/notifications/${notification.id}/delete`, {
-                                            method: 'DELETE',
-                                            headers: {
-                                              'user-uid': user?.uid || '',
-                                            },
-                                          });
-                                          if (response.ok) {
-                                            setNotifications(prev => prev.filter(n => n.id !== notification.id));
-                                            setUnreadCount(prev => Math.max(0, prev - 1));
-                                          }
-                                        } catch (error) {
-                                          console.error('Error deleting notification:', error);
-                                        }
-                                      }}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-gray-700 rounded-lg text-red-400 hover:text-red-300"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                </div>
+                                  notification={notification}
+                                  onDelete={async () => {
+                                    try {
+                                      const response = await fetch(`/api/notifications/${notification.id}/delete`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                          'user-uid': user?.uid || '',
+                                        },
+                                      });
+                                      if (response.ok) {
+                                        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                        setUnreadCount(prev => Math.max(0, prev - 1));
+                                      }
+                                    } catch (error) {
+                                      console.error('Error deleting notification:', error);
+                                    }
+                                  }}
+                                  getTimeAgo={getTimeAgo}
+                                />
                               ))}
                             </div>
                           )}

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2, Bell, Send, Users, User } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2, Bell, Send, Users, User, Search, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -63,6 +63,11 @@ export default function AdminSettingsPage() {
   });
   const [sendingNotification, setSendingNotification] = useState(false);
   const [users, setUsers] = useState<Array<{id: string, email: string, name: string}>>([]);
+  const [filteredUsers, setFilteredUsers] = useState<Array<{id: string, email: string, name: string}>>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userCount, setUserCount] = useState(0);
+  const [refreshingUsers, setRefreshingUsers] = useState(false);
+  const [userRefreshInterval, setUserRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   
   // Winner photo management state
   const [winnerPhotos, setWinnerPhotos] = useState<WinnerPhoto[]>([]);
@@ -166,14 +171,54 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     loadSettings();
     loadWinnerPhotos();
-    loadUsers();
+    loadUsers(true);
+    
+    // Start auto-refresh for users every 1 second
+    const interval = setInterval(() => {
+      loadUsers(false); // Don't show loading for auto-refresh
+    }, 1000); // 1 second
+    
+    setUserRefreshInterval(interval);
+    
+    // Cleanup interval on unmount
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, []);
 
-  const loadUsers = async () => {
+  // Filter users based on search query
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [userSearchQuery, users]);
+
+  // Cleanup user refresh interval on unmount
+  useEffect(() => {
+    return () => {
+      if (userRefreshInterval) {
+        clearInterval(userRefreshInterval);
+      }
+    };
+  }, [userRefreshInterval]);
+
+  const loadUsers = async (showLoading = true) => {
     try {
       if (!user?.email) {
         console.log('⚠️ User email not available, skipping users load');
         return;
+      }
+
+      if (showLoading) {
+        setRefreshingUsers(true);
       }
 
       console.log('🔍 Loading users with email:', user.email);
@@ -193,11 +238,18 @@ export default function AdminSettingsPage() {
 
       const data = await response.json();
       console.log('📊 Users data:', data);
-      setUsers(data.users || []);
+      const usersList = data.users || [];
+      setUsers(usersList);
+      setUserCount(usersList.length);
+      setFilteredUsers(usersList);
     } catch (error: any) {
       console.error('❌ Error loading users:', error);
       // Don't show toast for users loading error as it's not critical
       console.log('⚠️ Users loading failed, continuing without user list');
+    } finally {
+      if (showLoading) {
+        setRefreshingUsers(false);
+      }
     }
   };
 
@@ -876,23 +928,60 @@ export default function AdminSettingsPage() {
 
             {/* Individual User Selection */}
             {notificationType === 'individual' && (
-              <div className="space-y-2">
-                <Label htmlFor="user-email" className="text-base font-medium">
-                  Select User:
-                </Label>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="user-email" className="text-base font-medium">
+                    Select User:
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
+                      <Users className="w-4 h-4" />
+                      <span>{userCount} users</span>
+                    </div>
+                    <button
+                      onClick={() => loadUsers(true)}
+                      disabled={refreshingUsers}
+                      className="text-gray-500 hover:text-blue-600 transition-colors p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                      title="Refresh users"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${refreshingUsers ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search users by name or email..."
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
                 <Select 
                   value={notificationForm.userEmail} 
                   onValueChange={(value) => setNotificationForm(prev => ({ ...prev, userEmail: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a user..." />
+                    <SelectValue placeholder={`Select from ${filteredUsers.length} users...`} />
                   </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.email}>
-                        {user.name} ({user.email})
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="max-h-60">
+                    {filteredUsers.length === 0 ? (
+                      <div className="px-3 py-2 text-gray-500 text-sm">
+                        {userSearchQuery ? 'No users found' : 'Loading users...'}
+                      </div>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.email}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{user.name}</span>
+                            <span className="text-xs text-gray-500">{user.email}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
