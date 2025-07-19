@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, User, Bell } from "lucide-react";
+import { Menu, X, User, Bell, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 // Removed Firebase import - now using Cloudinary URLs from database
@@ -109,6 +109,7 @@ export default function Header() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshingNotifications, setRefreshingNotifications] = useState(false);
 
   const loadProfilePicture = async () => {
     if (user?.uid) {
@@ -249,6 +250,7 @@ export default function Header() {
 
   const loadNotifications = async () => {
     try {
+      setRefreshingNotifications(true);
       const response = await fetch('/api/notifications', {
         headers: {
           'user-uid': user?.uid || '',
@@ -262,6 +264,8 @@ export default function Header() {
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
+    } finally {
+      setRefreshingNotifications(false);
     }
   };
 
@@ -401,6 +405,13 @@ export default function Header() {
                     <div className="px-3 py-3 border-b border-gray-700 flex items-center justify-between">
                       <h3 className="text-white font-semibold text-lg">Notifications</h3>
                       <div className="flex items-center space-x-2">
+                        <button
+                          onClick={loadNotifications}
+                          disabled={refreshingNotifications}
+                          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${refreshingNotifications ? 'animate-spin' : ''}`} />
+                        </button>
                         {notifications.length > 0 && (
                           <button
                             onClick={async () => {
@@ -686,7 +697,14 @@ export default function Header() {
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
                           <h3 className="text-white font-semibold text-lg">Notifications</h3>
-                          <div className="flex items-center space-x-2">
+                                                    <div className="flex items-center space-x-2">
+                            <button
+                              onClick={loadNotifications}
+                              disabled={refreshingNotifications}
+                              className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-5 h-5 ${refreshingNotifications ? 'animate-spin' : ''}`} />
+                            </button>
                             {notifications.length > 0 && (
                               <button
                                 onClick={async () => {
@@ -710,12 +728,12 @@ export default function Header() {
                                 Clear All
                               </button>
                             )}
-                                                    <button
-                          onClick={() => setNotificationsOpen(false)}
-                          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
-                        >
-                          <X className="w-6 h-6" />
-                        </button>
+                            <button
+                              onClick={() => setNotificationsOpen(false)}
+                              className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
+                            >
+                              <X className="w-6 h-6" />
+                            </button>
                           </div>
                         </div>
                         
