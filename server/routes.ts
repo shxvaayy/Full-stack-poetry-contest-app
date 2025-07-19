@@ -3854,3 +3854,176 @@ router.post('/api/wall-posts/bulk-approve', requireAdmin, asyncHandler(async (re
     res.status(500).json({ success: false, error: error.message });
   }
 }));
+
+// Get all users (admin only)
+router.get('/api/admin/users', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  try {
+    const result = await client.query(`
+      SELECT id, email, name, created_at 
+      FROM users 
+      ORDER BY created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      users: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch users'
+    });
+  }
+}));
+
+// Send notification (admin only)
+router.post('/api/admin/notifications/send', requireAdmin, asyncHandler(async (req: any, res: any) => {
+  try {
+    const { type, title, message, userEmail } = req.body;
+    const adminEmail = req.headers['x-user-email'] as string;
+
+    if (!title?.trim() || !message?.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Title and message are required'
+      });
+    }
+
+    if (type === 'individual' && !userEmail?.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'User email is required for individual notifications'
+      });
+    }
+
+    // Create notification record
+    const notificationResult = await client.query(`
+      INSERT INTO notifications (title, message, type, target_user_email, sent_by)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `, [title, message, type, userEmail || null, adminEmail]);
+
+    const notificationId = notificationResult.rows[0].id;
+
+    if (type === 'individual') {
+      // Send to specific user
+      const userResult = await client.query('SELECT id, email FROM users WHERE email = $1', [userEmail]);
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      const user = userResult.rows[0];
+      await client.query(`
+        INSERT INTO user_notifications (notification_id, user_id, user_email)
+        VALUES ($1, $2, $3)
+      `, [notificationId, user.id, user.email]);
+
+    } else if (type === 'broadcast') {
+      // Send to all users
+      const usersResult = await client.query('SELECT id, email FROM users');
+      
+      for (const user of usersResult.rows) {
+        await client.query(`
+          INSERT INTO user_notifications (notification_id, user_id, user_email)
+          VALUES ($1, $2, $3)
+        `, [notificationId, user.id, user.email]);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Notification sent successfully to ${type === 'individual' ? 'user' : 'all users'}`,
+      notificationId
+    });
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send notification'
+    });
+  }
+}));
+
+// Get user notifications
+router.get('/api/notifications', asyncHandler(async (req: any, res: any) => {
+  try {
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    const result = await client.query(`
+      SELECT 
+        n.id,
+        n.title,
+        n.message,
+        n.type,
+        n.created_at,
+        un.is_read,
+        un.read_at
+      FROM notifications n
+      JOIN user_notifications un ON n.id = un.notification_id
+      JOIN users u ON un.user_id = u.id
+      WHERE u.uid = $1 AND n.is_active = true
+      ORDER BY n.created_at DESC
+      LIMIT 50
+    `, [userUid]);
+
+    const unreadCount = result.rows.filter(n => !n.is_read).length;
+
+    res.json({
+      success: true,
+      notifications: result.rows,
+      unreadCount
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch notifications'
+    });
+  }
+}));
+
+// Mark notification as read
+router.post('/api/notifications/:id/read', asyncHandler(async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    await client.query(`
+      UPDATE user_notifications 
+      SET is_read = true, read_at = NOW()
+      WHERE notification_id = $1 AND user_id = (
+        SELECT id FROM users WHERE uid = $2
+      )
+    `, [id, userUid]);
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark notification as read'
+    });
+  }
+}));

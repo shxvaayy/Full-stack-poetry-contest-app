@@ -201,6 +201,30 @@ export const winnerPhotos = pgTable('winner_photos', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
+// ✅ Notifications table - Store all notifications
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // 'individual', 'broadcast'
+  targetUserEmail: varchar('target_user_email', { length: 255 }), // For individual notifications
+  sentBy: varchar('sent_by', { length: 255 }).notNull(), // Admin email
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// ✅ User notifications table - Track which users have received which notifications
+export const userNotifications = pgTable('user_notifications', {
+  id: serial('id').primaryKey(),
+  notificationId: integer('notification_id').references(() => notifications.id).notNull(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  userEmail: varchar('user_email', { length: 255 }).notNull(),
+  isRead: boolean('is_read').default(false).notNull(),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // ✅ Writory Wall posts - For the public wall feature
 export const wallPosts = pgTable('wall_posts', {
   id: serial('id').primaryKey(),
@@ -288,6 +312,10 @@ export type AdminUsers = typeof adminUsers.$inferSelect;
 export type NewAdminUsers = typeof adminUsers.$inferInsert;
 export type WinnerPhoto = typeof winnerPhotos.$inferSelect;
 export type NewWinnerPhoto = typeof winnerPhotos.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+export type UserNotification = typeof userNotifications.$inferSelect;
+export type NewUserNotification = typeof userNotifications.$inferInsert;
 export type WallPost = typeof wallPosts.$inferSelect;
 export type NewWallPost = typeof wallPosts.$inferInsert;
 

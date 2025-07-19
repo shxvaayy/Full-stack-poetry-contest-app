@@ -130,6 +130,31 @@ export default function Header() {
     };
   }, [user]);
 
+  // Load notifications
+  useEffect(() => {
+    if (user?.uid) {
+      loadNotifications();
+    }
+  }, [user?.uid]);
+
+  const loadNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        headers: {
+          'user-uid': user?.uid || '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
   // Check if user is admin
   const isAdmin = user?.email === 'shivaaymehra2@gmail.com' || user?.email === 'bhavyaseth2005@gmail.com';
 
