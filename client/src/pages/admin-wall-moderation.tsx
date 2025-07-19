@@ -46,26 +46,41 @@ const AdminWallModerationPage = () => {
 
   const fetchPosts = async () => {
     try {
+      setLoading(true);
+      
+      if (!user?.email) {
+        throw new Error("Admin email not available");
+      }
+
+      console.log('🔍 Fetching wall posts with admin email:', user.email);
+      
       const response = await fetch(`/api/wall-posts/admin?status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}`, {
         headers: {
-          'admin-email': user?.email || '',
+          'admin-email': user.email,
         },
       });
 
+      console.log('📊 Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch posts");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch posts`);
       }
 
       const data = await response.json();
-      setPosts(data.posts);
-      setPagination(data.pagination);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
+      console.log('📊 Wall posts data:', data);
+      
+      setPosts(data.posts || []);
+      setPagination(data.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
+    } catch (error: any) {
+      console.error("❌ Error fetching posts:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch wall posts",
+        description: error.message || "Failed to fetch wall posts",
         variant: "destructive",
       });
+      setPosts([]);
+      setPagination({ page: 1, limit: 20, total: 0, pages: 1 });
     } finally {
       setLoading(false);
     }
