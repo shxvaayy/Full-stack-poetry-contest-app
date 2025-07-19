@@ -833,7 +833,7 @@ export default function UserProfile() {
                     {submissions.length > 0 ? (
                       <div className="space-y-4">
                         {submissions.map((submission) => (
-                          <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50">
+                          <Card key={submission.submissionUuid} className="border rounded-lg p-4 hover:bg-gray-50 transform hover:scale-105 transition-all duration-300 hover:shadow-lg bg-gradient-to-r from-white to-gray-50">
                             <div className="flex items-start justify-between">
                               <div>
                                 <h3 className="font-semibold text-lg">{submission.poems.length > 1 
@@ -964,11 +964,11 @@ export default function UserProfile() {
                           <div className="space-y-3">
                             {submissions.map(submission => 
                               submission.poems.filter((p: any) => p.status === 'Evaluated' && p.score > 0 && !p.isWinner && !p.winnerPosition).map((poem: any) => (
-                                <div key={poem.id} className="p-4 bg-gray-50 rounded-lg">
+                                <div key={poem.id} className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg hover:from-gray-100 hover:to-blue-100 transition-all duration-300 transform hover:scale-105 border border-gray-200 hover:border-blue-300">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <h4 className="font-semibold">{poem.title}</h4>
-                                      <p className="text-sm text-gray-600">Evaluated</p>
+                                      <h4 className="font-semibold text-gray-800 hover:text-blue-700 transition-colors duration-300">{poem.title}</h4>
+                                      <p className="text-sm text-gray-600 hover:text-gray-700 transition-colors duration-300">Evaluated</p>
                                       {poem.type && (
                                         <Badge className={getTypeColor(poem.type)} size="sm">
                                           {poem.type}
@@ -977,46 +977,46 @@ export default function UserProfile() {
                                     </div>
                                     <div className="text-right">
                                       {poem.score && (
-                                        <div className="text-lg font-bold text-blue-600">
+                                        <div className="text-lg font-bold text-blue-600 hover:text-blue-700 transition-colors duration-300">
                                           Score: {poem.score}/100
                                         </div>
                                       )}
                                       {poem.scoreBreakdown && (
                                         <Dialog>
                                           <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" className="mt-2">
+                                            <Button variant="outline" size="sm" className="mt-2 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-300 hover:border-purple-400 transition-all duration-300 transform hover:scale-105">
                                               View Details
                                             </Button>
                                           </DialogTrigger>
-                                          <DialogContent>
+                                          <DialogContent className="bg-gradient-to-br from-purple-50 via-white to-pink-50 border-0 shadow-2xl">
                                             <DialogHeader>
-                                              <DialogTitle>Score Breakdown: {poem.title}</DialogTitle>
+                                              <DialogTitle className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent text-xl font-bold">Score Breakdown: {poem.title}</DialogTitle>
                                             </DialogHeader>
-                                            <div className="space-y-3">
-                                              <div className="flex justify-between">
-                                                <span>Originality:</span>
-                                                <span className="font-medium">{poem.scoreBreakdown.originality}/25</span>
+                                            <div className="space-y-4">
+                                              <div className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg hover:from-blue-100 hover:to-cyan-100 transition-all duration-300 transform hover:scale-105">
+                                                <span className="font-semibold text-blue-700">Originality:</span>
+                                                <span className="font-bold text-blue-600 text-lg">{poem.scoreBreakdown.originality}/25</span>
                                               </div>
-                                              <div className="flex justify-between">
-                                                <span>Emotion:</span>
-                                                <span className="font-medium">{poem.scoreBreakdown.emotion}/25</span>
+                                              <div className="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg hover:from-green-100 hover:to-emerald-100 transition-all duration-300 transform hover:scale-105">
+                                                <span className="font-semibold text-green-700">Emotion:</span>
+                                                <span className="font-bold text-green-600 text-lg">{poem.scoreBreakdown.emotion}/25</span>
                                               </div>
-                                              <div className="flex justify-between">
-                                                <span>Structure:</span>
-                                                <span className="font-medium">{poem.scoreBreakdown.structure}/20</span>
+                                              <div className="flex justify-between items-center p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-all duration-300 transform hover:scale-105">
+                                                <span className="font-semibold text-yellow-700">Structure:</span>
+                                                <span className="font-bold text-yellow-600 text-lg">{poem.scoreBreakdown.structure}/20</span>
                                               </div>
-                                              <div className="flex justify-between">
-                                                <span>Language:</span>
-                                                <span className="font-medium">{poem.scoreBreakdown.language}/20</span>
+                                              <div className="flex justify-between items-center p-3 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg hover:from-purple-100 hover:to-violet-100 transition-all duration-300 transform hover:scale-105">
+                                                <span className="font-semibold text-purple-700">Language:</span>
+                                                <span className="font-bold text-purple-600 text-lg">{poem.scoreBreakdown.language}/20</span>
                                               </div>
-                                              <div className="flex justify-between">
-                                                <span>Theme:</span>
-                                                <span className="font-medium">{poem.scoreBreakdown.theme}/10</span>
+                                              <div className="flex justify-between items-center p-3 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg hover:from-red-100 hover:to-pink-100 transition-all duration-300 transform hover:scale-105">
+                                                <span className="font-semibold text-red-700">Theme:</span>
+                                                <span className="font-bold text-red-600 text-lg">{poem.scoreBreakdown.theme}/10</span>
                                               </div>
-                                              <hr />
-                                              <div className="flex justify-between font-bold">
-                                                <span>Total:</span>
-                                                <span>{poem.score}/100</span>
+                                              <hr className="border-2 border-gradient-to-r from-purple-300 to-pink-300" />
+                                              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
+                                                <span className="font-bold text-xl text-purple-700">Total:</span>
+                                                <span className="font-bold text-2xl text-purple-600">{poem.score}/100</span>
                                               </div>
                                             </div>
                                           </DialogContent>
