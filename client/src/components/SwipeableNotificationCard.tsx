@@ -32,10 +32,8 @@ export default function SwipeableNotificationCard({ notification, onDelete }: Sw
     currentX.current = e.touches[0].clientX;
     const diff = currentX.current - startX.current;
     
-    // Only allow left swipe (negative diff) with smooth tracking
-    if (diff < 0) {
-      setSwipeOffset(Math.abs(diff));
-    }
+    // Allow both left and right swipe with smooth tracking
+    setSwipeOffset(Math.abs(diff));
   };
 
   const handleTouchEnd = () => {
@@ -44,8 +42,8 @@ export default function SwipeableNotificationCard({ notification, onDelete }: Sw
     setIsSwiping(false);
     const diff = currentX.current - startX.current;
     
-    // If swiped more than 100px to the left, trigger delete
-    if (diff < -100) {
+    // If swiped more than 100px in any direction, trigger delete
+    if (Math.abs(diff) > 100) {
       setIsDeleting(true);
       setTimeout(() => {
         onDelete();
@@ -73,20 +71,7 @@ export default function SwipeableNotificationCard({ notification, onDelete }: Sw
 
   return (
     <div className="relative overflow-hidden">
-      {/* Delete background - only show when swiping */}
-      {swipeOffset > 0 && (
-        <div 
-          className="absolute inset-0 bg-red-500 flex items-center justify-center z-10 rounded-xl"
-                  style={{ 
-          transform: `translateX(${swipeOffset}px)`,
-          transition: isSwiping ? 'none' : 'transform 0.2s ease-out'
-        }}
-        >
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </div>
-      )}
+      
 
       {/* Notification card */}
       <div
