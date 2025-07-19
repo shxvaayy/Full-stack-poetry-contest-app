@@ -67,49 +67,42 @@ function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: s
 }
 
 export default function HomePage() {
-  // Add scroll animations and 3D tilt effects
+  // Simple scroll-triggered animations - one time only
   useEffect(() => {
-    function attachWaveObserver() {
-      if (typeof window !== 'undefined') {
-        // Remove .animate from all .scroll-animate elements so animation can re-trigger
-        document.querySelectorAll('.scroll-animate').forEach(el => {
-          el.classList.remove('animate');
-        });
-        // Disconnect any previous observer
-        if (window.__writory_wave_observer) {
-          window.__writory_wave_observer.disconnect();
-        }
-        window.__writory_wave_observer = new window.IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('animate');
-            } else {
-              entry.target.classList.remove('animate');
-            }
-          });
-        }, { threshold: 0.1 });
-        setTimeout(() => {
-          document.querySelectorAll('.scroll-animate').forEach(el => {
-            window.__writory_wave_observer.observe(el);
-          });
-        }, 100);
+    if (typeof window !== 'undefined') {
+      // Global flag to ensure animation runs only once per page load
+      if (window.__writory_animations_initialized) {
+        return;
       }
-    }
-    attachWaveObserver();
-    window.addEventListener('popstate', attachWaveObserver);
-    // MutationObserver to re-attach on DOM changes
-    let mo;
-    if (typeof window !== 'undefined' && window.MutationObserver) {
-      mo = new window.MutationObserver(() => {
-        attachWaveObserver();
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
+            entry.target.classList.add('animated');
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+          }
+        });
+      }, { 
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
       });
-      mo.observe(document.body, { childList: true, subtree: true });
+
+      // Observe all elements with scroll-animate class
+      document.querySelectorAll('.scroll-animate').forEach((el) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
+        observer.observe(el);
+      });
+
+      // Mark as initialized
+      window.__writory_animations_initialized = true;
+
+      return () => {
+        observer.disconnect();
+      };
     }
-    return () => {
-      window.removeEventListener('popstate', attachWaveObserver);
-      if (window.__writory_wave_observer) window.__writory_wave_observer.disconnect();
-      if (mo) mo.disconnect();
-    };
   }, []);
   const { toast } = useToast();
 
