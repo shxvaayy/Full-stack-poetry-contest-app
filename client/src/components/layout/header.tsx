@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,82 @@ import {
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+
+// Swipeable Notification Component for Mobile
+const SwipeableNotification = ({ notification, onDelete, getTimeAgo }: any) => {
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [swipeDistance, setSwipeDistance] = useState(0);
+  const [startX, setStartX] = useState(0);
+  const [currentX, setCurrentX] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleTouchStart = (e: any) => {
+    setStartX(e.touches[0].clientX);
+    setCurrentX(e.touches[0].clientX);
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e: any) => {
+    if (!isSwiping) return;
+    const newX = e.touches[0].clientX;
+    setCurrentX(newX);
+    const distance = startX - newX;
+    setSwipeDistance(Math.max(0, distance));
+  };
+
+  const handleTouchEnd = () => {
+    if (swipeDistance > 100) {
+      // Swipe threshold reached, delete the notification
+      setIsDeleting(true);
+      setTimeout(() => {
+        onDelete(notification.id);
+      }, 300);
+    } else {
+      // Reset swipe
+      setSwipeDistance(0);
+    }
+    setIsSwiping(false);
+  };
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Delete background */}
+      <div className="absolute inset-0 bg-red-600 flex items-center justify-end pr-4">
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </div>
+      
+      {/* Notification content */}
+      <div
+        className={`bg-gray-800 rounded-lg p-3 border border-gray-700 transition-all duration-300 ${
+          isDeleting ? 'transform translate-x-full opacity-0' : ''
+        }`}
+        style={{
+          transform: `translateX(-${swipeDistance}px)`,
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1 pr-3">
+            <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
+            <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
+            <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
+          </div>
+          {/* Swipe hint */}
+          <div className="flex items-center text-gray-500 text-xs">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+            </svg>
+            Swipe to delete
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -149,6 +225,27 @@ export default function Header() {
       document.body.style.overflow = 'unset';
     };
   }, [notificationsOpen]);
+
+  // Swipe to delete functionality
+  const handleSwipeDelete = (notificationId: number) => {
+    const deleteNotification = async () => {
+      try {
+        const response = await fetch(`/api/notifications/${notificationId}/delete`, {
+          method: 'DELETE',
+          headers: {
+            'user-uid': user?.uid || '',
+          },
+        });
+        if (response.ok) {
+          setNotifications(prev => prev.filter(n => n.id !== notificationId));
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      } catch (error) {
+        console.error('Error deleting notification:', error);
+      }
+    };
+    deleteNotification();
+  };
 
   const loadNotifications = async () => {
     try {
@@ -631,43 +728,14 @@ export default function Header() {
                             </div>
                           ) : (
                             <div className="p-3 space-y-2">
-                              {notifications.map((notification, index) => (
-                                <div
-                                  key={index}
-                                  className="bg-gray-800 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-colors"
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 pr-3">
-                                      <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
-                                      <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
-                                      <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
-                                    </div>
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          const response = await fetch(`/api/notifications/${notification.id}/delete`, {
-                                            method: 'DELETE',
-                                            headers: {
-                                              'user-uid': user?.uid || '',
-                                            },
-                                          });
-                                          if (response.ok) {
-                                            setNotifications(prev => prev.filter(n => n.id !== notification.id));
-                                            setUnreadCount(prev => Math.max(0, prev - 1));
-                                          }
-                                        } catch (error) {
-                                          console.error('Error deleting notification:', error);
-                                        }
-                                      }}
-                                      className="p-1 hover:bg-gray-700 rounded text-red-400 transition-colors"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
+                                                          {notifications.map((notification, index) => (
+                              <SwipeableNotification
+                                key={notification.id}
+                                notification={notification}
+                                onDelete={handleSwipeDelete}
+                                getTimeAgo={getTimeAgo}
+                              />
+                            ))}
                             </div>
                           )}
                         </div>
