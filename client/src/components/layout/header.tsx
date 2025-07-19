@@ -621,20 +621,27 @@ export default function Header() {
                   {/* Mobile Notifications Panel */}
                   {notificationsOpen && (
                     <div 
-                      className="fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-start justify-center pt-20 px-4"
+                      className="fixed inset-0 bg-black bg-opacity-95 z-[99999] flex items-start justify-center pt-16 px-4"
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
                       onClick={(e) => {
                         if (e.target === e.currentTarget) {
                           setNotificationsOpen(false);
                         }
                       }}
                     >
-                      <div className="bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700 transform transition-all duration-300">
+                      <div 
+                        className="bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700"
+                        style={{ position: 'relative', zIndex: 100000 }}
+                      >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
                           <h3 className="text-white font-bold text-lg">Notifications</h3>
                           <div className="flex items-center space-x-2">
                             <button
-                              onClick={() => loadNotifications(true)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                loadNotifications(true);
+                              }}
                               disabled={refreshingNotifications}
                               className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
                             >
@@ -642,7 +649,8 @@ export default function Header() {
                             </button>
                             {notifications.length > 0 && (
                               <button
-                                onClick={async () => {
+                                onClick={async (e) => {
+                                  e.stopPropagation();
                                   try {
                                     const response = await fetch('/api/notifications/clear-all', {
                                       method: 'POST',
@@ -664,7 +672,10 @@ export default function Header() {
                               </button>
                             )}
                             <button
-                              onClick={() => setNotificationsOpen(false)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNotificationsOpen(false);
+                              }}
                               className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
                             >
                               <X className="w-6 h-6" />
@@ -696,7 +707,8 @@ export default function Header() {
                                       <p className="text-gray-500 text-xs font-medium">{getTimeAgo(notification.created_at)}</p>
                                     </div>
                                     <button
-                                      onClick={async () => {
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
                                         try {
                                           const response = await fetch(`/api/notifications/${notification.id}/delete`, {
                                             method: 'DELETE',
