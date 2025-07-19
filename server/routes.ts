@@ -819,45 +819,8 @@ router.post('/api/users', asyncHandler(async (req: any, res: any) => {
       });
       console.log('✅ Created new user:', newUser.email);
       
-      // Send welcome notification to new user
-      try {
-        // First create the notification
-        const notificationResult = await client.query(`
-          INSERT INTO notifications (title, message, type, target_user_email, sent_by, is_active, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
-          RETURNING id
-        `, [
-          'Welcome aboard!',
-          'You\'re now part of the Writory Team — let\'s create something great.',
-          'individual',
-          newUser.email,
-          'system@writory.com'
-        ]);
-        
-        // Then create the user notification link
-        await client.query(`
-          INSERT INTO user_notifications (notification_id, user_id, user_email, is_read, created_at)
-          VALUES ($1, $2, $3, false, NOW())
-        `, [
-          notificationResult.rows[0].id,
-          newUser.id,
-          newUser.email
-        ]);
-        
-        console.log('✅ Welcome notification sent to new user:', newUser.email);
-        
-        // Send welcome email to new user
-        try {
-          await sendWelcomeEmail(newUser.email, newUser.name || 'Poet');
-          console.log('✅ Welcome email sent to new user:', newUser.email);
-        } catch (emailError) {
-          console.error('⚠️ Failed to send welcome email:', emailError);
-          // Don't fail user creation if email fails
-        }
-      } catch (notificationError) {
-        console.error('⚠️ Failed to send welcome notification:', notificationError);
-        // Don't fail user creation if notification fails
-      }
+      // Welcome notification and email are handled in the /api/users/create endpoint
+      console.log('✅ User created successfully:', newUser.email);
       
       res.json(newUser);
     }
@@ -3571,8 +3534,45 @@ router.post('/api/users/create', asyncHandler(async (req, res) => {
   try {
     const user = await createUser({ uid, email, name: name || null, phone: phone || null });
     
-    // Welcome notification and email are handled in the main /api/users endpoint
-    console.log('✅ User created successfully:', user.email);
+    // Send welcome notification to new user
+    try {
+      // First create the notification
+      const notificationResult = await client.query(`
+        INSERT INTO notifications (title, message, type, target_user_email, sent_by, is_active, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+        RETURNING id
+      `, [
+        'Welcome aboard!',
+        'You\'re now part of the Writory Team — let\'s create something great.',
+        'individual',
+        user.email,
+        'system@writory.com'
+      ]);
+      
+      // Then create the user notification link
+      await client.query(`
+        INSERT INTO user_notifications (notification_id, user_id, user_email, is_read, created_at)
+        VALUES ($1, $2, $3, false, NOW())
+      `, [
+        notificationResult.rows[0].id,
+        user.id,
+        user.email
+      ]);
+      
+      console.log('✅ Welcome notification sent to new user:', user.email);
+      
+      // Send welcome email to new user
+      try {
+        await sendWelcomeEmail(user.email, user.name || 'Poet');
+        console.log('✅ Welcome email sent to new user:', user.email);
+      } catch (emailError) {
+        console.error('⚠️ Failed to send welcome email:', emailError);
+        // Don't fail user creation if email fails
+      }
+    } catch (notificationError) {
+      console.error('⚠️ Failed to send welcome notification:', notificationError);
+      // Don't fail user creation if notification fails
+    }
     
     res.status(200).json({ success: true, user });
   } catch (error) {
