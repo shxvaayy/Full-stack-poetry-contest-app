@@ -110,6 +110,7 @@ export default function Header() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [refreshingNotifications, setRefreshingNotifications] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   const loadProfilePicture = async () => {
     if (user?.uid) {
@@ -207,10 +208,24 @@ export default function Header() {
     };
   }, [user]);
 
-  // Load notifications
+  // Load notifications and setup auto-refresh
   useEffect(() => {
     if (user?.uid) {
-      loadNotifications();
+      loadNotifications(true);
+      
+      // Start auto-refresh every 5 seconds
+      const interval = setInterval(() => {
+        loadNotifications(false); // Don't show loading for auto-refresh
+      }, 5000); // 5 seconds
+      
+      setAutoRefreshInterval(interval);
+      
+      // Cleanup interval on unmount or user change
+      return () => {
+        if (interval) {
+          clearInterval(interval);
+        }
+      };
     }
   }, [user?.uid]);
 
@@ -226,6 +241,15 @@ export default function Header() {
       document.body.style.overflow = 'unset';
     };
   }, [notificationsOpen]);
+
+  // Cleanup auto-refresh interval on unmount
+  useEffect(() => {
+    return () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
+  }, [autoRefreshInterval]);
 
   // Swipe to delete functionality
   const handleSwipeDelete = (notificationId: number) => {
@@ -248,9 +272,11 @@ export default function Header() {
     deleteNotification();
   };
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (showLoading = true) => {
     try {
-      setRefreshingNotifications(true);
+      if (showLoading) {
+        setRefreshingNotifications(true);
+      }
       const response = await fetch('/api/notifications', {
         headers: {
           'user-uid': user?.uid || '',
@@ -265,7 +291,9 @@ export default function Header() {
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
-      setRefreshingNotifications(false);
+      if (showLoading) {
+        setRefreshingNotifications(false);
+      }
     }
   };
 
@@ -406,7 +434,7 @@ export default function Header() {
                       <h3 className="text-white font-semibold text-lg">Notifications</h3>
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={loadNotifications}
+                          onClick={() => loadNotifications(true)}
                           disabled={refreshingNotifications}
                           className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
                         >
@@ -699,7 +727,7 @@ export default function Header() {
                           <h3 className="text-white font-semibold text-lg">Notifications</h3>
                                                     <div className="flex items-center space-x-2">
                             <button
-                              onClick={loadNotifications}
+                              onClick={() => loadNotifications(true)}
                               disabled={refreshingNotifications}
                               className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
                             >
