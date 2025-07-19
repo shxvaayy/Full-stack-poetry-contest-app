@@ -194,8 +194,8 @@ export default function AdminSettingsPage() {
       setFilteredUsers(users);
     } else {
       const filtered = users.filter(user => 
-        user.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+        (user.name && user.name.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
+        (user.email && user.email.toLowerCase().includes(userSearchQuery.toLowerCase()))
       );
       setFilteredUsers(filtered);
     }
@@ -239,12 +239,19 @@ export default function AdminSettingsPage() {
       const data = await response.json();
       console.log('📊 Users data:', data);
       const usersList = data.users || [];
-      setUsers(usersList);
-      setUserCount(usersList.length);
-      setFilteredUsers(usersList);
+      
+      // Ensure all users have required properties
+      const validUsers = usersList.filter((user: any) => user && user.id && (user.name || user.email));
+      
+      setUsers(validUsers);
+      setUserCount(validUsers.length);
+      setFilteredUsers(validUsers);
     } catch (error: any) {
       console.error('❌ Error loading users:', error);
-      // Don't show toast for users loading error as it's not critical
+      // Set empty arrays to prevent errors
+      setUsers([]);
+      setUserCount(0);
+      setFilteredUsers([]);
       console.log('⚠️ Users loading failed, continuing without user list');
     } finally {
       if (showLoading) {
@@ -955,7 +962,14 @@ export default function AdminSettingsPage() {
                   <Input
                     placeholder="Search users by name or email..."
                     value={userSearchQuery}
-                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      try {
+                        setUserSearchQuery(e.target.value);
+                      } catch (error) {
+                        console.error('Error updating search query:', error);
+                        setUserSearchQuery('');
+                      }
+                    }}
                     className="pl-10"
                   />
                 </div>
@@ -974,10 +988,10 @@ export default function AdminSettingsPage() {
                       </div>
                     ) : (
                       filteredUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.email}>
+                        <SelectItem key={user.id} value={user.email || ''}>
                           <div className="flex flex-col">
-                            <span className="font-medium">{user.name}</span>
-                            <span className="text-xs text-gray-500">{user.email}</span>
+                            <span className="font-medium">{user.name || 'Unknown User'}</span>
+                            <span className="text-xs text-gray-500">{user.email || 'No email'}</span>
                           </div>
                         </SelectItem>
                       ))
