@@ -600,24 +600,24 @@ export default function Header() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-white font-semibold text-sm uppercase tracking-wide">NOTIFICATIONS</h3>
                     <button 
-                      className="flex items-center space-x-3 bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl px-4 py-3 hover:from-gray-700 hover:to-gray-600 transition-all duration-200 shadow-lg border border-gray-600"
+                      className="flex items-center justify-center bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-3 hover:from-gray-700 hover:to-gray-600 transition-all duration-200 shadow-lg border border-gray-600"
                       onClick={() => {
                         setMobileNotificationsOpen(!mobileNotificationsOpen);
                       }}
                     >
                       <div className="relative">
-                        <Bell className="w-5 h-5 text-white" />
+                        <Bell className="w-6 h-6 text-white" />
                         {unreadCount > 0 && (
                           <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-xs text-white font-bold shadow-lg animate-pulse">
                             {unreadCount > 99 ? '99+' : unreadCount}
                           </div>
                         )}
                       </div>
-                      <span className="text-white text-sm font-semibold">
-                        {unreadCount > 0 ? `${unreadCount} new` : 'View All'}
-                      </span>
                     </button>
                   </div>
+                  
+                  {/* Spacing between notifications and profile */}
+                  <div className="h-4"></div>
                   
                   {/* Mobile Notifications Panel - SIMPLE VERSION */}
                   {mobileNotificationsOpen && (
@@ -706,9 +706,11 @@ export default function Header() {
                                 >
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1 pr-4">
-                                      <p className="font-semibold text-white text-sm mb-2 leading-tight">{notification.title}</p>
-                                      <p className="text-gray-300 text-xs mb-3 leading-relaxed">{notification.message}</p>
-                                      <p className="text-gray-500 text-xs font-medium">{getTimeAgo(notification.created_at)}</p>
+                                      <div className="flex items-start justify-between mb-2">
+                                        <p className="font-semibold text-white text-sm leading-tight flex-1">{notification.title}</p>
+                                        <p className="text-gray-500 text-xs font-medium ml-2">{getTimeAgo(notification.created_at)}</p>
+                                      </div>
+                                      <p className="text-gray-300 text-xs leading-relaxed">{notification.message}</p>
                                     </div>
                                     <button
                                       onClick={async () => {
