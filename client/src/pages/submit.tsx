@@ -1095,23 +1095,24 @@ export default function SubmitPage() {
                 >
                   <span style={{ fontWeight: 700, letterSpacing: 1 }}>SUBMIT FOR WRITORY WALL</span>
                 </Button>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg bg-gradient-to-br from-purple-50 via-white to-pink-50 border-0 shadow-2xl">
                 <DialogHeader>
-                  <DialogTitle>Submit for Writory Wall</DialogTitle>
+                  <DialogTitle className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent text-xl font-bold">Submit for Writory Wall</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="wall-title">Title *</Label>
+                  <div className="transform hover:scale-105 transition-all duration-300">
+                    <Label htmlFor="wall-title" className="text-gray-700 hover:text-purple-700 transition-colors duration-300">Title *</Label>
                     <Input
                       id="wall-title"
                       value={wallForm.title}
                       onChange={e => handleWallFormChange('title', e.target.value)}
                       placeholder="Give your piece a title..."
                       required
+                      className="border-purple-300 focus:border-purple-500 focus:ring-purple-500 hover:border-purple-400 transition-all duration-300"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="wall-content">Content *</Label>
+                  <div className="transform hover:scale-105 transition-all duration-300">
+                    <Label htmlFor="wall-content" className="text-gray-700 hover:text-purple-700 transition-colors duration-300">Content *</Label>
                     <Textarea
                       id="wall-content"
                       value={wallForm.content}
@@ -1119,25 +1120,31 @@ export default function SubmitPage() {
                       placeholder="Share your poetry or writing here..."
                       rows={8}
                       required
+                      className="border-purple-300 focus:border-purple-500 focus:ring-purple-500 hover:border-purple-400 transition-all duration-300"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="wall-instagram">Instagram Handle <span className="text-gray-400">(optional)</span></Label>
+                  <div className="transform hover:scale-105 transition-all duration-300">
+                    <Label htmlFor="wall-instagram" className="text-gray-700 hover:text-purple-700 transition-colors duration-300">Instagram Handle <span className="text-gray-400">(optional)</span></Label>
                     <Input
                       id="wall-instagram"
                       value={wallForm.instagramHandle}
                       onChange={e => handleWallFormChange('instagramHandle', e.target.value)}
                       placeholder="e.g. @yourusername"
+                      className="border-purple-300 focus:border-purple-500 focus:ring-purple-500 hover:border-purple-400 transition-all duration-300"
                     />
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button variant="outline" onClick={() => setShowWallDialog(false)}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowWallDialog(false)}
+                      className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-gray-300 hover:border-gray-400 transition-all duration-300 transform hover:scale-105"
+                    >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleWallSubmit}
                       disabled={wallSubmitting}
-                      className="bg-black text-yellow-400 hover:bg-gray-900 font-semibold px-6 py-3 text-lg shadow-xl"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-3 text-lg shadow-xl transition-all duration-300 transform hover:scale-105"
                     >
                       {wallSubmitting ? 'Submitting...' : 'Submit'}
                     </Button>
