@@ -818,6 +818,24 @@ router.post('/api/users', asyncHandler(async (req: any, res: any) => {
         phone: phone || null
       });
       console.log('✅ Created new user:', newUser.email);
+      
+      // Send welcome notification to new user
+      try {
+        await client.query(`
+          INSERT INTO notifications (user_uid, title, message, type, created_at, is_read)
+          VALUES ($1, $2, $3, $4, NOW(), false)
+        `, [
+          uid,
+          'Welcome aboard!',
+          'You\'re now part of the Writory Team — let\'s create something great.',
+          'welcome'
+        ]);
+        console.log('✅ Welcome notification sent to new user:', newUser.email);
+      } catch (notificationError) {
+        console.error('⚠️ Failed to send welcome notification:', notificationError);
+        // Don't fail user creation if notification fails
+      }
+      
       res.json(newUser);
     }
   } catch (error) {
@@ -3529,6 +3547,24 @@ router.post('/api/users/create', asyncHandler(async (req, res) => {
   }
   try {
     const user = await createUser({ uid, email, name: name || null, phone: phone || null });
+    
+    // Send welcome notification to new user
+    try {
+      await client.query(`
+        INSERT INTO notifications (user_uid, title, message, type, created_at, is_read)
+        VALUES ($1, $2, $3, $4, NOW(), false)
+      `, [
+        uid,
+        'Welcome aboard!',
+        'You\'re now part of the Writory Team — let\'s create something great.',
+        'welcome'
+      ]);
+      console.log('✅ Welcome notification sent to new user:', user.email);
+    } catch (notificationError) {
+      console.error('⚠️ Failed to send welcome notification:', notificationError);
+      // Don't fail user creation if notification fails
+    }
+    
     res.status(200).json({ success: true, user });
   } catch (error) {
     console.error('❌ Error creating user:', error);
