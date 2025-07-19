@@ -270,12 +270,9 @@ export default function Header() {
                         <DropdownMenuSubContent className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[200px]">
                           <DropdownMenuItem 
                             className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                            onClick={() => {
-                              setProfileOpen(false);
-                              window.location.href = '/admin-settings';
-                            }}
+                            onClick={() => setProfileOpen(false)}
                           >
-                            Admin Settings
+                            <Link href="/admin-settings" className="w-full h-full block">Admin Settings</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
