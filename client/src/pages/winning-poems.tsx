@@ -159,56 +159,58 @@ export default function WinningPoemsPage() {
         <h1 className="text-4xl font-bold text-black mb-8">RESULTS</h1>
 
         {/* Contest Status */}
-        <Card className="mb-8">
-          <CardContent className="p-8">
+        <Card className="mb-8 transform hover:scale-105 transition-all duration-500 hover:shadow-2xl border-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <CardContent className="p-8 relative z-10">
             <div className="mb-6">
-              <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
                 <Clock className="text-3xl text-white" size={36} />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Winners Yet to Be Announced</h2>
-              <p className="text-lg text-gray-600 mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">Winners Yet to Be Announced</h2>
+              <p className="text-lg text-gray-600 mb-6 group-hover:text-gray-700 transition-colors duration-300">
                 Our {timeline.result_announcement_date ? new Date(timeline.result_announcement_date).getFullYear() : '____'} inaugural competition is currently in progress. Results will be announced after the submission deadline.
               </p>
             </div>
 
             {/* Countdown Timer */}
-            <div className="bg-gray-50 rounded-lg p-6 mb-6">
+            <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-6 mb-6 border border-blue-200 group-hover:border-blue-300 transition-all duration-300">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Results will be announced in:</h3>
               <CountdownTimer targetDate={timeline.result_announcement_date || ''} />
             </div>
 
-            <p className="text-gray-600">Results announcement: {formatDateTime12h(timeline.result_announcement_date)}</p>
+            <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300">Results announcement: {formatDateTime12h(timeline.result_announcement_date)}</p>
           </CardContent>
         </Card>
 
         {/* What to Expect */}
-        <Card>
-          <CardContent className="p-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Recognizing the top 3 poets and their celebrated work</h3>
+        <Card className="transform hover:scale-105 transition-all duration-500 hover:shadow-2xl border-0 bg-gradient-to-br from-yellow-50 via-white to-orange-50 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <CardContent className="p-8 relative z-10">
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-6">Recognizing the top 3 poets and their celebrated work</h3>
             <div className="grid md:grid-cols-3 gap-6 text-center">
-              <div>
+              <div className="transform hover:scale-105 transition-all duration-300 hover:shadow-lg p-4 rounded-xl">
                 {/* 🏆 FIXED: Changed bg-gold to bg-yellow-500 */}
-                <div className={`w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 group`}>
+                <div className={`w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl`}>
                   <Trophy className="text-2xl text-white drop-shadow-[0_0_12px_rgba(255,215,0,0.8)]" size={24} />
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">First Place Winner</h4>
-                <p className="text-gray-600 text-sm">Featured poem and author profile</p>
+                <h4 className="font-semibold text-gray-900 mb-2 hover:text-yellow-700 transition-colors duration-300">First Place Winner</h4>
+                <p className="text-gray-600 text-sm hover:text-gray-700 transition-colors duration-300">Featured poem and author profile</p>
                 <WinnerPhotoSection position={1} />
               </div>
-              <div>
-                <div className={`w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 group`}>
+              <div className="transform hover:scale-105 transition-all duration-300 hover:shadow-lg p-4 rounded-xl">
+                <div className={`w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl`}>
                   <Medal className="text-2xl text-white drop-shadow-[0_0_12px_rgba(192,192,192,0.8)]" size={24} />
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Second Place Winner</h4>
-                <p className="text-gray-600 text-sm">Featured poem and author profile</p>
+                <h4 className="font-semibold text-gray-900 mb-2 hover:text-gray-700 transition-colors duration-300">Second Place Winner</h4>
+                <p className="text-gray-600 text-sm hover:text-gray-700 transition-colors duration-300">Featured poem and author profile</p>
                 <WinnerPhotoSection position={2} />
               </div>
-              <div>
-                <div className={`w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 group`}>
+              <div className="transform hover:scale-105 transition-all duration-300 hover:shadow-lg p-4 rounded-xl">
+                <div className={`w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl`}>
                   <Award className="text-2xl text-white drop-shadow-[0_0_12px_rgba(255,165,0,0.8)]" size={24} />
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Third Place Winner</h4>
-                <p className="text-gray-600 text-sm">Featured poem and author profile</p>
+                <h4 className="font-semibold text-gray-900 mb-2 hover:text-orange-700 transition-colors duration-300">Third Place Winner</h4>
+                <p className="text-gray-600 text-sm hover:text-gray-700 transition-colors duration-300">Featured poem and author profile</p>
                 <WinnerPhotoSection position={3} />
               </div>
             </div>
