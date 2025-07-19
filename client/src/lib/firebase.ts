@@ -85,6 +85,10 @@ export const signUpWithEmail = async (email: string, password: string) => {
   };
 
   await sendEmailVerification(userCredential.user, actionCodeSettings);
+  
+  // Sign out immediately after signup to require email verification
+  await signOut(auth);
+  
   return userCredential;
 };
 
