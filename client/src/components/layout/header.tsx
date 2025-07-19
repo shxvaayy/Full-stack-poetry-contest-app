@@ -290,29 +290,37 @@ export default function Header() {
                   >
                     <div className="px-3 py-3 border-b border-gray-700 flex items-center justify-between">
                       <h3 className="text-white font-semibold text-lg">Notifications</h3>
-                      {notifications.length > 0 && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch('/api/notifications/clear-all', {
-                                method: 'POST',
-                                headers: {
-                                  'user-uid': user?.uid || '',
-                                },
-                              });
-                              if (response.ok) {
-                                setNotifications([]);
-                                setUnreadCount(0);
+                      <div className="flex items-center space-x-2">
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch('/api/notifications/clear-all', {
+                                  method: 'POST',
+                                  headers: {
+                                    'user-uid': user?.uid || '',
+                                  },
+                                });
+                                if (response.ok) {
+                                  setNotifications([]);
+                                  setUnreadCount(0);
+                                }
+                              } catch (error) {
+                                console.error('Error clearing notifications:', error);
                               }
-                            } catch (error) {
-                              console.error('Error clearing notifications:', error);
-                            }
-                          }}
-                          className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors"
+                            }}
+                            className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setNotificationsOpen(false)}
+                          className="text-gray-400 hover:text-white transition-colors p-1"
                         >
-                          Clear All
+                          <X className="w-4 h-4" />
                         </button>
-                      )}
+                      </div>
                     </div>
                     {notifications.length === 0 ? (
                       <div className="px-3 py-8 text-center">
@@ -532,99 +540,118 @@ export default function Header() {
               <div className="px-4 py-3 space-y-4 border-t border-gray-600 mt-4 pt-6">
                 {/* Mobile Notifications */}
                 <div className="space-y-2">
-                  <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wide">NOTIFICATIONS</h3>
-                  <button 
-                    className="flex items-center space-x-3 bg-gray-800 rounded-lg px-4 py-3 w-full hover:bg-gray-700 transition-colors"
-                    onClick={() => {
-                      setNotificationsOpen(!notificationsOpen);
-                      setMobileMenuOpen(false);
-                    }}
-                  >
-                    <div className="relative">
-                      <Bell className="w-5 h-5 text-white" />
-                      {unreadCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="text-white text-sm font-medium">
-                      Notifications {unreadCount > 0 && `(${unreadCount})`}
-                    </span>
-                  </button>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-semibold text-sm uppercase tracking-wide">NOTIFICATIONS</h3>
+                    <button 
+                      className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors"
+                      onClick={() => {
+                        setNotificationsOpen(!notificationsOpen);
+                      }}
+                    >
+                      <div className="relative">
+                        <Bell className="w-4 h-4 text-white" />
+                        {unreadCount > 0 && (
+                          <Badge className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-white text-xs font-medium">
+                        {unreadCount > 0 ? `${unreadCount} new` : 'View'}
+                      </span>
+                    </button>
+                  </div>
                   
-                  {/* Mobile Notifications Dropdown */}
+                  {/* Mobile Notifications Panel */}
                   {notificationsOpen && (
-                    <div className="bg-gray-900 rounded-lg p-3 mt-2 max-h-60 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="text-center py-4">
-                          <Bell className="w-6 h-6 text-gray-500 mx-auto mb-2" />
-                          <p className="text-gray-400 text-sm">No notifications yet</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {notifications.map((notification, index) => (
-                            <div
-                              key={index}
-                              className="bg-gray-800 rounded-lg p-3 border border-gray-700 relative group"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 pr-8">
-                                  <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
-                                  <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
-                                  <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
-                                </div>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      const response = await fetch(`/api/notifications/${notification.id}/delete`, {
-                                        method: 'DELETE',
-                                        headers: {
-                                          'user-uid': user?.uid || '',
-                                        },
-                                      });
-                                      if (response.ok) {
-                                        setNotifications(prev => prev.filter(n => n.id !== notification.id));
-                                        setUnreadCount(prev => Math.max(0, prev - 1));
-                                      }
-                                    } catch (error) {
-                                      console.error('Error deleting notification:', error);
+                    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-20">
+                      <div className="bg-gray-900 rounded-lg w-11/12 max-w-sm max-h-96 overflow-hidden shadow-2xl">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                          <h3 className="text-white font-semibold text-lg">Notifications</h3>
+                          <div className="flex items-center space-x-2">
+                            {notifications.length > 0 && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch('/api/notifications/clear-all', {
+                                      method: 'POST',
+                                      headers: {
+                                        'user-uid': user?.uid || '',
+                                      },
+                                    });
+                                    if (response.ok) {
+                                      setNotifications([]);
+                                      setUnreadCount(0);
                                     }
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-700 rounded text-red-400"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          {notifications.length > 0 && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch('/api/notifications/clear-all', {
-                                    method: 'POST',
-                                    headers: {
-                                      'user-uid': user?.uid || '',
-                                    },
-                                  });
-                                  if (response.ok) {
-                                    setNotifications([]);
-                                    setUnreadCount(0);
+                                  } catch (error) {
+                                    console.error('Error clearing notifications:', error);
                                   }
-                                } catch (error) {
-                                  console.error('Error clearing notifications:', error);
-                                }
-                              }}
-                              className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors"
+                                }}
+                                className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors"
+                              >
+                                Clear All
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setNotificationsOpen(false)}
+                              className="text-gray-400 hover:text-white transition-colors"
                             >
-                              Clear All Notifications
+                              <X className="w-5 h-5" />
                             </button>
+                          </div>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="max-h-80 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                            <div className="text-center py-8">
+                              <Bell className="w-8 h-8 text-gray-500 mx-auto mb-3" />
+                              <p className="text-gray-400 text-sm">No notifications yet</p>
+                            </div>
+                          ) : (
+                            <div className="p-3 space-y-2">
+                              {notifications.map((notification, index) => (
+                                <div
+                                  key={index}
+                                  className="bg-gray-800 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-colors"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 pr-3">
+                                      <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
+                                      <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
+                                      <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
+                                    </div>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const response = await fetch(`/api/notifications/${notification.id}/delete`, {
+                                            method: 'DELETE',
+                                            headers: {
+                                              'user-uid': user?.uid || '',
+                                            },
+                                          });
+                                          if (response.ok) {
+                                            setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                            setUnreadCount(prev => Math.max(0, prev - 1));
+                                          }
+                                        } catch (error) {
+                                          console.error('Error deleting notification:', error);
+                                        }
+                                      }}
+                                      className="p-1 hover:bg-gray-700 rounded text-red-400 transition-colors"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </div>
