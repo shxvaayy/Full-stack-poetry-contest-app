@@ -17,6 +17,7 @@ import {
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import SwipeableNotificationCard from "@/components/SwipeableNotificationCard";
 
 
 
@@ -688,43 +689,26 @@ export default function Header() {
                           ) : (
                             <div className="p-4 space-y-3">
                               {notifications.map((notification) => (
-                                <div
+                                <SwipeableNotificationCard
                                   key={notification.id}
-                                  className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-all duration-200"
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 pr-4">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <p className="font-semibold text-white text-sm leading-tight flex-1">{notification.title}</p>
-                                        <p className="text-gray-500 text-xs font-medium ml-2">{getTimeAgo(notification.created_at)}</p>
-                                      </div>
-                                      <p className="text-gray-300 text-xs leading-relaxed">{notification.message}</p>
-                                    </div>
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          const response = await fetch(`/api/notifications/${notification.id}/delete`, {
-                                            method: 'DELETE',
-                                            headers: {
-                                              'user-uid': user?.uid || '',
-                                            },
-                                          });
-                                          if (response.ok) {
-                                            setNotifications(prev => prev.filter(n => n.id !== notification.id));
-                                            setUnreadCount(prev => Math.max(0, prev - 1));
-                                          }
-                                        } catch (error) {
-                                          console.error('Error deleting notification:', error);
-                                        }
-                                      }}
-                                      className="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                </div>
+                                  notification={notification}
+                                  onDelete={async () => {
+                                    try {
+                                      const response = await fetch(`/api/notifications/${notification.id}/delete`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                          'user-uid': user?.uid || '',
+                                        },
+                                      });
+                                      if (response.ok) {
+                                        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                        setUnreadCount(prev => Math.max(0, prev - 1));
+                                      }
+                                    } catch (error) {
+                                      console.error('Error deleting notification:', error);
+                                    }
+                                  }}
+                                />
                               ))}
                             </div>
                           )}
