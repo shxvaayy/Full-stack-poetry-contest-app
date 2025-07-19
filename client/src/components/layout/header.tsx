@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, User } from "lucide-react";
+import { Menu, X, User, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 // Removed Firebase import - now using Cloudinary URLs from database
@@ -16,6 +16,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -28,6 +29,10 @@ export default function Header() {
   const [exploreOpen, setExploreOpen] = useState(false);
   // For Profile/Admin Dropdown
   const [profileOpen, setProfileOpen] = useState(false);
+  // For Notifications Dropdown
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadProfilePicture = async () => {
     if (user?.uid) {
@@ -224,6 +229,48 @@ export default function Header() {
           <div className="flex items-center space-x-4 flex-shrink-0">
             {user ? (
               <div className="hidden lg:flex items-center space-x-3">
+                {/* Notification Icon */}
+                <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="relative flex items-center justify-center w-10 h-10 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors focus:outline-none"
+                      onClick={() => setNotificationsOpen((v) => !v)}
+                    >
+                      <Bell className="w-5 h-5 text-white" />
+                      {unreadCount > 0 && (
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Badge>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[320px] max-h-[400px] overflow-y-auto"
+                  >
+                    <div className="px-3 py-2 border-b border-gray-700">
+                      <h3 className="text-white font-semibold">Notifications</h3>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="px-3 py-4 text-center">
+                        <p className="text-gray-400 text-sm">No notifications yet</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          className="text-white rounded-lg px-3 py-3 hover:bg-yellow-400 hover:text-black transition-colors focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
+                        >
+                          <div className="w-full">
+                            <p className="font-medium text-sm">{notification.title}</p>
+                            <p className="text-xs opacity-80 mt-1">{notification.message}</p>
+                            <p className="text-xs opacity-60 mt-1">{new Date(notification.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <DropdownMenu open={profileOpen} onOpenChange={setProfileOpen}>
                   <DropdownMenuTrigger asChild>
                     <button
