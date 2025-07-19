@@ -124,6 +124,8 @@ export default function WritoryWall() {
       console.log('Like API response:', data); // Debug
       // Update like count and liked state for this poem in displayPosts
       setDisplayPosts((prev: WallPost[]) => prev.map((p: WallPost) => p.id === post.id ? { ...p, likes: data.likes } : p));
+      // Also update cardFlipStates to keep them in sync
+      setCardFlipStates((prev) => prev.map((c) => c.content.id === post.id ? { ...c, content: { ...c.content, likes: data.likes } } : c));
       setLikedPosts((prev: { [id: number]: boolean }) => ({ ...prev, [post.id]: data.liked }));
     } catch (e) {
       // Optionally, show a toast here if you have a toast system, or do nothing
@@ -230,49 +232,19 @@ export default function WritoryWall() {
                   transition: 'max-width 0.3s, margin 0.3s',
                 }}
                 onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const centerX = rect.width / 2;
-                  const centerY = rect.height / 2;
-                  const tiltX = ((y - centerY) / centerY) * -15;
-                  const tiltY = ((x - centerX) / centerX) * 15;
-                  e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                  e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
+                  // 3D tilt completely removed
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                  e.currentTarget.style.setProperty('--tilt-y', '0deg');
+                  // 3D tilt completely removed
                 }}
                 onTouchMove={(e) => {
-                  // Disable 3D tilt on mobile - only desktop gets tilt
-                  if (window.innerWidth > 768) { // Only for desktop/tablet
-                    e.preventDefault();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const touch = e.touches[0];
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const tiltX = ((y - centerY) / centerY) * -10;
-                    const tiltY = ((x - centerX) / centerX) * 10;
-                    e.currentTarget.style.setProperty('--tilt-x', `${tiltX}deg`);
-                    e.currentTarget.style.setProperty('--tilt-y', `${tiltY}deg`);
-                  }
+                  // 3D tilt completely removed
                 }}
                 onTouchEnd={(e) => {
-                  // Disable 3D tilt on mobile - only desktop gets tilt
-                  if (window.innerWidth > 768) { // Only for desktop/tablet
-                    e.preventDefault();
-                    e.currentTarget.style.setProperty('--tilt-x', '0deg');
-                    e.currentTarget.style.setProperty('--tilt-y', '0deg');
-                  }
+                  // 3D tilt completely removed
                 }}
                 onTouchStart={(e) => {
-                  // Disable 3D tilt on mobile - only desktop gets tilt
-                  if (window.innerWidth > 768) { // Only for desktop/tablet
-                    e.preventDefault();
-                  }
+                  // 3D tilt completely removed
                 }}
               >
                 <div className="flip-content">
