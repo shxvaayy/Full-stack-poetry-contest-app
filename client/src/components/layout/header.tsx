@@ -137,6 +137,19 @@ export default function Header() {
     }
   }, [user?.uid]);
 
+  // Prevent body scroll when mobile notifications are open
+  useEffect(() => {
+    if (notificationsOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [notificationsOpen]);
+
   const loadNotifications = async () => {
     try {
       const response = await fetch('/api/notifications', {
@@ -316,9 +329,9 @@ export default function Header() {
                         )}
                         <button
                           onClick={() => setNotificationsOpen(false)}
-                          className="text-gray-400 hover:text-white transition-colors p-1"
+                          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-5 h-5" />
                         </button>
                       </div>
                     </div>
@@ -564,7 +577,14 @@ export default function Header() {
                   
                   {/* Mobile Notifications Panel */}
                   {notificationsOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-20">
+                    <div 
+                      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-20"
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                          setNotificationsOpen(false);
+                        }
+                      }}
+                    >
                       <div className="bg-gray-900 rounded-lg w-11/12 max-w-sm max-h-96 overflow-hidden shadow-2xl">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
@@ -593,12 +613,12 @@ export default function Header() {
                                 Clear All
                               </button>
                             )}
-                            <button
-                              onClick={() => setNotificationsOpen(false)}
-                              className="text-gray-400 hover:text-white transition-colors"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
+                                                    <button
+                          onClick={() => setNotificationsOpen(false)}
+                          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
                           </div>
                         </div>
                         
