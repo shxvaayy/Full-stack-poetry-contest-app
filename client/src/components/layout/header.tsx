@@ -140,10 +140,10 @@ export default function Header() {
     if (user?.uid) {
       loadNotifications(true);
       
-      // Start auto-refresh every 5 seconds
+      // Start auto-refresh every 1 second
       const interval = setInterval(() => {
         loadNotifications(false); // Don't show loading for auto-refresh
-      }, 5000); // 5 seconds
+      }, 1000); // 1 second
       
       setAutoRefreshInterval(interval);
       
@@ -341,13 +341,6 @@ export default function Header() {
                     <div className="px-3 py-3 border-b border-gray-700 flex items-center justify-between">
                       <h3 className="text-white font-semibold text-lg">Notifications</h3>
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => loadNotifications(true)}
-                          disabled={refreshingNotifications}
-                          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
-                        >
-                          <RefreshCw className={`w-4 h-4 ${refreshingNotifications ? 'animate-spin' : ''}`} />
-                        </button>
                         {notifications.length > 0 && (
                           <button
                             onClick={async () => {
@@ -393,9 +386,11 @@ export default function Header() {
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1 pr-8">
-                                <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
-                                <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
-                                <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
+                                <div className="flex items-start justify-between mb-1">
+                                  <p className="font-semibold text-white text-sm flex-1">{notification.title}</p>
+                                  <p className="text-gray-500 text-xs ml-2">{getTimeAgo(notification.created_at)}</p>
+                                </div>
+                                <p className="text-gray-300 text-xs leading-relaxed">{notification.message}</p>
                               </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -648,13 +643,6 @@ export default function Header() {
                         <div className="flex items-center justify-between p-4 border-b border-gray-700">
                           <h3 className="text-white font-bold text-lg">Notifications</h3>
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => loadNotifications(true)}
-                              disabled={refreshingNotifications}
-                              className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg disabled:opacity-50"
-                            >
-                              <RefreshCw className={`w-5 h-5 ${refreshingNotifications ? 'animate-spin' : ''}`} />
-                            </button>
                             {notifications.length > 0 && (
                               <button
                                 onClick={async () => {
