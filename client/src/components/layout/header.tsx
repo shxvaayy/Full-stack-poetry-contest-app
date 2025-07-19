@@ -172,6 +172,22 @@ export default function Header() {
     await logout();
   };
 
+  // Function to format time ago
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInHours < 24) return `${diffInHours}h`;
+    if (diffInDays < 7) return `${diffInDays}d`;
+    return date.toLocaleDateString();
+  };
+
   return (
     <header className="bg-black text-white shadow-lg relative">
       <div className="max-w-full mx-auto px-4 lg:px-8">
@@ -270,28 +286,91 @@ export default function Header() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[320px] max-h-[400px] overflow-y-auto"
+                    className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[380px] max-h-[500px] overflow-y-auto"
                   >
-                    <div className="px-3 py-2 border-b border-gray-700">
-                      <h3 className="text-white font-semibold">Notifications</h3>
+                    <div className="px-3 py-3 border-b border-gray-700 flex items-center justify-between">
+                      <h3 className="text-white font-semibold text-lg">Notifications</h3>
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/notifications/clear-all', {
+                                method: 'POST',
+                                headers: {
+                                  'user-uid': user?.uid || '',
+                                },
+                              });
+                              if (response.ok) {
+                                setNotifications([]);
+                                setUnreadCount(0);
+                              }
+                            } catch (error) {
+                              console.error('Error clearing notifications:', error);
+                            }
+                          }}
+                          className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors"
+                        >
+                          Clear All
+                        </button>
+                      )}
                     </div>
                     {notifications.length === 0 ? (
-                      <div className="px-3 py-4 text-center">
+                      <div className="px-3 py-8 text-center">
+                        <Bell className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                         <p className="text-gray-400 text-sm">No notifications yet</p>
                       </div>
                     ) : (
-                      notifications.map((notification, index) => (
-                        <DropdownMenuItem
-                          key={index}
-                          className="text-white rounded-lg px-3 py-3 hover:bg-yellow-400 hover:text-black transition-colors focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                        >
-                          <div className="w-full">
-                            <p className="font-medium text-sm">{notification.title}</p>
-                            <p className="text-xs opacity-80 mt-1">{notification.message}</p>
-                            <p className="text-xs opacity-60 mt-1">{new Date(notification.created_at).toLocaleDateString()}</p>
+                      <div className="space-y-2 p-2">
+                        {notifications.map((notification, index) => (
+                          <div
+                            key={index}
+                            className="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600 relative group"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 pr-8">
+                                <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
+                                <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
+                                <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-700 rounded">
+                                    <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                    </svg>
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                                  <DropdownMenuItem
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(`/api/notifications/${notification.id}/delete`, {
+                                          method: 'DELETE',
+                                          headers: {
+                                            'user-uid': user?.uid || '',
+                                          },
+                                        });
+                                        if (response.ok) {
+                                          setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                          setUnreadCount(prev => Math.max(0, prev - 1));
+                                        }
+                                      } catch (error) {
+                                        console.error('Error deleting notification:', error);
+                                      }
+                                    }}
+                                    className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+                                  >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Delete notification
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
-                        </DropdownMenuItem>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -478,19 +557,72 @@ export default function Header() {
                   {notificationsOpen && (
                     <div className="bg-gray-900 rounded-lg p-3 mt-2 max-h-60 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <p className="text-gray-400 text-sm text-center">No notifications yet</p>
+                        <div className="text-center py-4">
+                          <Bell className="w-6 h-6 text-gray-500 mx-auto mb-2" />
+                          <p className="text-gray-400 text-sm">No notifications yet</p>
+                        </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {notifications.map((notification, index) => (
                             <div
                               key={index}
-                              className="text-white rounded-lg px-3 py-2 hover:bg-gray-800 transition-colors"
+                              className="bg-gray-800 rounded-lg p-3 border border-gray-700 relative group"
                             >
-                              <p className="font-medium text-sm">{notification.title}</p>
-                              <p className="text-xs opacity-80 mt-1">{notification.message}</p>
-                              <p className="text-xs opacity-60 mt-1">{new Date(notification.created_at).toLocaleDateString()}</p>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 pr-8">
+                                  <p className="font-semibold text-white text-sm mb-1">{notification.title}</p>
+                                  <p className="text-gray-300 text-xs mb-2 leading-relaxed">{notification.message}</p>
+                                  <p className="text-gray-500 text-xs">{getTimeAgo(notification.created_at)}</p>
+                                </div>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(`/api/notifications/${notification.id}/delete`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                          'user-uid': user?.uid || '',
+                                        },
+                                      });
+                                      if (response.ok) {
+                                        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                                        setUnreadCount(prev => Math.max(0, prev - 1));
+                                      }
+                                    } catch (error) {
+                                      console.error('Error deleting notification:', error);
+                                    }
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-700 rounded text-red-400"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
                           ))}
+                          {notifications.length > 0 && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch('/api/notifications/clear-all', {
+                                    method: 'POST',
+                                    headers: {
+                                      'user-uid': user?.uid || '',
+                                    },
+                                  });
+                                  if (response.ok) {
+                                    setNotifications([]);
+                                    setUnreadCount(0);
+                                  }
+                                } catch (error) {
+                                  console.error('Error clearing notifications:', error);
+                                }
+                              }}
+                              className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors"
+                            >
+                              Clear All Notifications
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

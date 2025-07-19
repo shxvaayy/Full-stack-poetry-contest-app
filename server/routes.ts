@@ -4027,3 +4027,68 @@ router.post('/api/notifications/:id/read', asyncHandler(async (req: any, res: an
     });
   }
 }));
+
+// Delete specific notification
+router.delete('/api/notifications/:id/delete', asyncHandler(async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    await client.query(`
+      DELETE FROM user_notifications 
+      WHERE notification_id = $1 AND user_id = (
+        SELECT id FROM users WHERE uid = $2
+      )
+    `, [id, userUid]);
+
+    res.json({
+      success: true,
+      message: 'Notification deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete notification'
+    });
+  }
+}));
+
+// Clear all notifications for user
+router.post('/api/notifications/clear-all', asyncHandler(async (req: any, res: any) => {
+  try {
+    const userUid = req.headers['user-uid'] as string;
+    
+    if (!userUid) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    await client.query(`
+      DELETE FROM user_notifications 
+      WHERE user_id = (
+        SELECT id FROM users WHERE uid = $1
+      )
+    `, [userUid]);
+
+    res.json({
+      success: true,
+      message: 'All notifications cleared successfully'
+    });
+  } catch (error) {
+    console.error('Error clearing notifications:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear notifications'
+    });
+  }
+}));
