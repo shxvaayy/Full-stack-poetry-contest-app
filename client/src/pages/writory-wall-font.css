@@ -30,6 +30,7 @@
 .tilt-card:hover {
   transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
 }
+
 .flip-content {
   transition: transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
   transform-style: preserve-3d;
@@ -48,9 +49,22 @@
   backface-visibility: hidden;
 }
 
+/* Scroll Animation Classes for Home Page and Footer */
+.scroll-animate {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.scroll-animate.animated {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
 .wave-animate {
   animation: wave-up 2.2s cubic-bezier(0.4,0.2,0.2,1) both;
 }
+
 @keyframes wave-up {
   0% {
     opacity: 0.2;

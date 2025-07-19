@@ -56,8 +56,8 @@ function SimpleCarousel({ slides }: { slides: Array<{ title: string; subtitle: s
         >
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-white px-8 max-w-4xl">
-              <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl scroll-animate wave-animate">{slide.title}</h3>
-              <p className="text-xl md:text-2xl font-light drop-shadow-lg scroll-animate wave-animate">{slide.subtitle}</p>
+              <h3 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-2xl scroll-animate">{slide.title}</h3>
+              <p className="text-xl md:text-2xl font-light drop-shadow-lg scroll-animate">{slide.subtitle}</p>
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function HomePage() {
         rootMargin: '0px 0px -50px 0px'
       });
 
-      // Observe all elements with scroll-animate class
+      // Observe all elements with scroll-animateclass
       document.querySelectorAll('.scroll-animate').forEach((el) => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
@@ -203,11 +203,11 @@ export default function HomePage() {
                 />
               </div>
 
-              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8 scroll-animate wave-animate">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent leading-tight tracking-wide -mt-8 scroll-animate">
                 WRITORY
               </h1>
 
-              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg scroll-animate wave-animate">Write Your Own Victory</p>
+              <p className="text-xl md:text-2xl mb-8 font-medium text-yellow-100 drop-shadow-lg scroll-animate">Write Your Own Victory</p>
 
               {/* Moving Tagline */}
               <div className="overflow-hidden bg-black/50 backdrop-blur-sm rounded-full px-8 py-4 max-w-4xl mx-auto mb-8 border border-white/30">
@@ -231,12 +231,12 @@ export default function HomePage() {
 
               <div className="mt-8 flex justify-center space-x-8 text-yellow-200">
                 <div className="text-center">
-                  <div className="text-2xl font-bold drop-shadow-lg scroll-animate wave-animate">{poetsCount}+</div>
-                  <div className="text-sm drop-shadow-lg scroll-animate wave-animate">Poets Joined</div>
+                  <div className="text-2xl font-bold drop-shadow-lg scroll-animate">{poetsCount}+</div>
+                  <div className="text-sm drop-shadow-lg scroll-animate">Poets Joined</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold drop-shadow-lg scroll-animate wave-animate">FREE</div>
-                  <div className="text-sm drop-shadow-lg scroll-animate wave-animate">Entry Available</div>
+                  <div className="text-2xl font-bold drop-shadow-lg scroll-animate">FREE</div>
+                  <div className="text-sm drop-shadow-lg scroll-animate">Entry Available</div>
                 </div>
               </div>
             </div>
@@ -246,13 +246,13 @@ export default function HomePage() {
         {/* No Barriers Section */}
         <section className="py-16 bg-gradient-to-br from-white to-blue-50">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent scroll-animate wave-animate">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent scroll-animate">
               No Barriers or Boundaries
             </h2>
             <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/50">
               <CardContent className="p-8">
                 <div className="text-6xl mb-6">📝</div>
-                <p className="text-lg text-gray-700 leading-relaxed scroll-animate wave-animate">
+                <p className="text-lg text-gray-700 leading-relaxed scroll-animate">
                   Whether you're a beginner or a seasoned poet, 13 or 63, from a small town or a big city — your words matter. We believe that creativity knows no limits, and every voice deserves to be heard. No fancy degrees, no prior publications — just pure passion and honest expression. So come as you are, write what you feel, and let the world hear your story. Because here, your pen holds the power, and your story knows no borders.
                 </p>
               </CardContent>
@@ -263,10 +263,10 @@ export default function HomePage() {
         {/* What Our Winners Receive */}
         <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
           <div className="max-w-7xl mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate wave-animate">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate">
               What Our Winners Receive
             </h2>
-            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate wave-animate">Celebrating literary excellence with meaningful rewards</p>
+            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate">Celebrating literary excellence with meaningful rewards</p>
             <div className="grid md:grid-cols-5 gap-6">
               <Card 
                 className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-yellow-50 to-orange-50 tilt-card"
@@ -279,8 +279,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <IdCard className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Digital Certificates</h3>
-                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Official recognition certificates for your achievement</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate">Digital Certificates</h3>
+                  <p className="text-gray-600 text-sm scroll-animate">Official recognition certificates for your achievement</p>
                 </CardContent>
               </Card>
 
@@ -295,8 +295,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Users className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Social Recognition</h3>
-                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Featured across our social media platforms</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate">Social Recognition</h3>
+                  <p className="text-gray-600 text-sm scroll-animate">Featured across our social media platforms</p>
                 </CardContent>
               </Card>
 
@@ -311,8 +311,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Globe className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Global Exposure</h3>
-                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Showcase your work to a worldwide audience</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate">Global Exposure</h3>
+                  <p className="text-gray-600 text-sm scroll-animate">Showcase your work to a worldwide audience</p>
                 </CardContent>
               </Card>
 
@@ -327,8 +327,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Star className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Literary Recognition</h3>
-                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Build your reputation in the literary community</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate">Literary Recognition</h3>
+                  <p className="text-gray-600 text-sm scroll-animate">Build your reputation in the literary community</p>
                 </CardContent>
               </Card>
 
@@ -343,8 +343,8 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Trophy className="text-2xl text-white" size={24} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate wave-animate">Achievement Badge</h3>
-                  <p className="text-gray-600 text-sm scroll-animate wave-animate">Special recognition for your creative excellence</p>
+                  <h3 className="font-semibold text-gray-900 mb-2 scroll-animate">Achievement Badge</h3>
+                  <p className="text-gray-600 text-sm scroll-animate">Special recognition for your creative excellence</p>
                 </CardContent>
               </Card>
             </div>
@@ -354,10 +354,10 @@ export default function HomePage() {
         {/* Benefits Section */}
         <section className="py-16 bg-gradient-to-br from-gray-50 to-slate-100">
           <div className="max-w-7xl mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent scroll-animate wave-animate">
+            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4 bg-gradient-to-r from-gray-700 to-slate-600 bg-clip-text text-transparent scroll-animate">
               Why Choose Writory?
             </h2>
-            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate wave-animate">Your platform for poetic expression and recognition</p>
+            <p className="text-center text-gray-600 mb-12 text-lg scroll-animate">Your platform for poetic expression and recognition</p>
 
             <div className="grid md:grid-cols-4 gap-8">
               <Card 
@@ -371,8 +371,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <CheckCircle className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">Easy Submission</h3>
-                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate">Easy Submission</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate">
                     Simple, user-friendly submission process. Upload your poem in minutes and join our community of passionate poets from around the world.
                   </p>
                 </CardContent>
@@ -389,8 +389,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Users className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">Expert Judging</h3>
-                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate">Expert Judging</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate">
                     Professional literary experts and published poets evaluate submissions with care, providing fair and insightful assessment of your work.
                   </p>
                 </CardContent>
@@ -407,8 +407,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Globe className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">Global Recognition</h3>
-                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate">Global Recognition</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate">
                     Winners gain international exposure through our platform and social media, connecting with poetry enthusiasts worldwide.
                   </p>
                 </CardContent>
@@ -425,8 +425,8 @@ export default function HomePage() {
                   <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
                     <Star className="text-white" size={32} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate wave-animate">New challenges every month</h3>
-                  <p className="text-gray-600 leading-relaxed scroll-animate wave-animate">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 scroll-animate">New challenges every month</h3>
+                  <p className="text-gray-600 leading-relaxed scroll-animate">
                     Fresh prompts, unique themes, and creative formats are released every month to keep your imagination active and your writing evolving. There's always something new to look forward to!
                   </p>
                 </CardContent>
@@ -438,7 +438,7 @@ export default function HomePage() {
         {/* Poetry Inspiration Carousel */}
         <section className="py-16 bg-gradient-to-br from-white to-gray-50">
           <div className="max-w-7xl mx-auto px-4 mb-12">
-            <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate wave-animate">
+            <h2 className="text-4xl font-bold text-center text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent scroll-animate">
               Poetry Inspiration
             </h2>
           </div>
@@ -450,10 +450,10 @@ export default function HomePage() {
         {/* Call to Action Section */}
         <section className="py-32 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 text-white relative overflow-hidden min-h-[60vh]">
           <div className="max-w-4xl mx-auto text-center px-4 flex flex-col justify-center h-full">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 scroll-animate wave-animate">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 scroll-animate">
               Ready to Share Your Poetry?
             </h2>
-            <p className="text-xl text-white/90 mb-8 leading-relaxed scroll-animate wave-animate">
+            <p className="text-xl text-white/90 mb-8 leading-relaxed scroll-animate">
               Join thousands of poets who have already shared their voices. Your story matters, your words have power, and your poetry deserves to be heard.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

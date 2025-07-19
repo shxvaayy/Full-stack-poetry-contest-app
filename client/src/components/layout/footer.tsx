@@ -26,7 +26,7 @@ export default function Footer() {
         rootMargin: '0px 0px -50px 0px'
       });
 
-      // Observe all elements with scroll-animate class in footer
+      // Observe all elements with scroll-animateclass in footer
       document.querySelectorAll('footer .scroll-animate').forEach((el) => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
@@ -56,37 +56,37 @@ export default function Footer() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Brand Section */}
           <div>
-            <h3 className="text-xl font-bold mb-4 scroll-animate wave-animate">WRITORY</h3>
-            <p className="text-gray-300 text-sm leading-relaxed scroll-animate wave-animate">
+            <h3 className="text-xl font-bold mb-4 scroll-animate">WRITORY</h3>
+            <p className="text-gray-300 text-sm leading-relaxed scroll-animate">
               Celebrating literary excellence and nurturing emerging voices. Join our community of poets and share your unique stories with the world.
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 scroll-animate wave-animate">Quick Links</h4>
+            <h4 className="text-lg font-semibold mb-4 scroll-animate">Quick Links</h4>
             <ul className="space-y-2 text-sm">
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <Link href="/submit" className="text-gray-300 hover:text-white transition-colors">
                   Submit Your Poem
                 </Link>
               </li>
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <Link href="/submit#writory-wall-section" className="text-gray-300 hover:text-white transition-colors">
                   Submit for Writory Wall
                 </Link>
               </li>
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
                   About Us
                 </Link>
               </li>
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <Link href="/past-winners" className="text-gray-300 hover:text-white transition-colors">
                   Past Winners
                 </Link>
               </li>
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
                   Contact Us
                 </Link>
@@ -96,14 +96,14 @@ export default function Footer() {
 
           {/* Additional Competitions */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 scroll-animate wave-animate">Additional Competitions</h4>
+            <h4 className="text-lg font-semibold mb-4 scroll-animate">Additional Competitions</h4>
             <ul className="space-y-2 text-sm">
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Regional Languages Competition
                 </button>
               </li>
-              <li className="scroll-animate wave-animate">
+              <li className="scroll-animate">
                 <button onClick={handleNotAvailable} className="text-gray-300 hover:text-white transition-colors">
                   Junior Competition
                 </button>
@@ -128,7 +128,7 @@ export default function Footer() {
               <Linkedin size={20} />
             </a>
           </div>
-          <p className="text-gray-300 text-sm scroll-animate wave-animate">© 2025 WRITORY All rights reserved.</p>
+          <p className="text-gray-300 text-sm scroll-animate">© 2025 WRITORY All rights reserved.</p>
         </div>
       </div>
     </footer>
