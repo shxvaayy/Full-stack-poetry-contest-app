@@ -146,7 +146,7 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<boo
 
           <!-- Greeting -->
           <div style="margin-bottom: 30px;">
-            <h2 style="color: #2c3e50; font-size: 24px; margin-bottom: 15px;">Hello ${name}! 👋</h2>
+            <h2 style="color: #2c3e50; font-size: 24px; margin-bottom: 15px;">Hello Poet! 👋</h2>
             <p style="color: #34495e; font-size: 16px; line-height: 1.7; margin-bottom: 20px;">
               Welcome to the <strong>Writory Poetry Contest</strong>! We're thrilled to have you join our community of passionate poets and creative minds.
             </p>
