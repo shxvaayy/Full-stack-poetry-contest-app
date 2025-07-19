@@ -219,8 +219,7 @@ export default function Header() {
                   <DropdownMenuTrigger asChild>
                     <button
                       className="flex items-center space-x-2 bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 transition-colors focus:outline-none"
-                      onMouseEnter={() => setProfileOpen(true)}
-                      onMouseLeave={() => setProfileOpen(false)}
+                      onClick={() => setProfileOpen((v) => !v)}
                     >
                       {profilePictureUrl ? (
                         <img
@@ -244,10 +243,11 @@ export default function Header() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[180px]"
-                    onMouseEnter={() => setProfileOpen(true)}
-                    onMouseLeave={() => setProfileOpen(false)}
                   >
-                    <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                    <DropdownMenuItem 
+                      className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
+                      onClick={() => setProfileOpen(false)}
+                    >
                       <Link href="/profile" className="w-full h-full block">Profile</Link>
                     </DropdownMenuItem>
                     {isAdmin && (
@@ -256,20 +256,35 @@ export default function Header() {
                           Admin
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[200px]">
-                          <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                          <DropdownMenuItem 
+                            className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
+                            onClick={() => setProfileOpen(false)}
+                          >
                             <Link href="/admin-settings" className="w-full h-full block">Admin Settings</Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                          <DropdownMenuItem 
+                            className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
+                            onClick={() => setProfileOpen(false)}
+                          >
                             <Link href="/admin-upload" className="w-full h-full block">Admin Upload</Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                          <DropdownMenuItem 
+                            className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
+                            onClick={() => setProfileOpen(false)}
+                          >
                             <Link href="/admin-wall-moderation" className="w-full h-full block">Wall Post Moderation</Link>
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                     )}
                     <DropdownMenuSeparator className="my-2 bg-gray-700" />
-                    <DropdownMenuItem onClick={handleLogout} className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400">
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        handleLogout();
+                        setProfileOpen(false);
+                      }} 
+                      className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
+                    >
                       Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>
