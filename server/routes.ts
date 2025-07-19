@@ -821,15 +821,29 @@ router.post('/api/users', asyncHandler(async (req: any, res: any) => {
       
       // Send welcome notification to new user
       try {
-        await client.query(`
-          INSERT INTO notifications (user_uid, title, message, type, created_at, is_read)
-          VALUES ($1, $2, $3, $4, NOW(), false)
+        // First create the notification
+        const notificationResult = await client.query(`
+          INSERT INTO notifications (title, message, type, target_user_email, sent_by, is_active, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+          RETURNING id
         `, [
-          uid,
           'Welcome aboard!',
           'You\'re now part of the Writory Team — let\'s create something great.',
-          'welcome'
+          'individual',
+          newUser.email,
+          'system@writory.com'
         ]);
+        
+        // Then create the user notification link
+        await client.query(`
+          INSERT INTO user_notifications (notification_id, user_id, user_email, is_read, created_at)
+          VALUES ($1, $2, $3, false, NOW())
+        `, [
+          notificationResult.rows[0].id,
+          newUser.id,
+          newUser.email
+        ]);
+        
         console.log('✅ Welcome notification sent to new user:', newUser.email);
       } catch (notificationError) {
         console.error('⚠️ Failed to send welcome notification:', notificationError);
