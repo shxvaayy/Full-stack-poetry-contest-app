@@ -246,9 +246,12 @@ export default function Header() {
                   >
                     <DropdownMenuItem 
                       className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                      onClick={() => setProfileOpen(false)}
+                      onClick={() => {
+                        setProfileOpen(false);
+                        window.location.href = '/profile';
+                      }}
                     >
-                      <Link href="/profile" className="w-full h-full block">Profile</Link>
+                      Profile
                     </DropdownMenuItem>
                     {isAdmin && (
                       <DropdownMenuSub>
@@ -258,21 +261,30 @@ export default function Header() {
                         <DropdownMenuSubContent className="bg-gray-900 border-none shadow-xl rounded-xl p-2 min-w-[200px]">
                           <DropdownMenuItem 
                             className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={() => {
+                              setProfileOpen(false);
+                              window.location.href = '/admin-settings';
+                            }}
                           >
-                            <Link href="/admin-settings" className="w-full h-full block">Admin Settings</Link>
+                            Admin Settings
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={() => {
+                              setProfileOpen(false);
+                              window.location.href = '/admin-upload';
+                            }}
                           >
-                            <Link href="/admin-upload" className="w-full h-full block">Admin Upload</Link>
+                            Admin Upload
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-base font-semibold text-white rounded-lg px-4 py-3 hover:bg-yellow-400 hover:text-black transition-colors flex items-center gap-2 focus:bg-yellow-400 focus:text-black border-l-4 border-transparent hover:border-yellow-400 focus:border-yellow-400"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={() => {
+                              setProfileOpen(false);
+                              window.location.href = '/admin-wall-moderation';
+                            }}
                           >
-                            <Link href="/admin-wall-moderation" className="w-full h-full block">Wall Post Moderation</Link>
+                            Wall Post Moderation
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
