@@ -21,6 +21,15 @@
   transform-style: preserve-3d;
   transition: box-shadow 0.3s, transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
 }
+
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease-out;
+}
+
+.tilt-card:hover {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(1.02);
+}
 .flip-content {
   transition: transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
   transform-style: preserve-3d;
