@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2, Bell, Send, Users } from 'lucide-react';
+import { Settings, Loader2, AlertCircle, RotateCcw, Upload, Trophy, Trash2, Bell, Send, Users, User } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -172,8 +172,11 @@ export default function AdminSettingsPage() {
   const loadUsers = async () => {
     try {
       if (!user?.email) {
-        throw new Error('User email not available for authentication');
+        console.log('⚠️ User email not available, skipping users load');
+        return;
       }
+
+      console.log('🔍 Loading users with email:', user.email);
 
       const response = await fetch('/api/admin/users', {
         headers: {
@@ -181,19 +184,20 @@ export default function AdminSettingsPage() {
         },
       });
 
+      console.log('📊 Users response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to load users');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load users');
       }
 
       const data = await response.json();
+      console.log('📊 Users data:', data);
       setUsers(data.users || []);
     } catch (error: any) {
       console.error('❌ Error loading users:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load users: " + error.message,
-        variant: "destructive",
-      });
+      // Don't show toast for users loading error as it's not critical
+      console.log('⚠️ Users loading failed, continuing without user list');
     }
   };
 
@@ -213,6 +217,13 @@ export default function AdminSettingsPage() {
         throw new Error('User email is required for individual notification');
       }
 
+      console.log('📤 Sending notification:', {
+        type: notificationType,
+        title: notificationForm.title,
+        message: notificationForm.message,
+        userEmail: notificationForm.userEmail,
+      });
+
       const response = await fetch('/api/admin/notifications/send', {
         method: 'POST',
         headers: {
@@ -227,10 +238,15 @@ export default function AdminSettingsPage() {
         }),
       });
 
+      console.log('📊 Notification response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to send notification');
       }
+
+      const result = await response.json();
+      console.log('📊 Notification result:', result);
 
       toast({
         title: "Success",
